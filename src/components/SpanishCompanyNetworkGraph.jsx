@@ -1581,10 +1581,18 @@ const SpanishCompanyNetworkGraph = ({
   // Expand officer node to show other companies
   const expandOfficerNode = useCallback(async officerNode => {
     try {
-      // Use PostgreSQL for canonical company names (no ES parsing noise)
-      const data = await spanishCompaniesService.pgExpandOfficer(officerNode.name.trim(), {
-        size: searchResultSize,
-      });
+      // Try PostgreSQL first for canonical company names; fall back to ES if unavailable
+      let data;
+      try {
+        data = await spanishCompaniesService.pgExpandOfficer(officerNode.name.trim(), {
+          size: searchResultSize,
+        });
+      } catch {
+        data = await spanishCompaniesService.workingSearch(officerNode.name.trim(), {
+          size: searchResultSize,
+          officerMode: true,
+        });
+      }
 
       if (data.success && data.officers && data.officers.length > 0) {
         // Group officer results by company name directly
@@ -1686,12 +1694,23 @@ const SpanishCompanyNetworkGraph = ({
     async companyNode => {
       try {
         const companyName = companyNode.name.trim();
-        // Use PostgreSQL for canonical officer names (no ES parsing noise)
-        const data = await spanishCompaniesService.pgExpandCompany(companyName, {
-          size: searchResultSize,
-        });
+        // Try PostgreSQL first for canonical officer names; fall back to ES if unavailable
+        let data;
+        let usedPG = false;
+        try {
+          data = await spanishCompaniesService.pgExpandCompany(companyName, {
+            size: searchResultSize,
+          });
+          usedPG = true;
+        } catch {
+          data = await spanishCompaniesService.workingSearch(companyName, {
+            size: searchResultSize,
+            exactMatch: true,
+          });
+        }
 
-        if (data.success && data.officers && data.officers.length > 0) {
+        // PG path: pre-structured officers
+        if (usedPG && data.success && data.officers && data.officers.length > 0) {
           // PG returns pre-structured officers — add them directly to the graph
           setGraphData(prevData => {
             const newNodes = [...prevData.nodes];
@@ -1751,13 +1770,20 @@ const SpanishCompanyNetworkGraph = ({
           });
           return true;
         }
+
+        // ES fallback path: use existing addCompanyWithOfficersToGraph
+        if (!usedPG && data.success && data.results && data.results.length > 0) {
+          const results = data.results.map(r => ({ ...r, name: companyName }));
+          await addCompanyWithOfficersToGraph(results, companyNode);
+          return true;
+        }
         return false;
       } catch (err) {
         console.error('Error expanding company node:', err);
         return false;
       }
     },
-    [searchResultSize]
+    [addCompanyWithOfficersToGraph, searchResultSize]
   );
 
   // Expand a node (called on double-click)
