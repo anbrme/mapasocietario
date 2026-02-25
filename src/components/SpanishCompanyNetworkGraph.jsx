@@ -1581,10 +1581,9 @@ const SpanishCompanyNetworkGraph = ({
   // Expand officer node to show other companies
   const expandOfficerNode = useCallback(async officerNode => {
     try {
-      // Search for the officer name using workingSearch with officerMode
-      const data = await spanishCompaniesService.workingSearch(officerNode.name.trim(), {
+      // Use PostgreSQL for canonical company names (no ES parsing noise)
+      const data = await spanishCompaniesService.pgExpandOfficer(officerNode.name.trim(), {
         size: searchResultSize,
-        officerMode: true,
       });
 
       if (data.success && data.officers && data.officers.length > 0) {
@@ -1687,17 +1686,69 @@ const SpanishCompanyNetworkGraph = ({
     async companyNode => {
       try {
         const companyName = companyNode.name.trim();
-        // Fetch full company data using workingSearch with exactMatch
-        const data = await spanishCompaniesService.workingSearch(companyName, {
+        // Use PostgreSQL for canonical officer names (no ES parsing noise)
+        const data = await spanishCompaniesService.pgExpandCompany(companyName, {
           size: searchResultSize,
-          exactMatch: true,
         });
 
-        if (data.success && data.results && data.results.length > 0) {
-          // Force result names to match existing node name to prevent duplicate node creation
-          // (search results may return slightly different name formats for the same company)
-          const results = data.results.map(r => ({ ...r, name: companyName }));
-          await addCompanyWithOfficersToGraph(results, companyNode);
+        if (data.success && data.officers && data.officers.length > 0) {
+          // PG returns pre-structured officers — add them directly to the graph
+          setGraphData(prevData => {
+            const newNodes = [...prevData.nodes];
+            const newLinks = [...prevData.links];
+            const anchor = isFinitePoint(companyNode)
+              ? { x: companyNode.x, y: companyNode.y }
+              : computeGraphCentroid(prevData.nodes);
+
+            // Deduplicate officers by name
+            const seen = new Map();
+            data.officers.forEach(o => {
+              const key = (o.name || '').toUpperCase();
+              if (!seen.has(key)) seen.set(key, o);
+            });
+
+            let idx = 0;
+            seen.forEach((officer, key) => {
+              const officerId = `officer-${key.toLowerCase().replace(/\s+/g, '-')}`;
+              const existingOfficer = newNodes.find(n => n.id === officerId);
+
+              if (!existingOfficer) {
+                const pos = radialPosition({
+                  anchor,
+                  index: idx,
+                  total: seen.size,
+                  occupiedNodes: newNodes,
+                  baseRadius: 200,
+                  minDistance: 80,
+                });
+                newNodes.push({
+                  id: officerId,
+                  name: officer.name,
+                  type: 'officer',
+                  subtype: 'individual',
+                  positions: [{ company: companyName, position: officer.position, category: officer.event_type }],
+                  companies: [companyName],
+                  ...pos,
+                  fx: null,
+                  fy: null,
+                });
+              }
+
+              const linkId = `${companyNode.id}--${officerId}`;
+              if (!newLinks.find(l => l.id === linkId)) {
+                newLinks.push({
+                  id: linkId,
+                  source: companyNode.id,
+                  target: officerId,
+                  relationship: officer.position || 'Cargo no especificado',
+                  category: officer.event_type || 'nombramientos',
+                });
+              }
+              idx++;
+            });
+
+            return { nodes: newNodes, links: newLinks };
+          });
           return true;
         }
         return false;
@@ -1706,7 +1757,7 @@ const SpanishCompanyNetworkGraph = ({
         return false;
       }
     },
-    [addCompanyWithOfficersToGraph, searchResultSize]
+    [searchResultSize]
   );
 
   // Expand a node (called on double-click)
