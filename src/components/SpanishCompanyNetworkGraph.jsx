@@ -2391,8 +2391,8 @@ const SpanishCompanyNetworkGraph = ({
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // Truncate long labels
-          const maxLength = Math.max(15, 30 / globalScale);
+          // Truncate long labels — show more characters when zoomed in
+          const maxLength = Math.max(15, Math.round(30 * globalScale));
           const truncatedLabel =
             label.length > maxLength ? label.substring(0, maxLength) + '...' : label;
 
