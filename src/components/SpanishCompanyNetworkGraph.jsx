@@ -76,6 +76,8 @@ const CATEGORY_LAYOUT_ANGLE = {
   revocaciones: Math.PI,
 };
 
+const SEARCH_SIZE_OPTIONS = [25, 50, 100, 200, 500];
+
 // Normalize company name for consistent ID generation across all code paths
 const normalizeCompanyName = name => {
   return (name || '')
@@ -134,7 +136,7 @@ const findNonOverlappingPosition = ({
 
     const baseAngle = Math.atan2(y - anchor.y, x - anchor.x) || 0;
     const angle = baseAngle + 0.45 * (attempt + 1);
-    const radius = Math.hypot(x - anchor.x, y - anchor.y) + 22 + attempt * 6;
+    const radius = Math.hypot(x - anchor.x, y - anchor.y) + 40 + attempt * 10;
     x = anchor.x + Math.cos(angle) * radius;
     y = anchor.y + Math.sin(angle) * radius;
   }
@@ -147,7 +149,7 @@ const radialPosition = ({
   index,
   total,
   occupiedNodes,
-  baseRadius = 140,
+  baseRadius = 280,
   minDistance = 90,
   startAngle = -Math.PI / 2,
 }) => {
@@ -155,7 +157,7 @@ const radialPosition = ({
   const ring = Math.floor(index / slots);
   const slotInRing = index % slots;
   const angle = startAngle + (2 * Math.PI * slotInRing) / slots;
-  const radius = baseRadius + ring * 55;
+  const radius = baseRadius + ring * 80;
   const candidate = {
     x: anchor.x + Math.cos(angle) * radius,
     y: anchor.y + Math.sin(angle) * radius,
@@ -174,7 +176,7 @@ const categorySectorPosition = ({
   category,
   slot,
   occupiedNodes,
-  baseRadius = 170,
+  baseRadius = 320,
   minDistance = 90,
 }) => {
   const centerAngle = CATEGORY_LAYOUT_ANGLE[category] ?? -Math.PI / 2;
@@ -182,7 +184,7 @@ const categorySectorPosition = ({
   const ring = Math.floor(slot / sectorWidth);
   const slotInRing = slot % sectorWidth;
   const angle = centerAngle + (slotInRing - (sectorWidth - 1) / 2) * 0.24;
-  const radius = baseRadius + ring * 55;
+  const radius = baseRadius + ring * 80;
   const candidate = {
     x: anchor.x + Math.cos(angle) * radius,
     y: anchor.y + Math.sin(angle) * radius,
@@ -199,6 +201,50 @@ const categorySectorPosition = ({
 const normalizeNodeId = id => (id == null ? '' : String(id));
 const isSameNodeId = (a, b) => normalizeNodeId(a) === normalizeNodeId(b);
 const getNodeIdFromRef = ref => (ref && typeof ref === 'object' ? ref.id : ref);
+
+const createCategorySlots = () => ({
+  nombramientos: 0,
+  reelecciones: 0,
+  revocaciones: 0,
+  ceses_dimisiones: 0,
+});
+
+const normalizeCategoryKey = category => {
+  if (category === 'reelecciones') return 'reelecciones';
+  if (category === 'revocaciones') return 'revocaciones';
+  if (category === 'ceses_dimisiones') return 'ceses_dimisiones';
+  return 'nombramientos';
+};
+
+const seedCategorySlotsFromExistingLinks = ({ companyId, nodes, links }) => {
+  const slots = createCategorySlots();
+  const normalizedCompanyId = normalizeNodeId(companyId);
+  if (!normalizedCompanyId) return slots;
+
+  const nodeById = new Map((nodes || []).map(node => [normalizeNodeId(node.id), node]));
+  (links || []).forEach(link => {
+    const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
+    const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
+    if (!sourceId || !targetId) return;
+
+    let neighborId = null;
+    if (isSameNodeId(sourceId, normalizedCompanyId)) {
+      neighborId = targetId;
+    } else if (isSameNodeId(targetId, normalizedCompanyId)) {
+      neighborId = sourceId;
+    } else {
+      return;
+    }
+
+    const neighborNode = nodeById.get(neighborId);
+    if (!neighborNode || neighborNode.type !== 'officer') return;
+
+    const categoryKey = normalizeCategoryKey(link.category);
+    slots[categoryKey] += 1;
+  });
+
+  return slots;
+};
 
 const normalizeNameForMerge = value =>
   (value || '')
@@ -330,6 +376,9 @@ const SpanishCompanyNetworkGraph = ({
   const [searchType, setSearchType] = useState('company'); // 'company' or 'officer'
   const [labelFilterText, setLabelFilterText] = useState(''); // New state for label text filter
   const [isSearching, setIsSearching] = useState(false);
+  const [searchResultSize, setSearchResultSize] = useState(50);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastSearchContext, setLastSearchContext] = useState(null);
 
   // Track pinned node IDs (nodes added by direct search — always shown regardless of filter)
   const [pinnedNodeIds, setPinnedNodeIds] = useState(new Set());
@@ -493,6 +542,8 @@ const SpanishCompanyNetworkGraph = ({
       setGraphData({ nodes: [], links: [] });
       setError(null);
       setSearchQuery('');
+      setLastSearchContext(null);
+      setLoadingMore(false);
       setContainerReady(false);
       setHiddenNodesMenuAnchorEl(null);
       setActiveNodeId(null);
@@ -542,11 +593,7 @@ const SpanishCompanyNetworkGraph = ({
     if (initialCompanyName && initialCompanyName !== initialCompanyNameRef.current && (visible || embedded)) {
       initialCompanyNameRef.current = initialCompanyName;
       setSearchQuery(initialCompanyName);
-      // Trigger search after a short delay to ensure component is ready
-      const timer = setTimeout(() => {
-        handleSearch(initialCompanyName, true);
-      }, 300);
-      return () => clearTimeout(timer);
+      handleSearch(initialCompanyName, true);
     }
   }, [initialCompanyName, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -858,6 +905,15 @@ const SpanishCompanyNetworkGraph = ({
 
   // Search for companies or officers and automatically add to graph
   // queryOverride allows passing the exact name from autocomplete selection
+  const filterCompanyMatches = useCallback((results, query) => {
+    const lowerQuery = query.toLowerCase();
+    const queryTerms = lowerQuery.split(/\s+/).filter(t => t.length > 0);
+    return (results || []).filter(company => {
+      const name = (company.name || company.company_name || '').toLowerCase();
+      return queryTerms.every(term => name.includes(term));
+    });
+  }, []);
+
   const handleSearch = async (queryOverride = null, exactMatch = false) => {
     const query = (queryOverride || searchQuery).trim();
     if (!query) {
@@ -867,21 +923,32 @@ const SpanishCompanyNetworkGraph = ({
 
     setIsSearching(true);
     setError(null);
+    setLastSearchContext(null);
 
     try {
       if (searchType === 'officer') {
         // Officer search: use workingSearch with officerMode
         // Backend returns officer data in `officers` array, not `results`
         const data = await spanishCompaniesService.workingSearch(query, {
-          size: 50,
+          size: searchResultSize,
           officerMode: true,
         });
 
-        if (data.success && data.officers && data.officers.length > 0) {
+        const fetchedCount = data.officers?.length || 0;
+        if (data.success && fetchedCount > 0) {
           await addOfficerToGraph(data.officers, query);
           // Pin the officer node so it survives filtering
           const officerId = `officer-${query.toLowerCase().trim().replace(/\s+/g, '-')}`;
           setPinnedNodeIds(prev => new Set([...prev, officerId]));
+          setLastSearchContext({
+            query,
+            searchType: 'officer',
+            exactMatch: false,
+            size: searchResultSize,
+            offset: fetchedCount,
+            hasMore: data.hasMore,
+            total: data.total || fetchedCount,
+          });
           setSearchQuery('');
         } else {
           setError(`No se encontraron resultados para el directivo "${query}".`);
@@ -889,18 +956,13 @@ const SpanishCompanyNetworkGraph = ({
       } else {
         // Company search: use workingSearch
         const data = await spanishCompaniesService.workingSearch(query, {
-          size: 50,
+          size: searchResultSize,
           exactMatch: exactMatch,
         });
 
-        if (data.success && data.results && data.results.length > 0) {
-          // Client-side filter for company name relevance
-          const lowerQuery = query.toLowerCase();
-          const queryTerms = lowerQuery.split(/\s+/).filter(t => t.length > 0);
-          const filtered = data.results.filter(company => {
-            const name = (company.name || company.company_name || '').toLowerCase();
-            return queryTerms.every(term => name.includes(term));
-          });
+        const fetchedCount = data.results?.length || 0;
+        if (data.success && fetchedCount > 0) {
+          const filtered = filterCompanyMatches(data.results, query);
 
           if (filtered.length > 0) {
             await addCompanyWithOfficersToGraph(filtered);
@@ -909,6 +971,15 @@ const SpanishCompanyNetworkGraph = ({
               const companyName = normalizeCompanyName(company.name || company.company_name || '');
               const companyId = companyNameToId(companyName);
               setPinnedNodeIds(prev => new Set([...prev, companyId]));
+            });
+            setLastSearchContext({
+              query,
+              searchType: 'company',
+              exactMatch: exactMatch,
+              size: searchResultSize,
+              offset: fetchedCount,
+              hasMore: data.hasMore,
+              total: data.total || fetchedCount,
             });
             setSearchQuery('');
           } else {
@@ -923,6 +994,79 @@ const SpanishCompanyNetworkGraph = ({
       setError(`Error en la búsqueda: ${err.message}`);
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    const context = lastSearchContext;
+    if (!context?.hasMore || loadingMore) return;
+
+    setLoadingMore(true);
+    setError(null);
+
+    try {
+      const data = await spanishCompaniesService.workingSearch(context.query, {
+        size: context.size,
+        offset: context.offset,
+        officerMode: context.searchType === 'officer',
+        exactMatch: context.exactMatch,
+      });
+
+      if (context.searchType === 'officer') {
+        const fetchedCount = data.officers?.length || 0;
+        if (data.success && fetchedCount > 0) {
+          await addOfficerToGraph(data.officers, context.query);
+          const officerId = `officer-${context.query.toLowerCase().trim().replace(/\s+/g, '-')}`;
+          setPinnedNodeIds(prev => new Set([...prev, officerId]));
+          setLastSearchContext(prev =>
+            prev
+              ? {
+                  ...prev,
+                  offset: prev.offset + fetchedCount,
+                  hasMore: data.hasMore,
+                  total: data.total || prev.total,
+                }
+              : prev
+          );
+        } else {
+          setLastSearchContext(prev => (prev ? { ...prev, hasMore: false } : prev));
+        }
+      } else {
+        const fetchedCount = data.results?.length || 0;
+        if (data.success && fetchedCount > 0) {
+          const filtered = filterCompanyMatches(data.results, context.query);
+          if (filtered.length > 0) {
+            await addCompanyWithOfficersToGraph(filtered);
+            filtered.forEach(company => {
+              const companyName = normalizeCompanyName(company.name || company.company_name || '');
+              const companyId = companyNameToId(companyName);
+              setPinnedNodeIds(prev => new Set([...prev, companyId]));
+            });
+          }
+
+          setLastSearchContext(prev =>
+            prev
+              ? {
+                  ...prev,
+                  offset: prev.offset + fetchedCount,
+                  hasMore: data.hasMore,
+                  total: data.total || prev.total,
+                }
+              : prev
+          );
+
+          if (filtered.length === 0 && !data.hasMore) {
+            setError(`No hay más coincidencias precisas para "${context.query}".`);
+          }
+        } else {
+          setLastSearchContext(prev => (prev ? { ...prev, hasMore: false } : prev));
+        }
+      }
+    } catch (err) {
+      console.error('Load more error:', err);
+      setError(`Error al cargar más resultados: ${err.message}`);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -942,6 +1086,7 @@ const SpanishCompanyNetworkGraph = ({
           const hasExplicitAnchor = isFinitePoint(anchorNode);
           const defaultAnchor = computeGraphCentroid(prevData.nodes);
           const anchor = hasExplicitAnchor ? { x: anchorNode.x, y: anchorNode.y } : defaultAnchor;
+          const keepExpansionNodesFixed = hasExplicitAnchor;
 
           // Group companies by name to avoid duplicates
           const companiesByName = {};
@@ -999,7 +1144,7 @@ const SpanishCompanyNetworkGraph = ({
                 index: companyIdx,
                 total: groupedCompanies.length,
                 occupiedNodes: newNodes,
-                baseRadius: 120,
+                baseRadius: 280,
                 minDistance: 95,
               });
 
@@ -1017,8 +1162,8 @@ const SpanishCompanyNetworkGraph = ({
                   },
                 },
                 ...companyPosition,
-                fx: null,
-                fy: null,
+                fx: keepExpansionNodesFixed ? companyPosition.x : null,
+                fy: keepExpansionNodesFixed ? companyPosition.y : null,
               };
               newNodes.push(companyNode);
             }
@@ -1027,12 +1172,11 @@ const SpanishCompanyNetworkGraph = ({
             const companyAnchor = isFinitePoint(companyNodeForLayout)
               ? { x: companyNodeForLayout.x, y: companyNodeForLayout.y }
               : anchor;
-            const categorySlots = {
-              nombramientos: 0,
-              reelecciones: 0,
-              revocaciones: 0,
-              ceses_dimisiones: 0,
-            };
+            const categorySlots = seedCategorySlotsFromExistingLinks({
+              companyId,
+              nodes: newNodes,
+              links: newLinks,
+            });
 
             // Extract all officers from all entries (even if company already existed in graph)
             const allOfficers = {
@@ -1045,6 +1189,21 @@ const SpanishCompanyNetworkGraph = ({
             // Process each entry to extract officers
             summary.entries.forEach(entry => {
               const entryDate = entry.indexed_date || entry.date;
+              const getOfficerCategory = officer => {
+                const categoryHint = `${officer?.category || ''} ${officer?.type || ''} ${
+                  officer?.raw_entry || ''
+                } ${officer?.position || ''} ${officer?.role || ''}`.toLowerCase();
+                if (categoryHint.includes('reelec')) return 'reelecciones';
+                if (categoryHint.includes('revoc')) return 'revocaciones';
+                if (categoryHint.includes('cese') || categoryHint.includes('dimis')) {
+                  return 'ceses_dimisiones';
+                }
+                return 'nombramientos';
+              };
+              const toSafeString = value => (typeof value === 'string' ? value.trim() : '');
+              const countCollectedOfficers = () =>
+                Object.values(allOfficers).reduce((sum, categoryList) => sum + categoryList.length, 0);
+              const collectedBeforeEntry = countCollectedOfficers();
 
               // Use pre-parsed data if available
               let entryParsed;
@@ -1106,6 +1265,29 @@ const SpanishCompanyNetworkGraph = ({
                   }
                 }
               });
+
+              // Fallback: use backend-provided officers array when parser found none for this entry.
+              if (countCollectedOfficers() === collectedBeforeEntry && Array.isArray(entry.officers)) {
+                entry.officers.forEach(officer => {
+                  const name = toSafeString(officer?.name || officer?.officer_name || officer?.full_name);
+                  if (!name) return;
+
+                  const position = toSafeString(
+                    officer?.position || officer?.role || officer?.title || 'associated_with'
+                  );
+                  const category = getOfficerCategory(officer);
+
+                  allOfficers[category].push({
+                    ...officer,
+                    name,
+                    position,
+                    category,
+                    date: entryDate,
+                    entry_identifier: entry.identifier,
+                    source_parser: 'direct_officers_fallback',
+                  });
+                });
+              }
             });
 
             // Deduplicate officers within each category (same name + position)
@@ -1171,7 +1353,7 @@ const SpanishCompanyNetworkGraph = ({
                   category: categoryKey,
                   slot,
                   occupiedNodes: newNodes,
-                  baseRadius: 160,
+                  baseRadius: 300,
                   minDistance: 86,
                 });
 
@@ -1193,8 +1375,8 @@ const SpanishCompanyNetworkGraph = ({
                     },
                   ],
                   ...officerPosition,
-                  fx: null,
-                  fy: null,
+                  fx: keepExpansionNodesFixed ? officerPosition.x : null,
+                  fy: keepExpansionNodesFixed ? officerPosition.y : null,
                 };
                 newNodes.push(officerNode);
               } else {
@@ -1401,7 +1583,7 @@ const SpanishCompanyNetworkGraph = ({
     try {
       // Search for the officer name using workingSearch with officerMode
       const data = await spanishCompaniesService.workingSearch(officerNode.name.trim(), {
-        size: 50,
+        size: searchResultSize,
         officerMode: true,
       });
 
@@ -1448,7 +1630,7 @@ const SpanishCompanyNetworkGraph = ({
                 index: companyIdx,
                 total: companyEntries.length,
                 occupiedNodes: newNodes,
-                baseRadius: 120,
+                baseRadius: 280,
                 minDistance: 92,
               });
 
@@ -1468,8 +1650,8 @@ const SpanishCompanyNetworkGraph = ({
                 },
                 expanded: false,
                 ...companyPosition,
-                fx: null,
-                fy: null,
+                fx: companyPosition.x,
+                fy: companyPosition.y,
               });
             }
 
@@ -1498,7 +1680,7 @@ const SpanishCompanyNetworkGraph = ({
       console.error('Error expanding officer node:', err);
       return false;
     }
-  }, []);
+  }, [searchResultSize]);
 
   // Expand company node to show its officers
   const expandCompanyNode = useCallback(
@@ -1507,7 +1689,7 @@ const SpanishCompanyNetworkGraph = ({
         const companyName = companyNode.name.trim();
         // Fetch full company data using workingSearch with exactMatch
         const data = await spanishCompaniesService.workingSearch(companyName, {
-          size: 100,
+          size: searchResultSize,
           exactMatch: true,
         });
 
@@ -1524,7 +1706,7 @@ const SpanishCompanyNetworkGraph = ({
         return false;
       }
     },
-    [addCompanyWithOfficersToGraph]
+    [addCompanyWithOfficersToGraph, searchResultSize]
   );
 
   // Expand a node (called on double-click)
@@ -2206,7 +2388,6 @@ const SpanishCompanyNetworkGraph = ({
 
         if (shouldRenderLabel) {
           ctx.font = `${fontSize}px Sans-Serif`;
-          ctx.fillStyle = '#333';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
@@ -2217,6 +2398,12 @@ const SpanishCompanyNetworkGraph = ({
 
           const labelY = node.y + nodeRadius + fontSize * 0.85;
 
+          // Draw text with subtle dark outline for readability on dark background
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.lineWidth = 3 / globalScale;
+          ctx.lineJoin = 'round';
+          ctx.strokeText(truncatedLabel, node.x, labelY);
+          ctx.fillStyle = '#e0e0e0';
           ctx.fillText(truncatedLabel, node.x, labelY);
         }
       }
@@ -2303,19 +2490,19 @@ const SpanishCompanyNetworkGraph = ({
           ctx.font = `${fontSize}px Sans-Serif`;
           const text = edgeLabel;
           const textWidth = ctx.measureText(text).width;
-          const paddingX = 3;
-          const paddingY = 2;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          const paddingX = 2;
+          const paddingY = 1;
+          ctx.fillStyle = 'rgba(18, 24, 40, 0.75)';
           ctx.fillRect(
             midX - textWidth / 2 - paddingX,
             midY - fontSize / 2 - paddingY,
             textWidth + paddingX * 2,
             fontSize + paddingY * 2
           );
-          ctx.fillStyle = '#333';
+          ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(text, midX, midY); // Draw at (potentially offset) midpoint
+          ctx.fillText(text, midX, midY);
         }
       }
     },
@@ -2346,6 +2533,8 @@ const SpanishCompanyNetworkGraph = ({
     setPinnedNodeIds(new Set());
     setHiddenNodeIds(new Set());
     setError(null);
+    setLastSearchContext(null);
+    setLoadingMore(false);
   };
 
   // Compute table data from graph links
@@ -2465,8 +2654,8 @@ const SpanishCompanyNetworkGraph = ({
 
   // Shared search panel content
   const searchPanelContent = (
-    <Paper sx={{ p: 2, m: embedded ? 0 : 2, mb: 1 }}>
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+    <Paper sx={{ p: 1, px: 1.5, m: embedded ? 0 : 2, mb: 0 }}>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel>Tipo</InputLabel>
           <Select
@@ -2475,6 +2664,7 @@ const SpanishCompanyNetworkGraph = ({
               setSearchType(e.target.value);
               setAutocompleteOptions([]);
               setSelectedAutocomplete(null);
+              setLastSearchContext(null);
             }}
             label="Tipo"
           >
@@ -2493,6 +2683,21 @@ const SpanishCompanyNetworkGraph = ({
           </Select>
         </FormControl>
 
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel>Resultados</InputLabel>
+          <Select
+            value={searchResultSize}
+            onChange={e => setSearchResultSize(Number(e.target.value))}
+            label="Resultados"
+          >
+            {SEARCH_SIZE_OPTIONS.map(size => (
+              <MenuItem key={size} value={size}>
+                {size}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
         <Autocomplete
           freeSolo
           options={autocompleteOptions}
@@ -2503,9 +2708,11 @@ const SpanishCompanyNetworkGraph = ({
           onInputChange={(event, newValue, reason) => {
             setSearchQuery(newValue);
             if (reason === 'input') {
+              setLastSearchContext(null);
               setSelectedAutocomplete(null);
               handleAutocomplete(newValue);
             } else if (reason === 'clear') {
+              setLastSearchContext(null);
               setAutocompleteOptions([]);
             }
           }}
@@ -2608,9 +2815,29 @@ const SpanishCompanyNetworkGraph = ({
         </IconButton>
       </Box>
 
+      {lastSearchContext && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+          <Typography variant="caption" color="text.secondary">
+            Cargados: {lastSearchContext.offset}
+            {lastSearchContext.total ? ` / ${lastSearchContext.total}` : ''}
+          </Typography>
+          {lastSearchContext.hasMore && (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleLoadMore}
+              disabled={loadingMore || isSearching}
+              sx={{ textTransform: 'none' }}
+            >
+              {loadingMore ? <CircularProgress size={14} /> : 'Cargar más'}
+            </Button>
+          )}
+        </Box>
+      )}
+
       {/* Settings Panel */}
       {showSettings && (
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
           <Typography variant="subtitle2" gutterBottom>
             Configuración del Grafo
           </Typography>
@@ -2676,8 +2903,8 @@ const SpanishCompanyNetworkGraph = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          px: 2,
-          pb: 1,
+          px: 1,
+          py: 0.25,
         }}
       >
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -2741,14 +2968,6 @@ const SpanishCompanyNetworkGraph = ({
           {isLoading && <CircularProgress size={16} />}
         </Box>
       </Box>
-      {embedded && !isFullscreen && (
-        <Box sx={{ px: 2, pb: 1 }}>
-          <Alert severity="info" sx={{ py: 0.5 }}>
-            Para expandir, arrastrar o gestionar nodos, usa pantalla completa.
-          </Alert>
-        </Box>
-      )}
-
       {/* Graph Container (full width, table floats on top) */}
       <Box
         ref={containerCallbackRef}
@@ -2862,7 +3081,15 @@ const SpanishCompanyNetworkGraph = ({
           {/* Table body (collapsible) */}
           {!isTableCollapsed && (
             <TableContainer sx={{ flex: 1, overflow: 'auto', maxHeight: 400 }}>
-              <Table size="small" stickyHeader>
+              <Table
+                size="small"
+                stickyHeader
+                sx={{
+                  '& .MuiTableBody-root .MuiTableCell-root': {
+                    color: '#1f2937',
+                  },
+                }}
+              >
                 <TableHead>
                   <TableRow>
                     <TableCell
@@ -2925,8 +3152,8 @@ const SpanishCompanyNetworkGraph = ({
                 <TableBody>
                   {tableRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                        <Typography variant="caption" color="text.secondary">
+                      <TableCell colSpan={5} align="center" sx={{ py: 3, color: '#4b5563' }}>
+                        <Typography variant="caption" sx={{ color: '#4b5563' }}>
                           Busca una empresa o directivo para ver datos
                         </Typography>
                       </TableCell>
@@ -3018,59 +3245,33 @@ const SpanishCompanyNetworkGraph = ({
         </Paper>
       </Box>
 
-      {/* Legend */}
-      <Paper sx={{ p: 1, m: embedded ? 0 : 2, mt: 1 }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-            Leyenda:
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: nodeColors.company }} />
-            <Typography variant="caption">Empresas</Typography>
+      {/* Legend - compact inline bar */}
+      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', px: 2, py: 0.5, opacity: 0.7, fontSize: '0.65rem' }}>
+        {[
+          { color: nodeColors.company, label: 'Empresas' },
+          { color: nodeColors.officer_individual, label: 'Personas' },
+          { color: nodeColors.officer_company, label: 'Emp. Directivas' },
+          { color: nodeColors.expanded, label: 'Expandidos' },
+        ].map(item => (
+          <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color, flexShrink: 0 }} />
+            <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{item.label}</Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box
-              sx={{
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                bgcolor: nodeColors.officer_individual,
-              }}
-            />
-            <Typography variant="caption">Personas</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box
-              sx={{
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                bgcolor: nodeColors.officer_company,
-              }}
-            />
-            <Typography variant="caption">Empresas Directivas</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box
-              sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: nodeColors.expanded }}
-            />
-            <Typography variant="caption">Expandidos</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2 }}>
-            <Box sx={{ width: 20, height: 2, bgcolor: '#2e7d32' }} />
-            <Typography variant="caption">Nombramientos/Reelecciones</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box sx={{ width: 20, height: 2, bgcolor: '#d32f2f' }} />
-            <Typography variant="caption">Ceses/Revocaciones</Typography>
-          </Box>
-          <Typography variant="caption" sx={{ ml: 2 }}>
-            {embedded && !isFullscreen
-              ? 'Interacción de nodos (expandir, arrastrar, gestionar): disponible en pantalla completa'
-              : 'Doble clic: expandir | Clic derecho: gestionar nodo'}
-          </Typography>
+        ))}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+          <Box sx={{ width: 14, height: 2, bgcolor: '#2e7d32' }} />
+          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>Nombram.</Typography>
         </Box>
-      </Paper>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+          <Box sx={{ width: 14, height: 2, bgcolor: '#d32f2f' }} />
+          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>Ceses</Typography>
+        </Box>
+        <Typography sx={{ fontSize: 'inherit', lineHeight: 1, ml: 'auto' }}>
+          {embedded && !isFullscreen
+            ? 'Doble clic: expandir | Pantalla completa para gestionar'
+            : 'Doble clic: expandir | Clic derecho: gestionar'}
+        </Typography>
+      </Box>
     </>
   );
 
@@ -3368,13 +3569,32 @@ const SpanishCompanyNetworkGraph = ({
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          p: 2,
+          p: 0,
           overflow: 'hidden',
           bgcolor: isFullscreen ? 'background.paper' : undefined,
           height: isFullscreen ? '100vh' : undefined,
         }}
       >
         {searchPanelContent}
+        {/* Loading overlay for initial search */}
+        {isSearching && graphData.nodes.length === 0 && (
+          <Box sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10,
+            bgcolor: 'background.default',
+            gap: 2,
+          }}>
+            <CircularProgress size={40} />
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Buscando {searchQuery}...
+            </Typography>
+          </Box>
+        )}
         {graphAreaContent}
         {nodeManagementOverlays}
       </Box>
