@@ -119,8 +119,14 @@ const findNonOverlappingPosition = ({
   occupiedNodes,
   minDistance = 80,
   maxAttempts = 36,
+  maxRadius = null,       // Hard cap: never place further than this from anchor
+  nodeTypeFilter = null,  // If set, only check nodes of this type for collision
 }) => {
-  const occupied = (occupiedNodes || []).filter(isFinitePoint);
+  const occupied = (occupiedNodes || []).filter(n => {
+    if (!isFinitePoint(n)) return false;
+    if (nodeTypeFilter && n.type !== nodeTypeFilter) return false;
+    return true;
+  });
   let x = candidate.x;
   let y = candidate.y;
   const minDistanceSq = minDistance * minDistance;
@@ -136,11 +142,16 @@ const findNonOverlappingPosition = ({
 
     const baseAngle = Math.atan2(y - anchor.y, x - anchor.x) || 0;
     const angle = baseAngle + 0.45 * (attempt + 1);
-    const radius = Math.hypot(x - anchor.x, y - anchor.y) + 40 + attempt * 10;
-    x = anchor.x + Math.cos(angle) * radius;
-    y = anchor.y + Math.sin(angle) * radius;
+    // Grow radius slowly — stop growing if we'd exceed maxRadius
+    const currentRadius = Math.hypot(x - anchor.x, y - anchor.y);
+    const nextRadius = maxRadius != null
+      ? Math.min(currentRadius + 30 + attempt * 5, maxRadius)
+      : currentRadius + 40 + attempt * 10;
+    x = anchor.x + Math.cos(angle) * nextRadius;
+    y = anchor.y + Math.sin(angle) * nextRadius;
   }
 
+  // If no free slot found within constraints, return best attempt (accept some overlap)
   return { x, y };
 };
 
@@ -151,13 +162,16 @@ const radialPosition = ({
   occupiedNodes,
   baseRadius = 280,
   minDistance = 90,
+  maxRadius = null,
   startAngle = -Math.PI / 2,
 }) => {
   const slots = Math.max(total, 1);
   const ring = Math.floor(index / slots);
   const slotInRing = index % slots;
   const angle = startAngle + (2 * Math.PI * slotInRing) / slots;
-  const radius = baseRadius + ring * 80;
+  const radius = maxRadius != null
+    ? Math.min(baseRadius + ring * 60, maxRadius * 0.9)
+    : baseRadius + ring * 80;
   const candidate = {
     x: anchor.x + Math.cos(angle) * radius,
     y: anchor.y + Math.sin(angle) * radius,
@@ -168,6 +182,7 @@ const radialPosition = ({
     candidate,
     occupiedNodes,
     minDistance,
+    maxRadius,
   });
 };
 
@@ -178,13 +193,16 @@ const categorySectorPosition = ({
   occupiedNodes,
   baseRadius = 320,
   minDistance = 90,
+  maxRadius = null,
 }) => {
   const centerAngle = CATEGORY_LAYOUT_ANGLE[category] ?? -Math.PI / 2;
   const sectorWidth = 6;
   const ring = Math.floor(slot / sectorWidth);
   const slotInRing = slot % sectorWidth;
   const angle = centerAngle + (slotInRing - (sectorWidth - 1) / 2) * 0.24;
-  const radius = baseRadius + ring * 80;
+  const radius = maxRadius != null
+    ? Math.min(baseRadius + ring * 40, maxRadius * 0.9)
+    : baseRadius + ring * 80;
   const candidate = {
     x: anchor.x + Math.cos(angle) * radius,
     y: anchor.y + Math.sin(angle) * radius,
@@ -195,6 +213,7 @@ const categorySectorPosition = ({
     candidate,
     occupiedNodes,
     minDistance,
+    maxRadius,
   });
 };
 
@@ -255,8 +274,15 @@ const normalizeNameForMerge = value =>
     .trim()
     .toLowerCase();
 
-const normalizeEdgeLabelText = (relationship, category) =>
-  (relationship || CATEGORY_LABELS[category] || '').trim();
+const BORME_SECTION_NAMES = new Set([
+  'nombramientos', 'reelecciones', 'ceses_dimisiones', 'ceses', 'revocaciones',
+  'dimisiones', 'associated_with', 'cargo no especificado',
+]);
+const normalizeEdgeLabelText = (relationship, _category) => {
+  const text = (relationship || '').trim();
+  if (!text || BORME_SECTION_NAMES.has(text.toLowerCase())) return '';
+  return text;
+};
 
 const dedupeGraphLinks = links => {
   const dedupedMap = new Map();
@@ -430,8 +456,9 @@ const SpanishCompanyNetworkGraph = ({
   // Graph settings
   const [showSettings, setShowSettings] = useState(false);
   const [nodeSize, setNodeSize] = useState(9);
-  const [linkDistance, setLinkDistance] = useState(130);
-  const [chargeStrength, setChargeStrength] = useState(-170);
+  const [labelSize, setLabelSize] = useState(9);
+  const [linkDistance, setLinkDistance] = useState(80);
+  const [chargeStrength, setChargeStrength] = useState(-350);
   const [showNodeLabels] = useState(true); // Renamed for clarity
   const [zoomLevel, setZoomLevel] = useState(1);
 
@@ -458,27 +485,23 @@ const SpanishCompanyNetworkGraph = ({
   const LINK_LABEL_VISIBILITY_SCALE_NORMAL = 0.75;
   const LINK_LABEL_VISIBILITY_SCALE_DENSE = 1.2; // Requires extra zoom only when very dense
 
-  useEffect(() => {
-    if (fgRef.current && (visible || embedded)) {
-      // Only reheat if visible and ref is available
-      console.log('Reheating simulation due to settings change (linkDistance or chargeStrength).');
-      fgRef.current.d3ReheatSimulation();
-    }
-  }, [linkDistance, chargeStrength, visible, embedded]);
-
-  // Configure forces through the graph instance (stable under repeated node pinning)
+  // Configure forces and reheat — combined into one effect so reheat always
+  // happens AFTER forces are updated (previously separate effects ran in wrong order).
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg || !containerReady || graphData.nodes.length === 0) return;
     const isPinned = node => !!node && (node.fx != null || node.fy != null);
+    const isOfficer = node => !!node && node.type === 'spanish-officer';
 
     const chargeForce = fg.d3Force('charge');
     if (chargeForce) {
-      // Pinned nodes act as anchors; they should not keep repelling the rest of the graph.
-      chargeForce.strength(node => (isPinned(node) ? 0 : chargeStrength));
+      chargeForce.strength(node => {
+        if (isPinned(node)) return 0;
+        // Officers need less repulsion — they should cluster near their company.
+        return isOfficer(node) ? chargeStrength * 0.4 : chargeStrength;
+      });
       if (typeof chargeForce.distanceMax === 'function') {
-        // Bound long-range repulsion to avoid runaway drift when many nodes are pinned.
-        chargeForce.distanceMax(Math.max(linkDistance * 1.5, 240));
+        chargeForce.distanceMax(Math.max(linkDistance * 2, 300));
       }
     }
 
@@ -487,46 +510,54 @@ const SpanishCompanyNetworkGraph = ({
       linkForce.distance(link => {
         const source = typeof link.source === 'object' ? link.source : null;
         const target = typeof link.target === 'object' ? link.target : null;
-        return isPinned(source) || isPinned(target)
-          ? Math.max(60, linkDistance * 0.7)
-          : linkDistance;
+        const isOfficerLink =
+          (source && isOfficer(source)) || (target && isOfficer(target));
+        // Officer-company links are short to keep officers clustered around company.
+        // Company-company links are longer to create visual separation between clusters.
+        const base = isOfficerLink ? Math.round(linkDistance * 0.45) : linkDistance * 1.4;
+        return Math.max(30, base);
       });
       linkForce.strength(link => {
         const source = typeof link.source === 'object' ? link.source : null;
         const target = typeof link.target === 'object' ? link.target : null;
-        const sourcePinned = isPinned(source);
-        const targetPinned = isPinned(target);
-        if (sourcePinned && targetPinned) return 0.03;
-        if (sourcePinned || targetPinned) return 0.08;
-        return 0.18;
+        const isOfficerLink =
+          (source && isOfficer(source)) || (target && isOfficer(target));
+        if (isPinned(source) && isPinned(target)) return 0.03;
+        // Pull officers toward their company (firm but not rigid).
+        return isOfficerLink ? 0.35 : 0.12;
       });
       if (typeof linkForce.iterations === 'function') {
-        linkForce.iterations(2);
+        linkForce.iterations(3);
       }
     }
 
+    // Weak centering — just enough to keep the graph from drifting off-screen.
     const forceX = fg.d3Force('x');
     if (forceX && typeof forceX.strength === 'function') {
-      forceX.strength(node => (isPinned(node) ? 0 : 0.14));
+      forceX.strength(node => (isPinned(node) ? 0 : 0.04));
     }
     const forceY = fg.d3Force('y');
     if (forceY && typeof forceY.strength === 'function') {
-      forceY.strength(node => (isPinned(node) ? 0 : 0.14));
+      forceY.strength(node => (isPinned(node) ? 0 : 0.04));
     }
 
     fg.d3Force(
       'collision',
       forceCollide()
-        .radius(() => nodeSize + 4)
-        .iterations(2)
+        .radius(node => {
+          const labelLen = (node.name || '').length;
+          return node.type === 'spanish-company-group'
+            ? Math.max(nodeSize + 40, labelLen * 3.5)
+            : nodeSize + 14;
+        })
+        .iterations(3)
     );
 
-    if (typeof fg.d3AlphaDecay === 'function') {
-      fg.d3AlphaDecay(0.06);
-    }
-    if (typeof fg.d3VelocityDecay === 'function') {
-      fg.d3VelocityDecay(0.75);
-    }
+    if (typeof fg.d3AlphaDecay === 'function') fg.d3AlphaDecay(0.028);
+    if (typeof fg.d3VelocityDecay === 'function') fg.d3VelocityDecay(0.4);
+
+    // Reheat AFTER forces are configured so the new settings take effect immediately.
+    fg.d3ReheatSimulation();
   }, [
     containerReady,
     graphData.nodes.length,
@@ -534,6 +565,8 @@ const SpanishCompanyNetworkGraph = ({
     chargeStrength,
     linkDistance,
     nodeSize,
+    visible,
+    embedded,
   ]);
 
   // Clear graph data when dialog closes so it starts fresh each time (only in dialog mode)
@@ -927,12 +960,26 @@ const SpanishCompanyNetworkGraph = ({
 
     try {
       if (searchType === 'officer') {
-        // Officer search: use workingSearch with officerMode
-        // Backend returns officer data in `officers` array, not `results`
-        const data = await spanishCompaniesService.workingSearch(query, {
-          size: searchResultSize,
-          officerMode: true,
-        });
+        // Officer search: try PostgreSQL first for canonical company names, fall back to ES
+        let data;
+        let pgOfficers = null;
+        try {
+          const pgData = await spanishCompaniesService.pgExpandOfficer(query, { size: searchResultSize });
+          if (pgData.success && pgData.officers && pgData.officers.length > 0) {
+            pgOfficers = pgData.officers;
+          }
+        } catch {
+          // PG unavailable, will use ES below
+        }
+
+        if (pgOfficers) {
+          data = { success: true, officers: pgOfficers };
+        } else {
+          data = await spanishCompaniesService.workingSearch(query, {
+            size: searchResultSize,
+            officerMode: true,
+          });
+        }
 
         const fetchedCount = data.officers?.length || 0;
         if (data.success && fetchedCount > 0) {
@@ -1093,6 +1140,8 @@ const SpanishCompanyNetworkGraph = ({
 
           searchResults.forEach(company => {
             const companyName = company.name || company.company_name || 'Unknown';
+            // Skip corrupt ES documents where company_name is a BORME issue blob
+            if (companyName.length > 200) return;
             const cleanName = normalizeCompanyName(companyName);
 
             if (!companiesByName[cleanName]) {
@@ -1143,12 +1192,14 @@ const SpanishCompanyNetworkGraph = ({
                 anchor,
                 index: companyIdx,
                 total: groupedCompanies.length,
-                occupiedNodes: newNodes,
-                baseRadius: 280,
-                minDistance: 95,
+                occupiedNodes: newNodes.filter(n => n.type === 'spanish-company-group'),
+                baseRadius: 220,
+                minDistance: 130,
+                maxRadius: 320,
               });
 
-              // Add company node
+              // Add company node — always pin temporarily so the simulation
+              // settles *around* new nodes rather than collapsing them inward.
               const companyNode = {
                 id: companyId,
                 name: companyName,
@@ -1162,8 +1213,8 @@ const SpanishCompanyNetworkGraph = ({
                   },
                 },
                 ...companyPosition,
-                fx: keepExpansionNodesFixed ? companyPosition.x : null,
-                fy: keepExpansionNodesFixed ? companyPosition.y : null,
+                fx: companyPosition.x,
+                fy: companyPosition.y,
               };
               newNodes.push(companyNode);
             }
@@ -1352,9 +1403,10 @@ const SpanishCompanyNetworkGraph = ({
                   anchor: companyAnchor,
                   category: categoryKey,
                   slot,
-                  occupiedNodes: newNodes,
-                  baseRadius: 300,
-                  minDistance: 86,
+                  occupiedNodes: newNodes.filter(n => n.type === 'officer'),
+                  baseRadius: 130,
+                  minDistance: 60,
+                  maxRadius: 200,
                 });
 
                 // Add new officer node
@@ -1375,8 +1427,8 @@ const SpanishCompanyNetworkGraph = ({
                     },
                   ],
                   ...officerPosition,
-                  fx: keepExpansionNodesFixed ? officerPosition.x : null,
-                  fy: keepExpansionNodesFixed ? officerPosition.y : null,
+                  fx: officerPosition.x,
+                  fy: officerPosition.y,
                 };
                 newNodes.push(officerNode);
               } else {
@@ -1422,6 +1474,7 @@ const SpanishCompanyNetworkGraph = ({
 
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
         });
+
       } catch (err) {
         console.error('Error adding company with officers to graph:', err);
         setError(`Error al añadir empresa al grafo: ${err.message}`);
@@ -1606,7 +1659,8 @@ const SpanishCompanyNetworkGraph = ({
           }
           const group = companiesMap.get(key);
           group.entries.push(entry);
-          if (entry.role || entry.position) group.roles.push(entry.role || entry.position);
+          const roleText = entry.specific_role || entry.role || entry.position || '';
+          if (roleText && !BORME_SECTION_NAMES.has(roleText.toLowerCase())) group.roles.push(roleText);
         });
         const companyEntries = Array.from(companiesMap.values());
 
@@ -1636,9 +1690,10 @@ const SpanishCompanyNetworkGraph = ({
                 anchor: officerAnchor,
                 index: companyIdx,
                 total: companyEntries.length,
-                occupiedNodes: newNodes,
-                baseRadius: 280,
-                minDistance: 92,
+                occupiedNodes: newNodes.filter(n => n.type === 'spanish-company-group'),
+                baseRadius: 160,
+                minDistance: 100,
+                maxRadius: 220,
               });
 
               newNodes.push({
@@ -1712,12 +1767,19 @@ const SpanishCompanyNetworkGraph = ({
         // PG path: pre-structured officers
         if (usedPG && data.success && data.officers && data.officers.length > 0) {
           // PG returns pre-structured officers — add them directly to the graph
+          const canonicalName = data.company_name || companyName;
           setGraphData(prevData => {
             const newNodes = [...prevData.nodes];
             const newLinks = [...prevData.links];
             const anchor = isFinitePoint(companyNode)
               ? { x: companyNode.x, y: companyNode.y }
               : computeGraphCentroid(prevData.nodes);
+
+            // Update the company node's name to the canonical PG name
+            if (canonicalName !== companyName) {
+              const nodeIdx = newNodes.findIndex(n => n.id === companyNode.id);
+              if (nodeIdx !== -1) newNodes[nodeIdx] = { ...newNodes[nodeIdx], name: canonicalName };
+            }
 
             // Deduplicate officers by name
             const seen = new Map();
@@ -1736,20 +1798,21 @@ const SpanishCompanyNetworkGraph = ({
                   anchor,
                   index: idx,
                   total: seen.size,
-                  occupiedNodes: newNodes,
-                  baseRadius: 200,
-                  minDistance: 80,
+                  occupiedNodes: newNodes.filter(n => n.type === 'officer'),
+                  baseRadius: 130,
+                  minDistance: 60,
+                  maxRadius: 200,
                 });
                 newNodes.push({
                   id: officerId,
                   name: officer.name,
                   type: 'officer',
                   subtype: 'individual',
-                  positions: [{ company: companyName, position: officer.position, category: officer.event_type }],
+                  positions: [{ company: companyName, position: officer.specific_role || officer.position || '', category: officer.event_type }],
                   companies: [companyName],
                   ...pos,
-                  fx: null,
-                  fy: null,
+                  fx: pos.x,
+                  fy: pos.y,
                 });
               }
 
@@ -1759,7 +1822,7 @@ const SpanishCompanyNetworkGraph = ({
                   id: linkId,
                   source: companyNode.id,
                   target: officerId,
-                  relationship: officer.position || 'Cargo no especificado',
+                  relationship: officer.specific_role || officer.position || '',
                   category: officer.event_type || 'nombramientos',
                 });
               }
@@ -1768,6 +1831,7 @@ const SpanishCompanyNetworkGraph = ({
 
             return { nodes: newNodes, links: newLinks };
           });
+
           return true;
         }
 
@@ -2425,7 +2489,7 @@ const SpanishCompanyNetworkGraph = ({
   const nodeCanvasObject = useCallback(
     (node, ctx, globalScale) => {
       const label = node.name || node.label || '';
-      const fontSize = Math.max(12 / globalScale, 6);
+      const fontSize = Math.max(labelSize / globalScale, 4);
       const nodeRadius = nodeSize;
 
       // Determine node color and shape
@@ -2485,7 +2549,7 @@ const SpanishCompanyNetworkGraph = ({
         }
       }
     },
-    [nodeSize, showNodeLabels, nodeColors, filteredGraphData.nodes]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes]
   );
 
   const linkCanvasObject = useCallback(
@@ -2506,20 +2570,17 @@ const SpanishCompanyNetworkGraph = ({
       }
 
       // Determine link color based on appointment category
-      let linkColor = '#999'; // Default color
-      if (link.category) {
-        switch (link.category) {
-          case 'nombramientos':
-          case 'reelecciones':
-            linkColor = '#2e7d32'; // Dark green for appointments and re-elections
-            break;
-          case 'ceses_dimisiones':
-          case 'revocaciones':
-            linkColor = '#d32f2f'; // Red for resignations and revocations
-            break;
-          default:
-            linkColor = '#999'; // Gray for unknown or general relationships
-        }
+      const cat = (link.category || '').toLowerCase();
+      let linkColor;
+      if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
+        linkColor = '#43a047'; // Green — appointments and re-elections
+      } else if (
+        cat.includes('cese') || cat.includes('dimision') || cat.includes('dimisión') ||
+        cat.includes('revocacion') || cat.includes('revocación')
+      ) {
+        linkColor = '#e53935'; // Red — resignations and revocations
+      } else {
+        linkColor = '#90a4ae'; // Blue-grey for unknown / company-company
       }
 
       // Draw link
@@ -2563,7 +2624,7 @@ const SpanishCompanyNetworkGraph = ({
             }
           }
 
-          const fontSize = Math.max(10 / globalScale, 5);
+          const fontSize = Math.max(labelSize / globalScale, 4);
           ctx.font = `${fontSize}px Sans-Serif`;
           const text = edgeLabel;
           const textWidth = ctx.measureText(text).width;
@@ -2583,7 +2644,7 @@ const SpanishCompanyNetworkGraph = ({
         }
       }
     },
-    [filteredGraphData.links, parallelLinkMeta]
+    [filteredGraphData.links, parallelLinkMeta, labelSize]
   );
 
   // Graph controls
@@ -2841,7 +2902,7 @@ const SpanishCompanyNetworkGraph = ({
             <TextField
               {...params}
               size="small"
-              placeholder={searchType === 'company' ? 'Buscar empresa...' : 'Buscar directivo...'}
+              placeholder={searchType === 'company' ? 'Search company...' : 'Search officer...'}
               onKeyDown={handleKeyDown}
               InputProps={{
                 ...params.InputProps,
@@ -2870,7 +2931,7 @@ const SpanishCompanyNetworkGraph = ({
           disabled={isSearching || !searchQuery.trim()}
           startIcon={isSearching ? <CircularProgress size={16} /> : <SearchIcon />}
         >
-          Buscar
+          Search
         </Button>
         <TextField
           label="Filtrar nodos"
@@ -2930,31 +2991,20 @@ const SpanishCompanyNetworkGraph = ({
               <Slider
                 value={nodeSize}
                 onChange={(e, value) => setNodeSize(value)}
-                min={6}
-                max={24}
+                min={4}
+                max={20}
                 step={1}
                 size="small"
               />
             </Box>
             <Box>
-              <Typography variant="caption">Distancia de enlaces</Typography>
+              <Typography variant="caption">Tamaño de etiquetas</Typography>
               <Slider
-                value={linkDistance}
-                onChange={(e, value) => setLinkDistance(value)}
-                min={40}
-                max={220}
-                step={5}
-                size="small"
-              />
-            </Box>
-            <Box>
-              <Typography variant="caption">Fuerza de repulsión</Typography>
-              <Slider
-                value={Math.abs(chargeStrength)}
-                onChange={(e, value) => setChargeStrength(-value)}
-                min={100}
-                max={500}
-                step={50}
+                value={labelSize}
+                onChange={(e, value) => setLabelSize(value)}
+                min={5}
+                max={18}
+                step={1}
                 size="small"
               />
             </Box>

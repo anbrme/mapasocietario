@@ -25,13 +25,6 @@ import { debounce } from 'lodash';
 import { spanishCompaniesService } from './services/spanishCompaniesService';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
 
-const EXAMPLE_QUERIES = [
-  'Inditex',
-  'Banco Santander',
-  'Repsol',
-  'Telefonica',
-  'Iberdrola',
-];
 
 const FAQ_ITEMS = [
   {
@@ -201,7 +194,7 @@ export default function App() {
           Mapa Societario
         </Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Mapa de relaciones societarias de empresas españolas
+          Relationships network map of Spanish companies
         </Typography>
       </Box>
 
@@ -221,7 +214,7 @@ export default function App() {
       >
         <WarningAmberIcon sx={{ fontSize: 18, color: 'warning.main', flexShrink: 0 }} />
         <Typography variant="caption" sx={{ color: 'warning.light', lineHeight: 1.4 }}>
-          Herramienta experimental. Los datos originan del BORME, pero en esta versión pueden contener errores o estar incompletos. Para los datos oficiales, consulte el BORME directamente en <Link href="https://www.boe.es/diario_borme/" target="_blank" rel="noopener" sx={{ color: 'warning.main' }}>Web Oficial BORME</Link>.
+           Experimental tool. The data originates from BORME, but in this version it may contain errors or be incomplete. For official data, please consult BORME directly on <Link href="https://www.boe.es/diario_borme/" target="_blank" rel="noopener" sx={{ color: 'warning.main' }}>the official BORME website</Link>.
         </Typography>
       </Box>
 
@@ -311,7 +304,7 @@ export default function App() {
         renderInput={params => (
           <TextField
             {...params}
-            placeholder="Buscar empresa... (ej. Inditex, Repsol)"
+            placeholder="Search company... (e.g. Inditex, Repsol)"
             autoFocus
             InputProps={{
               ...params.InputProps,
@@ -344,29 +337,7 @@ export default function App() {
         )}
       />
 
-      {/* Example chips */}
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <Typography variant="caption" sx={{ color: 'text.secondary', width: '100%', textAlign: 'center', mb: -0.5 }}>
-          o prueba con:
-        </Typography>
-        {EXAMPLE_QUERIES.map(name => (
-          <Chip
-            key={name}
-            label={name}
-            onClick={() => handleSelect(name)}
-            size="small"
-            sx={{
-              cursor: 'pointer',
-              border: '1px solid rgba(25,118,210,0.25)',
-              '&:hover': {
-                backgroundColor: 'rgba(25,118,210,0.15)',
-                borderColor: '#1976d2',
-              },
-            }}
-            variant="outlined"
-          />
-        ))}
-      </Box>
+      
 
       {/* Footer */}
       <Typography
