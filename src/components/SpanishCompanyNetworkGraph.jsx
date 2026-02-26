@@ -1601,13 +1601,15 @@ const SpanishCompanyNetworkGraph = ({
               name: companyName,
               entries: [],
               roles: [],
+              categories: [],
             });
           }
           const group = companiesMap.get(key);
           group.entries.push(entry);
-          if (entry.role || entry.position) {
-            group.roles.push(entry.role || entry.position);
-          }
+          // Prefer specific_role (actual job title) over position (BORME section name)
+          const roleLabel = entry.specific_role || entry.role || entry.position;
+          if (roleLabel) group.roles.push(roleLabel);
+          if (entry.entry_type) group.categories.push(entry.entry_type);
         });
 
         const companyEntries = Array.from(companiesMap.values());
@@ -1697,6 +1699,7 @@ const SpanishCompanyNetworkGraph = ({
 
             // Add link between officer and company
             const relationship = group.roles[0] || 'associated_with';
+            const category = group.categories[0] || 'nombramientos';
             const linkId = `${officerId}-${companyId}`;
             if (!newLinks.find(l => l.id === linkId)) {
               newLinks.push({
@@ -1705,7 +1708,7 @@ const SpanishCompanyNetworkGraph = ({
                 target: companyId,
                 type: 'officer-company',
                 relationship: relationship,
-                category: 'nombramientos',
+                category: category,
                 date: group.entries[0]?.indexed_date || group.entries[0]?.date || null,
               });
             }
