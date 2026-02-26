@@ -1029,20 +1029,28 @@ const SpanishCompanyNetworkGraph = ({
                 });
               }
 
-              const seen = new Map();
+              // Deduplicate by (name, role) — most recent per pair (PG returns DESC by entry_date).
+              // This mirrors spanishOfficerAnalyzer: a cessation from role X does not mark
+              // the officer as resigned from the distinct role Y.
+              const seenByNameRole = new Map(); // key: "NAME||ROLE"
+              const uniqueOfficerNames = new Map(); // key: NAME → first entry (for node creation)
               pgData.officers.forEach(o => {
-                const key = (o.name || '').toUpperCase();
-                if (!seen.has(key)) seen.set(key, o);
+                const nameKey = (o.name || '').toUpperCase();
+                const roleKey = (o.specific_role || o.position || '').toUpperCase();
+                const pairKey = `${nameKey}||${roleKey}`;
+                if (!seenByNameRole.has(pairKey)) seenByNameRole.set(pairKey, o);
+                if (!uniqueOfficerNames.has(nameKey)) uniqueOfficerNames.set(nameKey, o);
               });
 
+              // Create officer nodes (one per unique name)
               let idx = 0;
-              seen.forEach((officer, key) => {
-                const officerId = `officer-${key.toLowerCase().replace(/\s+/g, '-')}`;
+              uniqueOfficerNames.forEach((officer, nameKey) => {
+                const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
                 if (!newNodes.find(n => n.id === officerId)) {
                   const pos = radialPosition({
                     anchor,
                     index: idx,
-                    total: seen.size,
+                    total: uniqueOfficerNames.size,
                     occupiedNodes: newNodes.filter(n => n.type === 'officer'),
                     baseRadius: 130,
                     minDistance: 60,
@@ -1053,14 +1061,23 @@ const SpanishCompanyNetworkGraph = ({
                     name: officer.name,
                     type: 'officer',
                     subtype: 'individual',
-                    positions: [{ company: canonicalName, position: officer.specific_role || officer.position || '', category: officer.event_type }],
+                    positions: [],
                     companies: [canonicalName],
                     ...pos,
                     fx: pos.x,
                     fy: pos.y,
                   });
                 }
-                const linkId = `${companyId}--${officerId}`;
+                idx++;
+              });
+
+              // Create links (one per name+role pair, category from most recent entry)
+              seenByNameRole.forEach((officer, pairKey) => {
+                const nameKey = (officer.name || '').toUpperCase();
+                const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
+                const roleSlug = (officer.specific_role || officer.position || '')
+                  .toLowerCase().replace(/[^a-z0-9]/g, '');
+                const linkId = `${companyId}--${officerId}--${roleSlug}`;
                 if (!newLinks.find(l => l.id === linkId)) {
                   newLinks.push({
                     id: linkId,
@@ -1070,7 +1087,6 @@ const SpanishCompanyNetworkGraph = ({
                     category: officer.event_type || 'nombramientos',
                   });
                 }
-                idx++;
               });
 
               return { nodes: newNodes, links: newLinks };
@@ -1457,12 +1473,12 @@ const SpanishCompanyNetworkGraph = ({
               ...allOfficers.ceses_dimisiones,
             ];
 
-            // Determine effective (most recent) category per officer across all categories.
-            // Mirrors spanishOfficerAnalyzer: latest event date wins (appointment beats cessation
-            // if they were reappointed after a prior dismissal).
+            // Determine effective (most recent) category per (officer, position) pair.
+            // Mirrors spanishOfficerAnalyzer: tracks each role independently so a cessation
+            // from role X does not mark the officer as resigned from role Y.
             const officerEffectiveCategory = {};
             allOfficersList.forEach(o => {
-              const key = o.name.trim().toLowerCase();
+              const key = `${o.name.trim().toLowerCase()}||${(o.position || '').trim().toLowerCase()}`;
               const d = new Date(o.date || 0);
               if (!officerEffectiveCategory[key] || d > officerEffectiveCategory[key].date) {
                 officerEffectiveCategory[key] = { category: o.category, date: d };
@@ -1562,8 +1578,9 @@ const SpanishCompanyNetworkGraph = ({
               const linkId = `${companyId}-${officerNode.id}-${positionKey}`;
 
               if (!newLinks.find(l => l.id === linkId)) {
+                const posEffKey = `${normalizedName}||${(officer.position || '').trim().toLowerCase()}`;
                 const effectiveCategory =
-                  officerEffectiveCategory[normalizedName]?.category || officer.category;
+                  officerEffectiveCategory[posEffKey]?.category || officer.category;
                 newLinks.push({
                   id: linkId,
                   source: companyId,
@@ -1889,23 +1906,25 @@ const SpanishCompanyNetworkGraph = ({
               if (nodeIdx !== -1) newNodes[nodeIdx] = { ...newNodes[nodeIdx], name: canonicalName };
             }
 
-            // Deduplicate officers by name
-            const seen = new Map();
+            // Deduplicate by (name, role) — most recent per pair (PG returns DESC by entry_date).
+            const seenByNameRole = new Map();
+            const uniqueOfficerNames = new Map();
             data.officers.forEach(o => {
-              const key = (o.name || '').toUpperCase();
-              if (!seen.has(key)) seen.set(key, o);
+              const nameKey = (o.name || '').toUpperCase();
+              const roleKey = (o.specific_role || o.position || '').toUpperCase();
+              const pairKey = `${nameKey}||${roleKey}`;
+              if (!seenByNameRole.has(pairKey)) seenByNameRole.set(pairKey, o);
+              if (!uniqueOfficerNames.has(nameKey)) uniqueOfficerNames.set(nameKey, o);
             });
 
             let idx = 0;
-            seen.forEach((officer, key) => {
-              const officerId = `officer-${key.toLowerCase().replace(/\s+/g, '-')}`;
-              const existingOfficer = newNodes.find(n => n.id === officerId);
-
-              if (!existingOfficer) {
+            uniqueOfficerNames.forEach((officer, nameKey) => {
+              const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
+              if (!newNodes.find(n => n.id === officerId)) {
                 const pos = radialPosition({
                   anchor,
                   index: idx,
-                  total: seen.size,
+                  total: uniqueOfficerNames.size,
                   occupiedNodes: newNodes.filter(n => n.type === 'officer'),
                   baseRadius: 130,
                   minDistance: 60,
@@ -1916,15 +1935,22 @@ const SpanishCompanyNetworkGraph = ({
                   name: officer.name,
                   type: 'officer',
                   subtype: 'individual',
-                  positions: [{ company: companyName, position: officer.specific_role || officer.position || '', category: officer.event_type }],
+                  positions: [],
                   companies: [companyName],
                   ...pos,
                   fx: pos.x,
                   fy: pos.y,
                 });
               }
+              idx++;
+            });
 
-              const linkId = `${companyNode.id}--${officerId}`;
+            seenByNameRole.forEach((officer, pairKey) => {
+              const nameKey = (officer.name || '').toUpperCase();
+              const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
+              const roleSlug = (officer.specific_role || officer.position || '')
+                .toLowerCase().replace(/[^a-z0-9]/g, '');
+              const linkId = `${companyNode.id}--${officerId}--${roleSlug}`;
               if (!newLinks.find(l => l.id === linkId)) {
                 newLinks.push({
                   id: linkId,
@@ -1934,7 +1960,6 @@ const SpanishCompanyNetworkGraph = ({
                   category: officer.event_type || 'nombramientos',
                 });
               }
-              idx++;
             });
 
             return { nodes: newNodes, links: newLinks };
