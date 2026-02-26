@@ -1001,39 +1001,131 @@ const SpanishCompanyNetworkGraph = ({
           setError(`No se encontraron resultados para el directivo "${query}".`);
         }
       } else {
-        // Company search: use workingSearch
-        const data = await spanishCompaniesService.workingSearch(query, {
-          size: searchResultSize,
-          exactMatch: exactMatch,
-        });
+        // Company search: try PostgreSQL first for complete officer list, fall back to ES
+        let pgHandled = false;
+        try {
+          const pgData = await spanishCompaniesService.pgExpandCompany(query, { size: Math.max(searchResultSize, 500) });
+          if (pgData.success && pgData.officers && pgData.officers.length > 0) {
+            pgHandled = true;
+            const canonicalName = pgData.company_name || query;
+            const companyId = companyNameToId(normalizeCompanyName(canonicalName));
 
-        const fetchedCount = data.results?.length || 0;
-        if (data.success && fetchedCount > 0) {
-          const filtered = filterCompanyMatches(data.results, query);
+            // Build nodes/links directly from PG officer list (same logic as expandCompanyNode PG path)
+            setGraphData(prevData => {
+              const newNodes = [...prevData.nodes];
+              const newLinks = [...prevData.links];
+              const anchor = computeGraphCentroid(prevData.nodes);
 
-          if (filtered.length > 0) {
-            await addCompanyWithOfficersToGraph(filtered);
-            // Pin company nodes so they survive filtering
-            filtered.forEach(company => {
-              const companyName = normalizeCompanyName(company.name || company.company_name || '');
-              const companyId = companyNameToId(companyName);
-              setPinnedNodeIds(prev => new Set([...prev, companyId]));
+              // Add company node if not already present
+              if (!newNodes.find(n => n.id === companyId)) {
+                newNodes.push({
+                  id: companyId,
+                  name: canonicalName,
+                  type: 'spanish-company-group',
+                  companySummary: { entries: [], totalEntries: pgData.officers.length, dateRange: {} },
+                  ...anchor,
+                  fx: anchor.x,
+                  fy: anchor.y,
+                });
+              }
+
+              const seen = new Map();
+              pgData.officers.forEach(o => {
+                const key = (o.name || '').toUpperCase();
+                if (!seen.has(key)) seen.set(key, o);
+              });
+
+              let idx = 0;
+              seen.forEach((officer, key) => {
+                const officerId = `officer-${key.toLowerCase().replace(/\s+/g, '-')}`;
+                if (!newNodes.find(n => n.id === officerId)) {
+                  const pos = radialPosition({
+                    anchor,
+                    index: idx,
+                    total: seen.size,
+                    occupiedNodes: newNodes.filter(n => n.type === 'officer'),
+                    baseRadius: 130,
+                    minDistance: 60,
+                    maxRadius: 200,
+                  });
+                  newNodes.push({
+                    id: officerId,
+                    name: officer.name,
+                    type: 'officer',
+                    subtype: 'individual',
+                    positions: [{ company: canonicalName, position: officer.specific_role || officer.position || '', category: officer.event_type }],
+                    companies: [canonicalName],
+                    ...pos,
+                    fx: pos.x,
+                    fy: pos.y,
+                  });
+                }
+                const linkId = `${companyId}--${officerId}`;
+                if (!newLinks.find(l => l.id === linkId)) {
+                  newLinks.push({
+                    id: linkId,
+                    source: companyId,
+                    target: officerId,
+                    relationship: officer.specific_role || officer.position || '',
+                    category: officer.event_type || 'nombramientos',
+                  });
+                }
+                idx++;
+              });
+
+              return { nodes: newNodes, links: newLinks };
             });
+
+            setPinnedNodeIds(prev => new Set([...prev, companyId]));
             setLastSearchContext({
               query,
               searchType: 'company',
-              exactMatch: exactMatch,
+              exactMatch: true,
               size: searchResultSize,
-              offset: fetchedCount,
-              hasMore: data.hasMore,
-              total: data.total || fetchedCount,
+              offset: pgData.officers.length,
+              hasMore: false,
+              total: pgData.officers.length,
             });
             setSearchQuery('');
-          } else {
-            setError(`No precise company match found for "${query}". Try a broader search.`);
           }
-        } else {
-          setError(`No results found for "${query}".`);
+        } catch {
+          // PG unavailable, fall through to ES
+        }
+
+        if (!pgHandled) {
+          // Fall back to workingSearch (ES BORME entries)
+          const data = await spanishCompaniesService.workingSearch(query, {
+            size: searchResultSize,
+            exactMatch: exactMatch,
+          });
+
+          const fetchedCount = data.results?.length || 0;
+          if (data.success && fetchedCount > 0) {
+            const filtered = filterCompanyMatches(data.results, query);
+
+            if (filtered.length > 0) {
+              await addCompanyWithOfficersToGraph(filtered);
+              filtered.forEach(company => {
+                const companyName = normalizeCompanyName(company.name || company.company_name || '');
+                const companyId = companyNameToId(companyName);
+                setPinnedNodeIds(prev => new Set([...prev, companyId]));
+              });
+              setLastSearchContext({
+                query,
+                searchType: 'company',
+                exactMatch: exactMatch,
+                size: searchResultSize,
+                offset: fetchedCount,
+                hasMore: data.hasMore,
+                total: data.total || fetchedCount,
+              });
+              setSearchQuery('');
+            } else {
+              setError(`No precise company match found for "${query}". Try a broader search.`);
+            }
+          } else {
+            setError(`No results found for "${query}".`);
+          }
         }
       }
     } catch (err) {
