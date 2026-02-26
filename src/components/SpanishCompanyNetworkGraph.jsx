@@ -1555,12 +1555,11 @@ const SpanishCompanyNetworkGraph = ({
               }
 
               // Add link between company and officer
-              // Make linkId unique by including category to allow multiple relationship types
-              // between the same officer and company.
+              // One link per officer-position pair; category derived from most recent event.
               const positionKey = officer.position
                 ? officer.position.toLowerCase().replace(/[^a-z0-9]/g, '')
                 : 'unknownpos';
-              const linkId = `${companyId}-${officerNode.id}-${officer.category}-${positionKey}`;
+              const linkId = `${companyId}-${officerNode.id}-${positionKey}`;
 
               if (!newLinks.find(l => l.id === linkId)) {
                 const effectiveCategory =
