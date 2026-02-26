@@ -1457,6 +1457,18 @@ const SpanishCompanyNetworkGraph = ({
               ...allOfficers.ceses_dimisiones,
             ];
 
+            // Determine effective (most recent) category per officer across all categories.
+            // Mirrors spanishOfficerAnalyzer: latest event date wins (appointment beats cessation
+            // if they were reappointed after a prior dismissal).
+            const officerEffectiveCategory = {};
+            allOfficersList.forEach(o => {
+              const key = o.name.trim().toLowerCase();
+              const d = new Date(o.date || 0);
+              if (!officerEffectiveCategory[key] || d > officerEffectiveCategory[key].date) {
+                officerEffectiveCategory[key] = { category: o.category, date: d };
+              }
+            });
+
             console.log(`Adding ${allOfficersList.length} officers for company ${companyName}`);
 
             allOfficersList.forEach(officer => {
@@ -1551,13 +1563,15 @@ const SpanishCompanyNetworkGraph = ({
               const linkId = `${companyId}-${officerNode.id}-${officer.category}-${positionKey}`;
 
               if (!newLinks.find(l => l.id === linkId)) {
+                const effectiveCategory =
+                  officerEffectiveCategory[normalizedName]?.category || officer.category;
                 newLinks.push({
                   id: linkId,
                   source: companyId,
                   target: officerNode.id,
                   type: 'officer-company',
                   relationship: officer.position,
-                  category: officer.category,
+                  category: effectiveCategory,
                   date: officer.date || null,
                 });
               }
