@@ -9,7 +9,7 @@ class SpanishCompaniesService {
   constructor() {
     // Use api-proxy worker for CORS handling
     this.baseUrl = 'https://api.ncdata.eu';
-    this.apiKey = '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';
+    this.apiKey = null; // Auth is handled by the api-proxy Cloudflare Worker
     this.name = 'spanish-companies';
     this.version = '1.1.0'; // Production-grade improvements
 
@@ -42,7 +42,6 @@ class SpanishCompaniesService {
       const response = await fetch(url, {
         ...options,
         headers: {
-          'X-API-Key': this.apiKey,
           ...options.headers,
         },
       });
@@ -170,12 +169,7 @@ class SpanishCompaniesService {
       // This has the complete company index vs borme_v2 which may miss some companies
       const response = await fetch(
         `${this.baseUrl}/bormes/companies/directory/autocomplete?q=${encodeURIComponent(normalizedQuery)}&limit=${limit}`,
-        {
-          method: 'GET',
-          headers: {
-            'X-API-Key': this.apiKey,
-          },
-        }
+        { method: 'GET' }
       );
 
       if (!response.ok) {
@@ -282,7 +276,6 @@ class SpanishCompaniesService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': this.apiKey,
         },
         body: JSON.stringify({
           query: normalizedQuery,
@@ -362,7 +355,7 @@ class SpanishCompaniesService {
       offset = 0,
       exactMatch = false,
       officerMode = false,
-      semantic = true,
+      semantic = false,
     } = options;
 
     try {
