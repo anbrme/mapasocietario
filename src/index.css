@@ -12,3 +12,21 @@ html, body, #root {
   color: #e0e0e0;
   font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
 }
+
+/* Dark-themed scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

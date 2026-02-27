@@ -389,6 +389,7 @@ const SpanishCompanyNetworkGraph = ({
   initialCompanyData,
   initialOfficerData,
   initialCompanyName,
+  initialSearchType,
   embedded = false,
 }) => {
   // Graph state
@@ -625,8 +626,11 @@ const SpanishCompanyNetworkGraph = ({
   useEffect(() => {
     if (initialCompanyName && initialCompanyName !== initialCompanyNameRef.current && (visible || embedded)) {
       initialCompanyNameRef.current = initialCompanyName;
+      if (initialSearchType === 'officer') {
+        setSearchType('officer');
+      }
       setSearchQuery(initialCompanyName);
-      handleSearch(initialCompanyName, true);
+      handleSearch(initialCompanyName, true, initialSearchType || null);
     }
   }, [initialCompanyName, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -947,19 +951,21 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, []);
 
-  const handleSearch = async (queryOverride = null, exactMatch = false) => {
+  const handleSearch = async (queryOverride = null, exactMatch = false, searchTypeOverride = null) => {
     const query = (queryOverride || searchQuery).trim();
     if (!query) {
       setError('Por favor, introduce un término de búsqueda');
       return;
     }
 
+    const effectiveSearchType = searchTypeOverride || searchType;
+
     setIsSearching(true);
     setError(null);
     setLastSearchContext(null);
 
     try {
-      if (searchType === 'officer') {
+      if (effectiveSearchType === 'officer') {
         // Officer search: try PostgreSQL first for canonical company names, fall back to ES
         let data;
         let pgOfficers = null;
