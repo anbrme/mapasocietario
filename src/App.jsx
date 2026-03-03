@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -7,9 +7,6 @@ import {
   InputAdornment,
   Autocomplete,
   CircularProgress,
-  Button,
-  Paper,
-  Snackbar,
   Link,
   Accordion,
   AccordionSummary,
@@ -22,7 +19,6 @@ import SearchIcon from '@mui/icons-material/Search';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import CookieIcon from '@mui/icons-material/Cookie';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { debounce } from 'lodash';
 import { spanishCompaniesService } from './services/spanishCompaniesService';
@@ -50,110 +46,13 @@ const FAQ_ITEMS = [
   },
 ];
 
-const COOKIE_CONSENT_KEY = 'mapasocietario_cookie_consent';
-
-function CookieConsent({ open, onAccept, onReject }) {
-  if (!open) return null;
-
-  return (
-    <Snackbar
-      open={open}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-    >
-      <Paper
-        elevation={6}
-        sx={{
-          p: 2,
-          px: 3,
-          maxWidth: 520,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1.5,
-          bgcolor: 'background.paper',
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 2,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CookieIcon sx={{ fontSize: 20, color: 'warning.main' }} />
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            Cookies y privacidad
-          </Typography>
-        </Box>
-        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
-          Este sitio utiliza cookies esenciales. Si aceptas, también cargaremos cookies publicitarias de Google AdSense para mostrar anuncios no personalizados y limitar fraude/frecuencia. Si rechazas, no se solicitarán anuncios.
-          {' '}
-          <Link href="https://support.google.com/adsense/answer/7670013?hl=es" target="_blank" rel="noopener" sx={{ color: 'primary.main' }}>
-            Más información
-          </Link>.
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-          <Button
-            size="small"
-            variant="text"
-            onClick={onReject}
-            sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}
-          >
-            Rechazar anuncios
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            onClick={onAccept}
-            sx={{ textTransform: 'none', fontSize: '0.8rem' }}
-          >
-            Aceptar y mostrar anuncios
-          </Button>
-        </Box>
-      </Paper>
-    </Snackbar>
-  );
-}
-
 export default function App() {
   const [selectedEntity, setSelectedEntity] = useState(null); // { name, type: 'company'|'officer' }
   const [inputValue, setInputValue] = useState('');
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchMode, setSearchMode] = useState('company'); // 'company' or 'officer'
-  const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem(COOKIE_CONSENT_KEY));
-  const [isCookieBannerOpen, setIsCookieBannerOpen] = useState(() => !localStorage.getItem(COOKIE_CONSENT_KEY));
-  const [adsReady, setAdsReady] = useState(false);
   const inputRef = useRef(null);
-
-  const applyAdsConsent = useCallback((consentState) => {
-    const adsByGoogle = (window.adsbygoogle = window.adsbygoogle || []);
-    if (consentState === 'accepted') {
-      adsByGoogle.requestNonPersonalizedAds = 1;
-      adsByGoogle.pauseAdRequests = 0;
-      return;
-    }
-    adsByGoogle.pauseAdRequests = 1;
-  }, []);
-
-  useEffect(() => {
-    if (!cookieConsent) {
-      setAdsReady(false);
-      return;
-    }
-    applyAdsConsent(cookieConsent);
-    setAdsReady(cookieConsent === 'accepted');
-  }, [applyAdsConsent, cookieConsent]);
-
-  const saveCookieConsent = useCallback((value) => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, value);
-    setCookieConsent(value);
-    setIsCookieBannerOpen(false);
-  }, []);
-
-  const handleAcceptCookies = useCallback(() => {
-    saveCookieConsent('accepted');
-  }, [saveCookieConsent]);
-
-  const handleRejectCookies = useCallback(() => {
-    saveCookieConsent('rejected');
-  }, [saveCookieConsent]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchCompanySuggestions = useCallback(
@@ -236,11 +135,6 @@ export default function App() {
           initialCompanyName={selectedEntity.name}
           initialSearchType={selectedEntity.type}
         />
-        <CookieConsent
-          open={isCookieBannerOpen}
-          onAccept={handleAcceptCookies}
-          onReject={handleRejectCookies}
-        />
       </Box>
     );
   }
@@ -277,6 +171,7 @@ export default function App() {
         />
         <Typography
           variant="h4"
+          component="h1"
           sx={{
             fontWeight: 700,
             mb: 0.5,
@@ -442,12 +337,13 @@ export default function App() {
         </Typography>
       </Box>
 
-      <AdSenseAdUnit enabled={adsReady} />
+      <AdSenseAdUnit />
 
       {/* FAQ section */}
       <Box sx={{ width: '100%', maxWidth: 500 }}>
         <Typography
           variant="caption"
+          component="h2"
           sx={{
             display: 'block',
             mb: 0.8,
@@ -516,21 +412,15 @@ export default function App() {
           &copy; {new Date().getFullYear()} Mapa Societario &middot; Free to use, no account required &middot; Data sourced from BORME (Registro Mercantil)
         </Typography>
         <Link
-          component="button"
-          type="button"
+          href="/privacy.html"
+          target="_blank"
+          rel="noopener"
           variant="caption"
-          onClick={() => setIsCookieBannerOpen(true)}
           sx={{ fontSize: '0.65rem' }}
         >
           Privacidad y cookies
         </Link>
       </Box>
-
-      <CookieConsent
-        open={isCookieBannerOpen}
-        onAccept={handleAcceptCookies}
-        onReject={handleRejectCookies}
-      />
     </Box>
   );
 }

@@ -3,22 +3,138 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mapa Societario - Red de relaciones societarias de empresas espa&ntilde;olas</title>
-    <meta name="description" content="Explore interactive network maps of Spanish corporate relationships. Search companies and officers from BORME (Registro Mercantil) data." />
+    <title>Mapa Societario | Grafo de empresas y administradores en Espa&ntilde;a</title>
+    <meta
+      name="description"
+      content="Explora relaciones societarias de empresas espa&ntilde;olas con un grafo interactivo basado en BORME. Busca empresas y administradores en segundos."
+    />
+    <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+    <meta name="googlebot" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="theme-color" content="#0a0e1a" />
+    <meta name="author" content="Mapa Societario" />
+    <link rel="canonical" id="canonical-link" href="https://mapasocietario.pages.dev/" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Mapa Societario" />
+    <meta property="og:title" content="Mapa Societario | Grafo de empresas y administradores en Espa&ntilde;a" />
+    <meta
+      property="og:description"
+      content="Visualiza relaciones entre empresas y directivos con datos del Registro Mercantil (BORME)."
+    />
+    <meta property="og:url" id="og-url" content="https://mapasocietario.pages.dev/" />
+    <meta property="og:image" id="og-image" content="https://mapasocietario.pages.dev/og-image.svg" />
+    <meta property="og:image:alt" content="Mapa Societario: buscador de relaciones societarias en Espa&ntilde;a" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Mapa Societario | Grafo de empresas y administradores en Espa&ntilde;a" />
+    <meta
+      name="twitter:description"
+      content="Busca empresas y administradores y explora su red societaria a partir de datos BORME."
+    />
+    <meta name="twitter:image" id="twitter-image" content="https://mapasocietario.pages.dev/og-image.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://api.ncdata.eu" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <meta name="google-site-verification" content="6_BhgI47FMmrhC9cHmV36zcgNBGDjwroOiJZoRuqDQw" />
-    <meta name="google-adsense-account" content="ca-pub-6049719242932136">
+    <meta name="google-adsense-account" content="ca-pub-6049719242932136" />
     <script>
-      window.adsbygoogle = window.adsbygoogle || [];
-      window.adsbygoogle.pauseAdRequests = 1;
+      (() => {
+        const siteUrl = window.location.origin;
+        const pageUrl = `${window.location.origin}${window.location.pathname}`;
+        const imageUrl = `${siteUrl}/og-image.svg`;
+        const canonicalLink = document.getElementById('canonical-link');
+        const ogUrlTag = document.getElementById('og-url');
+        const ogImageTag = document.getElementById('og-image');
+        const twitterImageTag = document.getElementById('twitter-image');
+        if (canonicalLink) canonicalLink.href = pageUrl;
+        if (ogUrlTag) ogUrlTag.content = pageUrl;
+        if (ogImageTag) ogImageTag.content = imageUrl;
+        if (twitterImageTag) twitterImageTag.content = imageUrl;
+
+        const jsonLd = {
+          '@context': 'https://schema.org',
+          '@graph': [
+            {
+              '@type': 'WebSite',
+              name: 'Mapa Societario',
+              url: `${siteUrl}/`,
+              inLanguage: 'es',
+              description: 'Buscador visual de relaciones societarias de empresas espanolas basado en datos BORME.',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: `${siteUrl}/?q={search_term_string}`,
+                'query-input': 'required name=search_term_string',
+              },
+            },
+            {
+              '@type': 'FAQPage',
+              inLanguage: 'en',
+              mainEntity: [
+                {
+                  '@type': 'Question',
+                  name: 'What should I know before using this app?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Software is provided as-is, with no liability for errors, omissions, or outcomes. The application is in active development.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Do I need to pay or create an account?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'No charge, no account, no signup required. The app is free to use.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Can I get API access?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'An API is being developed and will be available after the experimental phase.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Will this improve over time?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Yes. Expect continuous improvements at a sustained pace.',
+                  },
+                },
+              ],
+            },
+          ],
+        };
+
+        const script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.textContent = JSON.stringify(jsonLd);
+        document.head.appendChild(script);
+      })();
     </script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6049719242932136"
      crossorigin="anonymous"></script>
   </head>
   <body>
+    <noscript>
+      <main style="font-family: Arial, sans-serif; max-width: 780px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6;">
+        <h1>Mapa Societario</h1>
+        <p>
+          Mapa Societario permite explorar relaciones entre empresas y administradores en Espa&ntilde;a
+          usando informaci&oacute;n del BORME (Registro Mercantil).
+        </p>
+        <p>
+          Activa JavaScript para usar el grafo interactivo y buscar entidades por nombre.
+        </p>
+        <p>
+          <a href="/privacy.html">Pol&iacute;tica de privacidad y cookies</a>
+        </p>
+      </main>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

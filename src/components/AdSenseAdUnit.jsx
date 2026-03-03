@@ -4,12 +4,12 @@ import { Box } from '@mui/material';
 const ADSENSE_CLIENT_ID = 'ca-pub-6049719242932136';
 const ADSENSE_SLOT_ID = '1413277990';
 
-export default function AdSenseAdUnit({ enabled = false }) {
+export default function AdSenseAdUnit() {
   const adElementRef = useRef(null);
   const adRequestedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled || adRequestedRef.current || !adElementRef.current) return;
+    if (adRequestedRef.current || !adElementRef.current) return;
 
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
@@ -18,9 +18,7 @@ export default function AdSenseAdUnit({ enabled = false }) {
       // Script may still be loading or blocked by extensions/privacy settings.
       console.error('AdSense ad request failed:', error);
     }
-  }, [enabled]);
-
-  if (!enabled) return null;
+  }, []);
 
   return (
     <Box sx={{ width: '100%', maxWidth: 500, minHeight: 100 }}>
