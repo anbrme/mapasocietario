@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const publicDir = path.join(projectRoot, 'public');
 
-const rawSiteUrl = process.env.SITE_URL || process.env.VITE_SITE_URL || 'https://mapasocietario.pages.dev';
+const rawSiteUrl = process.env.SITE_URL || process.env.VITE_SITE_URL || 'https://mapasocietario.es';
 const siteUrl = rawSiteUrl.replace(/\/+$/, '');
 const buildDate = new Date().toISOString().split('T')[0];
 

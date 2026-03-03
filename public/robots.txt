@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mapasocietario.pages.dev/sitemap.xml
+Sitemap: https://mapasocietario.es/sitemap.xml
