@@ -38,7 +38,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Can I get API access?',
-    answer: 'Yes. I am working on the API, it should be available soon after this experimental phase. When ready, it will be accessible from this page',
+    answer: 'Yes. Public API docs and examples are available at github.com/anbrme/borme-public-api.',
   },
   {
     question: 'Will this improve over time?',
@@ -411,6 +411,15 @@ export default function App() {
         >
           &copy; {new Date().getFullYear()} Mapa Societario &middot; Free to use, no account required &middot; Data sourced from BORME (Registro Mercantil)
         </Typography>
+        <Link
+          href="https://github.com/anbrme/borme-public-api"
+          target="_blank"
+          rel="noopener"
+          variant="caption"
+          sx={{ fontSize: '0.65rem' }}
+        >
+          Public API docs
+        </Link>
         <Link
           href="/privacy.html"
           target="_blank"

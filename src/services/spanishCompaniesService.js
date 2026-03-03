@@ -2,7 +2,11 @@
  * Spanish Companies Service
  *
  * Simplified service focused exclusively on Spanish companies data
- * from remote BORME server with text and vector search capabilities
+ * from remote BORME server with text and vector search capabilities.
+ *
+ * Canonical API docs:
+ * - Repository: https://github.com/anbrme/borme-public-api
+ * - OpenAPI spec: https://raw.githubusercontent.com/anbrme/borme-public-api/main/openapi.yaml
  */
 
 class SpanishCompaniesService {
@@ -178,8 +182,10 @@ class SpanishCompaniesService {
 
       const result = await response.json();
 
-      // Transform suggestions to the format expected by the UI
-      // Directory autocomplete returns: { id, company_name, last_updated, is_alias?, original_name?, has_new_name?, new_company_name? }
+      // Transform suggestions to the format expected by the UI.
+      // Public OpenAPI documents stable fields ({ name, id }), while the
+      // production endpoint currently returns enriched fields like:
+      // { id, company_name, last_updated, is_alias?, original_name?, has_new_name?, new_company_name? }
       const suggestions = (result.suggestions || []).map(suggestion => {
         // Build label based on alias status
         let label = suggestion.company_name;
