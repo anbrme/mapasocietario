@@ -27,6 +27,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { debounce } from 'lodash';
 import { spanishCompaniesService } from './services/spanishCompaniesService';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
+import AdSenseAdUnit from './components/AdSenseAdUnit';
 
 
 const FAQ_ITEMS = [
@@ -51,24 +52,7 @@ const FAQ_ITEMS = [
 
 const COOKIE_CONSENT_KEY = 'mapasocietario_cookie_consent';
 
-function CookieConsent() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (!consent) setOpen(true);
-  }, []);
-
-  const handleAccept = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted');
-    setOpen(false);
-  };
-
-  const handleReject = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'rejected');
-    setOpen(false);
-  };
-
+function CookieConsent({ open, onAccept, onReject }) {
   if (!open) return null;
 
   return (
@@ -98,27 +82,28 @@ function CookieConsent() {
           </Typography>
         </Box>
         <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
-          Este sitio utiliza cookies esenciales para su funcionamiento. No utilizamos cookies de seguimiento ni compartimos datos personales con terceros. Al continuar navegando, aceptas el uso de cookies esenciales conforme al{' '}
-          <Link href="https://gdpr.eu" target="_blank" rel="noopener" sx={{ color: 'primary.main' }}>
-            RGPD
+          Este sitio utiliza cookies esenciales. Si aceptas, también cargaremos cookies publicitarias de Google AdSense para mostrar anuncios no personalizados y limitar fraude/frecuencia. Si rechazas, no se solicitarán anuncios.
+          {' '}
+          <Link href="https://support.google.com/adsense/answer/7670013?hl=es" target="_blank" rel="noopener" sx={{ color: 'primary.main' }}>
+            Más información
           </Link>.
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
           <Button
             size="small"
             variant="text"
-            onClick={handleReject}
+            onClick={onReject}
             sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.8rem' }}
           >
-            Rechazar
+            Rechazar anuncios
           </Button>
           <Button
             size="small"
             variant="contained"
-            onClick={handleAccept}
+            onClick={onAccept}
             sx={{ textTransform: 'none', fontSize: '0.8rem' }}
           >
-            Aceptar
+            Aceptar y mostrar anuncios
           </Button>
         </Box>
       </Paper>
@@ -132,7 +117,43 @@ export default function App() {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchMode, setSearchMode] = useState('company'); // 'company' or 'officer'
+  const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem(COOKIE_CONSENT_KEY));
+  const [isCookieBannerOpen, setIsCookieBannerOpen] = useState(() => !localStorage.getItem(COOKIE_CONSENT_KEY));
+  const [adsReady, setAdsReady] = useState(false);
   const inputRef = useRef(null);
+
+  const applyAdsConsent = useCallback((consentState) => {
+    const adsByGoogle = (window.adsbygoogle = window.adsbygoogle || []);
+    if (consentState === 'accepted') {
+      adsByGoogle.requestNonPersonalizedAds = 1;
+      adsByGoogle.pauseAdRequests = 0;
+      return;
+    }
+    adsByGoogle.pauseAdRequests = 1;
+  }, []);
+
+  useEffect(() => {
+    if (!cookieConsent) {
+      setAdsReady(false);
+      return;
+    }
+    applyAdsConsent(cookieConsent);
+    setAdsReady(cookieConsent === 'accepted');
+  }, [applyAdsConsent, cookieConsent]);
+
+  const saveCookieConsent = useCallback((value) => {
+    localStorage.setItem(COOKIE_CONSENT_KEY, value);
+    setCookieConsent(value);
+    setIsCookieBannerOpen(false);
+  }, []);
+
+  const handleAcceptCookies = useCallback(() => {
+    saveCookieConsent('accepted');
+  }, [saveCookieConsent]);
+
+  const handleRejectCookies = useCallback(() => {
+    saveCookieConsent('rejected');
+  }, [saveCookieConsent]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchCompanySuggestions = useCallback(
@@ -215,7 +236,11 @@ export default function App() {
           initialCompanyName={selectedEntity.name}
           initialSearchType={selectedEntity.type}
         />
-        <CookieConsent />
+        <CookieConsent
+          open={isCookieBannerOpen}
+          onAccept={handleAcceptCookies}
+          onReject={handleRejectCookies}
+        />
       </Box>
     );
   }
@@ -417,6 +442,8 @@ export default function App() {
         </Typography>
       </Box>
 
+      <AdSenseAdUnit enabled={adsReady} />
+
       {/* FAQ section */}
       <Box sx={{ width: '100%', maxWidth: 500 }}>
         <Typography
@@ -466,22 +493,44 @@ export default function App() {
       </Box>
 
       {/* Footer */}
-      <Typography
-        variant="caption"
+      <Box
         sx={{
           mt: 'auto',
-          color: 'text.disabled',
           textAlign: 'center',
-          fontSize: '0.65rem',
           width: '100%',
           pt: 1.5,
-          lineHeight: 1.5,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 0.5,
+          alignItems: 'center',
         }}
       >
-        &copy; {new Date().getFullYear()} Mapa Societario &middot; Free to use, no account required &middot; Data sourced from BORME (Registro Mercantil)
-      </Typography>
+        <Typography
+          variant="caption"
+          sx={{
+            color: 'text.disabled',
+            fontSize: '0.65rem',
+            lineHeight: 1.5,
+          }}
+        >
+          &copy; {new Date().getFullYear()} Mapa Societario &middot; Free to use, no account required &middot; Data sourced from BORME (Registro Mercantil)
+        </Typography>
+        <Link
+          component="button"
+          type="button"
+          variant="caption"
+          onClick={() => setIsCookieBannerOpen(true)}
+          sx={{ fontSize: '0.65rem' }}
+        >
+          Privacidad y cookies
+        </Link>
+      </Box>
 
-      <CookieConsent />
+      <CookieConsent
+        open={isCookieBannerOpen}
+        onAccept={handleAcceptCookies}
+        onReject={handleRejectCookies}
+      />
     </Box>
   );
 }
