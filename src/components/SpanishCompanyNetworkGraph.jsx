@@ -2695,7 +2695,8 @@ const SpanishCompanyNetworkGraph = ({
     (link, ctx, globalScale) => {
       const start = link.source;
       const end = link.target;
-      const LABEL_STACK_SPACING = 14;
+      const BASE_LABEL_STACK_SPACING = 18;
+      const BASE_LABEL_ALONG_EDGE_SPACING = 10;
       // Ensure nodes are positioned
       if (
         typeof start !== 'object' ||
@@ -2743,27 +2744,31 @@ const SpanishCompanyNetworkGraph = ({
         }
 
         if (shouldRenderLabel) {
+          const fontSize = Math.max(labelSize / globalScale, 4);
           let midX = (start.x + end.x) / 2;
           let midY = (start.y + end.y) / 2;
+          const dx = end.x - start.x;
+          const dy = end.y - start.y;
+          const length = Math.sqrt(dx * dx + dy * dy);
 
           // Stack labels on parallel edges to avoid overlap.
           const linkMeta = parallelLinkMeta.get(normalizeNodeId(link.id));
-          if (linkMeta && linkMeta.count > 1) {
+          if (linkMeta && linkMeta.count > 1 && length > 0) {
             const centeredIndex = linkMeta.index - (linkMeta.count - 1) / 2;
-            const effectiveOffset = (centeredIndex * LABEL_STACK_SPACING) / globalScale;
+            // Dynamic spacing: keep multi-label edges readable regardless of zoom/font size.
+            const stackSpacingPx = Math.max(BASE_LABEL_STACK_SPACING, fontSize * 2.4);
+            const alongEdgeSpacingPx = Math.max(BASE_LABEL_ALONG_EDGE_SPACING, fontSize * 1.1);
+            const perpOffset = (centeredIndex * stackSpacingPx) / globalScale;
+            const tangentOffset = (centeredIndex * alongEdgeSpacingPx) / globalScale;
 
-            const dx = end.x - start.x;
-            const dy = end.y - start.y;
-            const length = Math.sqrt(dx * dx + dy * dy);
-            if (length > 0) {
-              const perpDx = -dy / length;
-              const perpDy = dx / length;
-              midX += perpDx * effectiveOffset;
-              midY += perpDy * effectiveOffset;
-            }
+            const perpDx = -dy / length;
+            const perpDy = dx / length;
+            const tangentDx = dx / length;
+            const tangentDy = dy / length;
+            midX += perpDx * perpOffset + tangentDx * tangentOffset;
+            midY += perpDy * perpOffset + tangentDy * tangentOffset;
           }
 
-          const fontSize = Math.max(labelSize / globalScale, 4);
           ctx.font = `${fontSize}px Sans-Serif`;
           const text = edgeLabel;
           const textWidth = ctx.measureText(text).width;
