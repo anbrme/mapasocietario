@@ -412,6 +412,15 @@ export default function App() {
           &copy; {new Date().getFullYear()} Mapa Societario &middot; Free to use, no account required &middot; Data sourced from BORME (Registro Mercantil)
         </Typography>
         <Link
+          href="https://buymeacoffee.com/anbrme"
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="caption"
+          sx={{ fontSize: '0.65rem' }}
+        >
+          Buy me a coffee
+        </Link>
+        <Link
           href="https://github.com/anbrme/borme-public-api"
           target="_blank"
           rel="noopener"
