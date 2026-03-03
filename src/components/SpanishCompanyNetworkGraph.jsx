@@ -279,7 +279,7 @@ const normalizeNameForMerge = value =>
 
 const BORME_SECTION_NAMES = new Set([
   'nombramientos', 'reelecciones', 'ceses_dimisiones', 'ceses', 'revocaciones',
-  'dimisiones', 'associated_with', 'cargo no especificado',
+  'dimisiones', 'cargo no especificado',
 ]);
 const normalizeEdgeLabelText = (relationship, _category) => {
   const text = (relationship || '').trim();
@@ -1013,10 +1013,13 @@ const SpanishCompanyNetworkGraph = ({
         // Company search: try PostgreSQL first for complete officer list, fall back to ES
         let pgHandled = false;
         try {
-          const pgData = await spanishCompaniesService.pgExpandCompany(query, { size: Math.max(searchResultSize, 500) });
-          if (pgData.success && pgData.officers && pgData.officers.length > 0) {
+          const pgData = await spanishCompaniesService.pgExpandCompany(query, { size: searchResultSize });
+          const canonicalName = pgData.company_name || query;
+          const canonicalNorm = normalizeCompanyName(canonicalName);
+          const queryNorm = normalizeCompanyName(query);
+          const nameMatches = canonicalNorm.includes(queryNorm) || queryNorm.includes(canonicalNorm);
+          if (pgData.success && pgData.officers && pgData.officers.length > 0 && nameMatches) {
             pgHandled = true;
-            const canonicalName = pgData.company_name || query;
             const companyId = companyNameToId(normalizeCompanyName(canonicalName));
 
             // Build nodes/links directly from PG officer list (same logic as expandCompanyNode PG path)
@@ -1441,7 +1444,7 @@ const SpanishCompanyNetworkGraph = ({
                   if (!name) return;
 
                   const position = toSafeString(
-                    officer?.position || officer?.role || officer?.title || 'associated_with'
+                    officer?.position || officer?.role || officer?.title || ''
                   );
                   const category = getOfficerCategory(officer);
 
@@ -1595,7 +1598,7 @@ const SpanishCompanyNetworkGraph = ({
                   source: companyId,
                   target: officerNode.id,
                   type: 'officer-company',
-                  relationship: officer.position,
+                  relationship: officer.specific_role || officer.position,
                   category: effectiveCategory,
                   date: officer.date || null,
                 });
@@ -1737,7 +1740,7 @@ const SpanishCompanyNetworkGraph = ({
             }
 
             // Add link between officer and company
-            const relationship = group.roles[0] || 'associated_with';
+            const relationship = group.roles[0] || '';
             const category = group.categories[0] || 'nombramientos';
             const linkId = `${officerId}-${companyId}`;
             if (!newLinks.find(l => l.id === linkId)) {
@@ -1852,7 +1855,7 @@ const SpanishCompanyNetworkGraph = ({
             }
 
             // Always add link (even if company node already existed)
-            const relationship = group.roles[0] || 'associated_with';
+            const relationship = group.roles[0] || '';
             const linkId = `${officerNode.id}-${companyId}`;
             if (!newLinks.find(l => l.id === linkId)) {
               newLinks.push({
