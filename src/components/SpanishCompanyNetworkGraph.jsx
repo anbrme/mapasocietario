@@ -229,9 +229,12 @@ const createCategorySlots = () => ({
 });
 
 const normalizeCategoryKey = category => {
-  if (category === 'reelecciones') return 'reelecciones';
-  if (category === 'revocaciones') return 'revocaciones';
-  if (category === 'ceses_dimisiones') return 'ceses_dimisiones';
+  if (!category) return 'nombramientos';
+  // Spanish keys (from ES path)
+  if (category === 'reelecciones' || category === 'reelections') return 'reelecciones';
+  if (category === 'revocaciones' || category === 'revocations') return 'revocaciones';
+  if (category === 'ceses_dimisiones' || category === 'resignations') return 'ceses_dimisiones';
+  if (category === 'nombramientos' || category === 'appointments') return 'nombramientos';
   return 'nombramientos';
 };
 
@@ -1090,7 +1093,7 @@ const SpanishCompanyNetworkGraph = ({
                     source: companyId,
                     target: officerId,
                     relationship: officer.specific_role || officer.position || '',
-                    category: officer.event_type || 'nombramientos',
+                    category: normalizeCategoryKey(officer.event_type),
                   });
                 }
               });
@@ -1963,7 +1966,7 @@ const SpanishCompanyNetworkGraph = ({
                   source: companyNode.id,
                   target: officerId,
                   relationship: officer.specific_role || officer.position || '',
-                  category: officer.event_type || 'nombramientos',
+                  category: normalizeCategoryKey(officer.event_type),
                 });
               }
             });
