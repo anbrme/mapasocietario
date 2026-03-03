@@ -2959,7 +2959,7 @@ const SpanishCompanyNetworkGraph = ({
             </MenuItem>
           </Select>
         </FormControl>
-
+ 
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel>Resultados</InputLabel>
           <Select
