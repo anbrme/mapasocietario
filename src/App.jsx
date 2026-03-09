@@ -36,7 +36,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Do I need to pay or create an account?',
-    answer: 'No charge, no account, no signup required. The app is free to use.',
+    answer: 'No charge, no account, no signup required. The app is free to use. But we do love coffee, so you can buy us one in the link below the FAQ 🤗',
   },
   {
     question: 'Can I get API access?',
