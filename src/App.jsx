@@ -13,6 +13,7 @@ import {
   AccordionDetails,
   ToggleButton,
   ToggleButtonGroup,
+  Button,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import SearchIcon from '@mui/icons-material/Search';
@@ -20,6 +21,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import LocalCafeIcon from '@mui/icons-material/LocalCafe';
 import { debounce } from 'lodash';
 import { spanishCompaniesService } from './services/spanishCompaniesService';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
@@ -411,33 +413,54 @@ export default function App() {
         >
           &copy; {new Date().getFullYear()} Mapa Societario &middot; Free to use, no account required &middot; Data sourced from BORME (Registro Mercantil)
         </Typography>
-        <Link
+        <Button
           href="https://buymeacoffee.com/anbrme"
           target="_blank"
           rel="noopener noreferrer"
-          variant="caption"
-          sx={{ fontSize: '0.65rem' }}
+          variant="outlined"
+          size="small"
+          startIcon={<LocalCafeIcon sx={{ fontSize: '1.1rem !important' }} />}
+          sx={{
+            mt: 0.5,
+            mb: 0.5,
+            px: 2,
+            py: 0.25,
+            color: 'text.secondary',
+            borderColor: 'rgba(255, 167, 38, 0.3)', // Using theme-compatible orange/yellow tint
+            bgcolor: 'rgba(255, 167, 38, 0.05)',
+            textTransform: 'none',
+            fontWeight: 500,
+            fontSize: '0.75rem',
+            borderRadius: 6, // more pill-like
+            '&:hover': {
+              borderColor: '#f57c00',
+              color: '#f57c00',
+              bgcolor: 'rgba(245, 124, 0, 0.08)',
+            }
+          }}
         >
           Buy me a coffee
-        </Link>
-        <Link
-          href="https://github.com/anbrme/borme-public-api"
-          target="_blank"
-          rel="noopener"
-          variant="caption"
-          sx={{ fontSize: '0.65rem' }}
-        >
-          Public API docs
-        </Link>
-        <Link
-          href="/privacy.html"
-          target="_blank"
-          rel="noopener"
-          variant="caption"
-          sx={{ fontSize: '0.65rem' }}
-        >
-          Privacidad y cookies
-        </Link>
+        </Button>
+        <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
+          <Link
+            href="https://github.com/anbrme/borme-public-api"
+            target="_blank"
+            rel="noopener"
+            variant="caption"
+            sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            Public API docs
+          </Link>
+          <Link
+            href="/privacy.html"
+            target="_blank"
+            rel="noopener"
+            variant="caption"
+            sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            Privacy & Cookies
+          </Link>
+        </Box>
       </Box>
     </Box>
   );
