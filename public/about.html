@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About | Mapa Societario</title>
+    <meta
+      name="description"
+      content="Learn how Mapa Societario works: data sources, methodology, coverage, and the technology behind Spain's corporate relationship graph."
+    />
+    <meta name="robots" content="index,follow" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        margin: 0;
+        background: #0a0e1a;
+        color: #e6edf7;
+        font-family: Inter, Arial, sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 2.25rem 1.25rem 3rem;
+      }
+      h1, h2, h3 {
+        color: #ffffff;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      a {
+        color: #8bc5ff;
+      }
+      .muted {
+        color: #a9b8cf;
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        margin: 1.5rem 0;
+      }
+      .stat-card {
+        flex: 1 1 180px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 1.25rem;
+        text-align: center;
+      }
+      .stat-card .number {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #64b5f6;
+        display: block;
+      }
+      .stat-card .label {
+        font-size: 0.85rem;
+        color: #a9b8cf;
+        margin-top: 0.25rem;
+        display: block;
+      }
+      footer {
+        margin-top: 2.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.85rem;
+        color: #a9b8cf;
+      }
+      footer a {
+        margin-right: 1.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>About Mapa Societario</h1>
+      <p class="muted">A free, open tool to explore Spain's corporate network</p>
+
+      <h2>What is Mapa Societario?</h2>
+      <p>
+        Mapa Societario is an interactive visualization tool that maps the relationships between
+        Spanish companies and their directors, administrators, and legal representatives. By
+        searching for any company or officer, users can instantly see a network graph showing
+        how entities are connected through shared directorships, appointments, and corporate roles.
+      </p>
+      <p>
+        The tool is designed for journalists, researchers, investors, legal professionals, and
+        anyone interested in understanding the structure of Spanish corporate networks. It turns
+        dense public registry data into an intuitive, explorable graph. The key objective is make this information available to everyone, without paywalls or registration, and to provide a powerful way to discover connections between companies and the people who run them.
+      </p>
+
+      <h2>Where does the data come from?</h2>
+      <p>
+        All data is sourced from the <strong>BORME</strong> (Boletín Oficial del Registro Mercantil),
+        Spain's official commercial registry gazette published by the
+        <a href="https://www.boe.es/diario_borme/" target="_blank" rel="noopener">Agencia Estatal
+        Boletín Oficial del Estado</a>. The BORME publishes daily records of company incorporations,
+        officer appointments and cessations, mergers, address changes, capital modifications, and
+        other legally mandated corporate filings.
+      </p>
+      <p>
+        We parse every BORME daily publication, extract structured data about companies and their officers,
+        and build a searchable graph database from the results. This means the data you see in
+        Mapa Societario reflects the official public record of Spanish commercial activity. The data is kept in our server in a data center in Europe.
+      </p>
+
+      <h2>How does it work?</h2>
+      <p>
+        The process behind Mapa Societario involves several stages:
+      </p>
+      <ol>
+        <li>
+          <strong>Data collection</strong> &mdash; BORME publications are retrieved daily from the
+          official gazette. Each publication contains hundreds of individual corporate filings
+          (known as <em>actos</em>) organized by province.
+        </li>
+        <li>
+          <strong>Parsing and extraction</strong> &mdash; We use custom parsers to extract structured
+          information from each filing: company names, officer names, role types (administrator,
+          sole director, board member, secretary, etc.), and the nature of the act (appointment,
+          cessation, incorporation, etc.).
+        </li>
+        <li>
+          <strong>Graph construction</strong> &mdash; Extracted entities are linked into a graph
+          where companies and officers are nodes, and corporate roles form the edges connecting
+          them. This allows traversal of the network: from a company to its directors, and from
+          a director to all the companies they are associated with.
+        </li>
+        <li>
+          <strong>Search indexing</strong> &mdash; Company and officer names are indexed for
+          fast autocomplete and fuzzy search, so you can find entities even with partial or
+          approximate queries.
+        </li>
+        <li>
+          <strong>Visualization</strong> &mdash; The front-end renders the graph using a
+          force-directed layout in real time, letting you expand nodes, explore connections,
+          and navigate the network interactively.
+        </li>
+      </ol>
+
+      <h2>What can you discover?</h2>
+      <p>
+        Mapa Societario helps answer questions like:
+      </p>
+      <ul>
+        <li>Who are the directors and administrators of a given company?</li>
+        <li>What other companies does a particular officer manage or direct?</li>
+        <li>Are two seemingly unrelated companies connected through shared directors?</li>
+        <li>How large is the corporate network around a specific person or entity?</li>
+        <li>What roles (sole administrator, board member, secretary, etc.) does an officer hold?</li>
+      </ul>
+      <p>
+        This kind of analysis, sometimes called corporate network mapping or beneficial ownership
+        research, is used in due diligence, investigative journalism, anti-corruption work, and
+        academic research on corporate governance.
+      </p>
+
+      <h2>Coverage and limitations</h2>
+      <p>
+        The database covers companies and officers published in the BORME. This includes most
+        Spanish limited companies (<em>Sociedades Limitadas</em> and <em>Sociedades Anónimas</em>)
+        as well as other entity types that file with the commercial registry. 
+      </p>
+      <p>
+        Important limitations to keep in mind:
+      </p>
+      <ul>
+        <li>
+          Data reflects what has been published in the BORME. There may be a delay between a
+          corporate event and its appearance in the gazette.
+        </li>
+        <li>
+          Parsing public gazette text is inherently imperfect. While our parsers are continuously
+          improved, occasional errors in entity extraction or role classification may occur.
+        </li>
+        <li>
+          Officer name matching across filings relies on string normalization. In rare cases,
+          two different people with identical names may be conflated, or the same person may
+          appear under slightly different name variants. Also, you have to be aware that while company names in Spain are unique, officers' names are not. We did our best to properly map the right officer to the exact company, but the lack of an officer identifier in the Spanish gazette and therefore keep this always in mind.
+        </li>
+        <li>
+          The tool shows relationships extracted from public filings. It does not indicate
+          current status &mdash; an officer shown as appointed may have since resigned through
+          a filing we have not yet processed.
+        </li>
+      </ul>
+      <p>
+        For authoritative, up-to-date corporate information, always consult the
+        <a href="https://www.boe.es/diario_borme/" target="_blank" rel="noopener">official BORME</a>
+        or the relevant provincial commercial registry directly.
+      </p>
+
+      <h2>Technology</h2>
+      <p>
+        Mapa Societario is built with React and uses a force-directed graph engine for real-time
+        network visualization. The back-end API serves graph data and autocomplete suggestions
+        from a purpose-built index of parsed BORME records. The entire front-end is open about
+        its data sources, and the public API documentation is available on
+        <a href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener">GitHub</a>.
+      </p>
+
+      <h2>Free and open</h2>
+      <p>
+        Mapa Societario is free to use with no registration, no account, and no paywall.
+        We believe public registry data should be accessible and explorable by everyone.
+        If you find the tool useful, you can support ongoing development by
+        <a href="https://buymeacoffee.com/anbrme" target="_blank" rel="noopener">buying us a coffee</a>.
+      </p>
+
+      <h2>Frequently asked questions</h2>
+
+      <h3>What is the BORME?</h3>
+      <p>
+        The BORME (Boletín Oficial del Registro Mercantil) is Spain's official gazette for
+        commercial registry announcements. Published daily by the state, it records corporate
+        events such as company formations, officer appointments and departures, mergers,
+        capital changes, and dissolutions. It is the authoritative public source for Spanish
+        corporate filings.
+      </p>
+
+      <h3>How often is the data updated?</h3>
+      <p>
+        We process new BORME publications as they are released, typically on business days.
+        The search index is rebuilt periodically to incorporate the latest data.
+      </p>
+
+      <h3>Is the data accurate?</h3>
+      <p>
+        The data originates from official BORME publications and is extracted using automated
+        parsers. While we strive for accuracy, automated parsing of legal gazette text can
+        produce occasional errors. Always cross-reference with official sources for critical
+        decisions.
+      </p>
+
+      <h3>Do I need an account to use this?</h3>
+      <p>
+        No. Mapa Societario is completely free to use without any registration or login.
+      </p>
+
+      <h3>Can I access the data programmatically?</h3>
+      <p>
+        Yes. We provide a public API for developers and researchers. Documentation and examples
+        are available at
+        <a href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener">github.com/anbrme/borme-public-api</a>.
+      </p>
+
+      <h3>What types of companies are included?</h3>
+      <p>
+        The database includes any entity that files with the Spanish commercial registry and
+        appears in the BORME. This predominantly covers Sociedades Limitadas (S.L.),
+        Sociedades Anónimas (S.A.), and other registered entity types.
+      </p>
+
+      <h3>What do the graph connections mean?</h3>
+      <p>
+        Each connection (edge) in the graph represents a corporate role linking a person to a
+        company. Roles include sole administrator (<em>administrador único</em>), joint
+        administrator, board member (<em>consejero</em>), secretary, president, and others
+        as published in the BORME.
+      </p>
+
+      <h3>Can I search by officer name?</h3>
+      <p>
+        Yes. Use the toggle at the top of the search to switch between company and officer
+        search modes. Officer search lets you find a person and see all the companies they
+        are linked to.
+      </p>
+
+      <h3>Why might a company or person not appear in search results?</h3>
+      <p>
+        If an entity does not appear, it may not yet be in our parsed dataset, or the name
+        may be spelled differently in the BORME filing. Try alternative spellings or shorter
+        search terms. The search index is periodically rebuilt to include new data.
+      </p>
+
+      <h3>Who built this?</h3>
+      <p>
+        Mapa Societario is an independent project focused on making Spanish corporate registry
+        data more accessible. It is not affiliated with or endorsed by any government body.
+      </p>
+
+      <footer>
+        <a href="/">Back to Mapa Societario</a>
+        <a href="/privacy.html">Privacy & Cookies</a>
+        <a href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener">API docs</a>
+      </footer>
+    </main>
+  </body>
+</html>

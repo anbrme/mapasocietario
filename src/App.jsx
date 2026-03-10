@@ -471,6 +471,15 @@ export default function App() {
         </Button>
         <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
           <Link
+            href="/about.html"
+            target="_blank"
+            rel="noopener"
+            variant="caption"
+            sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            About
+          </Link>
+          <Link
             href="https://github.com/anbrme/borme-public-api"
             target="_blank"
             rel="noopener"
