@@ -317,33 +317,6 @@ export default function App() {
         />
       </Box>
 
-      {/* Index rebuilding message */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 1.5,
-          px: 2.5,
-          py: 2,
-          borderRadius: 2,
-          bgcolor: 'rgba(33, 150, 243, 0.08)',
-          border: '1px solid rgba(33, 150, 243, 0.2)',
-          maxWidth: 500,
-          width: '100%',
-          boxSizing: 'border-box'
-        }}
-      >
-        <AutorenewIcon sx={{ fontSize: 22, color: 'info.light', flexShrink: 0, mt: 0.2 }} />
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600, color: 'info.light' }}>
-            Search index is rebuilding
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
-            You can still search, but a newer, more performant, and overall better index is being rebuilt now. It will be ready on <strong>11 March 2026 at 12:00 PM</strong>.
-          </Typography>
-        </Box>
-      </Box>
-
       {/* Experimental warning */}
       <Box
         sx={{
