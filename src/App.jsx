@@ -41,7 +41,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Can I get API access?',
-    answer: 'Yes. Public API docs and examples are available at github.com/anbrme/borme-public-api.',
+    answer: 'Yes. Public API docs and examples are available at <a href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener noreferrer">github.com/anbrme/borme-public-api</a>.',
   },
   {
     question: 'Will this improve over time?',
