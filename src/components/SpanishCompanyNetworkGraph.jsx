@@ -3868,7 +3868,7 @@ const SpanishCompanyNetworkGraph = ({
           }}>
             <CircularProgress size={40} />
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Searching {searchQuery}...
+              Buscando {searchQuery}...
             </Typography>
           </Box>
         )}
