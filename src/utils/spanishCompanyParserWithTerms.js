@@ -168,12 +168,7 @@ class SpanishCompanyTermsParser {
   async loadTerms(termsData = null) {
     if (termsData) {
       this.terms = termsData;
-      this.isLoaded = true;
-      console.log('Terms loaded:', {
-        alwaysTopLevel: this.terms.alwaysTopLevel?.length || 0,
-        officersPositions: this.terms.officersPositions?.length || 0,
-      });
-    }
+      this.isLoaded = true;    }
   }
 
   /**
@@ -181,10 +176,6 @@ class SpanishCompanyTermsParser {
    */
   parseBormeEntry(fullEntry) {
     if (!fullEntry) return { officers: [], registryData: null, categories: [] };
-
-    console.log('=== PARSING BORME ENTRY ===');
-    console.log('Full entry:', fullEntry);
-
     const result = {
       officers: {
         nombramientos: [],
@@ -205,9 +196,7 @@ class SpanishCompanyTermsParser {
     // Extract registry data first
     const registryMatch = fullEntry.match(this.registryPattern);
     if (registryMatch) {
-      result.registryData = registryMatch[0];
-      console.log('Found registry data:', result.registryData);
-    }
+      result.registryData = registryMatch[0];    }
 
     // ENHANCED: Look for officer patterns more aggressively
     this.extractOfficersEnhanced(fullEntry, result);
@@ -225,45 +214,28 @@ class SpanishCompanyTermsParser {
    * ENHANCED: Extract officers using multiple strategies
    */
   extractOfficersEnhanced(fullEntry, result) {
-    console.log('=== ENHANCED OFFICER EXTRACTION ===');
-
     // Strategy 1: Look for structured format with categories
     this.extractByCategories(fullEntry, result);
 
     // Strategy 2: Look for direct position patterns (if no structured format found)
-    if (this.getTotalOfficers(result.officers) === 0) {
-      console.log('No officers found in structured format, trying direct patterns...');
-      this.extractByDirectPatterns(fullEntry, result);
+    if (this.getTotalOfficers(result.officers) === 0) {      this.extractByDirectPatterns(fullEntry, result);
     }
 
     // Strategy 3: Look for any Spanish names near position keywords (last resort)
-    if (this.getTotalOfficers(result.officers) === 0) {
-      console.log('No officers found in direct patterns, trying name proximity...');
-      this.extractByNameProximity(fullEntry, result);
-    }
-
-    console.log('Final officers extracted:', result.officers);
-  }
+    if (this.getTotalOfficers(result.officers) === 0) {      this.extractByNameProximity(fullEntry, result);
+    }  }
 
   /**
    * Extract by structured categories (Nombramientos, Reelecciones, etc.) - ENHANCED FOR INLINE FORMAT
    */
   extractByCategories(fullEntry, result) {
-    console.log('=== ANALYZING FULL ENTRY FOR CATEGORIES ===');
-    console.log('Full entry:', fullEntry);
-
     // ENHANCED: Handle inline format like "Ceses/Dimisiones. Adm. Solid.: NAMES. Nombramientos. Liquidador: NAMES."
     this.extractInlineOfficerCategories(fullEntry, result);
 
     // ALWAYS do the original section-by-section analysis as backup to catch any missed officers
     // We'll deduplicate at the end
     // ENHANCED: Smart splitting that preserves Spanish abbreviations
-    const sections = this.smartSplitBormeEntry(fullEntry);
-
-    console.log('=== ANALYZING SECTIONS ===');
-    sections.forEach((section, index) => {
-      console.log(`Section ${index}: "${section}"`);
-    });
+    const sections = this.smartSplitBormeEntry(fullEntry);    sections.forEach((section, index) => {    });
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i];
@@ -272,8 +244,6 @@ class SpanishCompanyTermsParser {
       const category = this.findTopLevelCategoryExact(section);
       if (category && !result.categories.includes(category)) {
         result.categories.push(category);
-        console.log(`Found category: "${category}" in section: "${section}"`);
-
         // Find the next top-level category to determine how many sections to consume
         let nextCategoryIndex = sections.length; // Default to end of sections
         for (let j = i + 1; j < sections.length; j++) {
@@ -284,10 +254,6 @@ class SpanishCompanyTermsParser {
         }
 
         const sectionsToConsume = nextCategoryIndex - i - 1;
-        console.log(
-          `Processing ${category}: consuming sections ${i + 1} to ${nextCategoryIndex - 1} (${sectionsToConsume} sections)`
-        );
-
         // Handle different types of categories by consuming ALL content until next category
         if (
           ['Nombramientos', 'Reelecciones', 'Revocaciones', 'Ceses/Dimisiones'].includes(category)
@@ -295,15 +261,9 @@ class SpanishCompanyTermsParser {
           // Officer-related categories - parse following sections for officers
           const officersData = this.parseOfficersFromSections(sections, i + 1, category);
           const categoryKey = this.getCategoryKey(category);
-          result.officers[categoryKey].push(...officersData);
-          console.log(`Found ${officersData.length} officers for ${category}`);
-        } else if (category === 'Declaración de unipersonalidad') {
-          // Special handling for "Declaración de unipersonalidad" + "Socio único"
-          console.log('Found "Declaración de unipersonalidad", looking for Socio único...');
-          const socioUnicoOfficers = this.parseSocioUnicoFromSections(sections, i + 1);
-          result.officers.nombramientos.push(...socioUnicoOfficers);
-          console.log(`Found ${socioUnicoOfficers.length} Socio único officers`);
-        } else if (category === 'Constitución') {
+          result.officers[categoryKey].push(...officersData);        } else if (category === 'Declaración de unipersonalidad') {
+          // Special handling for "Declaración de unipersonalidad" + "Socio único"          const socioUnicoOfficers = this.parseSocioUnicoFromSections(sections, i + 1);
+          result.officers.nombramientos.push(...socioUnicoOfficers);        } else if (category === 'Constitución') {
           // Constitution information - parse ALL content until next category
           const constitution = this.parseConstitutionFromAllSections(
             sections,
@@ -317,26 +277,17 @@ class SpanishCompanyTermsParser {
             i + 1,
             'Constitución'
           );
-          result.officers.nombramientos.push(...constitutionOfficers);
-          console.log(`Found constitution data:`, constitution);
-          console.log(`Found ${constitutionOfficers.length} officers in constitution`);
-        } else if (category === 'Cambio de domicilio social') {
+          result.officers.nombramientos.push(...constitutionOfficers);        } else if (category === 'Cambio de domicilio social') {
           // Extract new address from the following section
           if (i + 1 < nextCategoryIndex && sections[i + 1]) {
             const addressSection = sections[i + 1].trim();
             // Check if it looks like an address
             if (/(?:C\/|CALLE|AVENIDA|PLAZA|PASEO|CARRETERA|AVDA|PZA)/i.test(addressSection)) {
-              result.newAddress = addressSection.replace(/\.$/, '');
-              console.log(
-                `Found new address from Cambio de domicilio social: "${result.newAddress}"`
-              );
-            }
+              result.newAddress = addressSection.replace(/\.$/, '');            }
           }
         }
 
-        // Skip ahead to the next category (or end)
-        console.log(`Skipping ahead from section ${i} to section ${nextCategoryIndex - 1}`);
-        i = nextCategoryIndex - 1; // -1 because the loop will increment i
+        // Skip ahead to the next category (or end)        i = nextCategoryIndex - 1; // -1 because the loop will increment i
       }
     }
 
@@ -348,8 +299,6 @@ class SpanishCompanyTermsParser {
    * NEW: Extract officers from inline format like "Ceses/Dimisiones. Adm. Solid.: NAMES. Nombramientos. Liquidador: NAMES."
    */
   extractInlineOfficerCategories(fullEntry, result) {
-    console.log('=== EXTRACTING INLINE OFFICER CATEGORIES ===');
-
     // Officer categories we're looking for
     const officerCategories = [
       'Ceses/Dimisiones',
@@ -382,16 +331,12 @@ class SpanishCompanyTermsParser {
       let match;
       while ((match = pattern.exec(fullEntry)) !== null) {
         const categoryContent = match[1].trim();
-        console.log(`Found ${category} content: "${categoryContent}"`);
-
         if (categoryContent) {
           result.categories.push(category);
 
           // Parse officers from this content
           const officers = this.parseOfficersFromInlineContent(categoryContent, category);
-          result.officers[categoryKey].push(...officers);
-          console.log(`Extracted ${officers.length} officers for ${category}:`, officers);
-        }
+          result.officers[categoryKey].push(...officers);        }
       }
     }
   }
@@ -401,17 +346,11 @@ class SpanishCompanyTermsParser {
    */
   parseOfficersFromInlineContent(content, category) {
     const officers = [];
-    console.log(`=== PARSING INLINE CONTENT FOR ${category} ===`);
-    console.log('Content:', content);
-
     // ENHANCED: Handle flexible whitespace and newlines
     // Normalize the content by collapsing multiple spaces and handling newlines
     const normalizedContent = content
       .replace(/\s+/g, ' ') // Replace multiple spaces/newlines with single space
       .trim();
-
-    console.log('Normalized content:', normalizedContent);
-
     // Look for position patterns from terms.json
     const positionPatterns = this.terms.officersPositions || [];
 
@@ -435,41 +374,30 @@ class SpanishCompanyTermsParser {
       let match;
       while ((match = pattern.exec(normalizedContent)) !== null) {
         const namesPart = match[1].trim();
-        console.log(`Found position "${position}" with names: "${namesPart}"`);
-
         if (namesPart && !this.isBusinessActivityDescription(namesPart)) {
           // Find the standardized officer position
           const officerPosition = this.findOfficerPosition(position);
 
           if (officerPosition) {
-            console.log(`Valid position found: "${officerPosition}"`);
-
             // Split names by semicolon and clean them
             const names = namesPart
               .split(/[;,]/)
               .map(name => this.cleanOfficerName(name))
               .filter(name => name && name.length > 2 && this.isValidSpanishName(name));
-
-            console.log(`Extracted names:`, names);
-
             for (const name of names) {
               officers.push({
                 name: name,
                 position: officerPosition,
                 raw_entry: `${position}: ${namesPart}`,
                 category: category,
-              });
-              console.log(`Added officer: ${name} - ${officerPosition} (${category})`);
-            }
+              });            }
           }
         }
       }
     }
 
     // FALLBACK: If no officers found with terms.json, try the original method
-    if (officers.length === 0) {
-      console.log('No officers found with terms.json patterns, trying fallback method...');
-      return this.parseOfficersFromInlineContentFallback(content, category);
+    if (officers.length === 0) {      return this.parseOfficersFromInlineContentFallback(content, category);
     }
 
     return officers;
@@ -488,12 +416,8 @@ class SpanishCompanyTermsParser {
       .filter(p => p.length > 0);
 
     for (const part of parts) {
-      console.log(`Processing fallback part: "${part}"`);
-
       // Skip registry data
-      if (this.registryPattern.test(part)) {
-        console.log('Skipping registry data');
-        continue;
+      if (this.registryPattern.test(part)) {        continue;
       }
 
       // Look for "Position: Names" pattern
@@ -501,32 +425,22 @@ class SpanishCompanyTermsParser {
       if (colonIndex > 0) {
         const positionPart = part.substring(0, colonIndex).trim();
         const namesPart = part.substring(colonIndex + 1).trim();
-
-        console.log(`Fallback position part: "${positionPart}", Names part: "${namesPart}"`);
-
         // Find the officer position
         const officerPosition = this.findOfficerPosition(positionPart);
 
         if (officerPosition && namesPart && !this.isBusinessActivityDescription(namesPart)) {
-          console.log(`Valid fallback position found: "${officerPosition}"`);
-
           // Split names by semicolon and clean them
           const names = namesPart
             .split(/[;,]/)
             .map(name => this.cleanOfficerName(name))
             .filter(name => name && name.length > 2 && this.isValidSpanishName(name));
-
-          console.log(`Extracted fallback names:`, names);
-
           for (const name of names) {
             officers.push({
               name: name,
               position: officerPosition,
               raw_entry: part,
               category: category,
-            });
-            console.log(`Added fallback officer: ${name} - ${officerPosition} (${category})`);
-          }
+            });          }
         }
       }
     }
@@ -556,26 +470,17 @@ class SpanishCompanyTermsParser {
       .split(/[.\n\r]/)
       .map(l => l.trim())
       .filter(l => l.length > 0);
-
-    console.log('=== DIRECT PATTERN EXTRACTION ===');
-
     for (const line of lines) {
       // Skip registry data
-      if (this.registryPattern.test(line)) {
-        console.log('Skipping registry data:', line);
-        continue;
+      if (this.registryPattern.test(line)) {        continue;
       }
 
       // Skip if this line contains a top-level category
-      if (this.findTopLevelCategory(line)) {
-        console.log('Skipping top-level category:', line);
-        continue;
+      if (this.findTopLevelCategory(line)) {        continue;
       }
 
       // Skip business activity descriptions (CNAE codes, business descriptions)
-      if (this.isBusinessActivityDescription(line)) {
-        console.log('Skipping business activity description:', line);
-        continue;
+      if (this.isBusinessActivityDescription(line)) {        continue;
       }
 
       // Look for "Position: Name" patterns
@@ -588,10 +493,6 @@ class SpanishCompanyTermsParser {
         const officerPosition = this.findOfficerPosition(positionPart);
 
         if (officerPosition && namesPart && !this.isBusinessActivityDescription(namesPart)) {
-          console.log(
-            `Direct pattern found - Position: "${officerPosition}", Names: "${namesPart}"`
-          );
-
           // Split names by semicolon and clean them
           const names = namesPart
             .split(/[;,]/)
@@ -604,9 +505,7 @@ class SpanishCompanyTermsParser {
               position: officerPosition,
               raw_entry: line,
               category: 'Nombramientos',
-            });
-            console.log(`Added officer: ${name} - ${officerPosition}`);
-          }
+            });          }
         }
       }
     }
@@ -649,9 +548,6 @@ class SpanishCompanyTermsParser {
       'SOCIO ÚNICO',
       'SOCIO UNICO',
     ];
-
-    console.log('=== PROXIMITY EXTRACTION ===');
-
     for (const keyword of positionKeywords) {
       // Create a more flexible regex that can handle various separators
       const regex = new RegExp(
@@ -665,8 +561,6 @@ class SpanishCompanyTermsParser {
 
         // Validate that this looks like a name (at least 2 words, proper length)
         if (this.isValidSpanishName(potentialName)) {
-          console.log(`Proximity match - Position: "${keyword}", Name: "${potentialName}"`);
-
           const officerPosition = this.findOfficerPosition(keyword) || keyword;
 
           // Check if we already have this person to avoid duplicates
@@ -680,11 +574,7 @@ class SpanishCompanyTermsParser {
               position: officerPosition,
               raw_entry: match[0],
               category: 'Nombramientos',
-            });
-            console.log(`Added officer by proximity: ${potentialName} - ${officerPosition}`);
-          } else {
-            console.log(`Officer ${potentialName} already exists, skipping duplicate`);
-          }
+            });          } else {          }
         }
       }
     }
@@ -762,9 +652,7 @@ class SpanishCompanyTermsParser {
 
     const result = hasBusinessKeywords || hasCnaeCode || isTooLong || hasBusinessPatterns;
 
-    if (result) {
-      console.log(`Identified as business activity: "${text.substring(0, 50)}..."`);
-    }
+    if (result) {    }
 
     return result;
   }
@@ -833,20 +721,14 @@ class SpanishCompanyTermsParser {
 
       officers[category] = officers[category].filter(officer => {
         const key = `${officer.name}-${officer.position}`;
-        if (seen.has(key)) {
-          console.log(
-            `Removing duplicate officer in ${category}: ${officer.name} - ${officer.position}`
-          );
-          return false;
+        if (seen.has(key)) {          return false;
         }
         seen.add(key);
         return true;
       });
 
       const finalCount = officers[category].length;
-      if (originalCount !== finalCount) {
-        console.log(`Deduplicated ${category}: ${originalCount} -> ${finalCount} officers`);
-      }
+      if (originalCount !== finalCount) {      }
     });
   }
 
@@ -857,20 +739,13 @@ class SpanishCompanyTermsParser {
     if (!this.terms) return null;
 
     const cleanSection = section.trim();
-    console.log(`Checking if "${cleanSection}" is an EXACT top-level category...`);
-
     // Only try exact match against alwaysTopLevel terms
     let match = this.terms.alwaysTopLevel.find(
       category => cleanSection === category || cleanSection.toLowerCase() === category.toLowerCase()
     );
 
-    if (match) {
-      console.log(`Found EXACT top-level category: "${match}"`);
-      return match;
-    }
-
-    console.log(`"${cleanSection}" is NOT an exact top-level category`);
-    return null;
+    if (match) {      return match;
+    }    return null;
   }
 
   /**
@@ -880,19 +755,13 @@ class SpanishCompanyTermsParser {
     if (!this.terms) return null;
 
     const cleanSection = section.trim();
-    console.log(`Checking if "${cleanSection}" is a top-level category...`);
-
     // Special handling for constitution content that might be parsed as separate sections
     if (
       /^Comienzo de operaciones\s*:/i.test(cleanSection) ||
       /^Domicilio\s*:/i.test(cleanSection) ||
       /^Capital\s*:/i.test(cleanSection) ||
       /^Objeto social\s*:/i.test(cleanSection)
-    ) {
-      console.log(
-        `"${cleanSection}" appears to be constitution content, treating as "Constitución"`
-      );
-      return 'Constitución';
+    ) {      return 'Constitución';
     }
 
     // Try exact match first
@@ -900,9 +769,7 @@ class SpanishCompanyTermsParser {
       category => cleanSection === category || cleanSection.toLowerCase() === category.toLowerCase()
     );
 
-    if (match) {
-      console.log(`Found EXACT top-level category: "${match}"`);
-      return match;
+    if (match) {      return match;
     }
 
     // For partial matches, be more intelligent about it
@@ -912,22 +779,14 @@ class SpanishCompanyTermsParser {
       const sectionLower = cleanSection.toLowerCase();
 
       // Check if section contains the category
-      if (sectionLower.includes(categoryLower)) {
-        console.log(
-          `Found CONTAINS match: section "${cleanSection}" contains category "${category}"`
-        );
-        return true;
+      if (sectionLower.includes(categoryLower)) {        return true;
       }
 
       // For "Modificaciones estatutarias", also check for variations
       if (
         category === 'Modificaciones estatutarias' &&
         (sectionLower.includes('modificacion') || sectionLower.includes('estatutaria'))
-      ) {
-        console.log(
-          `Found STATUTORY modification match: "${category}" in section "${cleanSection}"`
-        );
-        return true;
+      ) {        return true;
       }
 
       // For "Ampliacion del objeto social", check variations
@@ -935,9 +794,7 @@ class SpanishCompanyTermsParser {
         category === 'Ampliacion del objeto social' &&
         sectionLower.includes('ampliacion') &&
         sectionLower.includes('objeto')
-      ) {
-        console.log(`Found OBJECT EXPANSION match: "${category}" in section "${cleanSection}"`);
-        return true;
+      ) {        return true;
       }
 
       // For "Cambio de objeto social", check variations
@@ -945,21 +802,14 @@ class SpanishCompanyTermsParser {
         category === 'Cambio de objeto social' &&
         sectionLower.includes('cambio') &&
         sectionLower.includes('objeto')
-      ) {
-        console.log(`Found OBJECT CHANGE match: "${category}" in section "${cleanSection}"`);
-        return true;
+      ) {        return true;
       }
 
       return false;
     });
 
-    if (match) {
-      console.log(`Found top-level category: "${match}" in section: "${cleanSection}"`);
-      return match;
-    }
-
-    console.log(`No top-level category found for: "${cleanSection}"`);
-    return null;
+    if (match) {      return match;
+    }    return null;
   }
 
   /**
@@ -1129,32 +979,21 @@ class SpanishCompanyTermsParser {
   parseSocioUnicoFromSectionsWithCount(sections, startIndex) {
     const officers = [];
     let consumed = 0;
-
-    console.log(`=== LOOKING FOR SOCIO ÚNICO starting from section ${startIndex} ===`);
-
     // Look through the next few sections for "Socio unico" data
     for (let i = startIndex; i < sections.length && i < startIndex + 5; i++) {
       const section = sections[i];
-      console.log(`Checking section ${i} for Socio único: "${section}"`);
-
       // Skip if this looks like registry data
-      if (this.registryPattern.test(section)) {
-        console.log('Skipping registry data section');
-        break;
+      if (this.registryPattern.test(section)) {        break;
       }
 
       // Skip if this is another top-level category
-      if (this.findTopLevelCategory(section)) {
-        console.log('Found another category, stopping Socio único search');
-        break;
+      if (this.findTopLevelCategory(section)) {        break;
       }
 
       // Look for Socio unico patterns
       const socioUnicoMatch = section.match(/Socio\s+único?:?\s*([A-ZÁÉÍÓÚÑÜ\s,;]+)(?:\.|$)/i);
       if (socioUnicoMatch) {
         const namesPart = socioUnicoMatch[1].trim();
-        console.log('Found Socio único match:', namesPart);
-
         // Split names by semicolon and clean them
         const names = namesPart
           .split(/[;,]/)
@@ -1166,9 +1005,7 @@ class SpanishCompanyTermsParser {
             name: name,
             position: 'Socio único',
             category: 'nombramientos',
-          });
-          console.log(`Added Socio único: ${name}`);
-        }
+          });        }
       }
 
       consumed++;
@@ -1182,24 +1019,15 @@ class SpanishCompanyTermsParser {
    */
   parseSocioUnicoFromSections(sections, startIndex) {
     const officers = [];
-
-    console.log(`=== LOOKING FOR SOCIO ÚNICO starting from section ${startIndex} ===`);
-
     // Look through the next few sections for "Socio unico" data
     for (let i = startIndex; i < sections.length && i < startIndex + 5; i++) {
       const section = sections[i];
-      console.log(`Checking section ${i} for Socio único: "${section}"`);
-
       // Skip if this looks like registry data
-      if (this.registryPattern.test(section)) {
-        console.log('Skipping registry data section');
-        break;
+      if (this.registryPattern.test(section)) {        break;
       }
 
       // Skip if this is another top-level category
-      if (this.findTopLevelCategory(section)) {
-        console.log('Found another category, stopping Socio único search');
-        break;
+      if (this.findTopLevelCategory(section)) {        break;
       }
 
       // Look for "Socio unico:" pattern (case insensitive and flexible spacing)
@@ -1214,17 +1042,13 @@ class SpanishCompanyTermsParser {
         const socioMatch = section.match(pattern);
         if (socioMatch) {
           const socioName = this.cleanOfficerName(socioMatch[1]);
-          console.log(`Found Socio único match: "${socioName}" from "${socioMatch[1]}"`);
-
           if (socioName && socioName.length > 2 && this.isValidSpanishName(socioName)) {
             officers.push({
               name: socioName,
               position: 'Socio único',
               raw_entry: section,
               category: 'Declaración de unipersonalidad',
-            });
-            console.log(`Added Socio único: ${socioName}`);
-            return officers; // Found one, stop looking
+            });            return officers; // Found one, stop looking
           }
         }
       }
@@ -1239,22 +1063,15 @@ class SpanishCompanyTermsParser {
           this.isValidSpanishName(potentialName) &&
           !this.findTopLevelCategory(section) &&
           !this.registryPattern.test(section)
-        ) {
-          console.log(`Potential Socio único name found in first section: "${potentialName}"`);
-          officers.push({
+        ) {          officers.push({
             name: potentialName,
             position: 'Socio único',
             raw_entry: section,
             category: 'Declaración de unipersonalidad',
-          });
-          console.log(`Added Socio único from direct section: ${potentialName}`);
-          return officers;
+          });          return officers;
         }
       }
-    }
-
-    console.log('No Socio único found in sections');
-    return officers;
+    }    return officers;
   }
 
   /**
@@ -1279,9 +1096,6 @@ class SpanishCompanyTermsParser {
         .split(/[;,]/)
         .map(name => this.cleanOfficerName(name))
         .filter(name => name && name.length > 2);
-
-      console.log(`Position: ${officerPosition}, Names:`, names);
-
       // Create officer objects
       for (const name of names) {
         if (this.isValidSpanishName(name)) {
@@ -1302,45 +1116,24 @@ class SpanishCompanyTermsParser {
    * Find officer position from terms.json - ENHANCED FOR SPANISH ABBREVIATIONS
    */
   findOfficerPosition(positionText) {
-    if (!this.terms) {
-      console.log('No terms loaded, using fallback patterns');
-      return this.findOfficerPositionFallback(positionText);
+    if (!this.terms) {      return this.findOfficerPositionFallback(positionText);
     }
 
     const cleanText = positionText
       .trim()
       .replace(/[:\s]+$/, '')
       .toUpperCase();
-    console.log(`Looking for position: "${positionText}" -> cleaned: "${cleanText}"`);
-
     // Also try version without trailing period for matching
     const cleanTextNoPeriod = cleanText.replace(/\.$/, '');
-    console.log(`Also trying without period: "${cleanTextNoPeriod}"`);
-
     // Log what we have in terms.json for debugging
-    if (cleanText.includes('MANCOM')) {
-      console.log('=== DEBUGGING MANCOM MATCHING ===');
-      console.log('Looking for variations of MANCOM...');
-      const mancomunadoTerms = this.terms.officersPositions.filter(pos =>
+    if (cleanText.includes('MANCOM')) {      const mancomunadoTerms = this.terms.officersPositions.filter(pos =>
         pos.toUpperCase().includes('MANCOM')
-      );
-      console.log('Found MANCOM terms in database:', mancomunadoTerms);
-      console.log('Exact comparisons:');
-      mancomunadoTerms.forEach(term => {
-        const termUpper = term.toUpperCase();
-        console.log(
-          `  "${termUpper}" === "${cleanText.toUpperCase()}" ? ${termUpper === cleanText.toUpperCase()}`
-        );
-        console.log(
-          `  "${termUpper}" === "${cleanTextNoPeriod.toUpperCase()}" ? ${termUpper === cleanTextNoPeriod.toUpperCase()}`
-        );
-      });
+      );      mancomunadoTerms.forEach(term => {
+        const termUpper = term.toUpperCase();      });
     }
 
     // Skip if this looks like business activity
-    if (this.isBusinessActivityDescription(positionText)) {
-      console.log('Rejected as business activity:', positionText);
-      return null;
+    if (this.isBusinessActivityDescription(positionText)) {      return null;
     }
 
     // Try exact match first - check both with and without trailing period
@@ -1357,9 +1150,7 @@ class SpanishCompanyTermsParser {
       );
     });
 
-    if (exactMatch) {
-      console.log(`Found exact match: "${exactMatch}"`);
-      return exactMatch;
+    if (exactMatch) {      return exactMatch;
     }
 
     // Try common Spanish abbreviations and patterns
@@ -1389,9 +1180,7 @@ class SpanishCompanyTermsParser {
 
     // Check common patterns
     for (const [pattern, position] of Object.entries(commonPatterns)) {
-      if (cleanText === pattern || cleanText.includes(pattern)) {
-        console.log(`Found common pattern match: "${pattern}" -> "${position}"`);
-        return position;
+      if (cleanText === pattern || cleanText.includes(pattern)) {        return position;
       }
     }
 
@@ -1405,20 +1194,13 @@ class SpanishCompanyTermsParser {
       );
     });
 
-    if (partialMatch) {
-      console.log(`Found partial match: "${partialMatch}"`);
-      return partialMatch;
+    if (partialMatch) {      return partialMatch;
     }
 
     // Fallback to common patterns
     const fallback = this.findOfficerPositionFallback(positionText);
-    if (fallback) {
-      console.log(`Found fallback match: "${fallback}"`);
-      return fallback;
-    }
-
-    console.log(`No valid officer position found for: "${positionText}"`);
-    return null;
+    if (fallback) {      return fallback;
+    }    return null;
   }
 
   /**
@@ -1515,9 +1297,6 @@ class SpanishCompanyTermsParser {
   parseConstitutionFromSectionsWithCount(sections, startIndex) {
     const info = {};
     let consumed = 0;
-
-    console.log(`=== PARSING CONSTITUTION from section ${startIndex} ===`);
-
     for (let i = startIndex; i < sections.length && i < startIndex + 10; i++) {
       const section = sections[i];
 
@@ -1526,21 +1305,14 @@ class SpanishCompanyTermsParser {
 
       // Stop if we hit registry data
       if (this.registryPattern.test(section)) break;
-
-      console.log(`Constitution section ${i}: "${section}"`);
-
       // Extract various constitution details
       const dateMatch = section.match(/Comienzo de operaciones\s*:\s*(\d{1,2}\.\d{1,2}\.\d{2,4})/);
       if (dateMatch) {
-        info.constitution_date = dateMatch[1];
-        console.log('Found constitution date:', info.constitution_date);
-      }
+        info.constitution_date = dateMatch[1];      }
 
       const addressMatch = section.match(/Domicilio:\s*(.*?)(?=\s*\.?\s*Capital:|$)/i);
       if (addressMatch) {
-        info.address = addressMatch[1].trim().replace(/\.$/, '');
-        console.log('Found address:', info.address);
-      }
+        info.address = addressMatch[1].trim().replace(/\.$/, '');      }
 
       // Enhanced capital extraction - handle various patterns including capital increases
       let capitalMatch = section.match(
@@ -1551,24 +1323,18 @@ class SpanishCompanyTermsParser {
         if (!capital.toLowerCase().includes('euros')) {
           capital += ' Euros';
         }
-        info.capital = capital;
-        console.log('Found capital:', info.capital);
-      }
+        info.capital = capital;      }
 
       const activityMatch = section.match(
         /Objeto social:\s*(.*?)(?=\s*\.?\s*(?:Domicilio:|Capital:|Nombramientos|Declaración|\.|$))/i
       );
       if (activityMatch) {
-        info.activity = activityMatch[1].trim().replace(/\.$/, '');
-        console.log('Found activity:', info.activity);
-      }
+        info.activity = activityMatch[1].trim().replace(/\.$/, '');      }
 
       // Look for CNAE codes
       const cnaeMatch = section.match(/CNAE:\s*(\d+)/i);
       if (cnaeMatch) {
-        info.cnae_code = cnaeMatch[1];
-        console.log('Found CNAE code:', info.cnae_code);
-      }
+        info.cnae_code = cnaeMatch[1];      }
 
       consumed++;
     }
@@ -1581,31 +1347,20 @@ class SpanishCompanyTermsParser {
    */
   parseConstitutionFromAllSections(sections, startIndex, endIndex) {
     const info = {};
-
-    console.log(`=== PARSING CONSTITUTION from sections ${startIndex} to ${endIndex - 1} ===`);
-
     // Combine all sections between categories into one text block
     const allConstitutionText = sections.slice(startIndex, endIndex).join(' ');
-    console.log('Combined constitution text:', allConstitutionText);
-
     // Extract various constitution details from the combined text
     const dateMatch = allConstitutionText.match(
       /Comienzo de operaciones\s*:\s*(\d{1,2}\.\d{1,2}\.\d{2,4})/
     );
     if (dateMatch) {
-      info.constitution_date = dateMatch[1];
-      console.log('Found constitution date:', info.constitution_date);
-    }
+      info.constitution_date = dateMatch[1];    }
 
     const addressMatch = allConstitutionText.match(/Domicilio:\s*(.*?)(?=\s*\.?\s*Capital:|$)/i);
     if (addressMatch) {
-      info.address = addressMatch[1].trim().replace(/\.$/, '');
-      console.log('Found address:', info.address);
-    }
+      info.address = addressMatch[1].trim().replace(/\.$/, '');    }
 
     // Enhanced capital extraction - handle various patterns including capital increases
-    console.log('Searching for capital in text:', allConstitutionText);
-
     // Try multiple capital patterns
     let capitalMatch =
       allConstitutionText.match(
@@ -1619,26 +1374,18 @@ class SpanishCompanyTermsParser {
       if (!capital.toLowerCase().includes('euros') && !capital.toLowerCase().includes('euro')) {
         capital += ' Euros';
       }
-      info.capital = capital;
-      console.log('Found capital:', info.capital);
-    } else {
-      console.log('NO CAPITAL MATCH FOUND in:', allConstitutionText);
-    }
+      info.capital = capital;    } else {    }
 
     const activityMatch = allConstitutionText.match(
       /Objeto social:\s*(.*?)(?=\s*\.?\s*(?:Domicilio:|Capital:|Nombramientos|Declaración|\.|$))/i
     );
     if (activityMatch) {
-      info.activity = activityMatch[1].trim().replace(/\.$/, '');
-      console.log('Found activity:', info.activity);
-    }
+      info.activity = activityMatch[1].trim().replace(/\.$/, '');    }
 
     // Look for CNAE codes
     const cnaeMatch = allConstitutionText.match(/CNAE:\s*(\d+)/i);
     if (cnaeMatch) {
-      info.cnae_code = cnaeMatch[1];
-      console.log('Found CNAE code:', info.cnae_code);
-    }
+      info.cnae_code = cnaeMatch[1];    }
 
     return info;
   }
@@ -1648,9 +1395,6 @@ class SpanishCompanyTermsParser {
    */
   parseConstitutionFromSections(sections, startIndex) {
     const info = {};
-
-    console.log(`=== PARSING CONSTITUTION from section ${startIndex} ===`);
-
     for (let i = startIndex; i < sections.length && i < startIndex + 10; i++) {
       const section = sections[i];
 
@@ -1659,21 +1403,14 @@ class SpanishCompanyTermsParser {
 
       // Stop if we hit registry data
       if (this.registryPattern.test(section)) break;
-
-      console.log(`Constitution section ${i}: "${section}"`);
-
       // Extract various constitution details
       const dateMatch = section.match(/Comienzo de operaciones\s*:\s*(\d{1,2}\.\d{1,2}\.\d{2,4})/);
       if (dateMatch) {
-        info.constitution_date = dateMatch[1];
-        console.log('Found constitution date:', info.constitution_date);
-      }
+        info.constitution_date = dateMatch[1];      }
 
       const addressMatch = section.match(/Domicilio:\s*(.*?)(?=\s*\.?\s*Capital:|$)/i);
       if (addressMatch) {
-        info.address = addressMatch[1].trim().replace(/\.$/, '');
-        console.log('Found address:', info.address);
-      }
+        info.address = addressMatch[1].trim().replace(/\.$/, '');      }
 
       // Enhanced capital extraction - handle various patterns including capital increases
       let capitalMatch = section.match(
@@ -1684,29 +1421,21 @@ class SpanishCompanyTermsParser {
         if (!capital.toLowerCase().includes('euros')) {
           capital += ' Euros';
         }
-        info.capital = capital;
-        console.log('Found capital:', info.capital);
-      }
+        info.capital = capital;      }
 
       // Check for resultante capital (after capital increases)
       const resultanteMatch = section.match(/Resultante Suscrito:\s*([\d.,]+\s*Euros?)/i);
       if (resultanteMatch) {
-        info.total_capital = resultanteMatch[1];
-        console.log('Found total capital after increase:', info.total_capital);
-      }
+        info.total_capital = resultanteMatch[1];      }
 
       const activityMatch = section.match(/Objeto social:\s*(.*?)(?=\s*\.?\s*Domicilio:|$)/i);
       if (activityMatch) {
-        info.activity = activityMatch[1].trim().replace(/\.$/, '');
-        console.log('Found activity:', info.activity);
-      }
+        info.activity = activityMatch[1].trim().replace(/\.$/, '');      }
 
       // Enhanced CNAE code extraction
       const cnaeMatch = section.match(/CNAE[.\s]*(\d+\.\d+)/i);
       if (cnaeMatch) {
-        info.cnae_code = cnaeMatch[1];
-        console.log('Found CNAE code:', info.cnae_code);
-      }
+        info.cnae_code = cnaeMatch[1];      }
 
       // ENHANCED: Look for embedded officer information in constitution sections
       // Constitution entries often contain initial administrator appointments
@@ -1722,18 +1451,13 @@ class SpanishCompanyTermsParser {
       ];
 
       const hasOfficerInfo = hasOfficerPatterns.some(pattern => pattern.test(section));
-      if (hasOfficerInfo) {
-        console.log(`Constitution section ${i} contains officer information: "${section}"`);
-        info.hasOfficerInfo = true;
+      if (hasOfficerInfo) {        info.hasOfficerInfo = true;
 
         // Store the section for officer parsing
         if (!info.officerSections) info.officerSections = [];
         info.officerSections.push(section);
       }
-    }
-
-    console.log('Constitution parsing result:', info);
-    return info;
+    }    return info;
   }
 
   /**
@@ -1811,15 +1535,7 @@ class SpanishCompanyTermsParser {
       const placeholder = `###PLACEHOLDER${placeholders.length}###`;
       placeholders.push(match);
       return placeholder;
-    });
-
-    console.log('=== SMART SPLITTING DEBUG ===');
-    console.log('Original text sample:', fullEntry.substring(0, 300) + '...');
-    console.log('Protected text sample:', protectedText.substring(0, 300) + '...');
-    console.log('Protected', placeholders.length, 'patterns');
-    placeholders.forEach((pattern, index) => {
-      console.log(`Protected pattern ${index}: "${pattern}"`);
-    });
+    });    placeholders.forEach((pattern, index) => {    });
 
     // Now split on remaining periods
     const sections = protectedText
@@ -1833,9 +1549,6 @@ class SpanishCompanyTermsParser {
         return restored;
       })
       .filter(s => s.length > 0);
-
-    console.log('Smart split resulted in', sections.length, 'sections');
-
     return sections;
   }
 
@@ -1860,9 +1573,6 @@ class SpanishCompanyTermsParser {
    * Main parsing function - ENHANCED
    */
   parseSpanishCompanyData(rawData) {
-    console.log('=== PARSING SPANISH COMPANY DATA ===');
-    console.log('Raw data:', rawData);
-
     // First, try to extract the actual company name from various sources
     let companyName = null;
 
@@ -1872,16 +1582,12 @@ class SpanishCompanyTermsParser {
       // This captures everything up to the first period, including & characters
       const nameMatch = rawData.full_entry.match(/^\d+\s*[-–—]\s*([^.\n]+?)(?:\s*\(\d{4}\))?\.?$/m);
       if (nameMatch && nameMatch[1]) {
-        companyName = nameMatch[1].trim();
-        console.log('Extracted company name from full_entry:', companyName);
-      }
+        companyName = nameMatch[1].trim();      }
     }
 
     // Priority 2: Direct name field (but verify it's not truncated)
     if (!companyName && rawData.name && rawData.name !== 'Empresa Española') {
       companyName = rawData.name;
-      console.log('Found company name in name field:', companyName);
-
       // WORKAROUND: If name ends with & and we have full_entry, try to get the complete name
       if (companyName.endsWith(' &') && rawData.full_entry) {
         const fullMatch = rawData.full_entry.match(
@@ -1889,11 +1595,7 @@ class SpanishCompanyTermsParser {
         );
         if (fullMatch && fullMatch[1]) {
           const fullName = fullMatch[1].trim();
-          if (fullName.length > companyName.length) {
-            console.log(
-              `⚠️ Detected truncated name "${companyName}", using full name from entry: "${fullName}"`
-            );
-            companyName = fullName;
+          if (fullName.length > companyName.length) {            companyName = fullName;
           }
         }
       }
@@ -1902,9 +1604,7 @@ class SpanishCompanyTermsParser {
     // Priority 3: From highlights if available
     if (!companyName && rawData.highlights?.company_name) {
       // Remove HTML tags from highlighted name
-      companyName = rawData.highlights.company_name.replace(/<[^>]*>/g, '').trim();
-      console.log('Found company name in highlights:', companyName);
-    }
+      companyName = rawData.highlights.company_name.replace(/<[^>]*>/g, '').trim();    }
 
     // Priority 4: Other fields
     if (!companyName) {
@@ -1947,9 +1647,7 @@ class SpanishCompanyTermsParser {
     };
 
     // Parse from full_entry using enhanced BORME structure
-    if (rawData.full_entry) {
-      console.log('Parsing full entry with enhanced parser...');
-      const bormeData = this.parseBormeEntry(rawData.full_entry);
+    if (rawData.full_entry) {      const bormeData = this.parseBormeEntry(rawData.full_entry);
 
       // Merge officers
       result.officers = bormeData.officers;
@@ -1971,34 +1669,16 @@ class SpanishCompanyTermsParser {
           date: event.date || entryDate,
         }));
         // Calculate company status based on events
-        result.companyStatus = this.getCompanyStatusFromEvents(result.corporateEvents);
-        console.log(
-          `Found ${result.corporateEvents.length} corporate events, status: ${result.companyStatus?.label}`
-        );
-      }
+        result.companyStatus = this.getCompanyStatusFromEvents(result.corporateEvents);      }
 
       // Extract additional info from full_entry if needed
-      if (bormeData.constitution) {
-        console.log('Merging constitution data into result:', bormeData.constitution);
-        Object.assign(result, bormeData.constitution);
-        console.log('Result after constitution merge:', {
-          address: result.address,
-          capital: result.capital,
-          activity: result.activity,
-        });
-      } else {
-        console.log('No constitution data in bormeData');
-      }
+      if (bormeData.constitution) {        Object.assign(result, bormeData.constitution);      } else {      }
 
       // Use new address from "Cambio de domicilio social" category
       if (bormeData.newAddress) {
-        result.address = bormeData.newAddress;
-        console.log('Using newAddress from Cambio de domicilio social:', result.address);
-      }
+        result.address = bormeData.newAddress;      }
 
       const totalOfficers = this.getTotalOfficers(result.officers);
-      console.log(`Enhanced parsing result: ${totalOfficers} officers found`);
-
       if (totalOfficers > 0) {
         result.parsing_method = 'enhanced';
       }
@@ -2012,23 +1692,15 @@ class SpanishCompanyTermsParser {
     // Fallback: Extract address from "Cambio de domicilio social" entries using regex
     if (rawData.full_entry && !result.address) {
       // Check if entry contains "Cambio de domicilio social"
-      if (rawData.full_entry.includes('Cambio de domicilio social')) {
-        console.log('Entry contains Cambio de domicilio social:', rawData.full_entry);
-      }
+      if (rawData.full_entry.includes('Cambio de domicilio social')) {      }
 
       const cambioDomicilioMatch = rawData.full_entry.match(
         /Cambio de domicilio social\.?\s*([^.]+(?:\([^)]+\))?)/i
       );
-      if (cambioDomicilioMatch) {
-        console.log('Regex matched:', cambioDomicilioMatch);
-        const extractedAddress = cambioDomicilioMatch[1].trim();
+      if (cambioDomicilioMatch) {        const extractedAddress = cambioDomicilioMatch[1].trim();
         // Only use if it looks like an address (contains street indicators)
         if (/(?:C\/|CALLE|AVENIDA|PLAZA|PASEO|CARRETERA|AVDA|PZA)/i.test(extractedAddress)) {
-          result.address = extractedAddress.replace(/\.$/, '');
-          console.log('Found address from Cambio de domicilio social:', result.address);
-        } else {
-          console.log('Extracted text does not look like address:', extractedAddress);
-        }
+          result.address = extractedAddress.replace(/\.$/, '');        } else {        }
       }
     }
 
@@ -2047,17 +1719,13 @@ class SpanishCompanyTermsParser {
           const extractedAddress = feErratasMatch[1].trim().replace(/,$/, '');
           // Only use if it looks like an address
           if (/(?:C\/|CALLE|AVENIDA|PLAZA|PASEO|CARRETERA|AVDA|PZA)/i.test(extractedAddress)) {
-            result.address = extractedAddress;
-            console.log('Found address from Fe de erratas:', result.address);
-          }
+            result.address = extractedAddress;          }
         }
       }
     }
 
     // Try to parse from parsed_details if available
     if (rawData.parsed_details) {
-      console.log('Found parsed_details, merging data...');
-
       // Merge basic fields - clean values to remove leading colons from API parsing
       if (!result.cif && rawData.parsed_details.cif)
         result.cif = this.cleanFieldValue(rawData.parsed_details.cif);
@@ -2104,33 +1772,18 @@ class SpanishCompanyTermsParser {
 
     // Fallback: try to parse from any text content
     const textContent = rawData.content || rawData.text || rawData.summary || '';
-    if (textContent && this.getTotalOfficers(result.officers) === 0) {
-      console.log('Trying fallback parsing from text content...');
-      const fallbackData = this.parseBormeEntry(textContent);
+    if (textContent && this.getTotalOfficers(result.officers) === 0) {      const fallbackData = this.parseBormeEntry(textContent);
       result.officers = fallbackData.officers;
       result.parsing_method = 'fallback';
 
-      const totalOfficers = this.getTotalOfficers(result.officers);
-      console.log(`Fallback parsing result: ${totalOfficers} officers found`);
-    }
-
-    console.log('Final parsed result:', result);
-    return result;
+      const totalOfficers = this.getTotalOfficers(result.officers);    }    return result;
   }
 
   /**
    * ENHANCED: Extract company name changes from BORME entry
    */
   extractNameChanges(fullEntry, result) {
-    console.log('=== EXTRACTING NAME CHANGES ===');
-    console.log(
-      'Full entry for name change detection:',
-      fullEntry ? fullEntry.substring(0, 200) + '...' : 'NO FULL ENTRY'
-    );
-
-    if (!fullEntry) {
-      console.log('❌ No full entry provided for name change detection');
-      return;
+    if (!fullEntry) {      return;
     }
 
     // Look for "Cambio de denominación social" pattern
@@ -2147,10 +1800,7 @@ class SpanishCompanyTermsParser {
           rawMatch: nameChangeMatch[0],
           // Try to extract date from the entry context
           date: this.extractDateFromEntry(fullEntry) || null,
-        });
-
-        console.log('Found name change:', newName);
-      }
+        });      }
     }
 
     // Alternative pattern: Look for company names mentioned after certain keywords
@@ -2161,9 +1811,7 @@ class SpanishCompanyTermsParser {
     while ((mentionMatch = mentionPattern.exec(fullEntry)) !== null) {
       const previousName = mentionMatch[2].trim();
       if (previousName && previousName.length > 3 && !result.previousNames.includes(previousName)) {
-        result.previousNames.push(previousName);
-        console.log('Found previous name reference:', previousName);
-      }
+        result.previousNames.push(previousName);      }
     }
 
     // Look for patterns where new company names are mentioned in the entry
@@ -2181,15 +1829,9 @@ class SpanishCompanyTermsParser {
             changeType: 'nueva_denominacion',
             rawMatch: newNameMatch[0],
             date: this.extractDateFromEntry(fullEntry) || null,
-          });
-          console.log('Found new name reference:', newName);
-        }
+          });        }
       }
-    }
-
-    console.log('Name changes found:', result.nameChanges);
-    console.log('Previous names found:', result.previousNames);
-  }
+    }  }
 
   /**
    * Extract date from BORME entry - looks for patterns like "I/A 2 (13.01.25)"
@@ -2255,9 +1897,6 @@ class SpanishCompanyTermsParser {
     const events = [];
     // FIXED: Add null checks for eventToCategoryMap and validate inputs
     if (!fullEntry || !this.terms || !this.eventToCategoryMap) return events;
-
-    console.log('=== EXTRACTING CORPORATE EVENTS ===');
-
     // Scan the full entry for all top-level categories
     const alwaysTopLevel = this.terms.alwaysTopLevel;
     // FIXED: Validate alwaysTopLevel is an array
@@ -2374,10 +2013,7 @@ class SpanishCompanyTermsParser {
           isLifecycleEvent: categoryInfo.category === 'lifecycle',
           isCapitalEvent: categoryInfo.category === 'capital',
           isStructuralEvent: categoryInfo.category === 'structural',
-        });
-
-        console.log(`Found corporate event: ${eventType} (${categoryInfo.category})`);
-      }
+        });      }
     }
 
     return events;
@@ -2629,26 +2265,16 @@ export const formatCompanyForRag = company => {
 };
 
 // Debug function for testing
-export const debugBormeEntry = fullEntry => {
-  console.log('=== DEBUGGING BORME ENTRY ===');
-  const result = termsParser.parseBormeEntry(fullEntry);
-  console.log('Result:', result);
-  return result;
+export const debugBormeEntry = fullEntry => {  const result = termsParser.parseBormeEntry(fullEntry);  return result;
 };
 
 // Test function specifically for constitution entries
 // Test function specifically for constitution officer extraction
-export const testConstitutionOfficerExtraction = constitutionEntry => {
-  console.log('=== TESTING CONSTITUTION OFFICER EXTRACTION ===');
-  const result = termsParser.parseBormeEntry(constitutionEntry);
-  console.log('Constitution test result:', result);
-
+export const testConstitutionOfficerExtraction = constitutionEntry => {  const result = termsParser.parseBormeEntry(constitutionEntry);
   const totalOfficers = Object.values(result.officers).reduce(
     (total, category) => total + category.length,
     0
   );
-  console.log(`Total officers extracted from constitution: ${totalOfficers}`);
-
   return {
     officers: result.officers,
     constitution: result.constitution,
@@ -2662,8 +2288,6 @@ export const testConstitutionOfficerExtraction = constitutionEntry => {
 export const transformApiDataToExpectedFormat = apiData => {
   // If the API returns the old format, transform it to the new format
   if (Array.isArray(apiData.officers)) {
-    console.log('Transforming old officers format to new categorized format');
-
     const categorizedOfficers = {
       nombramientos: [],
       reelecciones: [],
@@ -2710,15 +2334,11 @@ export const transformApiDataToExpectedFormat = apiData => {
 export const parseSpanishCompanyDataWithApiAlignment = rawData => {
   // First, debug what we're receiving
   const debugInfo = debugDataFormat(rawData);
-  console.log('Debug info:', debugInfo);
-
   // Transform API data if needed
   const transformedData = transformApiDataToExpectedFormat(rawData);
 
   // If we have a full_entry, use the enhanced parser
-  if (transformedData.full_entry) {
-    console.log('Using enhanced parser with full_entry');
-    return parseSpanishCompanyData(transformedData);
+  if (transformedData.full_entry) {    return parseSpanishCompanyData(transformedData);
   }
 
   // Otherwise, work with the transformed API data
@@ -2743,8 +2363,5 @@ export const parseSpanishCompanyDataWithApiAlignment = rawData => {
     enhanced_parsing: transformedData.enhanced_parsing || false,
     terms_used: true,
     parsing_method: transformedData.parsing_method || 'api_direct',
-  };
-
-  console.log('Final parsed result:', result);
-  return result;
+  };  return result;
 };

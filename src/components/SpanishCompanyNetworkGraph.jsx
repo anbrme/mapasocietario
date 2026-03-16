@@ -32,6 +32,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Chip,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -404,7 +405,9 @@ const SpanishCompanyNetworkGraph = ({
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('company'); // 'company' or 'officer'
-  const [labelFilterText, setLabelFilterText] = useState(''); // New state for label text filter
+  const [labelFilterText, setLabelFilterText] = useState('');
+  const [statusFilters, setStatusFilters] = useState(new Set()); // 'active' | 'ceased'
+  const [positionFilters, setPositionFilters] = useState(new Set());
   const [isSearching, setIsSearching] = useState(false);
   const [searchResultSize, setSearchResultSize] = useState(50);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -598,11 +601,6 @@ const SpanishCompanyNetworkGraph = ({
     if (!visible && !embedded) return;
 
     if (initialCompanyData && initialCompanyData.length > 0) {
-      console.log(
-        'Auto-loading initial company data into network graph:',
-        initialCompanyData.length,
-        'entries'
-      );
       addCompanyWithOfficersToGraph(initialCompanyData);
       // Pin initial company nodes so they survive filtering
       initialCompanyData.forEach(company => {
@@ -613,7 +611,6 @@ const SpanishCompanyNetworkGraph = ({
         }
       });
     } else if (initialOfficerData && initialOfficerData.name) {
-      console.log('Auto-loading initial officer data into network graph:', initialOfficerData.name);
       const entries = initialOfficerData.companies || [];
       if (entries.length > 0) {
         addOfficerToGraph(entries, initialOfficerData.name);
@@ -724,8 +721,6 @@ const SpanishCompanyNetworkGraph = ({
       if (!text) return [];
 
       const officers = [];
-      console.log(`=== EXTRACTING OFFICERS FROM TEXT (${category}) ===`);
-      console.log('Text:', text);
 
       // Enhanced patterns to handle Spanish BORME format
       const patterns = [
@@ -752,7 +747,6 @@ const SpanishCompanyNetworkGraph = ({
           const position = match[1].trim().replace(/\.$/, ''); // Remove trailing period
           const namesText = match[2].trim().replace(/\.$/, ''); // Remove trailing period
 
-          console.log(`Pattern match - Position: "${position}", Names: "${namesText}"`);
 
           // Validate position looks like an officer position
           const positionLower = position.toLowerCase();
@@ -815,7 +809,6 @@ const SpanishCompanyNetworkGraph = ({
             continue;
 
           if (!isValidPosition) {
-            console.log(`Skipping invalid position: "${position}"`);
             continue;
           }
 
@@ -825,7 +818,6 @@ const SpanishCompanyNetworkGraph = ({
             .map(name => name.trim())
             .filter(name => name.length > 0);
 
-          console.log(`Split names:`, names);
 
           names.forEach(name => {
             // Enhanced name validation
@@ -850,15 +842,12 @@ const SpanishCompanyNetworkGraph = ({
                 category: category,
                 raw_entry: match[0],
               });
-              console.log(`Added officer: ${cleanName} - ${position} (${category})`);
             } else {
-              console.log(`Skipping invalid name: "${cleanName}"`);
             }
           });
         }
       }
 
-      console.log(`Final extracted ${officers.length} officers:`, officers);
       return officers;
     },
     [termData, termsAreReady]
@@ -1014,7 +1003,6 @@ const SpanishCompanyNetworkGraph = ({
         let pgHandled = false;
         try {
           const pgData = await spanishCompaniesService.pgExpandCompany(query);
-          console.log(`[DEBUG] pgExpandCompany returned ${pgData.officers?.length ?? 0} officers:`, pgData);
           const canonicalName = pgData.company_name || query;
           const canonicalNorm = normalizeCompanyName(canonicalName);
           const queryNorm = normalizeCompanyName(query);
@@ -1241,7 +1229,6 @@ const SpanishCompanyNetworkGraph = ({
   // Add company with all its officers to the graph
   const addCompanyWithOfficersToGraph = useCallback(
     async (searchResults, anchorNode = null) => {
-      console.log('Adding company with officers to graph:', searchResults);
 
       setIsLoading(true);
       setError(null);
@@ -1381,14 +1368,9 @@ const SpanishCompanyNetworkGraph = ({
               let entryParsed;
               if (entry.parsed && entry.parsed.officers) {
                 entryParsed = entry.parsed;
-                console.log(
-                  `Using pre-parsed data for entry ${entry.identifier}:`,
-                  entryParsed.officers
-                );
               } else {
                 // Fallback to parsing if not available
                 entryParsed = parseSpanishCompanyData(entry);
-                console.log(`Parsing entry ${entry.identifier} on-the-fly:`, entryParsed.officers);
               }
 
               // Iterate over each officer category to populate allOfficers
@@ -1398,9 +1380,6 @@ const SpanishCompanyNetworkGraph = ({
                   entryParsed.officers[categoryKey] &&
                   entryParsed.officers[categoryKey].length > 0
                 ) {
-                  console.log(
-                    `Using primary parsed officers for ${categoryKey} in entry ${entry.identifier}`
-                  );
                   entryParsed.officers[categoryKey].forEach(parsedOfficer => {
                     // Renamed to avoid confusion
                     allOfficers[categoryKey].push({
@@ -1414,18 +1393,12 @@ const SpanishCompanyNetworkGraph = ({
                 }
                 // If primary parsing for this category is empty, AND raw text for this category exists in parsed_details
                 else if (entry.parsed_details && entry.parsed_details[categoryKey]) {
-                  console.log(
-                    `Primary parsing for ${categoryKey} for entry ${entry.identifier} is empty. Trying fallback from parsed_details text: "${entry.parsed_details[categoryKey]}"`
-                  );
                   const officersFromFallback = extractOfficersFromText(
                     entry.parsed_details[categoryKey],
                     categoryKey
                   );
 
                   if (officersFromFallback.length > 0) {
-                    console.log(
-                      `Fallback parser found ${officersFromFallback.length} officers for ${categoryKey} in entry ${entry.identifier}`
-                    );
                     officersFromFallback.forEach(officer => {
                       allOfficers[categoryKey].push({
                         ...officer,
@@ -1468,9 +1441,6 @@ const SpanishCompanyNetworkGraph = ({
               allOfficers[categoryKey] = allOfficers[categoryKey].filter(officer => {
                 const key = `${officer.name}-${officer.position}`;
                 if (seen.has(key)) {
-                  console.log(
-                    `Network: Removing duplicate officer in ${categoryKey}: ${officer.name} - ${officer.position}`
-                  );
                   return false;
                 }
                 seen.add(key);
@@ -1498,7 +1468,6 @@ const SpanishCompanyNetworkGraph = ({
               }
             });
 
-            console.log(`Adding ${allOfficersList.length} officers for company ${companyName}`);
 
             allOfficersList.forEach(officer => {
               // Create a normalized name for consistent node identification
@@ -1623,7 +1592,6 @@ const SpanishCompanyNetworkGraph = ({
   // Add officer to graph with associated companies
   const addOfficerToGraph = useCallback(
     async (searchResults, officerNameParam) => {
-      console.log('Adding officer to graph:', searchResults);
 
       setIsLoading(true);
       setError(null);
@@ -1892,7 +1860,6 @@ const SpanishCompanyNetworkGraph = ({
         let usedPG = false;
         try {
           data = await spanishCompaniesService.pgExpandCompany(companyName);
-          console.log(`[DEBUG] pgExpandCompany (expand node) returned ${data.officers?.length ?? 0} officers:`, data);
           usedPG = true;
         } catch {
           data = await spanishCompaniesService.workingSearch(companyName, {
@@ -2464,7 +2431,6 @@ const SpanishCompanyNetworkGraph = ({
 
   const handleNodeDragEnd = useCallback(
     node => {
-      console.log('Node dragged, fixing position:', node.name);
 
       // Keep dragged node pinned where released.
       node.fx = node.x;
@@ -2550,6 +2516,24 @@ const SpanishCompanyNetworkGraph = ({
       .filter(t => t.length > 0);
   }, [labelFilterText]);
 
+  // Classify link categories as active or ceased
+  const isActiveLinkCategory = cat => {
+    const c = (cat || '').toLowerCase();
+    return c.includes('nombramiento') || c.includes('reeleccion') || c.includes('reelección');
+  };
+
+  // Available positions extracted from current graph links
+  const availablePositions = React.useMemo(() => {
+    const positions = new Set();
+    graphData.links.forEach(link => {
+      const rel = (link.relationship || '').trim();
+      if (rel) positions.add(rel);
+    });
+    return [...positions].sort();
+  }, [graphData.links]);
+
+  const hasChipFilters = statusFilters.size > 0 || positionFilters.size > 0;
+
   const filteredGraphData = React.useMemo(() => {
     // Start by excluding manually hidden nodes
     let activeNodes = graphData.nodes;
@@ -2561,6 +2545,39 @@ const SpanishCompanyNetworkGraph = ({
         const sid = normalizeNodeId(getNodeIdFromRef(l.source));
         const tid = normalizeNodeId(getNodeIdFromRef(l.target));
         return !hiddenNodeIds.has(sid) && !hiddenNodeIds.has(tid);
+      });
+    }
+
+    // Apply status and position chip filters
+    if (hasChipFilters) {
+      activeLinks = activeLinks.filter(link => {
+        if (link.type && link.type !== 'officer-company') return true;
+
+        if (statusFilters.size > 0) {
+          const active = isActiveLinkCategory(link.category);
+          const wantActive = statusFilters.has('active');
+          const wantCeased = statusFilters.has('ceased');
+          if (wantActive && !wantCeased && !active) return false;
+          if (wantCeased && !wantActive && active) return false;
+        }
+
+        if (positionFilters.size > 0) {
+          const rel = (link.relationship || '').trim();
+          if (!positionFilters.has(rel)) return false;
+        }
+
+        return true;
+      });
+
+      // Remove officer nodes that have no remaining links
+      const linkedNodeIds = new Set();
+      activeLinks.forEach(link => {
+        linkedNodeIds.add(normalizeNodeId(getNodeIdFromRef(link.source)));
+        linkedNodeIds.add(normalizeNodeId(getNodeIdFromRef(link.target)));
+      });
+      activeNodes = activeNodes.filter(n => {
+        if (n.type !== 'officer') return true;
+        return linkedNodeIds.has(normalizeNodeId(n.id));
       });
     }
 
@@ -2599,7 +2616,7 @@ const SpanishCompanyNetworkGraph = ({
     });
 
     return { nodes: filteredNodes, links: filteredLinks };
-  }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds]);
+  }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds, statusFilters, positionFilters, hasChipFilters]);
 
   const parallelLinkMeta = React.useMemo(() => {
     const perPair = new Map();
@@ -3119,6 +3136,61 @@ const SpanishCompanyNetworkGraph = ({
             >
               {loadingMore ? <CircularProgress size={14} /> : 'Cargar más'}
             </Button>
+          )}
+        </Box>
+      )}
+
+      {/* Status & position filter chips */}
+      {graphData.links.length > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1, alignItems: 'center' }}>
+          <Chip
+            label="Vigentes"
+            size="small"
+            variant={statusFilters.has('active') ? 'filled' : 'outlined'}
+            color="success"
+            onClick={() => setStatusFilters(prev => {
+              const next = new Set(prev);
+              next.has('active') ? next.delete('active') : next.add('active');
+              return next;
+            })}
+          />
+          <Chip
+            label="Cesados"
+            size="small"
+            variant={statusFilters.has('ceased') ? 'filled' : 'outlined'}
+            color="error"
+            onClick={() => setStatusFilters(prev => {
+              const next = new Set(prev);
+              next.has('ceased') ? next.delete('ceased') : next.add('ceased');
+              return next;
+            })}
+          />
+          {availablePositions.length > 0 && (
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          )}
+          {availablePositions.map(pos => (
+            <Chip
+              key={pos}
+              label={pos}
+              size="small"
+              variant={positionFilters.has(pos) ? 'filled' : 'outlined'}
+              onClick={() => setPositionFilters(prev => {
+                const next = new Set(prev);
+                next.has(pos) ? next.delete(pos) : next.add(pos);
+                return next;
+              })}
+            />
+          ))}
+          {hasChipFilters && (
+            <Chip
+              label="Limpiar filtros"
+              size="small"
+              variant="outlined"
+              onDelete={() => {
+                setStatusFilters(new Set());
+                setPositionFilters(new Set());
+              }}
+            />
           )}
         </Box>
       )}

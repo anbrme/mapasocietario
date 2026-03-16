@@ -167,8 +167,6 @@ class SpanishCompaniesService {
     try {
       // Normalize query: trim whitespace only (backend handles case normalization)
       const normalizedQuery = query.trim();
-      console.log(`Spanish Companies: Autocompleting "${normalizedQuery}"`);
-
       // Use the directory autocomplete endpoint which queries borme_companies index
       // This has the complete company index vs borme_v2 which may miss some companies
       const response = await fetch(
@@ -246,9 +244,6 @@ class SpanishCompaniesService {
         }
         // Otherwise keep existing (first one wins for same priority)
       }
-
-      console.log('Autocomplete suggestions:', deduplicatedSuggestions);
-
       return {
         suggestions: deduplicatedSuggestions,
         query: normalizedQuery,
@@ -275,8 +270,6 @@ class SpanishCompaniesService {
     try {
       // Normalize query: trim whitespace only (backend handles case normalization)
       const normalizedQuery = query.trim();
-      console.log(`Spanish Officers: Autocompleting "${normalizedQuery}"`);
-
       // Use the proper autocomplete endpoint (10-100x faster than /bormes/officers)
       const response = await fetch(`${this.baseUrl}/bormes/officers-autocomplete`, {
         method: 'POST',
@@ -305,9 +298,6 @@ class SpanishCompaniesService {
         type: 'officer',
         company_count: suggestion.company_count || 0,
       }));
-
-      console.log('Officer suggestions:', suggestions);
-
       return {
         suggestions: suggestions,
         query: normalizedQuery,
@@ -373,11 +363,6 @@ class SpanishCompaniesService {
         officer_mode: officerMode.toString(),
         semantic: semantic.toString(),
       });
-
-      console.log(
-        `Spanish Companies (working-search): "${query}" [size=${size}, exact=${exactMatch}]`
-      );
-
       const response = await this.fetchWithRetry(
         `${this.baseUrl}/bormes/working-search?${params}`,
         { method: 'GET' }
@@ -421,8 +406,6 @@ class SpanishCompaniesService {
     } = options;
 
     try {
-      console.log(`Spanish Companies: Searching for "${query}"`);
-
       // Detect if this is a simple company name search (no question words or complex queries)
       const isSimpleCompanySearch = this.isSimpleCompanyName(query);
 
@@ -436,18 +419,14 @@ class SpanishCompaniesService {
           });
 
           if (workingResult.success && workingResult.results.length > 0) {
-            console.log(
-              `Using working-search results: ${workingResult.results.length} companies found`
-            );
             return this.formatDirectSearchResults(workingResult, query);
           }
         } catch {
-          console.log('Working search unavailable, falling back to agent-intelligence');
+          // Working search unavailable, falling back to agent-intelligence
         }
       }
 
       // Use agent intelligence for complex queries or as fallback
-      console.log(`Using agent intelligence for query: "${query}"`);
       const response = await this.fetchWithRetry(`${this.baseUrl}/bormes/agent-intelligence`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -460,8 +439,6 @@ class SpanishCompaniesService {
       }
 
       const result = await response.json();
-      console.log('Spanish companies raw response:', result);
-
       // If streaming is requested and we have an answer, simulate streaming
       if (stream && onStreamChunk && result.data?.answer?.content) {
         await this.simulateStreaming(result.data.answer.content, onStreamChunk);
@@ -511,10 +488,6 @@ class SpanishCompaniesService {
     } = options;
 
     try {
-      console.log(`Spanish Companies (Smart Search): Querying "${query}"`);
-      if (exactCompanyName) {
-        console.log(`Using exact company name: "${exactCompanyName}"`);
-      }
 
       const requestBody = {
         query: query,
@@ -542,8 +515,6 @@ class SpanishCompaniesService {
       }
 
       const result = await response.json();
-      console.log('Smart search raw response:', result);
-
       if (!result.success) {
         throw new Error(result.error || 'Smart search failed');
       }
@@ -655,8 +626,6 @@ class SpanishCompaniesService {
     } = options;
 
     try {
-      console.log(`Spanish Companies: Searching officers for "${companyName}"`);
-
       let query;
       if (position) {
         query = `${position} de ${companyName}`;
@@ -699,8 +668,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
       }
 
       const result = await response.json();
-      console.log('Officers search raw response:', result);
-
       // If streaming is requested and we have an answer, simulate streaming
       if (stream && onStreamChunk && result.data?.answer?.content) {
         await this.simulateStreaming(result.data.answer.content, onStreamChunk);
@@ -723,8 +690,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
     } = options;
 
     try {
-      console.log(`Spanish Companies: Searching person "${personName}"`);
-
       const response = await fetch(`${this.baseUrl}/bormes/agent-intelligence`, {
         method: 'POST',
         headers: {
@@ -741,8 +706,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
       }
 
       const result = await response.json();
-      console.log('Person search raw response:', result);
-
       return this.formatPersonResults(result, personName);
     } catch (error) {
       console.error('Person search failed:', error);
@@ -760,10 +723,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
     } = options;
 
     try {
-      console.log(
-        `Spanish Companies: Analyzing relationships between "${company1}" and "${company2}"`
-      );
-
       const query = `¿Qué relación hay entre ${company1} y ${company2}?`;
 
       const response = await fetch(`${this.baseUrl}/bormes/agent-intelligence`, {
@@ -784,8 +743,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
       }
 
       const result = await response.json();
-      console.log('Relationship analysis raw response:', result);
-
       return this.formatRelationshipResults(result, company1, company2);
     } catch (error) {
       console.error('Relationship analysis failed:', error);
@@ -1065,13 +1022,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
     officerTimeline.forEach((events, key) => {
       // Sort events chronologically for this specific officer-position
       events.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-      console.log(`=== SpanishCompaniesService: Analyzing ${key} ===`);
-      console.log(
-        'Events:',
-        events.map(e => `${e.date}: ${e.isAppointment ? 'APPOINTMENT' : 'CESSATION'} (${e.type})`)
-      );
-
       // Determine current status by processing events chronologically
       let isCurrentlyActive = false;
       let latestActiveDate = null;
@@ -1082,17 +1032,10 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
           // Appointment/reelection makes position active
           isCurrentlyActive = true;
           latestActiveDate = event.date;
-          latestAppointmentType = event.type;
-          console.log(`  ${event.date}: APPOINTED - now ACTIVE`);
-        } else if (event.isCessation) {
+          latestAppointmentType = event.type;        } else if (event.isCessation) {
           // Cessation/revocation makes position inactive
-          isCurrentlyActive = false;
-          console.log(`  ${event.date}: CEASED - now INACTIVE`);
-        }
+          isCurrentlyActive = false;        }
       });
-
-      console.log(`Final status for ${key}: ${isCurrentlyActive ? 'ACTIVE' : 'INACTIVE'}`);
-
       // Add to current state if active
       if (isCurrentlyActive) {
         const officerName = events[0].name;
@@ -1387,8 +1330,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
   async intelligentSearch(query, options = {}) {
     try {
       const interpretation = this.interpretQuery(query);
-      console.log(`Spanish Companies: Query interpretation:`, interpretation);
-
       // Pass through streaming options to the specific search methods
       const searchOptions = {
         ...options,
@@ -1578,8 +1519,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
    */
   async getCompanyByExactName(companyName) {
     try {
-      console.log(`🎯 Getting company by exact name: "${companyName}"`);
-
       // Use autocomplete with the exact name - it should return as first result
       const result = await this.autocompleteCompanies(companyName, { limit: 5 });
 
@@ -1590,10 +1529,7 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
         );
 
         if (exactMatch) {
-          console.log(`🎯 Found exact match: "${exactMatch.name}"`);
-
           // Now fetch full company profile using smartQuery
-          console.log(`🎯 Fetching full profile for: "${exactMatch.name}"`);
           const profileResult = await this.smartQuery(
             `Información completa de ${exactMatch.name}`,
             exactMatch.name // Pass exact name to bypass LLM extraction
@@ -1606,18 +1542,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
           const seenOfficers = new Set();
 
           // Debug: log profile structure to understand what data is available
-          console.log('🔍 Profile structure:', {
-            hasDirectivosActuales: !!profile.directivos_actuales,
-            directivosActualesCount: profile.directivos_actuales?.length || 0,
-            hasCronologiaDirectivos: !!profile.cronologia_directivos,
-            cronologiaDirectivosCount: profile.cronologia_directivos?.length || 0,
-            hasHistorialEventos: !!profile.historial_eventos,
-            historialEventosCount: profile.historial_eventos?.length || 0,
-            profileKeys: Object.keys(profile),
-            sampleDirectivo: profile.directivos_actuales?.[0] || null,
-            sampleCronologia: profile.cronologia_directivos?.[0] || null,
-          });
-
           // Extract current officers from profile.directivos_actuales
           if (profile.directivos_actuales && Array.isArray(profile.directivos_actuales)) {
             profile.directivos_actuales.forEach(directivo => {
@@ -1771,11 +1695,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
               answer: profileResult.answer,
             },
           };
-
-          console.log(
-            `🎯 Full profile loaded: ${officers.length} officers, ${publications.length} events`
-          );
-
           return {
             success: true,
             companies: [companyData],
@@ -1784,10 +1703,7 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
             hasFullProfile: true,
           };
         }
-      }
-
-      console.log(`🎯 No exact match found for "${companyName}"`);
-      return {
+      }      return {
         success: true,
         companies: [],
         total: 0,
@@ -1818,8 +1734,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
     }
 
     try {
-      console.log(`📂 Directory Search: "${companyName}"`);
-
       // Normalize the search term
       const normalizedSearch = companyName.toUpperCase().trim();
 
@@ -1837,7 +1751,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
       if (!response.ok) {
         // Directory might not exist yet - return empty result
         if (response.status === 404) {
-          console.log('📂 Directory index not found (may still be building)');
           return { success: true, companies: [], total: 0 };
         }
         throw new Error(`Directory API error: ${response.status}`);
@@ -1885,11 +1798,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
 
         return false;
       });
-
-      console.log(
-        `📂 Directory: ${result.companies?.length || 0} results, ${companies.length} good matches`
-      );
-
       return {
         success: true,
         companies: companies,
@@ -1912,8 +1820,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
    */
   async getDirectoryCompany(companyId) {
     try {
-      console.log(`📂 Getting directory company: ${companyId}`);
-
       const response = await fetch(
         `${this.baseUrl}/bormes/companies/directory/${encodeURIComponent(companyId)}`,
         {
@@ -1990,8 +1896,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
    */
   async fetchBormePdf(bormeId, date) {
     try {
-      console.log(`📄 Fetching BORME PDF: ${bormeId} (${date})`);
-
       // Construct PDF URL from BORME ID
       // Format: BORME-A-YYYY-NNN-PP -> /borme/dias/YYYY/MM/DD/pdfs/BORME-A-YYYY-NNN-PP.pdf
       const dateParts = date.split('-');
@@ -2001,9 +1905,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
 
       const [year, month, day] = dateParts;
       const pdfUrl = `https://www.boe.es/borme/dias/${year}/${month}/${day}/pdfs/${bormeId}.pdf`;
-
-      console.log(`📄 PDF URL: ${pdfUrl}`);
-
       // For now, return the URL - actual PDF fetching would require backend support
       // to avoid CORS issues and do text extraction
       return {
@@ -2030,10 +1931,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
    */
   async smartQuery(query, exactCompanyName = null) {
     try {
-      console.log(`🧠 Smart Query: "${query}"`);
-      if (exactCompanyName) {
-        console.log(`📌 Using exact company name: "${exactCompanyName}"`);
-      }
 
       const requestBody = { query };
 
@@ -2110,9 +2007,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
           const searchNormalized = searchUpper.replace(/[&]/g, '').replace(/\s+/g, ' ').trim();
 
           if (dirNameNormalized === searchNormalized) {
-            console.log(
-              `📂 Resolved company name: "${normalizedName}" -> "${company.company_name}"`
-            );
             return company.company_name;
           }
         }
@@ -2132,9 +2026,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
         const matchingWords = searchWords.filter(w => firstWords.includes(w));
 
         if (matchingWords.length >= Math.min(2, searchWords.length * 0.5)) {
-          console.log(
-            `📂 Resolved company name (partial): "${normalizedName}" -> "${firstMatch.company_name}"`
-          );
           return firstMatch.company_name;
         }
       }
@@ -2197,8 +2088,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
     }
 
     try {
-      console.log(`🏢 Getting companies owned by: "${shareholderName}"`);
-
       const response = await this.fetchWithRetry(
         `${this.baseUrl}/bormes/sole-shareholder-companies`,
         {
@@ -2223,9 +2112,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
       if (!result.success) {
         return { success: false, error: result.error, companies: [] };
       }
-
-      console.log(`🏢 Found ${result.total || 0} companies owned by "${shareholderName}"`);
-
       return {
         success: true,
         companies: result.companies || [],
@@ -2251,8 +2137,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
     }
 
     try {
-      console.log(`🏢 Getting sole shareholder data for: "${companyName}"`);
-
       const response = await this.fetchWithRetry(
         `${this.baseUrl}/bormes/company-sole-shareholder`,
         {
@@ -2281,11 +2165,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
           sole_shareholder_lost: false,
         };
       }
-
-      console.log(
-        `🏢 Found sole shareholder data for "${companyName}": ${result.sole_shareholders?.length || 0} shareholders`
-      );
-
       return {
         success: true,
         sole_shareholders: result.sole_shareholders || [],
