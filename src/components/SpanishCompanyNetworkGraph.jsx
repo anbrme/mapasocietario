@@ -1014,6 +1014,7 @@ const SpanishCompanyNetworkGraph = ({
         let pgHandled = false;
         try {
           const pgData = await spanishCompaniesService.pgExpandCompany(query, { size: searchResultSize });
+          console.log(`[DEBUG] pgExpandCompany returned ${pgData.officers?.length ?? 0} officers (requested size=${searchResultSize}):`, pgData);
           const canonicalName = pgData.company_name || query;
           const canonicalNorm = normalizeCompanyName(canonicalName);
           const queryNorm = normalizeCompanyName(query);
@@ -1895,6 +1896,7 @@ const SpanishCompanyNetworkGraph = ({
           data = await spanishCompaniesService.pgExpandCompany(companyName, {
             size: searchResultSize,
           });
+          console.log(`[DEBUG] pgExpandCompany (expand node) returned ${data.officers?.length ?? 0} officers (requested size=${searchResultSize}):`, data);
           usedPG = true;
         } catch {
           data = await spanishCompaniesService.workingSearch(companyName, {

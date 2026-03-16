@@ -2160,8 +2160,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
       return nameMap;
     }
 
-    console.log(`📂 Batch resolving ${uniqueNames.length} company names from directory`);
-
     // Process in batches to avoid overwhelming the API
     const batchSize = 10;
     for (let i = 0; i < uniqueNames.length; i += batchSize) {
@@ -2179,8 +2177,6 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
         nameMap.set(normalized, exact);
       });
     }
-
-    console.log(`📂 Resolved ${nameMap.size} company names`);
     return nameMap;
   }
 

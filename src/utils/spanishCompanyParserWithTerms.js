@@ -2657,50 +2657,6 @@ export const testConstitutionOfficerExtraction = constitutionEntry => {
   };
 };
 
-// Debug helper to check data alignment between API and frontend
-
-// Add this to your SpanishCompanyCard.jsx or parser to debug the data format
-export const debugDataFormat = rawData => {
-  console.log('=== RAW DATA DEBUG ===');
-  console.log('Full rawData:', rawData);
-
-  console.log('=== OFFICERS STRUCTURE ===');
-  console.log('rawData.officers:', rawData.officers);
-  console.log('Type of officers:', typeof rawData.officers);
-  console.log('Is officers array?', Array.isArray(rawData.officers));
-
-  if (rawData.officers) {
-    console.log('Officers length:', rawData.officers.length);
-    console.log('First officer:', rawData.officers[0]);
-  }
-
-  console.log('=== PARSED DETAILS STRUCTURE ===');
-  console.log('rawData.parsed_details:', rawData.parsed_details);
-
-  if (rawData.parsed_details) {
-    console.log('Parsed details keys:', Object.keys(rawData.parsed_details));
-    console.log('nombramientos:', rawData.parsed_details.nombramientos);
-    console.log('reelecciones:', rawData.parsed_details.reelecciones);
-  }
-
-  console.log('=== ENTRY TYPE ===');
-  console.log('rawData.entry_type:', rawData.entry_type);
-
-  console.log('=== ENHANCED PARSING ===');
-  console.log('rawData.enhanced_parsing:', rawData.enhanced_parsing);
-
-  console.log('=== FULL ENTRY ===');
-  console.log('rawData.full_entry:', rawData.full_entry);
-
-  return {
-    hasOfficersArray: Array.isArray(rawData.officers),
-    hasParsedDetails: !!rawData.parsed_details,
-    hasFullEntry: !!rawData.full_entry,
-    hasEnhancedParsing: !!rawData.enhanced_parsing,
-    officersCount: rawData.officers?.length || 0,
-    entryTypes: rawData.entry_type || [],
-  };
-};
 
 // Expected format transformation
 export const transformApiDataToExpectedFormat = apiData => {
