@@ -324,7 +324,7 @@ class SpanishCompaniesService {
    * Expand a company node using PostgreSQL — returns clean canonical officer list.
    */
   async pgExpandCompany(companyName, options = {}) {
-    const { size = 100 } = options;
+    const { size = 500 } = options;
     const params = new URLSearchParams({ name: companyName, size: size.toString() });
     const response = await this.fetchWithRetry(
       `${this.baseUrl}/bormes/pg/expand-company?${params}`,
@@ -338,7 +338,7 @@ class SpanishCompaniesService {
    * Expand an officer node using PostgreSQL — returns clean canonical company list.
    */
   async pgExpandOfficer(officerName, options = {}) {
-    const { size = 100 } = options;
+    const { size = 500 } = options;
     const params = new URLSearchParams({ name: officerName, size: size.toString() });
     const response = await this.fetchWithRetry(
       `${this.baseUrl}/bormes/pg/expand-officer?${params}`,

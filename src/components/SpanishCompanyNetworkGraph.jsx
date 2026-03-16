@@ -973,7 +973,7 @@ const SpanishCompanyNetworkGraph = ({
         let data;
         let pgOfficers = null;
         try {
-          const pgData = await spanishCompaniesService.pgExpandOfficer(query, { size: searchResultSize });
+          const pgData = await spanishCompaniesService.pgExpandOfficer(query);
           if (pgData.success && pgData.officers && pgData.officers.length > 0) {
             pgOfficers = pgData.officers;
           }
@@ -1013,8 +1013,8 @@ const SpanishCompanyNetworkGraph = ({
         // Company search: try PostgreSQL first for complete officer list, fall back to ES
         let pgHandled = false;
         try {
-          const pgData = await spanishCompaniesService.pgExpandCompany(query, { size: searchResultSize });
-          console.log(`[DEBUG] pgExpandCompany returned ${pgData.officers?.length ?? 0} officers (requested size=${searchResultSize}):`, pgData);
+          const pgData = await spanishCompaniesService.pgExpandCompany(query);
+          console.log(`[DEBUG] pgExpandCompany returned ${pgData.officers?.length ?? 0} officers:`, pgData);
           const canonicalName = pgData.company_name || query;
           const canonicalNorm = normalizeCompanyName(canonicalName);
           const queryNorm = normalizeCompanyName(query);
@@ -1775,9 +1775,7 @@ const SpanishCompanyNetworkGraph = ({
       // Try PostgreSQL first for canonical company names; fall back to ES if unavailable
       let data;
       try {
-        data = await spanishCompaniesService.pgExpandOfficer(officerNode.name.trim(), {
-          size: searchResultSize,
-        });
+        data = await spanishCompaniesService.pgExpandOfficer(officerNode.name.trim());
       } catch {
         data = await spanishCompaniesService.workingSearch(officerNode.name.trim(), {
           size: searchResultSize,
@@ -1893,10 +1891,8 @@ const SpanishCompanyNetworkGraph = ({
         let data;
         let usedPG = false;
         try {
-          data = await spanishCompaniesService.pgExpandCompany(companyName, {
-            size: searchResultSize,
-          });
-          console.log(`[DEBUG] pgExpandCompany (expand node) returned ${data.officers?.length ?? 0} officers (requested size=${searchResultSize}):`, data);
+          data = await spanishCompaniesService.pgExpandCompany(companyName);
+          console.log(`[DEBUG] pgExpandCompany (expand node) returned ${data.officers?.length ?? 0} officers:`, data);
           usedPG = true;
         } catch {
           data = await spanishCompaniesService.workingSearch(companyName, {
