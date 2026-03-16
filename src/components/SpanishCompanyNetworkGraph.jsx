@@ -230,11 +230,11 @@ const createCategorySlots = () => ({
 
 const normalizeCategoryKey = category => {
   if (!category) return 'nombramientos';
-  // Spanish keys (from ES path)
-  if (category === 'reelecciones' || category === 'reelections') return 'reelecciones';
-  if (category === 'revocaciones' || category === 'revocations') return 'revocaciones';
-  if (category === 'ceses_dimisiones' || category === 'resignations') return 'ceses_dimisiones';
-  if (category === 'nombramientos' || category === 'appointments') return 'nombramientos';
+  const cat = category.toLowerCase();
+  if (cat.includes('reelec')) return 'reelecciones';
+  if (cat.includes('revoc')) return 'revocaciones';
+  if (cat.includes('cese') || cat.includes('dimis') || cat === 'resignations') return 'ceses_dimisiones';
+  if (cat.includes('nombramiento') || cat === 'appointments') return 'nombramientos';
   return 'nombramientos';
 };
 
@@ -1741,7 +1741,7 @@ const SpanishCompanyNetworkGraph = ({
 
             // Add link between officer and company
             const relationship = group.roles[0] || '';
-            const category = group.categories[0] || 'nombramientos';
+            const category = normalizeCategoryKey(group.categories[0]);
             const linkId = `${officerId}-${companyId}`;
             if (!newLinks.find(l => l.id === linkId)) {
               newLinks.push({
@@ -1792,12 +1792,14 @@ const SpanishCompanyNetworkGraph = ({
           if (!companyName) return;
           const key = companyName.toUpperCase();
           if (!companiesMap.has(key)) {
-            companiesMap.set(key, { name: companyName, entries: [], roles: [] });
+            companiesMap.set(key, { name: companyName, entries: [], roles: [], categories: [] });
           }
           const group = companiesMap.get(key);
           group.entries.push(entry);
           const roleText = entry.specific_role || entry.role || entry.position || '';
           if (roleText && !BORME_SECTION_NAMES.has(roleText.toLowerCase())) group.roles.push(roleText);
+          const catText = entry.entry_type || entry.event_type;
+          if (catText) group.categories.push(catText);
         });
         const companyEntries = Array.from(companiesMap.values());
 
@@ -1864,7 +1866,7 @@ const SpanishCompanyNetworkGraph = ({
                 target: companyId,
                 type: 'officer-company',
                 relationship: relationship,
-                category: 'nombramientos',
+                category: normalizeCategoryKey(group.categories[0]),
                 date: group.entries[0]?.indexed_date || group.entries[0]?.date || null,
               });
             }
