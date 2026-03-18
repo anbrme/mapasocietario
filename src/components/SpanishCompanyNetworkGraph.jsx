@@ -114,157 +114,157 @@ const computeGraphCentroid = nodes => {
   };
 };
 
-const findNonOverlappingPosition = ({
-  anchor,
-  candidate,
-  occupiedNodes,
-  minDistance = 80,
-  maxAttempts = 36,
-  maxRadius = null,       // Hard cap: never place further than this from anchor
-  nodeTypeFilter = null,  // If set, only check nodes of this type for collision (deprecated — prefer checking all)
-}) => {
-  // Always check ALL positioned nodes for overlap to prevent cross-type collisions
-  const occupied = (occupiedNodes || []).filter(n => isFinitePoint(n));
-  let x = candidate.x;
-  let y = candidate.y;
-  const minDistanceSq = minDistance * minDistance;
+// Nudge a candidate position until it doesn't overlap any existing node.
+const nudgeAwayFromOverlap = ({ anchor, candidate, occupiedNodes, minDistance = 50 }) => {
+  const occupied = (occupiedNodes || []).filter(isFinitePoint);
+  let { x, y } = candidate;
+  const minDistSq = minDistance * minDistance;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const hasOverlap = occupied.some(node => {
-      const dx = node.x - x;
-      const dy = node.y - y;
-      return dx * dx + dy * dy < minDistanceSq;
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const overlap = occupied.some(n => {
+      const dx = n.x - x;
+      const dy = n.y - y;
+      return dx * dx + dy * dy < minDistSq;
     });
+    if (!overlap) return { x, y };
 
-    if (!hasOverlap) return { x, y };
-
-    const baseAngle = Math.atan2(y - anchor.y, x - anchor.x) || 0;
-    const angle = baseAngle + 0.45 * (attempt + 1);
-    // Grow radius slowly — stop growing if we'd exceed maxRadius
-    const currentRadius = Math.hypot(x - anchor.x, y - anchor.y);
-    const nextRadius = maxRadius != null
-      ? Math.min(currentRadius + 30 + attempt * 5, maxRadius)
-      : currentRadius + 40 + attempt * 10;
-    x = anchor.x + Math.cos(angle) * nextRadius;
-    y = anchor.y + Math.sin(angle) * nextRadius;
+    // Push outward from anchor + slight rotation
+    const angle = Math.atan2(y - anchor.y, x - anchor.x) + 0.35 * (attempt + 1);
+    const r = Math.hypot(x - anchor.x, y - anchor.y) + 25;
+    x = anchor.x + Math.cos(angle) * r;
+    y = anchor.y + Math.sin(angle) * r;
   }
-
-  // If no free slot found within constraints, return best attempt (accept some overlap)
   return { x, y };
 };
 
-const radialPosition = ({
+// Find the least-crowded direction from `anchor` considering all existing nodes.
+// Returns an angle (radians) pointing away from the densest area.
+const leastCrowdedAngle = (anchor, existingNodes) => {
+  const positioned = (existingNodes || []).filter(isFinitePoint);
+  if (positioned.length === 0) return -Math.PI / 2; // default: upward
+
+  // Weight by inverse-square distance so nearby nodes matter more
+  const SECTORS = 24;
+  const sectorWeight = new Array(SECTORS).fill(0);
+  positioned.forEach(n => {
+    const dx = n.x - anchor.x;
+    const dy = n.y - anchor.y;
+    const distSq = dx * dx + dy * dy;
+    if (distSq < 1) return; // skip self
+    const angle = Math.atan2(dy, dx);
+    const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * SECTORS) % SECTORS;
+    // Spread influence to neighboring sectors too
+    const weight = 1 / Math.max(distSq, 100);
+    sectorWeight[idx] += weight;
+    sectorWeight[(idx + 1) % SECTORS] += weight * 0.5;
+    sectorWeight[(idx - 1 + SECTORS) % SECTORS] += weight * 0.5;
+  });
+
+  // Find sector with minimum weight (least crowded)
+  let minIdx = 0;
+  let minW = Infinity;
+  for (let i = 0; i < SECTORS; i++) {
+    if (sectorWeight[i] < minW) {
+      minW = sectorWeight[i];
+      minIdx = i;
+    }
+  }
+
+  return -Math.PI + ((minIdx + 0.5) / SECTORS) * 2 * Math.PI;
+};
+
+// "Flower petal" layout: places `total` new nodes in a directional fan
+// extending outward from `anchor`, away from existing content.
+// Uses concentric rings with limited arc span to keep the cluster compact.
+const petalPosition = ({
   anchor,
   index,
   total,
-  occupiedNodes,
-  baseRadius = 280,
-  minDistance = 90,
-  maxRadius = null,
-  startAngle = -Math.PI / 2,
+  existingNodes,
+  centerAngle = null,  // Direction of the petal (auto-computed if null)
+  stemLength = 200,    // Minimum distance from anchor to closest new node
+  nodeSpacing = 55,    // Minimum spacing between adjacent nodes on the arc
+  minDistance = 50,     // Overlap avoidance distance
+  ringGap = 55,        // Distance between concentric rings
 }) => {
-  const slots = Math.max(total, 1);
-  const ring = Math.floor(index / slots);
-  const slotInRing = index % slots;
-  const angle = startAngle + (2 * Math.PI * slotInRing) / slots;
-  const radius = maxRadius != null
-    ? Math.min(baseRadius + ring * 60, maxRadius * 0.9)
-    : baseRadius + ring * 80;
+  const positioned = (existingNodes || []).filter(isFinitePoint);
+
+  // Auto-detect direction: away from existing content
+  const direction = centerAngle != null
+    ? centerAngle
+    : leastCrowdedAngle(anchor, positioned);
+
+  // How many nodes per ring? Limit so the arc stays compact.
+  const maxPerRing = Math.max(6, Math.ceil(Math.sqrt(total) * 2.5));
+  const ring = Math.floor(index / maxPerRing);
+  const slotInRing = index % maxPerRing;
+  const nodesInThisRing = Math.min(maxPerRing, total - ring * maxPerRing);
+
+  const radius = stemLength + ring * ringGap;
+
+  // Arc span: enough to fit nodes with spacing, but cap at ~240° (2/3 circle)
+  // to keep the fan directional (not wrapping back around the anchor).
+  const arcFromSpacing = (nodesInThisRing * nodeSpacing) / radius;
+  const arcSpan = Math.min(arcFromSpacing, Math.PI * 4 / 3);
+
+  // Center the arc on `direction`
+  const startAngle = direction - arcSpan / 2;
+  const angleStep = nodesInThisRing > 1 ? arcSpan / (nodesInThisRing - 1) : 0;
+  const angle = startAngle + slotInRing * angleStep;
+
   const candidate = {
     x: anchor.x + Math.cos(angle) * radius,
     y: anchor.y + Math.sin(angle) * radius,
   };
 
-  return findNonOverlappingPosition({
+  return nudgeAwayFromOverlap({
     anchor,
     candidate,
-    occupiedNodes,
+    occupiedNodes: positioned,
     minDistance,
-    maxRadius,
   });
 };
 
+// Category-sector variant: fans officers into category-specific petals
+// around a company node. Each category gets its own angular sector.
 const categorySectorPosition = ({
   anchor,
   category,
   slot,
-  occupiedNodes,
-  baseRadius = 320,
-  minDistance = 90,
-  maxRadius = null,
+  existingNodes,
+  stemLength = 140,
+  nodeSpacing = 50,
+  minDistance = 50,
 }) => {
-  const centerAngle = CATEGORY_LAYOUT_ANGLE[category] ?? -Math.PI / 2;
+  const baseCategoryAngle = CATEGORY_LAYOUT_ANGLE[category] ?? -Math.PI / 2;
+
+  // Offset the category angle away from existing content if needed
+  const positioned = (existingNodes || []).filter(isFinitePoint);
+  const awayAngle = leastCrowdedAngle(anchor, positioned);
+
+  // Blend: 60% category convention, 40% away-from-crowd direction
+  const direction = baseCategoryAngle + 0.4 * ((awayAngle - baseCategoryAngle + Math.PI) % (2 * Math.PI) - Math.PI);
+
   const sectorWidth = 6;
   const ring = Math.floor(slot / sectorWidth);
   const slotInRing = slot % sectorWidth;
-  const angle = centerAngle + (slotInRing - (sectorWidth - 1) / 2) * 0.24;
-  const radius = maxRadius != null
-    ? Math.min(baseRadius + ring * 40, maxRadius * 0.9)
-    : baseRadius + ring * 80;
+  const nodesInRing = Math.min(sectorWidth, slot + 1 - ring * sectorWidth); // approximate
+
+  const radius = stemLength + ring * 50;
+  const arcSpan = Math.min((nodesInRing * nodeSpacing) / radius, Math.PI / 2.5);
+  const angle = direction - arcSpan / 2 + (slotInRing / Math.max(1, sectorWidth - 1)) * arcSpan;
+
   const candidate = {
     x: anchor.x + Math.cos(angle) * radius,
     y: anchor.y + Math.sin(angle) * radius,
   };
 
-  return findNonOverlappingPosition({
+  return nudgeAwayFromOverlap({
     anchor,
     candidate,
-    occupiedNodes,
+    occupiedNodes: positioned,
     minDistance,
-    maxRadius,
   });
-};
-
-// Compute adaptive radius and start angle so new nodes fan out in the
-// least-crowded direction and don't overlap existing clusters.
-const adaptiveLayout = ({ anchor, newCount, existingNodes, minSpacing = 90 }) => {
-  const positioned = (existingNodes || []).filter(isFinitePoint);
-
-  // 1. Find nodes within a generous radius of the anchor to gauge local density.
-  const scanRadius = 400;
-  const nearby = positioned.filter(n => {
-    const dx = n.x - anchor.x;
-    const dy = n.y - anchor.y;
-    return dx * dx + dy * dy < scanRadius * scanRadius;
-  });
-
-  // 2. Dynamic base radius: ensure the circumference can fit all new nodes with minSpacing.
-  //    Also push outward proportionally to how many nodes are already nearby.
-  const circumferenceNeeded = newCount * minSpacing;
-  const radiusFromSpacing = Math.max(circumferenceNeeded / (2 * Math.PI), 130);
-  const densityBoost = nearby.length * 12; // push out ~12px per nearby node
-  const baseRadius = Math.round(radiusFromSpacing + densityBoost);
-
-  // 3. Find the least-crowded angular sector (divide into 12 sectors of 30°).
-  const SECTORS = 12;
-  const sectorCounts = new Array(SECTORS).fill(0);
-  nearby.forEach(n => {
-    const angle = Math.atan2(n.y - anchor.y, n.x - anchor.x); // -PI..PI
-    const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * SECTORS) % SECTORS;
-    sectorCounts[idx] += 1;
-  });
-
-  // Find the run of consecutive sectors with the lowest total count that can
-  // fit all new nodes (each node needs ~one sector worth of arc at minimum).
-  const sectorsNeeded = Math.max(1, Math.min(SECTORS, Math.ceil(newCount / 2)));
-  let bestStart = 0;
-  let bestScore = Infinity;
-  for (let s = 0; s < SECTORS; s++) {
-    let score = 0;
-    for (let j = 0; j < sectorsNeeded; j++) {
-      score += sectorCounts[(s + j) % SECTORS];
-    }
-    if (score < bestScore) {
-      bestScore = score;
-      bestStart = s;
-    }
-  }
-
-  // Convert sector index back to an angle (center of the best run).
-  const startAngle =
-    -Math.PI + ((bestStart + sectorsNeeded / 2) / SECTORS) * 2 * Math.PI;
-
-  return { baseRadius, startAngle };
 };
 
 const normalizeNodeId = id => (id == null ? '' : String(id));
@@ -1095,31 +1095,25 @@ const SpanishCompanyNetworkGraph = ({
               // Create officer nodes (one per unique name)
               const searchNewOfficerCount = (() => {
                 let count = 0;
-                uniqueOfficerNames.forEach((o, nk) => {
+                uniqueOfficerNames.forEach((_o, nk) => {
                   const oid = `officer-${nk.toLowerCase().replace(/\s+/g, '-')}`;
                   if (!newNodes.find(n => n.id === oid)) count++;
                 });
                 return count;
               })();
-              const searchOfficerLayout = adaptiveLayout({
-                anchor,
-                newCount: Math.max(searchNewOfficerCount, 1),
-                existingNodes: newNodes,
-                minSpacing: 70,
-              });
 
               let idx = 0;
               uniqueOfficerNames.forEach((officer, nameKey) => {
                 const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
                 if (!newNodes.find(n => n.id === officerId)) {
-                  const pos = radialPosition({
+                  const pos = petalPosition({
                     anchor,
                     index: idx,
                     total: searchNewOfficerCount,
-                    occupiedNodes: newNodes,
-                    baseRadius: searchOfficerLayout.baseRadius,
-                    minDistance: 60,
-                    startAngle: searchOfficerLayout.startAngle,
+                    existingNodes: newNodes,
+                    stemLength: 160,
+                    nodeSpacing: 55,
+                    minDistance: 50,
                   });
                   newNodes.push({
                     id: officerId,
@@ -1344,7 +1338,7 @@ const SpanishCompanyNetworkGraph = ({
           // Add grouped company nodes and extract officers
           const groupedCompanies = Object.entries(companiesByName);
 
-          // Pre-count genuinely new companies for adaptive layout
+          // Pre-count genuinely new companies for petal layout
           const newCompanyCount = groupedCompanies.filter(([cn]) => {
             const cid = companyNameToId(cn);
             return !newNodes.find(
@@ -1353,12 +1347,6 @@ const SpanishCompanyNetworkGraph = ({
                   normalizeCompanyName(n.name).toUpperCase() === cn.toUpperCase())
             );
           }).length;
-          const companyLayout = adaptiveLayout({
-            anchor,
-            newCount: Math.max(newCompanyCount, 1),
-            existingNodes: newNodes,
-            minSpacing: 130,
-          });
 
           let newCompanyIdx = 0;
           groupedCompanies.forEach(([companyName, summary]) => {
@@ -1378,14 +1366,14 @@ const SpanishCompanyNetworkGraph = ({
             }
 
             if (!companyExists) {
-              const companyPosition = radialPosition({
+              const companyPosition = petalPosition({
                 anchor,
                 index: newCompanyIdx,
                 total: newCompanyCount,
-                occupiedNodes: newNodes,
-                baseRadius: companyLayout.baseRadius,
-                minDistance: 130,
-                startAngle: companyLayout.startAngle,
+                existingNodes: newNodes,
+                stemLength: 220,
+                nodeSpacing: 70,
+                minDistance: 80,
               });
               newCompanyIdx++;
 
@@ -1588,12 +1576,10 @@ const SpanishCompanyNetworkGraph = ({
                   anchor: companyAnchor,
                   category: categoryKey,
                   slot,
-                  occupiedNodes: newNodes,
-                  baseRadius: Math.max(130, 130 + newNodes.filter(n =>
-                    isFinitePoint(n) &&
-                    Math.hypot(n.x - companyAnchor.x, n.y - companyAnchor.y) < 300
-                  ).length * 8),
-                  minDistance: 60,
+                  existingNodes: newNodes,
+                  stemLength: 140,
+                  nodeSpacing: 50,
+                  minDistance: 50,
                 });
 
                 // Add new officer node
@@ -1755,12 +1741,6 @@ const SpanishCompanyNetworkGraph = ({
             const cid = companyNameToId(normalizeCompanyName(g.name || 'Unknown Company'));
             return !newNodes.find(n => n.id === cid);
           }).length;
-          const officerCompanyLayout = adaptiveLayout({
-            anchor: officerAnchor,
-            newCount: Math.max(newCompanyCountForOfficer, 1),
-            existingNodes: newNodes,
-            minSpacing: 100,
-          });
 
           let newOfficerCompanyIdx = 0;
           companyEntries.forEach((group) => {
@@ -1775,14 +1755,14 @@ const SpanishCompanyNetworkGraph = ({
             // Check if company already exists
             let companyNode = newNodes.find(n => n.id === companyId);
             if (!companyNode) {
-              const companyPosition = radialPosition({
+              const companyPosition = petalPosition({
                 anchor: officerAnchor,
                 index: newOfficerCompanyIdx,
                 total: newCompanyCountForOfficer,
-                occupiedNodes: newNodes,
-                baseRadius: officerCompanyLayout.baseRadius,
-                minDistance: 92,
-                startAngle: officerCompanyLayout.startAngle,
+                existingNodes: newNodes,
+                stemLength: 180,
+                nodeSpacing: 65,
+                minDistance: 70,
               });
               newOfficerCompanyIdx++;
 
@@ -1886,13 +1866,6 @@ const SpanishCompanyNetworkGraph = ({
                   normalizeCompanyName(n.name).toUpperCase() === cn.toUpperCase())
             );
           }).length;
-          const layout = adaptiveLayout({
-            anchor: officerAnchor,
-            newCount: Math.max(newCompanyCount, 1),
-            existingNodes: newNodes,
-            minSpacing: 100,
-          });
-
           let newIdx = 0;
           companyEntries.forEach((group) => {
             const companyName = normalizeCompanyName(group.name || 'Unknown Company');
@@ -1909,14 +1882,14 @@ const SpanishCompanyNetworkGraph = ({
               companyId = existingCompany.id;
             }
             if (!existingCompany) {
-              const companyPosition = radialPosition({
+              const companyPosition = petalPosition({
                 anchor: officerAnchor,
                 index: newIdx,
                 total: newCompanyCount,
-                occupiedNodes: newNodes,
-                baseRadius: layout.baseRadius,
-                minDistance: 100,
-                startAngle: layout.startAngle,
+                existingNodes: newNodes,
+                stemLength: 200,
+                nodeSpacing: 65,
+                minDistance: 70,
               });
               newIdx++;
 
@@ -2014,34 +1987,28 @@ const SpanishCompanyNetworkGraph = ({
               if (!uniqueOfficerNames.has(nameKey)) uniqueOfficerNames.set(nameKey, o);
             });
 
-            // Count genuinely new officers for adaptive layout
+            // Count genuinely new officers for petal layout
             const newOfficerCount = (() => {
               let count = 0;
-              uniqueOfficerNames.forEach((officer, nameKey) => {
+              uniqueOfficerNames.forEach((_officer, nameKey) => {
                 const oid = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
                 if (!newNodes.find(n => n.id === oid)) count++;
               });
               return count;
             })();
-            const officerLayout = adaptiveLayout({
-              anchor,
-              newCount: Math.max(newOfficerCount, 1),
-              existingNodes: newNodes,
-              minSpacing: 70,
-            });
 
             let idx = 0;
             uniqueOfficerNames.forEach((officer, nameKey) => {
               const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
               if (!newNodes.find(n => n.id === officerId)) {
-                const pos = radialPosition({
+                const pos = petalPosition({
                   anchor,
                   index: idx,
                   total: newOfficerCount,
-                  occupiedNodes: newNodes,
-                  baseRadius: officerLayout.baseRadius,
-                  minDistance: 60,
-                  startAngle: officerLayout.startAngle,
+                  existingNodes: newNodes,
+                  stemLength: 160,
+                  nodeSpacing: 55,
+                  minDistance: 50,
                 });
                 newNodes.push({
                   id: officerId,
