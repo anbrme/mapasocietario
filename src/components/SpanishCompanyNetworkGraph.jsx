@@ -539,6 +539,7 @@ const SpanishCompanyNetworkGraph = ({
       officer_company: '#9c27b0',
       expanded: '#4caf50',
       selected: '#e91e63',
+      searchOrigin: '#e91e63',
     }),
     []
   );
@@ -2781,6 +2782,7 @@ const SpanishCompanyNetworkGraph = ({
       const nodeRadius = nodeSize;
 
       // Determine node color and shape
+      const isOrigin = pinnedNodeIds.has(normalizeNodeId(node.id));
       let color = nodeColors.company;
       if (node.type === 'officer') {
         color =
@@ -2793,8 +2795,22 @@ const SpanishCompanyNetworkGraph = ({
         color = nodeColors.expanded;
       }
 
+      if (isOrigin) {
+        color = nodeColors.searchOrigin;
+      }
+
       // Draw node based on type and subtype
       ctx.fillStyle = color;
+
+      // Search origin nodes get a glowing ring to stand out
+      if (isOrigin) {
+        ctx.strokeStyle = nodeColors.searchOrigin;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius + 3, 0, 2 * Math.PI, false);
+        ctx.stroke();
+      }
+
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 2;
 
@@ -2837,7 +2853,7 @@ const SpanishCompanyNetworkGraph = ({
         }
       }
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds]
   );
 
   const linkCanvasObject = useCallback(
@@ -3727,6 +3743,7 @@ const SpanishCompanyNetworkGraph = ({
           { color: nodeColors.officer_individual, label: 'Personas' },
           { color: nodeColors.officer_company, label: 'Emp. Directivas' },
           { color: nodeColors.expanded, label: 'Expandidos' },
+          { color: nodeColors.searchOrigin, label: 'Búsqueda' },
         ].map(item => (
           <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
             <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color, flexShrink: 0 }} />
