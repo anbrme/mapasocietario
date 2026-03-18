@@ -201,29 +201,31 @@ const isAreaFree = (center, radius, existingNodes, buffer = 0) => {
 };
 
 // Find a hub point at `stemLength` from anchor in the least-crowded direction.
-// If the initial hub overlaps existing nodes, try rotating and pushing out.
+// Tries rotating to find a free spot, but NEVER exceeds stemLength * 1.1
+// to prevent edges from growing unboundedly with each expansion.
 const findHubPoint = ({ anchor, stemLength, existingNodes, hubRadius = 80 }) => {
   const positioned = (existingNodes || []).filter(isFinitePoint);
   const baseAngle = leastCrowdedAngle(anchor, positioned);
+  const maxDist = stemLength * 1.1; // hard cap — never go further than this
 
-  // Try the ideal position first, then rotate in increments
+  // Try rotating in increments to find a free spot at fixed distance
   for (let attempt = 0; attempt < 16; attempt++) {
     const angleOffset = attempt === 0 ? 0 : ((attempt % 2 === 1 ? 1 : -1) * Math.ceil(attempt / 2) * (Math.PI / 8));
     const angle = baseAngle + angleOffset;
-    const extraPush = Math.floor(attempt / 8) * 60; // push further after first sweep
     const candidate = {
-      x: anchor.x + Math.cos(angle) * (stemLength + extraPush),
-      y: anchor.y + Math.sin(angle) * (stemLength + extraPush),
+      x: anchor.x + Math.cos(angle) * stemLength,
+      y: anchor.y + Math.sin(angle) * stemLength,
     };
-    if (isAreaFree(candidate, hubRadius, positioned, 20)) {
+    if (isAreaFree(candidate, hubRadius, positioned, 10)) {
       return candidate;
     }
   }
 
-  // Fallback: just use the least-crowded direction pushed out further
+  // No free spot found — just use least-crowded direction at capped distance.
+  // Accept some overlap rather than creating a very long edge.
   return {
-    x: anchor.x + Math.cos(baseAngle) * (stemLength * 1.5),
-    y: anchor.y + Math.sin(baseAngle) * (stemLength * 1.5),
+    x: anchor.x + Math.cos(baseAngle) * maxDist,
+    y: anchor.y + Math.sin(baseAngle) * maxDist,
   };
 };
 
@@ -236,7 +238,7 @@ const computeClusterHub = ({
   anchor,          // The expanded node's position
   total,           // Total number of new nodes to place
   existingNodes,   // All existing nodes (for collision avoidance)
-  stemLength = 250, // Distance from anchor to cluster center
+  stemLength = 180, // Distance from anchor to cluster center
   clusterSpacing = 45, // Spacing between nodes within the cluster
 }) => {
   // Estimate how big the cluster will be
@@ -1355,7 +1357,7 @@ const SpanishCompanyNetworkGraph = ({
                 anchor,
                 total: newCompanyCount,
                 existingNodes: newNodes,
-                stemLength: 280,
+                stemLength: 180,
                 clusterSpacing: 70,
               })
             : null;
@@ -1740,8 +1742,8 @@ const SpanishCompanyNetworkGraph = ({
               positions: [],
               data: results[0],
               ...officerPosition,
-              fx: null,
-              fy: null,
+              fx: officerPosition.x,
+              fy: officerPosition.y,
             };
             newNodes.push(officerNode);
           }
@@ -1759,7 +1761,7 @@ const SpanishCompanyNetworkGraph = ({
             anchor: officerAnchor,
             total: newCompanyCountForOfficer,
             existingNodes: newNodes,
-            stemLength: 220,
+            stemLength: 160,
             clusterSpacing: 65,
           });
 
@@ -1801,8 +1803,8 @@ const SpanishCompanyNetworkGraph = ({
                   },
                 },
                 ...companyPosition,
-                fx: null,
-                fy: null,
+                fx: companyPosition.x,
+                fy: companyPosition.y,
               };
               newNodes.push(companyNode);
             }
@@ -1890,7 +1892,7 @@ const SpanishCompanyNetworkGraph = ({
             anchor: officerAnchor,
             total: newCompanyCount,
             existingNodes: newNodes,
-            stemLength: 250,
+            stemLength: 160,
             clusterSpacing: 65,
           });
           let newIdx = 0;
