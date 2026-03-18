@@ -557,11 +557,10 @@ const SpanishCompanyNetworkGraph = ({
     if (chargeForce) {
       chargeForce.strength(node => {
         if (isPinned(node)) return 0;
-        // Officers repel gently; companies repel more to separate clusters.
-        return isOfficer(node) ? chargeStrength * 0.25 : chargeStrength * 0.8;
+        return isOfficer(node) ? chargeStrength * 0.4 : chargeStrength;
       });
       if (typeof chargeForce.distanceMax === 'function') {
-        chargeForce.distanceMax(Math.max(linkDistance * 3, 400));
+        chargeForce.distanceMax(Math.max(linkDistance * 2, 300));
       }
     }
 
@@ -572,33 +571,29 @@ const SpanishCompanyNetworkGraph = ({
         const target = typeof link.target === 'object' ? link.target : null;
         const isOfficerLink =
           (source && isOfficer(source)) || (target && isOfficer(target));
-        // Officer-company links are short → officers orbit close to their company.
-        // Company-company (or officer-officer) links are long → separate clusters.
-        const base = isOfficerLink ? Math.round(linkDistance * 0.35) : linkDistance * 2;
-        return Math.max(25, base);
+        const base = isOfficerLink ? Math.round(linkDistance * 0.45) : linkDistance * 1.4;
+        return Math.max(30, base);
       });
       linkForce.strength(link => {
         const source = typeof link.source === 'object' ? link.source : null;
         const target = typeof link.target === 'object' ? link.target : null;
         const isOfficerLink =
           (source && isOfficer(source)) || (target && isOfficer(target));
-        if (isPinned(source) && isPinned(target)) return 0.02;
-        // Firm pull for officers toward company; gentle for company-company.
-        return isOfficerLink ? 0.5 : 0.08;
+        if (isPinned(source) && isPinned(target)) return 0.03;
+        return isOfficerLink ? 0.35 : 0.12;
       });
       if (typeof linkForce.iterations === 'function') {
-        linkForce.iterations(4);
+        linkForce.iterations(3);
       }
     }
 
-    // Very weak centering — just prevent drifting off-screen.
     const forceX = fg.d3Force('x');
     if (forceX && typeof forceX.strength === 'function') {
-      forceX.strength(node => (isPinned(node) ? 0 : 0.02));
+      forceX.strength(node => (isPinned(node) ? 0 : 0.04));
     }
     const forceY = fg.d3Force('y');
     if (forceY && typeof forceY.strength === 'function') {
-      forceY.strength(node => (isPinned(node) ? 0 : 0.02));
+      forceY.strength(node => (isPinned(node) ? 0 : 0.04));
     }
 
     fg.d3Force(
@@ -607,15 +602,14 @@ const SpanishCompanyNetworkGraph = ({
         .radius(node => {
           const labelLen = (node.name || '').length;
           return node.type === 'spanish-company-group'
-            ? Math.max(nodeSize + 35, labelLen * 3)
-            : nodeSize + 10;
+            ? Math.max(nodeSize + 40, labelLen * 3.5)
+            : nodeSize + 14;
         })
-        .iterations(2)
-        .strength(0.7)
+        .iterations(3)
     );
 
-    if (typeof fg.d3AlphaDecay === 'function') fg.d3AlphaDecay(0.018);
-    if (typeof fg.d3VelocityDecay === 'function') fg.d3VelocityDecay(0.3);
+    if (typeof fg.d3AlphaDecay === 'function') fg.d3AlphaDecay(0.028);
+    if (typeof fg.d3VelocityDecay === 'function') fg.d3VelocityDecay(0.4);
 
     // Reheat AFTER forces are configured so the new settings take effect immediately.
     fg.d3ReheatSimulation();
@@ -1126,8 +1120,8 @@ const SpanishCompanyNetworkGraph = ({
                     positions: [],
                     companies: [canonicalName],
                     ...pos,
-                    fx: null,
-                    fy: null,
+                    fx: pos.x,
+                    fy: pos.y,
                   });
                 }
                 idx++;
@@ -1614,8 +1608,8 @@ const SpanishCompanyNetworkGraph = ({
                     },
                   ],
                   ...officerPosition,
-                  fx: null,
-                  fy: null,
+                  fx: officerPosition.x,
+                  fy: officerPosition.y,
                 };
                 newNodes.push(officerNode);
               } else {
@@ -1935,8 +1929,8 @@ const SpanishCompanyNetworkGraph = ({
                 },
                 expanded: false,
                 ...companyPosition,
-                fx: null,
-                fy: null,
+                fx: companyPosition.x,
+                fy: companyPosition.y,
               });
             }
 
@@ -2050,8 +2044,8 @@ const SpanishCompanyNetworkGraph = ({
                   positions: [],
                   companies: [companyName],
                   ...pos,
-                  fx: null,
-                  fy: null,
+                  fx: pos.x,
+                  fy: pos.y,
                 });
               }
               idx++;
@@ -3474,9 +3468,9 @@ const SpanishCompanyNetworkGraph = ({
             onZoom={handleZoom}
             linkDirectionalParticles={2}
             linkDirectionalParticleSpeed={0.005}
-            d3AlphaDecay={0.02}
-            d3VelocityDecay={0.35}
-            cooldownTicks={200}
+            d3AlphaDecay={0.08}
+            d3VelocityDecay={0.8}
+            cooldownTicks={40}
             onEngineTick={handleEngineTick}
             onEngineStop={handleEngineTick}
             width={containerDimensions.width}
