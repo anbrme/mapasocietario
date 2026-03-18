@@ -2696,14 +2696,13 @@ const SpanishCompanyNetworkGraph = ({
         return true;
       });
 
-      // Remove officer nodes that have no remaining links
+      // Remove any nodes that have no remaining links (orphaned by the filter)
       const linkedNodeIds = new Set();
       activeLinks.forEach(link => {
         linkedNodeIds.add(normalizeNodeId(getNodeIdFromRef(link.source)));
         linkedNodeIds.add(normalizeNodeId(getNodeIdFromRef(link.target)));
       });
       activeNodes = activeNodes.filter(n => {
-        if (n.type !== 'officer') return true;
         return linkedNodeIds.has(normalizeNodeId(n.id));
       });
     }
