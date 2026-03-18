@@ -2022,25 +2022,17 @@ const SpanishCompanyNetworkGraph = ({
               });
               return count;
             })();
-            const expandCompanyCluster = computeClusterHub({
-              anchor,
-              total: newOfficerCount,
-              existingNodes: newNodes,
-              stemLength: 200,
-              clusterSpacing: 50,
-            });
-
             let idx = 0;
             uniqueOfficerNames.forEach((officer, nameKey) => {
               const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
               if (!newNodes.find(n => n.id === officerId)) {
-                const pos = clusterPosition({
-                  hub: expandCompanyCluster.hub,
+                const pos = ringPosition({
+                  anchor,
                   index: idx,
                   total: newOfficerCount,
                   existingNodes: newNodes,
-                  clusterSpacing: 50,
-                  minDistance: 40,
+                  radius: 140,
+                  minDistance: 45,
                 });
                 newNodes.push({
                   id: officerId,
