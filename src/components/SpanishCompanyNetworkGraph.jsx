@@ -121,13 +121,10 @@ const findNonOverlappingPosition = ({
   minDistance = 80,
   maxAttempts = 36,
   maxRadius = null,       // Hard cap: never place further than this from anchor
-  nodeTypeFilter = null,  // If set, only check nodes of this type for collision
+  nodeTypeFilter = null,  // If set, only check nodes of this type for collision (deprecated — prefer checking all)
 }) => {
-  const occupied = (occupiedNodes || []).filter(n => {
-    if (!isFinitePoint(n)) return false;
-    if (nodeTypeFilter && n.type !== nodeTypeFilter) return false;
-    return true;
-  });
+  // Always check ALL positioned nodes for overlap to prevent cross-type collisions
+  const occupied = (occupiedNodes || []).filter(n => isFinitePoint(n));
   let x = candidate.x;
   let y = candidate.y;
   const minDistanceSq = minDistance * minDistance;
@@ -216,6 +213,58 @@ const categorySectorPosition = ({
     minDistance,
     maxRadius,
   });
+};
+
+// Compute adaptive radius and start angle so new nodes fan out in the
+// least-crowded direction and don't overlap existing clusters.
+const adaptiveLayout = ({ anchor, newCount, existingNodes, minSpacing = 90 }) => {
+  const positioned = (existingNodes || []).filter(isFinitePoint);
+
+  // 1. Find nodes within a generous radius of the anchor to gauge local density.
+  const scanRadius = 400;
+  const nearby = positioned.filter(n => {
+    const dx = n.x - anchor.x;
+    const dy = n.y - anchor.y;
+    return dx * dx + dy * dy < scanRadius * scanRadius;
+  });
+
+  // 2. Dynamic base radius: ensure the circumference can fit all new nodes with minSpacing.
+  //    Also push outward proportionally to how many nodes are already nearby.
+  const circumferenceNeeded = newCount * minSpacing;
+  const radiusFromSpacing = Math.max(circumferenceNeeded / (2 * Math.PI), 130);
+  const densityBoost = nearby.length * 12; // push out ~12px per nearby node
+  const baseRadius = Math.round(radiusFromSpacing + densityBoost);
+
+  // 3. Find the least-crowded angular sector (divide into 12 sectors of 30°).
+  const SECTORS = 12;
+  const sectorCounts = new Array(SECTORS).fill(0);
+  nearby.forEach(n => {
+    const angle = Math.atan2(n.y - anchor.y, n.x - anchor.x); // -PI..PI
+    const idx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * SECTORS) % SECTORS;
+    sectorCounts[idx] += 1;
+  });
+
+  // Find the run of consecutive sectors with the lowest total count that can
+  // fit all new nodes (each node needs ~one sector worth of arc at minimum).
+  const sectorsNeeded = Math.max(1, Math.min(SECTORS, Math.ceil(newCount / 2)));
+  let bestStart = 0;
+  let bestScore = Infinity;
+  for (let s = 0; s < SECTORS; s++) {
+    let score = 0;
+    for (let j = 0; j < sectorsNeeded; j++) {
+      score += sectorCounts[(s + j) % SECTORS];
+    }
+    if (score < bestScore) {
+      bestScore = score;
+      bestStart = s;
+    }
+  }
+
+  // Convert sector index back to an angle (center of the best run).
+  const startAngle =
+    -Math.PI + ((bestStart + sectorsNeeded / 2) / SECTORS) * 2 * Math.PI;
+
+  return { baseRadius, startAngle };
 };
 
 const normalizeNodeId = id => (id == null ? '' : String(id));
@@ -1044,6 +1093,21 @@ const SpanishCompanyNetworkGraph = ({
               });
 
               // Create officer nodes (one per unique name)
+              const searchNewOfficerCount = (() => {
+                let count = 0;
+                uniqueOfficerNames.forEach((o, nk) => {
+                  const oid = `officer-${nk.toLowerCase().replace(/\s+/g, '-')}`;
+                  if (!newNodes.find(n => n.id === oid)) count++;
+                });
+                return count;
+              })();
+              const searchOfficerLayout = adaptiveLayout({
+                anchor,
+                newCount: Math.max(searchNewOfficerCount, 1),
+                existingNodes: newNodes,
+                minSpacing: 70,
+              });
+
               let idx = 0;
               uniqueOfficerNames.forEach((officer, nameKey) => {
                 const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
@@ -1051,11 +1115,11 @@ const SpanishCompanyNetworkGraph = ({
                   const pos = radialPosition({
                     anchor,
                     index: idx,
-                    total: uniqueOfficerNames.size,
-                    occupiedNodes: newNodes.filter(n => n.type === 'officer'),
-                    baseRadius: 130,
+                    total: searchNewOfficerCount,
+                    occupiedNodes: newNodes,
+                    baseRadius: searchOfficerLayout.baseRadius,
                     minDistance: 60,
-                    maxRadius: 200,
+                    startAngle: searchOfficerLayout.startAngle,
                   });
                   newNodes.push({
                     id: officerId,
@@ -1279,7 +1343,25 @@ const SpanishCompanyNetworkGraph = ({
 
           // Add grouped company nodes and extract officers
           const groupedCompanies = Object.entries(companiesByName);
-          groupedCompanies.forEach(([companyName, summary], companyIdx) => {
+
+          // Pre-count genuinely new companies for adaptive layout
+          const newCompanyCount = groupedCompanies.filter(([cn]) => {
+            const cid = companyNameToId(cn);
+            return !newNodes.find(
+              n => n.id === cid ||
+                (n.type === 'spanish-company-group' &&
+                  normalizeCompanyName(n.name).toUpperCase() === cn.toUpperCase())
+            );
+          }).length;
+          const companyLayout = adaptiveLayout({
+            anchor,
+            newCount: Math.max(newCompanyCount, 1),
+            existingNodes: newNodes,
+            minSpacing: 130,
+          });
+
+          let newCompanyIdx = 0;
+          groupedCompanies.forEach(([companyName, summary]) => {
             let companyId = companyNameToId(companyName);
 
             // Check if company already exists by ID or by normalized name — only skip node creation, still extract officers
@@ -1298,13 +1380,14 @@ const SpanishCompanyNetworkGraph = ({
             if (!companyExists) {
               const companyPosition = radialPosition({
                 anchor,
-                index: companyIdx,
-                total: groupedCompanies.length,
-                occupiedNodes: newNodes.filter(n => n.type === 'spanish-company-group'),
-                baseRadius: 220,
+                index: newCompanyIdx,
+                total: newCompanyCount,
+                occupiedNodes: newNodes,
+                baseRadius: companyLayout.baseRadius,
                 minDistance: 130,
-                maxRadius: 320,
+                startAngle: companyLayout.startAngle,
               });
+              newCompanyIdx++;
 
               // Add company node — always pin temporarily so the simulation
               // settles *around* new nodes rather than collapsing them inward.
@@ -1505,10 +1588,12 @@ const SpanishCompanyNetworkGraph = ({
                   anchor: companyAnchor,
                   category: categoryKey,
                   slot,
-                  occupiedNodes: newNodes.filter(n => n.type === 'officer'),
-                  baseRadius: 130,
+                  occupiedNodes: newNodes,
+                  baseRadius: Math.max(130, 130 + newNodes.filter(n =>
+                    isFinitePoint(n) &&
+                    Math.hypot(n.x - companyAnchor.x, n.y - companyAnchor.y) < 300
+                  ).length * 8),
                   minDistance: 60,
-                  maxRadius: 200,
                 });
 
                 // Add new officer node
@@ -1666,7 +1751,19 @@ const SpanishCompanyNetworkGraph = ({
             : graphCenter;
 
           // Add company nodes and links for each grouped company
-          companyEntries.forEach((group, companyIdx) => {
+          const newCompanyCountForOfficer = companyEntries.filter(g => {
+            const cid = companyNameToId(normalizeCompanyName(g.name || 'Unknown Company'));
+            return !newNodes.find(n => n.id === cid);
+          }).length;
+          const officerCompanyLayout = adaptiveLayout({
+            anchor: officerAnchor,
+            newCount: Math.max(newCompanyCountForOfficer, 1),
+            existingNodes: newNodes,
+            minSpacing: 100,
+          });
+
+          let newOfficerCompanyIdx = 0;
+          companyEntries.forEach((group) => {
             const companyName = normalizeCompanyName(group.name || 'Unknown Company');
             const companyId = companyNameToId(companyName);
 
@@ -1680,12 +1777,14 @@ const SpanishCompanyNetworkGraph = ({
             if (!companyNode) {
               const companyPosition = radialPosition({
                 anchor: officerAnchor,
-                index: companyIdx,
-                total: companyEntries.length,
+                index: newOfficerCompanyIdx,
+                total: newCompanyCountForOfficer,
                 occupiedNodes: newNodes,
-                baseRadius: 130,
+                baseRadius: officerCompanyLayout.baseRadius,
                 minDistance: 92,
+                startAngle: officerCompanyLayout.startAngle,
               });
+              newOfficerCompanyIdx++;
 
               companyNode = {
                 id: companyId,
@@ -1777,7 +1876,25 @@ const SpanishCompanyNetworkGraph = ({
             ? { x: officerNode.x, y: officerNode.y }
             : computeGraphCentroid(prevData.nodes);
 
-          companyEntries.forEach((group, companyIdx) => {
+          // Count how many genuinely new companies we'll add (for adaptive layout)
+          const newCompanyCount = companyEntries.filter(group => {
+            const cn = normalizeCompanyName(group.name || 'Unknown Company');
+            const cid = companyNameToId(cn);
+            return !newNodes.find(
+              n => n.id === cid ||
+                (n.type === 'spanish-company-group' &&
+                  normalizeCompanyName(n.name).toUpperCase() === cn.toUpperCase())
+            );
+          }).length;
+          const layout = adaptiveLayout({
+            anchor: officerAnchor,
+            newCount: Math.max(newCompanyCount, 1),
+            existingNodes: newNodes,
+            minSpacing: 100,
+          });
+
+          let newIdx = 0;
+          companyEntries.forEach((group) => {
             const companyName = normalizeCompanyName(group.name || 'Unknown Company');
             let companyId = companyNameToId(companyName);
 
@@ -1794,13 +1911,14 @@ const SpanishCompanyNetworkGraph = ({
             if (!existingCompany) {
               const companyPosition = radialPosition({
                 anchor: officerAnchor,
-                index: companyIdx,
-                total: companyEntries.length,
-                occupiedNodes: newNodes.filter(n => n.type === 'spanish-company-group'),
-                baseRadius: 160,
+                index: newIdx,
+                total: newCompanyCount,
+                occupiedNodes: newNodes,
+                baseRadius: layout.baseRadius,
                 minDistance: 100,
-                maxRadius: 220,
+                startAngle: layout.startAngle,
               });
+              newIdx++;
 
               newNodes.push({
                 id: companyId,
@@ -1896,6 +2014,22 @@ const SpanishCompanyNetworkGraph = ({
               if (!uniqueOfficerNames.has(nameKey)) uniqueOfficerNames.set(nameKey, o);
             });
 
+            // Count genuinely new officers for adaptive layout
+            const newOfficerCount = (() => {
+              let count = 0;
+              uniqueOfficerNames.forEach((officer, nameKey) => {
+                const oid = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
+                if (!newNodes.find(n => n.id === oid)) count++;
+              });
+              return count;
+            })();
+            const officerLayout = adaptiveLayout({
+              anchor,
+              newCount: Math.max(newOfficerCount, 1),
+              existingNodes: newNodes,
+              minSpacing: 70,
+            });
+
             let idx = 0;
             uniqueOfficerNames.forEach((officer, nameKey) => {
               const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
@@ -1903,11 +2037,11 @@ const SpanishCompanyNetworkGraph = ({
                 const pos = radialPosition({
                   anchor,
                   index: idx,
-                  total: uniqueOfficerNames.size,
-                  occupiedNodes: newNodes.filter(n => n.type === 'officer'),
-                  baseRadius: 130,
+                  total: newOfficerCount,
+                  occupiedNodes: newNodes,
+                  baseRadius: officerLayout.baseRadius,
                   minDistance: 60,
-                  maxRadius: 200,
+                  startAngle: officerLayout.startAngle,
                 });
                 newNodes.push({
                   id: officerId,
