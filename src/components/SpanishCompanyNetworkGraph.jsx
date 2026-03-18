@@ -1718,10 +1718,12 @@ const SpanishCompanyNetworkGraph = ({
           let officerNode = newNodes.find(n => n.id === officerId);
           if (!officerNode) {
             const isCompany = isCompanyOfficer(officerName);
-            const officerPosition = findNonOverlappingPosition({
+            const officerPosition = ringPosition({
               anchor: graphCenter,
-              candidate: graphCenter,
-              occupiedNodes: newNodes,
+              index: 0,
+              total: 1,
+              existingNodes: newNodes,
+              radius: 0,
               minDistance: 120,
             });
 
