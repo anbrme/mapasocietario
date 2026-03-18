@@ -114,6 +114,48 @@ const computeGraphCentroid = nodes => {
   };
 };
 
+// Simple ring layout: places nodes in a circle around the anchor.
+// Used for the initial search result and direct children of a company.
+const ringPosition = ({
+  anchor,
+  index,
+  total,
+  existingNodes,
+  radius = 180,
+  minDistance = 50,
+  startAngle = -Math.PI / 2,
+  ringGap = 55,
+}) => {
+  const maxPerRing = Math.max(total, 1);
+  const ring = Math.floor(index / maxPerRing);
+  const slotInRing = index % maxPerRing;
+  const nodesInRing = Math.min(maxPerRing, total - ring * maxPerRing);
+  const r = radius + ring * ringGap;
+  const angleStep = (2 * Math.PI) / nodesInRing;
+  const angle = startAngle + slotInRing * angleStep;
+
+  let x = anchor.x + Math.cos(angle) * r;
+  let y = anchor.y + Math.sin(angle) * r;
+
+  // Light nudge if overlapping existing nodes
+  const positioned = (existingNodes || []).filter(isFinitePoint);
+  const minDistSq = minDistance * minDistance;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const hasOverlap = positioned.some(n => {
+      const dx = n.x - x;
+      const dy = n.y - y;
+      return dx * dx + dy * dy < minDistSq;
+    });
+    if (!hasOverlap) break;
+    const a = Math.atan2(y - anchor.y, x - anchor.x) + 0.3;
+    const rr = Math.hypot(x - anchor.x, y - anchor.y) + 20;
+    x = anchor.x + Math.cos(a) * rr;
+    y = anchor.y + Math.sin(a) * rr;
+  }
+
+  return { x, y };
+};
+
 // Find the least-crowded direction from `anchor` considering all existing nodes.
 // Returns an angle (radians) pointing away from the densest area.
 const leastCrowdedAngle = (anchor, existingNodes) => {
@@ -266,64 +308,9 @@ const clusterPosition = ({
   return { x, y };
 };
 
-// Category-sector variant for officers around a company node.
-// Each category gets its own cluster hub offset in its characteristic direction.
-const categorySectorPosition = ({
-  anchor,
-  category,
-  slot,
-  existingNodes,
-  stemLength = 140,
-  nodeSpacing = 45,
-  minDistance = 40,
-}) => {
-  const baseCategoryAngle = CATEGORY_LAYOUT_ANGLE[category] ?? -Math.PI / 2;
-  const positioned = (existingNodes || []).filter(isFinitePoint);
-  const awayAngle = leastCrowdedAngle(anchor, positioned);
-
-  // Blend category direction with away-from-crowd
-  const direction = baseCategoryAngle + 0.4 * ((awayAngle - baseCategoryAngle + Math.PI) % (2 * Math.PI) - Math.PI);
-
-  // Place in a tight arc at stemLength from anchor
-  const sectorWidth = 8;
-  const ring = Math.floor(slot / sectorWidth);
-  const slotInRing = slot % sectorWidth;
-
-  const radius = stemLength + ring * nodeSpacing * 0.8;
-  const arcSpan = Math.min((sectorWidth * nodeSpacing) / radius, Math.PI / 2);
-  const angle = direction - arcSpan / 2 + (slotInRing / Math.max(1, sectorWidth - 1)) * arcSpan;
-
-  let x = anchor.x + Math.cos(angle) * radius;
-  let y = anchor.y + Math.sin(angle) * radius;
-
-  // Light nudge if overlapping
-  const minDistSq = minDistance * minDistance;
-  for (let attempt = 0; attempt < 12; attempt++) {
-    const hasOverlap = positioned.some(n => {
-      const dx = n.x - x;
-      const dy = n.y - y;
-      return dx * dx + dy * dy < minDistSq;
-    });
-    if (!hasOverlap) break;
-    const a = Math.atan2(y - anchor.y, x - anchor.x) + 0.3;
-    const r = Math.hypot(x - anchor.x, y - anchor.y) + 15;
-    x = anchor.x + Math.cos(a) * r;
-    y = anchor.y + Math.sin(a) * r;
-  }
-
-  return { x, y };
-};
-
 const normalizeNodeId = id => (id == null ? '' : String(id));
 const isSameNodeId = (a, b) => normalizeNodeId(a) === normalizeNodeId(b);
 const getNodeIdFromRef = ref => (ref && typeof ref === 'object' ? ref.id : ref);
-
-const createCategorySlots = () => ({
-  nombramientos: 0,
-  reelecciones: 0,
-  revocaciones: 0,
-  ceses_dimisiones: 0,
-});
 
 const normalizeCategoryKey = category => {
   if (!category) return 'nombramientos';
@@ -333,36 +320,6 @@ const normalizeCategoryKey = category => {
   if (cat.includes('cese') || cat.includes('dimis') || cat === 'resignations') return 'ceses_dimisiones';
   if (cat.includes('nombramiento') || cat === 'appointments') return 'nombramientos';
   return 'nombramientos';
-};
-
-const seedCategorySlotsFromExistingLinks = ({ companyId, nodes, links }) => {
-  const slots = createCategorySlots();
-  const normalizedCompanyId = normalizeNodeId(companyId);
-  if (!normalizedCompanyId) return slots;
-
-  const nodeById = new Map((nodes || []).map(node => [normalizeNodeId(node.id), node]));
-  (links || []).forEach(link => {
-    const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
-    const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
-    if (!sourceId || !targetId) return;
-
-    let neighborId = null;
-    if (isSameNodeId(sourceId, normalizedCompanyId)) {
-      neighborId = targetId;
-    } else if (isSameNodeId(targetId, normalizedCompanyId)) {
-      neighborId = sourceId;
-    } else {
-      return;
-    }
-
-    const neighborNode = nodeById.get(neighborId);
-    if (!neighborNode || neighborNode.type !== 'officer') return;
-
-    const categoryKey = normalizeCategoryKey(link.category);
-    slots[categoryKey] += 1;
-  });
-
-  return slots;
 };
 
 const normalizeNameForMerge = value =>
@@ -1148,25 +1105,17 @@ const SpanishCompanyNetworkGraph = ({
                 });
                 return count;
               })();
-              const searchHub = computeClusterHub({
-                anchor,
-                total: searchNewOfficerCount,
-                existingNodes: newNodes,
-                stemLength: 180,
-                clusterSpacing: 50,
-              });
-
               let idx = 0;
               uniqueOfficerNames.forEach((officer, nameKey) => {
                 const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
                 if (!newNodes.find(n => n.id === officerId)) {
-                  const pos = clusterPosition({
-                    hub: searchHub.hub,
+                  const pos = ringPosition({
+                    anchor,
                     index: idx,
                     total: searchNewOfficerCount,
                     existingNodes: newNodes,
-                    clusterSpacing: 50,
-                    minDistance: 40,
+                    radius: 160,
+                    minDistance: 45,
                   });
                   newNodes.push({
                     id: officerId,
@@ -1391,7 +1340,7 @@ const SpanishCompanyNetworkGraph = ({
           // Add grouped company nodes and extract officers
           const groupedCompanies = Object.entries(companiesByName);
 
-          // Pre-count genuinely new companies for petal layout
+          // Pre-count genuinely new companies
           const newCompanyCount = groupedCompanies.filter(([cn]) => {
             const cid = companyNameToId(cn);
             return !newNodes.find(
@@ -1400,13 +1349,17 @@ const SpanishCompanyNetworkGraph = ({
                   normalizeCompanyName(n.name).toUpperCase() === cn.toUpperCase())
             );
           }).length;
-          const companyClusterHub = computeClusterHub({
-            anchor,
-            total: newCompanyCount,
-            existingNodes: newNodes,
-            stemLength: 280,
-            clusterSpacing: 70,
-          });
+
+          // For expansions (has anchor node), cluster away; for initial search, ring around center
+          const companyClusterHub = hasExplicitAnchor
+            ? computeClusterHub({
+                anchor,
+                total: newCompanyCount,
+                existingNodes: newNodes,
+                stemLength: 280,
+                clusterSpacing: 70,
+              })
+            : null;
 
           let newCompanyIdx = 0;
           groupedCompanies.forEach(([companyName, summary]) => {
@@ -1426,14 +1379,23 @@ const SpanishCompanyNetworkGraph = ({
             }
 
             if (!companyExists) {
-              const companyPosition = clusterPosition({
-                hub: companyClusterHub.hub,
-                index: newCompanyIdx,
-                total: newCompanyCount,
-                existingNodes: newNodes,
-                clusterSpacing: 70,
-                minDistance: 60,
-              });
+              const companyPosition = companyClusterHub
+                ? clusterPosition({
+                    hub: companyClusterHub.hub,
+                    index: newCompanyIdx,
+                    total: newCompanyCount,
+                    existingNodes: newNodes,
+                    clusterSpacing: 70,
+                    minDistance: 60,
+                  })
+                : ringPosition({
+                    anchor,
+                    index: newCompanyIdx,
+                    total: newCompanyCount,
+                    existingNodes: newNodes,
+                    radius: 220,
+                    minDistance: 80,
+                  });
               newCompanyIdx++;
 
               // Add company node — always pin temporarily so the simulation
@@ -1461,11 +1423,6 @@ const SpanishCompanyNetworkGraph = ({
             const companyAnchor = isFinitePoint(companyNodeForLayout)
               ? { x: companyNodeForLayout.x, y: companyNodeForLayout.y }
               : anchor;
-            const categorySlots = seedCategorySlotsFromExistingLinks({
-              companyId,
-              nodes: newNodes,
-              links: newLinks,
-            });
 
             // Extract all officers from all entries (even if company already existed in graph)
             const allOfficers = {
@@ -1599,6 +1556,7 @@ const SpanishCompanyNetworkGraph = ({
             });
 
 
+            let officerRingIdx = 0;
             allOfficersList.forEach(officer => {
               // Create a normalized name for consistent node identification
               const normalizedName = officer.name.trim().toLowerCase();
@@ -1627,19 +1585,15 @@ const SpanishCompanyNetworkGraph = ({
               if (!officerNode) {
                 // Determine if this is a company or individual officer
                 const isCompany = isCompanyOfficer(officer.name);
-                const categoryKey =
-                  categorySlots[officer.category] != null ? officer.category : 'nombramientos';
-                const slot = categorySlots[categoryKey];
-                categorySlots[categoryKey] += 1;
-                const officerPosition = categorySectorPosition({
+                const officerPosition = ringPosition({
                   anchor: companyAnchor,
-                  category: categoryKey,
-                  slot,
+                  index: officerRingIdx,
+                  total: allOfficersList.length,
                   existingNodes: newNodes,
-                  stemLength: 140,
-                  nodeSpacing: 50,
-                  minDistance: 50,
+                  radius: 140,
+                  minDistance: 45,
                 });
+                officerRingIdx++;
 
                 // Add new officer node
                 officerNode = {
