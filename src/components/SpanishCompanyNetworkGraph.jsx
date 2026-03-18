@@ -105,9 +105,9 @@ const formatDate = dateStr => {
 
 const isFinitePoint = point => Number.isFinite(point?.x) && Number.isFinite(point?.y);
 
-const computeGraphCentroid = nodes => {
+const computeGraphCentroid = (nodes, fallback = null) => {
   const positioned = (nodes || []).filter(isFinitePoint);
-  if (positioned.length === 0) return { x: 0, y: 0 };
+  if (positioned.length === 0) return fallback || { x: 0, y: 0 };
   return {
     x: positioned.reduce((sum, n) => sum + n.x, 0) / positioned.length,
     y: positioned.reduce((sum, n) => sum + n.y, 0) / positioned.length,
@@ -487,6 +487,10 @@ const SpanishCompanyNetworkGraph = ({
     setContainerEl(node);
   }, []);
   const [containerDimensions, setContainerDimensions] = useState({ width: 800, height: 500 });
+  const viewportCenter = React.useMemo(() => ({
+    x: containerDimensions.width / 2,
+    y: containerDimensions.height / 2,
+  }), [containerDimensions.width, containerDimensions.height]);
   const [containerReady, setContainerReady] = useState(false);
 
   // Double-click detection via single click timer
@@ -1063,7 +1067,7 @@ const SpanishCompanyNetworkGraph = ({
             setGraphData(prevData => {
               const newNodes = [...prevData.nodes];
               const newLinks = [...prevData.links];
-              const anchor = computeGraphCentroid(prevData.nodes);
+              const anchor = computeGraphCentroid(prevData.nodes, viewportCenter);
 
               // Add company node if not already present
               if (!newNodes.find(n => n.id === companyId)) {
@@ -1294,7 +1298,7 @@ const SpanishCompanyNetworkGraph = ({
           const newLinks = [...prevData.links];
 
           const hasExplicitAnchor = isFinitePoint(anchorNode);
-          const defaultAnchor = computeGraphCentroid(prevData.nodes);
+          const defaultAnchor = computeGraphCentroid(prevData.nodes, viewportCenter);
           const anchor = hasExplicitAnchor ? { x: anchorNode.x, y: anchorNode.y } : defaultAnchor;
           const keepExpansionNodesFixed = hasExplicitAnchor;
 
@@ -1665,7 +1669,7 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [extractOfficersFromText, isCompanyOfficer]
+    [extractOfficersFromText, isCompanyOfficer, viewportCenter]
   );
 
   // Add officer to graph with associated companies
@@ -1707,7 +1711,7 @@ const SpanishCompanyNetworkGraph = ({
         setGraphData(prevData => {
           const newNodes = [...prevData.nodes];
           const newLinks = [...prevData.links];
-          const graphCenter = computeGraphCentroid(prevData.nodes);
+          const graphCenter = computeGraphCentroid(prevData.nodes, viewportCenter);
 
           // Create the officer node first - use parameter instead of state
           const officerName = officerNameParam || results[0]?.name || 'Unknown Officer';
@@ -1829,7 +1833,7 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [isCompanyOfficer]
+    [isCompanyOfficer, viewportCenter]
   );
 
   // Expand officer node to show other companies
@@ -1870,7 +1874,7 @@ const SpanishCompanyNetworkGraph = ({
           const newLinks = [...prevData.links];
           const officerAnchor = isFinitePoint(officerNode)
             ? { x: officerNode.x, y: officerNode.y }
-            : computeGraphCentroid(prevData.nodes);
+            : computeGraphCentroid(prevData.nodes, viewportCenter);
 
           // Count how many genuinely new companies we'll add (for adaptive layout)
           const newCompanyCount = companyEntries.filter(group => {
@@ -1961,7 +1965,7 @@ const SpanishCompanyNetworkGraph = ({
       console.error('Error expanding officer node:', err);
       return false;
     }
-  }, [searchResultSize]);
+  }, [searchResultSize, viewportCenter]);
 
   // Expand company node to show its officers
   const expandCompanyNode = useCallback(
@@ -1990,7 +1994,7 @@ const SpanishCompanyNetworkGraph = ({
             const newLinks = [...prevData.links];
             const anchor = isFinitePoint(companyNode)
               ? { x: companyNode.x, y: companyNode.y }
-              : computeGraphCentroid(prevData.nodes);
+              : computeGraphCentroid(prevData.nodes, viewportCenter);
 
             // Update the company node's name to the canonical PG name
             if (canonicalName !== companyName) {
