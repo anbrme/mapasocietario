@@ -44,10 +44,7 @@ const FAQ_ITEMS = [
     question: 'Can I get API access?',
     answer: (
       <>
-        Yes. Public API docs and examples are available at{' '}
-        <a href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener noreferrer">
-          github.com/anbrme/borme-public-api
-        </a>. Please write us at <code>app@ncdata.eu</code>
+        Yes. Please write us at app@ncdata.eu with a brief description of your intended use case, so that we can tailor our response to your needs.
       </>
     ),
   },
