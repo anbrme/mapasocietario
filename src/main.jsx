@@ -1,8 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { TermsProvider } from './contexts/TermsProvider';
 import App from './App';
+import Dashboard from './components/Dashboard';
 import './index.css';
 
 const darkTheme = createTheme({
@@ -23,9 +25,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <TermsProvider>
-        <App />
-      </TermsProvider>
+      <BrowserRouter>
+        <TermsProvider>
+          <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Routes>
+        </TermsProvider>
+      </BrowserRouter>
     </ThemeProvider>
   </React.StrictMode>
 );

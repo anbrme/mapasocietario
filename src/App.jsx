@@ -24,7 +24,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LocalCafeIcon from '@mui/icons-material/LocalCafe';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import { debounce } from 'lodash';
+import { useNavigate } from 'react-router-dom';
 import { spanishCompaniesService } from './services/spanishCompaniesService';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
 import AdSenseAdUnit from './components/AdSenseAdUnit';
@@ -55,6 +57,7 @@ const FAQ_ITEMS = [
 ];
 
 export default function App() {
+  const navigate = useNavigate();
   const [selectedEntity, setSelectedEntity] = useState(null); // { name, type: 'company'|'officer' }
   const [inputValue, setInputValue] = useState('');
   const [options, setOptions] = useState([]);
@@ -371,6 +374,32 @@ export default function App() {
         Buy me a coffee
       </Button>
 
+      {/* Dashboard link */}
+      <Button
+        onClick={() => navigate('/dashboard')}
+        variant="outlined"
+        size="small"
+        startIcon={<BarChartIcon sx={{ fontSize: '1.1rem !important' }} />}
+        sx={{
+          px: 2.5,
+          py: 0.5,
+          color: 'text.secondary',
+          borderColor: 'rgba(33, 150, 243, 0.35)',
+          bgcolor: 'rgba(33, 150, 243, 0.06)',
+          textTransform: 'none',
+          fontWeight: 500,
+          fontSize: '0.8rem',
+          borderRadius: 6,
+          '&:hover': {
+            borderColor: '#1976d2',
+            color: '#1976d2',
+            bgcolor: 'rgba(25, 118, 210, 0.1)',
+          },
+        }}
+      >
+        Dashboard
+      </Button>
+
       {/* Experimental warning */}
       <Box
         sx={{
@@ -469,6 +498,13 @@ export default function App() {
           &copy; {new Date().getFullYear()} Mapa Societario &middot; Free to use, no account required &middot; Data sourced from BORME (Registro Mercantil)
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
+          <Link
+            href="/dashboard"
+            variant="caption"
+            sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            Dashboard
+          </Link>
           <Link
             href="/about.html"
             target="_blank"
