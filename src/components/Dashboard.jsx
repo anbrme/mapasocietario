@@ -182,7 +182,6 @@ export default function Dashboard() {
   const [overview, setOverview] = useState(null);
   const [lifecycle, setLifecycle] = useState(null);
   const [yoy, setYoy] = useState(null);
-  const [eventTypes, setEventTypes] = useState(null);
   const [companySizes, setCompanySizes] = useState(null);
   const [topOfficers, setTopOfficers] = useState(null);
   const [capital, setCapital] = useState(null);
@@ -201,13 +200,11 @@ export default function Dashboard() {
     Promise.all([
       statsService.getOverview(filterParams),
       statsService.getLifecycle(filterParams),
-      statsService.getEventTypes(filterParams),
     ])
-      .then(([ov, lc, et]) => {
+      .then(([ov, lc]) => {
         if (cancelled) return;
         setOverview(ov);
         setLifecycle(lc);
-        setEventTypes(et);
         setLoading(false);
 
         // Wave 2: slower endpoints loaded after initial paint
@@ -292,18 +289,6 @@ export default function Dashboard() {
     date: d.date,
     net: d.formations - d.dissolutions,
   })) || [];
-
-  const CATEGORY_LABELS = {
-    officers: 'Cargos',
-    lifecycle: 'Ciclo de vida',
-    capital: 'Capital',
-    governance: 'Gobierno',
-    ownership: 'Propiedad',
-    structural: 'Estructural',
-    identity: 'Identidad',
-    administrative: 'Administrativo',
-    other: 'Otros',
-  };
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 3 }, height: '100vh', overflowY: 'auto' }}>
@@ -446,65 +431,60 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </ChartCard>
 
-          {/* Per company type breakdown when types are selected */}
-          {selectedCompanyTypes.length > 1 && lifecycleData.length > 0 && lifecycleData[0]?.by_company_type && (
-            <ChartCard
-              title="Constituciones por Tipo de Sociedad"
-              subtitle={filterLabel}
-              sx={{ mb: 3 }}
-            >
-              <ResponsiveContainer width="100%" height={420}>
-                <LineChart data={lifecycleData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={interval === 'year' ? formatDateShort : formatDate}
-                    tick={{ fontSize: 11 }}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <RechartsTooltip content={<CustomTooltip />} />
-                  <Legend />
-                  {selectedCompanyTypes.map((ct, i) => (
-                    <Line
-                      key={ct}
-                      type="monotone"
-                      dataKey={`by_company_type.${ct}.formations`}
-                      name={`${ct} — Constituciones`}
-                      stroke={PIE_COLORS[i % PIE_COLORS.length]}
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          )}
-
-          <ChartCard title="Distribución por Tipo de Evento">
-            <ResponsiveContainer width="100%" height={380}>
-              <PieChart>
-                <Pie
-                  data={(eventTypes?.by_category || []).map((d) => ({
-                    ...d,
-                    name: CATEGORY_LABELS[d.category] || d.category,
-                  }))}
-                  dataKey="count"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={130}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={{ stroke: '#666' }}
+          {/* Per company type breakdown — one chart per type showing all 3 metrics */}
+          {selectedCompanyTypes.length > 0 && lifecycleData.length > 0 && lifecycleData[0]?.by_company_type && (
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: selectedCompanyTypes.length === 1 ? '1fr' : '1fr 1fr' }, gap: 3, mb: 3 }}>
+              {selectedCompanyTypes.map((ct, i) => (
+                <ChartCard
+                  key={ct}
+                  title={ct}
+                  subtitle={filterLabel}
                 >
-                  {(eventTypes?.by_category || []).map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip formatter={(value) => formatNumber(value)} />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={lifecycleData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={interval === 'year' ? formatDateShort : formatDate}
+                        tick={{ fontSize: 11 }}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <RechartsTooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Area
+                        type="monotone"
+                        dataKey={`by_company_type.${ct}.formations`}
+                        name="Constituciones"
+                        stroke={COLORS.formations}
+                        fill={COLORS.formations}
+                        fillOpacity={0.15}
+                        strokeWidth={2}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey={`by_company_type.${ct}.dissolutions`}
+                        name="Disoluciones"
+                        stroke={COLORS.dissolutions}
+                        fill={COLORS.dissolutions}
+                        fillOpacity={0.15}
+                        strokeWidth={2}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey={`by_company_type.${ct}.concursos`}
+                        name="Concursos"
+                        stroke={COLORS.concursos}
+                        fill={COLORS.concursos}
+                        fillOpacity={0.1}
+                        strokeWidth={1.5}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+              ))}
+            </Box>
+          )}
         </>
       )}
 
