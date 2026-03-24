@@ -284,11 +284,27 @@ export default function Dashboard() {
     selectedCompanyTypes.length > 0 && `Tipo: ${selectedCompanyTypes.join(', ')}`,
   ].filter(Boolean).join(' | ');
 
-  const lifecycleData = lifecycle?.data?.map((d) => ({
-    ...d,
-    date: d.date,
-    net: d.formations - d.dissolutions,
-  })) || [];
+  // Drop the last data point if it's an incomplete period (current year/quarter/month)
+  const trimIncomplete = (data) => {
+    if (!data?.length) return [];
+    const now = new Date();
+    const last = new Date(data[data.length - 1].date);
+    const isIncomplete =
+      (interval === 'year' && last.getFullYear() === now.getFullYear()) ||
+      (interval === 'quarter' && last.getFullYear() === now.getFullYear() &&
+        Math.floor(last.getMonth() / 3) === Math.floor(now.getMonth() / 3)) ||
+      (interval === 'month' && last.getFullYear() === now.getFullYear() &&
+        last.getMonth() === now.getMonth());
+    return isIncomplete ? data.slice(0, -1) : data;
+  };
+
+  const lifecycleData = trimIncomplete(
+    lifecycle?.data?.map((d) => ({
+      ...d,
+      date: d.date,
+      net: d.formations - d.dissolutions,
+    })) || []
+  );
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 3 }, height: '100vh', overflowY: 'auto' }}>

@@ -8,9 +8,26 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  Button,
+  ButtonGroup,
 } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
 import { useFilters } from '../contexts/FilterProvider';
+
+function datePresets() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const q = Math.floor(now.getMonth() / 3);
+  const qStart = String(q * 3 + 1).padStart(2, '0');
+  return [
+    { label: `${y}`, from: `${y}-01-01`, to: '' },
+    { label: `${y - 1}`, from: `${y - 1}-01-01`, to: `${y - 1}-12-31` },
+    { label: '12m', from: `${y - 1}-${m}-01`, to: '' },
+    { label: `T${q + 1}`, from: `${y}-${qStart}-01`, to: '' },
+    { label: '5a', from: `${y - 5}-01-01`, to: '' },
+  ];
+}
 
 export default function FilterBar() {
   const {
@@ -54,6 +71,19 @@ export default function FilterBar() {
         InputLabelProps={{ shrink: true }}
         sx={{ width: 145, '& input': { fontSize: '0.8rem' } }}
       />
+
+      {/* Date range presets */}
+      <ButtonGroup size="small" variant="outlined" sx={{ '& .MuiButton-root': { fontSize: '0.65rem', px: 1, py: 0.5, minWidth: 0 } }}>
+        {datePresets().map((p) => (
+          <Button
+            key={p.label}
+            onClick={() => { setDateFrom(p.from); setDateTo(p.to); }}
+            variant={dateFrom === p.from && dateTo === p.to ? 'contained' : 'outlined'}
+          >
+            {p.label}
+          </Button>
+        ))}
+      </ButtonGroup>
 
       {/* Province multi-select */}
       <Autocomplete
