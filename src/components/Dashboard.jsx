@@ -89,38 +89,39 @@ function KpiCard({ title, value, subtitle, icon, color = '#fff' }) {
   return (
     <Paper
       sx={{
-        p: 2.5,
+        p: 1.5,
         display: 'flex',
         alignItems: 'center',
-        gap: 2,
-        minWidth: 200,
+        gap: 1.5,
+        minWidth: 170,
         flex: 1,
       }}
     >
       <Box
         sx={{
-          width: 48,
-          height: 48,
-          borderRadius: 2,
+          width: 36,
+          height: 36,
+          borderRadius: 1.5,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           bgcolor: `${color}18`,
           color: color,
           flexShrink: 0,
+          '& .MuiSvgIcon-root': { fontSize: 20 },
         }}
       >
         {icon}
       </Box>
       <Box sx={{ minWidth: 0 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, color, lineHeight: 1.2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, color, lineHeight: 1.2 }}>
           {value}
         </Typography>
-        <Typography variant="body2" color="text.secondary" noWrap>
+        <Typography variant="caption" color="text.secondary" noWrap>
           {title}
         </Typography>
         {subtitle && (
-          <Typography variant="caption" color="text.disabled">
+          <Typography variant="caption" color="text.disabled" sx={{ display: 'block', fontSize: '0.65rem' }}>
             {subtitle}
           </Typography>
         )}
@@ -291,9 +292,9 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 4 }, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 3 }, height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
         <Tooltip title="Volver al buscador">
           <IconButton onClick={() => navigate('/')} sx={{ color: 'text.secondary' }}>
             <ArrowBackIcon />
@@ -325,7 +326,7 @@ export default function Dashboard() {
       </Box>
 
       {/* KPIs */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
         <KpiCard
           title="Empresas registradas"
           value={formatNumber(overview?.total_companies)}
@@ -365,7 +366,7 @@ export default function Dashboard() {
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
-        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
+        sx={{ mb: 0, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}
         variant="scrollable"
         scrollButtons="auto"
       >
@@ -376,6 +377,9 @@ export default function Dashboard() {
         <Tab label="Propiedad" icon={<SwapHorizIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Directivos" icon={<PeopleIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
       </Tabs>
+
+      {/* Scrollable tab content */}
+      <Box sx={{ flex: 1, overflow: 'auto', pb: 2 }}>
 
       {/* Tab 0: Lifecycle */}
       {tab === 0 && (
@@ -719,10 +723,11 @@ export default function Dashboard() {
       )}
 
       {/* Footer */}
-      <Box sx={{ flex: 1 }} />
-      <Typography variant="body2" color="text.disabled" align="center" sx={{ mt: 4, mb: 2 }}>
+      <Typography variant="body2" color="text.disabled" align="center" sx={{ mt: 'auto', pt: 3, pb: 1 }}>
         Datos del Registro Mercantil (BORME). Actualizado diariamente.
       </Typography>
+
+      </Box>{/* end scrollable tab content */}
     </Box>
   );
 }
