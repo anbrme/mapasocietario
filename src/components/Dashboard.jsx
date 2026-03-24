@@ -22,6 +22,8 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import PersonIcon from '@mui/icons-material/Person';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import MapIcon from '@mui/icons-material/Map';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -179,6 +181,8 @@ export default function Dashboard() {
   const [companySizes, setCompanySizes] = useState(null);
   const [topOfficers, setTopOfficers] = useState(null);
   const [capital, setCapital] = useState(null);
+  const [provinces, setProvinces] = useState(null);
+  const [ownership, setOwnership] = useState(null);
 
   // Load data in two waves to avoid overwhelming the backend / hitting gateway timeouts
   useEffect(() => {
@@ -207,15 +211,19 @@ export default function Dashboard() {
           statsService.getCompanySizes(),
           statsService.getTopOfficers({ limit: 25 }),
           statsService.getCapital(params),
+          statsService.getProvinces(),
+          statsService.getOwnershipTransitions(params),
         ]);
       })
       .then((results) => {
         if (cancelled || !results) return;
-        const [y, cs, to, cap] = results;
+        const [y, cs, to, cap, prov, own] = results;
         setYoy(y);
         setCompanySizes(cs);
         setTopOfficers(to);
         setCapital(cap);
+        setProvinces(prov);
+        setOwnership(own);
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
@@ -283,7 +291,7 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 4 } }}>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 4 }, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
         <Tooltip title="Volver al buscador">
@@ -364,6 +372,8 @@ export default function Dashboard() {
         <Tab label="Ciclo de Vida" icon={<TrendingUpIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Comparativa Anual" icon={<GavelIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Capital" icon={<AccountBalanceIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
+        <Tab label="Provincias" icon={<MapIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
+        <Tab label="Propiedad" icon={<SwapHorizIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Directivos" icon={<PeopleIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
       </Tabs>
 
@@ -542,8 +552,149 @@ export default function Dashboard() {
         </Box>
       )}
 
-      {/* Tab 3: Officers */}
+      {/* Tab 3: Provinces */}
       {tab === 3 && (
+        <ChartCard title="Actividad por Provincia">
+          {provinces ? (
+            <ResponsiveContainer width="100%" height={Math.max(500, (provinces.data?.length || 0) * 28)}>
+              <BarChart
+                data={[...(provinces.data || [])].sort((a, b) => b.total - a.total)}
+                layout="vertical"
+                margin={{ left: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={formatNumber} />
+                <YAxis
+                  dataKey="province"
+                  type="category"
+                  width={160}
+                  tick={{ fontSize: 11 }}
+                />
+                <RechartsTooltip formatter={(v) => formatNumber(v)} />
+                <Legend />
+                {provinces.source === 'borme_events_v3' ? (
+                  <>
+                    <Bar dataKey="formations" name="Constituciones" fill={COLORS.formations} stackId="a" />
+                    <Bar dataKey="dissolutions" name="Disoluciones" fill={COLORS.dissolutions} stackId="a" />
+                    <Bar dataKey="concursos" name="Concursos" fill={COLORS.concursos} stackId="a" />
+                  </>
+                ) : (
+                  <Bar dataKey="total" name="Publicaciones" fill="#2196f3" radius={[0, 4, 4, 0]} />
+                )}
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+          )}
+        </ChartCard>
+      )}
+
+      {/* Tab 4: Ownership transitions */}
+      {tab === 4 && (
+        <>
+          {ownership ? (
+            <>
+              {/* KPIs for ownership */}
+              <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+                <KpiCard
+                  title="Declaraciones unipersonalidad"
+                  value={formatNumber(ownership.total_gained)}
+                  icon={<TrendingUpIcon />}
+                  color={COLORS.formations}
+                />
+                <KpiCard
+                  title="Pérdidas unipersonalidad"
+                  value={formatNumber(ownership.total_lost)}
+                  icon={<TrendingDownIcon />}
+                  color={COLORS.dissolutions}
+                />
+                <KpiCard
+                  title="Socio único: empresa"
+                  value={formatNumber(ownership.by_type?.company_shareholder)}
+                  icon={<BusinessIcon />}
+                  color="#2196f3"
+                />
+                <KpiCard
+                  title="Socio único: persona"
+                  value={formatNumber(ownership.by_type?.individual_shareholder)}
+                  icon={<PersonIcon />}
+                  color={COLORS.capital}
+                />
+              </Box>
+
+              {/* Time series: gained vs lost */}
+              <ChartCard
+                title="Transiciones de Propiedad"
+                subtitle="Declaraciones y pérdidas de unipersonalidad a lo largo del tiempo"
+                sx={{ mb: 3 }}
+              >
+                <ResponsiveContainer width="100%" height={400}>
+                  <AreaChart data={ownership.time_series || []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={interval === 'year' ? formatDateShort : formatDate}
+                      tick={{ fontSize: 11 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <RechartsTooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="gained"
+                      name="Declaración unipersonalidad"
+                      stroke={COLORS.formations}
+                      fill={COLORS.formations}
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="lost"
+                      name="Pérdida unipersonalidad"
+                      stroke={COLORS.dissolutions}
+                      fill={COLORS.dissolutions}
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartCard>
+
+              {/* Current state summary */}
+              <ChartCard title="Estado Actual de Unipersonalidad">
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Unipersonal', value: ownership.current_state?.unipersonal || 0 },
+                        { name: 'No unipersonal', value: ownership.current_state?.not_unipersonal || 0 },
+                      ]}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+                      labelLine={{ stroke: '#666' }}
+                    >
+                      <Cell fill={COLORS.formations} />
+                      <Cell fill={COLORS.neutral} />
+                    </Pie>
+                    <RechartsTooltip formatter={(v) => formatNumber(v)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+          )}
+        </>
+      )}
+
+      {/* Tab 5: Officers */}
+      {tab === 5 && (
         <ChartCard title="Directivos con Más Cargos Activos">
           {topOfficers ? (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
@@ -568,6 +719,7 @@ export default function Dashboard() {
       )}
 
       {/* Footer */}
+      <Box sx={{ flex: 1 }} />
       <Typography variant="body2" color="text.disabled" align="center" sx={{ mt: 4, mb: 2 }}>
         Datos del Registro Mercantil (BORME). Actualizado diariamente.
       </Typography>

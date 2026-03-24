@@ -25,4 +25,6 @@ export const statsService = {
   getCompanySizes: () => fetchStats('company-sizes'),
   getTopOfficers: (params) => fetchStats('top-officers', params),
   getYoY: () => fetchStats('yoy'),
+  getProvinces: (params) => fetchStats('provinces', params),
+  getOwnershipTransitions: (params) => fetchStats('ownership-transitions', params),
 };
