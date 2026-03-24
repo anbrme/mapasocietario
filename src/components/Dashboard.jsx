@@ -174,7 +174,7 @@ function CustomTooltip({ active, payload, label, formatter }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { filterParams, filterKey, interval } = useFilters();
+  const { filterParams, filterKey, interval, provinces: selectedProvinces, companyTypes: selectedCompanyTypes } = useFilters();
   const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -284,6 +284,12 @@ export default function Dashboard() {
     );
   }
 
+  // Build a filter label for chart subtitles
+  const filterLabel = [
+    selectedProvinces.length > 0 && `Provincias: ${selectedProvinces.join(', ')}`,
+    selectedCompanyTypes.length > 0 && `Tipo: ${selectedCompanyTypes.join(', ')}`,
+  ].filter(Boolean).join(' | ');
+
   const lifecycleData = lifecycle?.data?.map((d) => ({
     ...d,
     date: d.date,
@@ -327,6 +333,13 @@ export default function Dashboard() {
 
       {/* Filter Bar */}
       <FilterBar />
+
+      {/* Active filter indicator */}
+      {filterLabel && (
+        <Alert severity="info" icon={false} sx={{ py: 0.5, px: 2, mb: 1, '& .MuiAlert-message': { fontSize: '0.8rem' } }}>
+          Datos agregados — {filterLabel}
+        </Alert>
+      )}
 
       {/* KPIs */}
       <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
@@ -390,7 +403,7 @@ export default function Dashboard() {
         <>
           <ChartCard
             title="Constituciones vs Disoluciones"
-            subtitle="Evolución temporal de la creación y cierre de empresas en España"
+            subtitle={filterLabel || "Evolución temporal de la creación y cierre de empresas en España"}
             sx={{ mb: 3 }}
           >
             <ResponsiveContainer width="100%" height={420}>
@@ -466,7 +479,7 @@ export default function Dashboard() {
       {/* Tab 1: Year-over-year */}
       {tab === 1 && (
         <>
-          <ChartCard title="Comparativa Anual" sx={{ mb: 3 }}>
+          <ChartCard title="Comparativa Anual" subtitle={filterLabel || undefined} sx={{ mb: 3 }}>
             {yoy ? (
               <ResponsiveContainer width="100%" height={420}>
                 <BarChart data={yoy.data}>
@@ -510,7 +523,7 @@ export default function Dashboard() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
           <ChartCard
             title="Movimientos de Capital"
-            subtitle="Eventos de ampliación y reducción de capital"
+            subtitle={filterLabel || "Eventos de ampliación y reducción de capital"}
           >
             {capital ? (
               <ResponsiveContainer width="100%" height={360}>
@@ -633,7 +646,7 @@ export default function Dashboard() {
               {/* Time series: gained vs lost */}
               <ChartCard
                 title="Transiciones de Propiedad"
-                subtitle="Declaraciones y pérdidas de unipersonalidad a lo largo del tiempo"
+                subtitle={filterLabel || "Declaraciones y pérdidas de unipersonalidad a lo largo del tiempo"}
                 sx={{ mb: 3 }}
               >
                 <ResponsiveContainer width="100%" height={400}>
