@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { TermsProvider } from './contexts/TermsProvider';
 import App from './App';
 import Dashboard from './components/Dashboard';
+import { FilterProvider } from './contexts/FilterProvider';
 import './index.css';
 
 const darkTheme = createTheme({
@@ -29,7 +30,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <TermsProvider>
           <Routes>
             <Route path="/" element={<App />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
           </Routes>
         </TermsProvider>
       </BrowserRouter>

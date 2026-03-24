@@ -3,7 +3,17 @@ const BASE_URL = 'https://api.ncdata.eu';
 async function fetchStats(endpoint, params = {}) {
   const url = new URL(`${BASE_URL}/bormes/stats/${endpoint}`);
   Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null) url.searchParams.set(k, v);
+    if (v === undefined || v === null) return;
+    // Handle multi-value params (prefixed with _)
+    if (k === '_provinces' && Array.isArray(v)) {
+      v.forEach((p) => url.searchParams.append('province', p));
+    } else if (k === '_companyTypes' && Array.isArray(v)) {
+      v.forEach((t) => url.searchParams.append('company_type', t));
+    } else if (k === '_eventCategories' && Array.isArray(v)) {
+      v.forEach((c) => url.searchParams.append('event_category', c));
+    } else {
+      url.searchParams.set(k, v);
+    }
   });
 
   const resp = await fetch(url.toString());
@@ -22,9 +32,13 @@ export const statsService = {
   getCapital: (params) => fetchStats('capital', params),
   getLifecycle: (params) => fetchStats('lifecycle', params),
   getEventTypes: (params) => fetchStats('event-types', params),
-  getCompanySizes: () => fetchStats('company-sizes'),
+  getCompanySizes: (params) => fetchStats('company-sizes', params),
   getTopOfficers: (params) => fetchStats('top-officers', params),
-  getYoY: () => fetchStats('yoy'),
+  getYoY: (params) => fetchStats('yoy', params),
   getProvinces: (params) => fetchStats('provinces', params),
   getOwnershipTransitions: (params) => fetchStats('ownership-transitions', params),
+  getFilterOptions: () => fetchStats('filter-options'),
+  getOfficerTransitions: (params) => fetchStats('officer-transitions', params),
+  getOwnershipSankey: (params) => fetchStats('ownership-sankey', params),
+  getLifecycleSankey: (params) => fetchStats('lifecycle-sankey', params),
 };

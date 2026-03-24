@@ -24,6 +24,10 @@ import PersonIcon from '@mui/icons-material/Person';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MapIcon from '@mui/icons-material/Map';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import AltRouteIcon from '@mui/icons-material/AltRoute';
+import FilterBar from './FilterBar';
+import SankeyChart from './SankeyChart';
+import { useFilters } from '../contexts/FilterProvider';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -170,7 +174,7 @@ function CustomTooltip({ active, payload, label, formatter }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [interval, setInterval_] = useState('month');
+  const { filterParams, filterKey, interval } = useFilters();
   const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -182,8 +186,11 @@ export default function Dashboard() {
   const [companySizes, setCompanySizes] = useState(null);
   const [topOfficers, setTopOfficers] = useState(null);
   const [capital, setCapital] = useState(null);
-  const [provinces, setProvinces] = useState(null);
+  const [provincesData, setProvincesData] = useState(null);
   const [ownership, setOwnership] = useState(null);
+  const [officerTransitions, setOfficerTransitions] = useState(null);
+  const [ownershipSankey, setOwnershipSankey] = useState(null);
+  const [lifecycleSankey, setLifecycleSankey] = useState(null);
 
   // Load data in two waves to avoid overwhelming the backend / hitting gateway timeouts
   useEffect(() => {
@@ -191,13 +198,11 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
 
-    const params = { interval };
-
     // Wave 1: fast endpoints for initial render
     Promise.all([
-      statsService.getOverview(),
-      statsService.getLifecycle(params),
-      statsService.getEventTypes(),
+      statsService.getOverview(filterParams),
+      statsService.getLifecycle(filterParams),
+      statsService.getEventTypes(filterParams),
     ])
       .then(([ov, lc, et]) => {
         if (cancelled) return;
@@ -208,23 +213,29 @@ export default function Dashboard() {
 
         // Wave 2: slower endpoints loaded after initial paint
         return Promise.all([
-          statsService.getYoY(),
-          statsService.getCompanySizes(),
-          statsService.getTopOfficers({ limit: 25 }),
-          statsService.getCapital(params),
-          statsService.getProvinces(),
-          statsService.getOwnershipTransitions(params),
+          statsService.getYoY(filterParams),
+          statsService.getCompanySizes(filterParams),
+          statsService.getTopOfficers({ ...filterParams, limit: 25 }),
+          statsService.getCapital(filterParams),
+          statsService.getProvinces(filterParams),
+          statsService.getOwnershipTransitions(filterParams),
+          statsService.getOfficerTransitions(filterParams),
+          statsService.getOwnershipSankey(filterParams),
+          statsService.getLifecycleSankey(filterParams),
         ]);
       })
       .then((results) => {
         if (cancelled || !results) return;
-        const [y, cs, to, cap, prov, own] = results;
+        const [y, cs, to, cap, prov, own, ot, os, ls] = results;
         setYoy(y);
         setCompanySizes(cs);
         setTopOfficers(to);
         setCapital(cap);
-        setProvinces(prov);
+        setProvincesData(prov);
         setOwnership(own);
+        setOfficerTransitions(ot);
+        setOwnershipSankey(os);
+        setLifecycleSankey(ls);
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
@@ -234,7 +245,7 @@ export default function Dashboard() {
       });
 
     return () => { cancelled = true; };
-  }, [interval]);
+  }, [filterKey]);
 
   // Compute YoY delta for latest full year
   const yoyDelta = useMemo(() => {
@@ -312,18 +323,10 @@ export default function Dashboard() {
             Fuente: BORME (Bolet&iacute;n Oficial del Registro Mercantil)
           </Typography>
         </Box>
-        <Box sx={{ flex: 1 }} />
-        <ToggleButtonGroup
-          value={interval}
-          exclusive
-          onChange={(_, v) => v && setInterval_(v)}
-          size="small"
-        >
-          <ToggleButton value="month">Mensual</ToggleButton>
-          <ToggleButton value="quarter">Trimestral</ToggleButton>
-          <ToggleButton value="year">Anual</ToggleButton>
-        </ToggleButtonGroup>
       </Box>
+
+      {/* Filter Bar */}
+      <FilterBar />
 
       {/* KPIs */}
       <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
@@ -376,6 +379,7 @@ export default function Dashboard() {
         <Tab label="Provincias" icon={<MapIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Propiedad" icon={<SwapHorizIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Directivos" icon={<PeopleIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
+        <Tab label="Flujos" icon={<AltRouteIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
       </Tabs>
 
       {/* Scrollable tab content */}
@@ -559,10 +563,10 @@ export default function Dashboard() {
       {/* Tab 3: Provinces */}
       {tab === 3 && (
         <ChartCard title="Actividad por Provincia">
-          {provinces ? (
-            <ResponsiveContainer width="100%" height={Math.max(500, (provinces.data?.length || 0) * 28)}>
+          {provincesData ? (
+            <ResponsiveContainer width="100%" height={Math.max(500, (provincesData?.data?.length || 0) * 28)}>
               <BarChart
-                data={[...(provinces.data || [])].sort((a, b) => b.total - a.total)}
+                data={[...(provincesData?.data || [])].sort((a, b) => b.total - a.total)}
                 layout="vertical"
                 margin={{ left: 20 }}
               >
@@ -576,7 +580,7 @@ export default function Dashboard() {
                 />
                 <RechartsTooltip formatter={(v) => formatNumber(v)} />
                 <Legend />
-                {provinces.source === 'borme_events_v3' ? (
+                {provincesData?.source === 'borme_events_v3' ? (
                   <>
                     <Bar dataKey="formations" name="Constituciones" fill={COLORS.formations} stackId="a" />
                     <Bar dataKey="dissolutions" name="Disoluciones" fill={COLORS.dissolutions} stackId="a" />
@@ -720,6 +724,30 @@ export default function Dashboard() {
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
           )}
         </ChartCard>
+      )}
+
+      {/* Tab 6: Sankey flows */}
+      {tab === 6 && (
+        <>
+          <SankeyChart
+            data={officerTransitions}
+            title="Eventos de Cargos por Posición"
+            subtitle="Flujo de nombramientos, ceses y reelecciones por tipo de cargo"
+            height={400}
+          />
+          <SankeyChart
+            data={ownershipSankey}
+            title="Flujos de Propiedad"
+            subtitle="Transiciones entre múltiples socios y socio único"
+            height={300}
+          />
+          <SankeyChart
+            data={lifecycleSankey}
+            title="Ciclo de Vida Empresarial"
+            subtitle="Flujo de empresas desde constitución hasta disolución o concurso"
+            height={300}
+          />
+        </>
       )}
 
       {/* Footer */}
