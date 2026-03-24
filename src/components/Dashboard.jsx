@@ -188,7 +188,6 @@ export default function Dashboard() {
   const [capital, setCapital] = useState(null);
   const [provincesData, setProvincesData] = useState(null);
   const [ownership, setOwnership] = useState(null);
-  const [officerTransitions, setOfficerTransitions] = useState(null);
   const [ownershipSankey, setOwnershipSankey] = useState(null);
   const [lifecycleSankey, setLifecycleSankey] = useState(null);
 
@@ -219,21 +218,19 @@ export default function Dashboard() {
           statsService.getCapital(filterParams),
           statsService.getProvinces(filterParams),
           statsService.getOwnershipTransitions(filterParams),
-          statsService.getOfficerTransitions(filterParams),
           statsService.getOwnershipSankey(filterParams),
           statsService.getLifecycleSankey(filterParams),
         ]);
       })
       .then((results) => {
         if (cancelled || !results) return;
-        const [y, cs, to, cap, prov, own, ot, os, ls] = results;
+        const [y, cs, to, cap, prov, own, os, ls] = results;
         setYoy(y);
         setCompanySizes(cs);
         setTopOfficers(to);
         setCapital(cap);
         setProvincesData(prov);
         setOwnership(own);
-        setOfficerTransitions(ot);
         setOwnershipSankey(os);
         setLifecycleSankey(ls);
       })
@@ -309,7 +306,7 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 3 }, height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 3 } }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
         <Tooltip title="Volver al buscador">
@@ -396,7 +393,7 @@ export default function Dashboard() {
       </Tabs>
 
       {/* Scrollable tab content */}
-      <Box sx={{ flex: 1, overflow: 'auto', pb: 2 }}>
+      <Box sx={{ pb: 2 }}>
 
       {/* Tab 0: Lifecycle */}
       {tab === 0 && (
@@ -448,6 +445,41 @@ export default function Dashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
+
+          {/* Per company type breakdown when types are selected */}
+          {selectedCompanyTypes.length > 1 && lifecycleData.length > 0 && lifecycleData[0]?.by_company_type && (
+            <ChartCard
+              title="Constituciones por Tipo de Sociedad"
+              subtitle={filterLabel}
+              sx={{ mb: 3 }}
+            >
+              <ResponsiveContainer width="100%" height={420}>
+                <LineChart data={lifecycleData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={interval === 'year' ? formatDateShort : formatDate}
+                    tick={{ fontSize: 11 }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip content={<CustomTooltip />} />
+                  <Legend />
+                  {selectedCompanyTypes.map((ct, i) => (
+                    <Line
+                      key={ct}
+                      type="monotone"
+                      dataKey={`by_company_type.${ct}.formations`}
+                      name={`${ct} — Constituciones`}
+                      stroke={PIE_COLORS[i % PIE_COLORS.length]}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
 
           <ChartCard title="Distribución por Tipo de Evento">
             <ResponsiveContainer width="100%" height={380}>
@@ -683,6 +715,34 @@ export default function Dashboard() {
                 </ResponsiveContainer>
               </ChartCard>
 
+              {/* Ownership by company type */}
+              {ownership.by_company_type && Object.keys(ownership.by_company_type).length > 0 && (
+                <ChartCard
+                  title="Unipersonalidad por Tipo de Sociedad"
+                  subtitle={filterLabel || "Declaraciones y pérdidas por tipo de empresa"}
+                  sx={{ mb: 3 }}
+                >
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart
+                      data={Object.entries(ownership.by_company_type)
+                        .map(([type, vals]) => ({ type, gained: vals.gained, lost: vals.lost }))
+                        .sort((a, b) => (b.gained + b.lost) - (a.gained + a.lost))
+                        .slice(0, 10)}
+                      layout="vertical"
+                      margin={{ left: 10 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} />
+                      <YAxis dataKey="type" type="category" width={80} tick={{ fontSize: 11 }} />
+                      <RechartsTooltip formatter={(v) => formatNumber(v)} />
+                      <Legend />
+                      <Bar dataKey="gained" name="Declaración" fill="#4caf50" />
+                      <Bar dataKey="lost" name="Pérdida" fill="#f44336" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+              )}
+
               {/* Current state summary */}
               <ChartCard title="Estado Actual de Unipersonalidad">
                 <ResponsiveContainer width="100%" height={250}>
@@ -742,12 +802,6 @@ export default function Dashboard() {
       {/* Tab 6: Sankey flows */}
       {tab === 6 && (
         <>
-          <SankeyChart
-            data={officerTransitions}
-            title="Eventos de Cargos por Posición"
-            subtitle="Flujo de nombramientos, ceses y reelecciones por tipo de cargo"
-            height={400}
-          />
           <SankeyChart
             data={ownershipSankey}
             title="Flujos de Propiedad"
