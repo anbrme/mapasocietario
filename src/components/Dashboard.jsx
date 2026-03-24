@@ -177,6 +177,7 @@ export default function Dashboard() {
   const [topOfficers, setTopOfficers] = useState(null);
   const [capital, setCapital] = useState(null);
 
+  // Load data in two waves to avoid overwhelming the backend / hitting gateway timeouts
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -184,21 +185,31 @@ export default function Dashboard() {
 
     const params = { interval };
 
+    // Wave 1: fast endpoints for initial render
     Promise.all([
       statsService.getOverview(),
       statsService.getLifecycle(params),
-      statsService.getYoY(),
       statsService.getEventTypes(),
-      statsService.getCompanySizes(),
-      statsService.getTopOfficers({ limit: 25 }),
-      statsService.getCapital(params),
     ])
-      .then(([ov, lc, y, et, cs, to, cap]) => {
+      .then(([ov, lc, et]) => {
         if (cancelled) return;
         setOverview(ov);
         setLifecycle(lc);
-        setYoy(y);
         setEventTypes(et);
+        setLoading(false);
+
+        // Wave 2: slower endpoints loaded after initial paint
+        return Promise.all([
+          statsService.getYoY(),
+          statsService.getCompanySizes(),
+          statsService.getTopOfficers({ limit: 25 }),
+          statsService.getCapital(params),
+        ]);
+      })
+      .then((results) => {
+        if (cancelled || !results) return;
+        const [y, cs, to, cap] = results;
+        setYoy(y);
         setCompanySizes(cs);
         setTopOfficers(to);
         setCapital(cap);
