@@ -23,6 +23,7 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LocalCafeIcon from '@mui/icons-material/LocalCafe';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { debounce } from 'lodash';
 import { spanishCompaniesService } from './services/spanishCompaniesService';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
@@ -324,6 +325,55 @@ export default function App() {
         />
       </Box>
 
+      {/* V3 index announcement — remove after a few days */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          px: 2,
+          py: 0.75,
+          borderRadius: 2,
+          bgcolor: 'rgba(25, 118, 210, 0.06)',
+          border: '1px solid rgba(25, 118, 210, 0.2)',
+          maxWidth: 500,
+          width: '100%',
+        }}
+      >
+        <AutoAwesomeIcon sx={{ fontSize: 16, color: 'primary.main', flexShrink: 0 }} />
+        <Typography variant="caption" sx={{ color: 'primary.light', lineHeight: 1.4 }}>
+          We just upgraded to a cleaner, faster data index. Searches should feel snappier and return more accurate results.
+        </Typography>
+      </Box>
+
+      {/* Buy me a coffee */}
+      <Button
+        href="https://buymeacoffee.com/anbrme"
+        target="_blank"
+        rel="noopener noreferrer"
+        variant="outlined"
+        size="small"
+        startIcon={<LocalCafeIcon sx={{ fontSize: '1.1rem !important' }} />}
+        sx={{
+          px: 2.5,
+          py: 0.5,
+          color: 'text.secondary',
+          borderColor: 'rgba(255, 167, 38, 0.35)',
+          bgcolor: 'rgba(255, 167, 38, 0.06)',
+          textTransform: 'none',
+          fontWeight: 500,
+          fontSize: '0.8rem',
+          borderRadius: 6,
+          '&:hover': {
+            borderColor: '#f57c00',
+            color: '#f57c00',
+            bgcolor: 'rgba(245, 124, 0, 0.1)',
+          },
+        }}
+      >
+        Buy me a coffee
+      </Button>
+
       {/* Experimental warning */}
       <Box
         sx={{
@@ -421,34 +471,6 @@ export default function App() {
         >
           &copy; {new Date().getFullYear()} Mapa Societario &middot; Free to use, no account required &middot; Data sourced from BORME (Registro Mercantil)
         </Typography>
-        <Button
-          href="https://buymeacoffee.com/anbrme"
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="outlined"
-          size="small"
-          startIcon={<LocalCafeIcon sx={{ fontSize: '1.1rem !important' }} />}
-          sx={{
-            mt: 0.5,
-            mb: 0.5,
-            px: 2,
-            py: 0.25,
-            color: 'text.secondary',
-            borderColor: 'rgba(255, 167, 38, 0.3)', // Using theme-compatible orange/yellow tint
-            bgcolor: 'rgba(255, 167, 38, 0.05)',
-            textTransform: 'none',
-            fontWeight: 500,
-            fontSize: '0.75rem',
-            borderRadius: 6, // more pill-like
-            '&:hover': {
-              borderColor: '#f57c00',
-              color: '#f57c00',
-              bgcolor: 'rgba(245, 124, 0, 0.08)',
-            }
-          }}
-        >
-          Buy me a coffee
-        </Button>
         <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
           <Link
             href="/about.html"
