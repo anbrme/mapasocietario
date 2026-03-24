@@ -61,7 +61,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import ForceGraph2D from 'react-force-graph-2d';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import { useTerms } from '../hooks/useTerms';
-import { spanishCompaniesService } from '../services/spanishCompaniesService';
+import { spanishCompaniesService, SpanishCompaniesService } from '../services/spanishCompaniesService';
 
 const CATEGORY_LABELS = {
   nombramientos: 'Nombramiento',
@@ -1172,15 +1172,17 @@ const SpanishCompanyNetworkGraph = ({
         }
 
         if (!pgHandled) {
-          // Fall back to workingSearch (ES BORME entries)
-          const data = await spanishCompaniesService.workingSearch(query, {
+          // Fall back to borme_companies_v3 (clean, pre-aggregated index)
+          const v3Data = await spanishCompaniesService.searchCompaniesV3(query, {
             size: searchResultSize,
-            exactMatch: exactMatch,
+            exact: exactMatch,
           });
 
-          const fetchedCount = data.results?.length || 0;
-          if (data.success && fetchedCount > 0) {
-            const filtered = filterCompanyMatches(data.results, query);
+          const v3Results = v3Data.results || [];
+          if (v3Results.length > 0) {
+            // Convert v3 company docs to v2-compatible entries for the graph
+            const entries = v3Results.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
+            const filtered = filterCompanyMatches(entries, query);
 
             if (filtered.length > 0) {
               await addCompanyWithOfficersToGraph(filtered);
@@ -1194,9 +1196,9 @@ const SpanishCompanyNetworkGraph = ({
                 searchType: 'company',
                 exactMatch: exactMatch,
                 size: searchResultSize,
-                offset: fetchedCount,
-                hasMore: data.hasMore,
-                total: data.total || fetchedCount,
+                offset: v3Results.length,
+                hasMore: false, // v3 company docs are complete (all officers pre-aggregated)
+                total: v3Data.total || v3Results.length,
               });
               setSearchQuery('');
             } else {
@@ -1982,14 +1984,11 @@ const SpanishCompanyNetworkGraph = ({
           data = await spanishCompaniesService.pgExpandCompany(companyName);
           usedPG = true;
         } catch {
-          data = await spanishCompaniesService.workingSearch(companyName, {
-            size: searchResultSize,
-            exactMatch: true,
-          });
+          // PG unavailable — fall through to v3 below
         }
 
         // PG path: pre-structured officers
-        if (usedPG && data.success && data.officers && data.officers.length > 0) {
+        if (usedPG && data?.success && data.officers && data.officers.length > 0) {
           // PG returns pre-structured officers — add them directly to the graph
           const canonicalName = data.company_name || companyName;
           setGraphData(prevData => {
@@ -2075,11 +2074,18 @@ const SpanishCompanyNetworkGraph = ({
           return true;
         }
 
-        // ES fallback path: use existing addCompanyWithOfficersToGraph
-        if (!usedPG && data.success && data.results && data.results.length > 0) {
-          const results = data.results.map(r => ({ ...r, name: companyName }));
-          await addCompanyWithOfficersToGraph(results, companyNode);
-          return true;
+        // V3 fallback: get company profile from borme_companies_v3
+        if (!usedPG) {
+          try {
+            const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName);
+            if (v3.company) {
+              const entries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
+              await addCompanyWithOfficersToGraph(entries, companyNode);
+              return true;
+            }
+          } catch (v3Err) {
+            console.warn('V3 company profile fallback failed:', v3Err.message);
+          }
         }
         return false;
       } catch (err) {

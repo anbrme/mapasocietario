@@ -338,6 +338,108 @@ class SpanishCompaniesService {
     return response.json();
   }
 
+  // ---------------------------------------------------------------------------
+  // borme_v3 clean-index endpoints
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Search companies using borme_companies_v3 (clean, pre-parsed index).
+   * Returns company-level aggregate docs with officers_active/officers_resigned.
+   */
+  async searchCompaniesV3(query, options = {}) {
+    const { size = 20, exact = false } = options;
+    const params = new URLSearchParams({
+      query,
+      size: size.toString(),
+      exact: exact.toString(),
+    });
+    const response = await this.fetchWithRetry(
+      `${this.baseUrl}/bormes/v3/search?${params}`,
+      { method: 'GET' }
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`V3 search error: ${response.status} - ${errorText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Get a single company profile from borme_companies_v3.
+   * Returns aggregate doc with officers_active, officers_resigned, history, etc.
+   */
+  async getCompanyProfileV3(companyName) {
+    const response = await this.fetchWithRetry(
+      `${this.baseUrl}/bormes/v3/company/${encodeURIComponent(companyName)}`,
+      { method: 'GET' }
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`V3 company error: ${response.status} - ${errorText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Get events for a company from borme_events_v3.
+   * Returns normalized event docs with clean officers per event.
+   */
+  async getCompanyEventsV3(companyName, options = {}) {
+    const { size = 50 } = options;
+    const params = new URLSearchParams({
+      company: companyName,
+      size: size.toString(),
+    });
+    const response = await this.fetchWithRetry(
+      `${this.baseUrl}/bormes/v3/events?${params}`,
+      { method: 'GET' }
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`V3 events error: ${response.status} - ${errorText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Convert a borme_companies_v3 document into an array of v2-compatible entries
+   * that addCompanyWithOfficersToGraph can consume unchanged.
+   *
+   * Each v3 company doc is one aggregate record.  We synthesize a single
+   * "entry" with pre-populated parsed.officers so the graph skips all text
+   * parsing and goes straight to the primary-parser path.
+   */
+  static v3CompanyToEntries(company) {
+    const name = company.company_name || company.company_name_normalized || '';
+    return [{
+      name,
+      company_name: name,
+      indexed_date: company.last_seen,
+      date: company.first_seen,
+      identifier: (company.identifiers || [])[0] || '',
+      // Pre-populated parsed officers so addCompanyWithOfficersToGraph uses the
+      // primary parser path and never falls back to text parsing.
+      parsed: {
+        officers: {
+          nombramientos: (company.officers_active || []).map(o => ({
+            name: o.name || o.name_normalized,
+            position: o.position_normalized || '',
+          })),
+          reelecciones: [],
+          ceses_dimisiones: (company.officers_resigned || []).map(o => ({
+            name: o.name || o.name_normalized,
+            position: o.position_normalized || '',
+          })),
+          revocaciones: [],
+        },
+      },
+      // Provide empty arrays so fallback paths don't trigger
+      officers: [],
+      parsed_details: {},
+      entry_type: [],
+    }];
+  }
+
   /**
    * Direct search using /bormes/working-search endpoint (GET)
    * More efficient for simple company lookups - no LLM processing
@@ -2184,4 +2286,5 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
 }
 
 // Export singleton instance
+export { SpanishCompaniesService };
 export const spanishCompaniesService = new SpanishCompaniesService();
