@@ -47,7 +47,7 @@ const FAQ_ITEMS = [
         Yes. Public API docs and examples are available at{' '}
         <a href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener noreferrer">
           github.com/anbrme/borme-public-api
-        </a>.
+        </a>. Please write us at <code>app@ncdata.eu</code>
       </>
     ),
   },
