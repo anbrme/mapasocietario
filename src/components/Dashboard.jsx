@@ -10,6 +10,8 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
@@ -166,6 +168,7 @@ function CustomTooltip({ active, payload, label, formatter }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [interval, setInterval_] = useState('month');
+  const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -350,167 +353,219 @@ export default function Dashboard() {
         />
       </Box>
 
-      {/* Main lifecycle chart */}
-      <ChartCard
-        title="Constituciones vs Disoluciones"
-        subtitle="Evolución temporal de la creación y cierre de empresas en España"
-        sx={{ mb: 3 }}
+      {/* Tabs */}
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
+        variant="scrollable"
+        scrollButtons="auto"
       >
-        <ResponsiveContainer width="100%" height={380}>
-          <AreaChart data={lifecycleData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-            <XAxis
-              dataKey="date"
-              tickFormatter={interval === 'year' ? formatDateShort : formatDate}
-              tick={{ fontSize: 11 }}
-              interval="preserveStartEnd"
-            />
-            <YAxis tick={{ fontSize: 11 }} />
-            <RechartsTooltip content={<CustomTooltip />} />
-            <Legend />
-            <Area
-              type="monotone"
-              dataKey="formations"
-              name="Constituciones"
-              stroke={COLORS.formations}
-              fill={COLORS.formations}
-              fillOpacity={0.15}
-              strokeWidth={2}
-            />
-            <Area
-              type="monotone"
-              dataKey="dissolutions"
-              name="Disoluciones"
-              stroke={COLORS.dissolutions}
-              fill={COLORS.dissolutions}
-              fillOpacity={0.15}
-              strokeWidth={2}
-            />
-            <Area
-              type="monotone"
-              dataKey="concursos"
-              name="Concursos"
-              stroke={COLORS.concursos}
-              fill={COLORS.concursos}
-              fillOpacity={0.1}
-              strokeWidth={1.5}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </ChartCard>
+        <Tab label="Ciclo de Vida" icon={<TrendingUpIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
+        <Tab label="Comparativa Anual" icon={<GavelIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
+        <Tab label="Capital" icon={<AccountBalanceIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
+        <Tab label="Directivos" icon={<PeopleIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
+      </Tabs>
 
-      {/* Two-column row */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-        {/* Year-over-year table */}
-        <ChartCard title="Comparativa Anual">
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={yoy?.data || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis dataKey="year" tickFormatter={(v) => v?.slice(0, 4)} tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <RechartsTooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar dataKey="formations" name="Constituciones" fill={COLORS.formations} />
-              <Bar dataKey="dissolutions" name="Disoluciones" fill={COLORS.dissolutions} />
-              <Bar dataKey="concursos" name="Concursos" fill={COLORS.concursos} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+      {/* Tab 0: Lifecycle */}
+      {tab === 0 && (
+        <>
+          <ChartCard
+            title="Constituciones vs Disoluciones"
+            subtitle="Evolución temporal de la creación y cierre de empresas en España"
+            sx={{ mb: 3 }}
+          >
+            <ResponsiveContainer width="100%" height={420}>
+              <AreaChart data={lifecycleData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={interval === 'year' ? formatDateShort : formatDate}
+                  tick={{ fontSize: 11 }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis tick={{ fontSize: 11 }} />
+                <RechartsTooltip content={<CustomTooltip />} />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="formations"
+                  name="Constituciones"
+                  stroke={COLORS.formations}
+                  fill={COLORS.formations}
+                  fillOpacity={0.15}
+                  strokeWidth={2}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="dissolutions"
+                  name="Disoluciones"
+                  stroke={COLORS.dissolutions}
+                  fill={COLORS.dissolutions}
+                  fillOpacity={0.15}
+                  strokeWidth={2}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="concursos"
+                  name="Concursos"
+                  stroke={COLORS.concursos}
+                  fill={COLORS.concursos}
+                  fillOpacity={0.1}
+                  strokeWidth={1.5}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
-        {/* Event type distribution */}
-        <ChartCard title="Distribución por Tipo de Evento">
-          <ResponsiveContainer width="100%" height={320}>
-            <PieChart>
-              <Pie
-                data={(eventTypes?.by_category || []).map((d) => ({
-                  ...d,
-                  name: CATEGORY_LABELS[d.category] || d.category,
-                }))}
-                dataKey="count"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={110}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                labelLine={{ stroke: '#666' }}
-              >
-                {(eventTypes?.by_category || []).map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <RechartsTooltip
-                formatter={(value) => formatNumber(value)}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </Box>
+          <ChartCard title="Distribución por Tipo de Evento">
+            <ResponsiveContainer width="100%" height={380}>
+              <PieChart>
+                <Pie
+                  data={(eventTypes?.by_category || []).map((d) => ({
+                    ...d,
+                    name: CATEGORY_LABELS[d.category] || d.category,
+                  }))}
+                  dataKey="count"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={130}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={{ stroke: '#666' }}
+                >
+                  {(eventTypes?.by_category || []).map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <RechartsTooltip formatter={(value) => formatNumber(value)} />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </>
+      )}
 
-      {/* Capital + officer changes */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-        {/* Capital changes over time */}
-        <ChartCard
-          title="Movimientos de Capital"
-          subtitle="Eventos de ampliación y reducción de capital"
-        >
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={capital?.data || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis
-                dataKey="date"
-                tickFormatter={interval === 'year' ? formatDateShort : formatDate}
-                tick={{ fontSize: 11 }}
-                interval="preserveStartEnd"
-              />
-              <YAxis tick={{ fontSize: 11 }} />
-              <RechartsTooltip content={<CustomTooltip />} />
-              <Line
-                type="monotone"
-                dataKey="count"
-                name="Eventos de capital"
-                stroke={COLORS.capital}
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
+      {/* Tab 1: Year-over-year */}
+      {tab === 1 && (
+        <>
+          <ChartCard title="Comparativa Anual" sx={{ mb: 3 }}>
+            {yoy ? (
+              <ResponsiveContainer width="100%" height={420}>
+                <BarChart data={yoy.data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="year" tickFormatter={(v) => v?.slice(0, 4)} tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Bar dataKey="formations" name="Constituciones" fill={COLORS.formations} />
+                  <Bar dataKey="dissolutions" name="Disoluciones" fill={COLORS.dissolutions} />
+                  <Bar dataKey="concursos" name="Concursos" fill={COLORS.concursos} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+            )}
+          </ChartCard>
 
-        {/* Company size distribution */}
-        <ChartCard
-          title="Distribución por Capital Social"
-          subtitle={companySizes?.stats ? `Media: ${formatCurrency(companySizes.stats.avg)}€` : ''}
-        >
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={companySizes?.distribution || []} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={formatNumber} />
-              <YAxis dataKey="range" type="category" width={120} tick={{ fontSize: 10 }} />
-              <RechartsTooltip formatter={(v) => formatNumber(v)} />
-              <Bar dataKey="count" name="Empresas" fill="#2196f3" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </Box>
+          <ChartCard title="Actividad Total por Año">
+            {yoy ? (
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={yoy.data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="year" tickFormatter={(v) => v?.slice(0, 4)} tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Bar dataKey="total_events" name="Publicaciones BORME" fill={COLORS.neutral} />
+                  <Bar dataKey="officer_changes" name="Cambios de cargos" fill={COLORS.officers} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+            )}
+          </ChartCard>
+        </>
+      )}
 
-      {/* Top officers */}
-      <ChartCard title="Directivos con Más Cargos Activos" sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-          {(topOfficers?.officers || []).map((o, i) => (
-            <Chip
-              key={i}
-              icon={<PersonIcon />}
-              label={`${o.name} (${o.companies})`}
-              variant="outlined"
-              size="small"
-              sx={{
-                borderColor: i < 3 ? COLORS.concursos : 'divider',
-                fontWeight: i < 3 ? 700 : 400,
-              }}
-            />
-          ))}
+      {/* Tab 2: Capital */}
+      {tab === 2 && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+          <ChartCard
+            title="Movimientos de Capital"
+            subtitle="Eventos de ampliación y reducción de capital"
+          >
+            {capital ? (
+              <ResponsiveContainer width="100%" height={360}>
+                <LineChart data={capital.data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={interval === 'year' ? formatDateShort : formatDate}
+                    tick={{ fontSize: 11 }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip content={<CustomTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    name="Eventos de capital"
+                    stroke={COLORS.capital}
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+            )}
+          </ChartCard>
+
+          <ChartCard
+            title="Distribución por Capital Social"
+            subtitle={companySizes?.stats ? `Media: ${formatCurrency(companySizes.stats.avg)}€` : ''}
+          >
+            {companySizes ? (
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart data={companySizes.distribution} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={formatNumber} />
+                  <YAxis dataKey="range" type="category" width={120} tick={{ fontSize: 10 }} />
+                  <RechartsTooltip formatter={(v) => formatNumber(v)} />
+                  <Bar dataKey="count" name="Empresas" fill="#2196f3" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+            )}
+          </ChartCard>
         </Box>
-      </ChartCard>
+      )}
+
+      {/* Tab 3: Officers */}
+      {tab === 3 && (
+        <ChartCard title="Directivos con Más Cargos Activos">
+          {topOfficers ? (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+              {topOfficers.officers.map((o, i) => (
+                <Chip
+                  key={i}
+                  icon={<PersonIcon />}
+                  label={`${o.name} (${o.companies})`}
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderColor: i < 3 ? COLORS.concursos : 'divider',
+                    fontWeight: i < 3 ? 700 : 400,
+                  }}
+                />
+              ))}
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+          )}
+        </ChartCard>
+      )}
 
       {/* Footer */}
       <Typography variant="body2" color="text.disabled" align="center" sx={{ mt: 4, mb: 2 }}>
