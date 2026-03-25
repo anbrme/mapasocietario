@@ -346,6 +346,32 @@ export default function App() {
         </Typography>
       </Box>
 
+      {/* Dashboard link */}
+      <Button
+        onClick={() => navigate('/dashboard')}
+        variant="outlined"
+        size="small"
+        startIcon={<BarChartIcon sx={{ fontSize: '1.1rem !important' }} />}
+        sx={{
+          px: 2.5,
+          py: 0.5,
+          color: 'text.secondary',
+          borderColor: 'rgba(33, 150, 243, 0.35)',
+          bgcolor: 'rgba(33, 150, 243, 0.06)',
+          textTransform: 'none',
+          fontWeight: 500,
+          fontSize: '0.8rem',
+          borderRadius: 6,
+          '&:hover': {
+            borderColor: '#1976d2',
+            color: '#1976d2',
+            bgcolor: 'rgba(25, 118, 210, 0.1)',
+          },
+        }}
+      >
+        Dashboard
+      </Button>
+
       {/* Buy me a coffee */}
       <Button
         href="https://buymeacoffee.com/anbrme"
@@ -372,32 +398,6 @@ export default function App() {
         }}
       >
         Buy me a coffee
-      </Button>
-
-      {/* Dashboard link */}
-      <Button
-        onClick={() => navigate('/dashboard')}
-        variant="outlined"
-        size="small"
-        startIcon={<BarChartIcon sx={{ fontSize: '1.1rem !important' }} />}
-        sx={{
-          px: 2.5,
-          py: 0.5,
-          color: 'text.secondary',
-          borderColor: 'rgba(33, 150, 243, 0.35)',
-          bgcolor: 'rgba(33, 150, 243, 0.06)',
-          textTransform: 'none',
-          fontWeight: 500,
-          fontSize: '0.8rem',
-          borderRadius: 6,
-          '&:hover': {
-            borderColor: '#1976d2',
-            color: '#1976d2',
-            bgcolor: 'rgba(25, 118, 210, 0.1)',
-          },
-        }}
-      >
-        Dashboard
       </Button>
 
       {/* Experimental warning */}
