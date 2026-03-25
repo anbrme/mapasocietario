@@ -25,7 +25,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MapIcon from '@mui/icons-material/Map';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import AltRouteIcon from '@mui/icons-material/AltRoute';
-import AssessmentIcon from '@mui/icons-material/Assessment';
 import FilterBar from './FilterBar';
 import SankeyChart from './SankeyChart';
 import { useFilters } from '../contexts/FilterProvider';
@@ -47,7 +46,6 @@ import {
   Cell,
 } from 'recharts';
 import { statsService } from '../services/statsService';
-import { rmStatsService } from '../services/rmStatsService';
 import { useNavigate } from 'react-router-dom';
 
 const COLORS = {
@@ -192,11 +190,6 @@ export default function Dashboard() {
   const [ownershipSankey, setOwnershipSankey] = useState(null);
   const [lifecycleSankey, setLifecycleSankey] = useState(null);
 
-  // Registro Mercantil official stats
-  const [rmMonthly, setRmMonthly] = useState(null);
-  const [rmTransfers, setRmTransfers] = useState(null);
-  const [rmOverview, setRmOverview] = useState(null);
-
   // Load data in two waves to avoid overwhelming the backend / hitting gateway timeouts
   useEffect(() => {
     let cancelled = false;
@@ -247,33 +240,6 @@ export default function Dashboard() {
 
     return () => { cancelled = true; };
   }, [filterKey]);
-
-  // Reset RM data when filters change
-  useEffect(() => {
-    setRmMonthly(null);
-    setRmTransfers(null);
-    setRmOverview(null);
-  }, [filterKey]);
-
-  // Lazy-load RM stats when tab 7 is selected
-  useEffect(() => {
-    if (tab !== 7 || rmMonthly) return;
-    const params = { interval };
-    if (dateFrom) params.from_year = new Date(dateFrom).getFullYear();
-    if (dateTo) params.to_year = new Date(dateTo).getFullYear();
-    if (selectedProvinces.length) params._provinces = selectedProvinces;
-    if (selectedCompanyTypes.length) params._formSoc = selectedCompanyTypes;
-
-    Promise.all([
-      rmStatsService.getOverview(params),
-      rmStatsService.getMonthly(params),
-      rmStatsService.getTransfers(params),
-    ]).then(([ov, monthly, transfers]) => {
-      setRmOverview(ov);
-      setRmMonthly(monthly);
-      setRmTransfers(transfers);
-    }).catch(() => {});
-  }, [tab, filterKey]);
 
   // Compute YoY delta for latest full year
   const yoyDelta = useMemo(() => {
@@ -425,7 +391,6 @@ export default function Dashboard() {
         <Tab label="Propiedad" icon={<SwapHorizIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Directivos" icon={<PeopleIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Flujos" icon={<AltRouteIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
-        <Tab label="Estadísticas Oficiales" icon={<AssessmentIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
       </Tabs>
 
       {/* Scrollable tab content */}
@@ -845,59 +810,6 @@ export default function Dashboard() {
             subtitle="Flujo de empresas desde constitución hasta disolución o concurso"
             height={300}
           />
-        </>
-      )}
-
-      {/* Tab 7: Estadísticas Oficiales (Registro Mercantil) */}
-      {tab === 7 && (
-        <>
-          {rmMonthly ? (
-            <>
-              {/* KPIs */}
-              {rmOverview && (
-                <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
-                  <KpiCard title="Constituciones" value={formatNumber(rmOverview.constituciones)} icon={<TrendingUpIcon />} color="#4caf50" />
-                  <KpiCard title="Extinciones" value={formatNumber(rmOverview.extinciones)} icon={<TrendingDownIcon />} color="#f44336" />
-                  <KpiCard title="Ampliaciones" value={formatNumber(rmOverview.ampliaciones)} icon={<AccountBalanceIcon />} color="#2196f3" />
-                  <KpiCard title="Fusiones" value={formatNumber(rmOverview.fusiones)} icon={<SwapHorizIcon />} color="#ff9800" />
-                  <KpiCard title="Traslados" value={formatNumber(rmOverview.traslados)} icon={<MapIcon />} color="#9c27b0" />
-                </Box>
-              )}
-
-              {/* Multi-metric time series */}
-              <ChartCard
-                title="Actividad Mercantil"
-                subtitle={filterLabel || "Constituciones, extinciones, ampliaciones, fusiones, escisiones y reducciones — Fuente: Registro Mercantil"}
-                sx={{ mb: 3 }}
-              >
-                <ResponsiveContainer width="100%" height={450}>
-                  <AreaChart data={trimIncomplete(rmMonthly?.data || [])}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                    <XAxis dataKey="date" tickFormatter={interval === 'year' ? formatDateShort : formatDate} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <RechartsTooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Area type="monotone" dataKey="constituciones" name="Constituciones" stroke="#4caf50" fill="#4caf50" fillOpacity={0.15} strokeWidth={2} />
-                    <Area type="monotone" dataKey="extinciones" name="Extinciones" stroke="#f44336" fill="#f44336" fillOpacity={0.15} strokeWidth={2} />
-                    <Area type="monotone" dataKey="ampliaciones" name="Ampliaciones" stroke="#2196f3" fill="#2196f3" fillOpacity={0.1} strokeWidth={1.5} />
-                    <Area type="monotone" dataKey="fusiones" name="Fusiones" stroke="#ff9800" fill="#ff9800" fillOpacity={0.1} strokeWidth={1.5} />
-                    <Area type="monotone" dataKey="escisiones" name="Escisiones" stroke="#9c27b0" fill="#9c27b0" fillOpacity={0.1} strokeWidth={1.5} />
-                    <Area type="monotone" dataKey="reducciones" name="Reducciones" stroke="#e91e63" fill="#e91e63" fillOpacity={0.1} strokeWidth={1.5} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </ChartCard>
-
-              {/* Traslados Sankey */}
-              <SankeyChart
-                data={rmTransfers}
-                title="Traslados de Domicilio Social"
-                subtitle={filterLabel || "Flujo de empresas entre provincias"}
-                height={400}
-              />
-            </>
-          ) : (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
-          )}
         </>
       )}
 
