@@ -507,7 +507,7 @@ export default function App() {
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
           <Link
-            href="/dashboard"
+            href="/dashboard.html"
             variant="caption"
             sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
