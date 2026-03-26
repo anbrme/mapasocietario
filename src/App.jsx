@@ -39,6 +39,14 @@ const FAQ_ITEMS = [
       'Software is provided as-is, with no liability for errors, omissions, or outcomes. The application is in active development.',
   },
   {
+    question: 'Is the data accurate and up-to-date?',
+    answer: (
+      <>
+        The data is sourced from official Spanish public registries and is updated regularly. However, please note that while we strive for accuracy, we cannot guarantee it 100%, as the data parsing from PDF is inherently imperfect. Use this tool for exploratory and educational purposes, but always verify critical information with official sources when needed.
+      </>
+    ),
+  },
+  {
     question: 'Do I need to pay or create an account?',
     answer: 'No charge, no account, no signup required. The app is free to use. But we do love coffee, so you can buy us one in the link below the FAQ 🤗',
   },
