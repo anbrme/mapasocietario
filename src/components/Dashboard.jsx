@@ -208,7 +208,8 @@ export default function Dashboard() {
         setLoading(false);
 
         // Wave 2: slower endpoints loaded after initial paint
-        return Promise.all([
+        // Use allSettled so one failing endpoint doesn't block the rest
+        return Promise.allSettled([
           statsService.getYoY(filterParams),
           statsService.getCompanySizes(filterParams),
           statsService.getTopOfficers({ ...filterParams, limit: 25 }),
@@ -221,15 +222,15 @@ export default function Dashboard() {
       })
       .then((results) => {
         if (cancelled || !results) return;
-        const [y, cs, to, cap, prov, own, os, ls] = results;
-        setYoy(y);
-        setCompanySizes(cs);
-        setTopOfficers(to);
-        setCapital(cap);
-        setProvincesData(prov);
-        setOwnership(own);
-        setOwnershipSankey(os);
-        setLifecycleSankey(ls);
+        const val = (r) => r.status === 'fulfilled' ? r.value : null;
+        setYoy(val(results[0]));
+        setCompanySizes(val(results[1]));
+        setTopOfficers(val(results[2]));
+        setCapital(val(results[3]));
+        setProvincesData(val(results[4]));
+        setOwnership(val(results[5]));
+        setOwnershipSankey(val(results[6]));
+        setLifecycleSankey(val(results[7]));
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
