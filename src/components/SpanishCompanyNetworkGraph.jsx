@@ -3249,6 +3249,40 @@ const SpanishCompanyNetworkGraph = ({
         >
           Search
         </Button>
+        {searchType === 'company' && graphData.nodes.length > 0 && (
+          <Button
+            variant="outlined"
+            color="warning"
+            size="small"
+            startIcon={<DescriptionIcon />}
+            sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+            onClick={async () => {
+              const name = searchQuery.trim();
+              if (!name) return;
+              try {
+                const res = await fetch('https://payments.ncdata.eu/api/stripe/create-dd-checkout', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    country: 'es',
+                    companyIdentifier: name,
+                    companyName: name,
+                    options: {},
+                    returnUrl: window.location.origin,
+                  }),
+                });
+                const data = await res.json();
+                if (data.url) {
+                  window.open(data.url, '_blank');
+                }
+              } catch (err) {
+                console.error('DD checkout error:', err);
+              }
+            }}
+          >
+            Due Diligence
+          </Button>
+        )}
         <TextField
           label="Filtrar nodos"
           placeholder="ej: Garcia, Telefonica"
