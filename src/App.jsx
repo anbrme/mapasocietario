@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, lazy, Suspense } from 'react';
 import {
   Box,
   Typography,
@@ -29,6 +29,7 @@ import { debounce } from 'lodash';
 import { useNavigate } from 'react-router-dom';
 import { spanishCompaniesService } from './services/spanishCompaniesService';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
+const SampleReportViewer = lazy(() => import('./components/SampleReportViewer'));
 import AdSenseAdUnit from './components/AdSenseAdUnit';
 
 
@@ -362,6 +363,37 @@ export default function App() {
           </Typography>
         </Box>
       </Box>
+
+      {/* Sample DD report preview */}
+      <Accordion
+        disableGutters
+        elevation={0}
+        sx={{
+          maxWidth: 500,
+          width: '100%',
+          bgcolor: 'rgba(255, 167, 38, 0.04)',
+          border: '1px solid rgba(255, 167, 38, 0.2)',
+          borderRadius: '8px !important',
+          '&:before': { display: 'none' },
+        }}
+      >
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon sx={{ color: 'warning.main', fontSize: 18 }} />}
+          sx={{ minHeight: 38, '& .MuiAccordionSummary-content': { my: 0.6 } }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <DescriptionIcon sx={{ fontSize: 16, color: 'warning.main' }} />
+            <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.light' }}>
+              See a sample Due Diligence report
+            </Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails sx={{ pt: 0, pb: 1.5 }}>
+          <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={24} /></Box>}>
+            <SampleReportViewer />
+          </Suspense>
+        </AccordionDetails>
+      </Accordion>
 
       {/* Dashboard link */}
       <Button
