@@ -43,7 +43,7 @@ const FAQ_ITEMS = [
     question: 'Is the data accurate and up-to-date?',
     answer: (
       <>
-        The data is sourced from official Spanish public registries and is updated regularly. However, please note that while we strive for accuracy, we cannot guarantee it 100%, as the data parsing from PDF is inherently imperfect. Use this tool for exploratory and educational purposes, but always verify critical information with official sources when needed.
+        The data is sourced from official Spanish public registries and is updated regularly. However, please note that while we strive for accuracy, we cannot guarantee it 100%, as the data parsing from PDF is inherently imperfect. For example, officers in Spain can be identified only by name, so we use several techniques to avoid incorrect matches, but we cannot guarantee 100% certainty. Use this tool for exploratory and educational purposes, but always verify critical information with official sources when needed.
       </>
     ),
   },
