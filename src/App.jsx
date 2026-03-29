@@ -23,8 +23,8 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LocalCafeIcon from '@mui/icons-material/LocalCafe';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import DescriptionIcon from '@mui/icons-material/Description';
 import { debounce } from 'lodash';
 import { useNavigate } from 'react-router-dom';
 import { spanishCompaniesService } from './services/spanishCompaniesService';
@@ -47,8 +47,12 @@ const FAQ_ITEMS = [
     ),
   },
   {
+    question: 'What is a Due Diligence report?',
+    answer: 'A Due Diligence report is a comprehensive PDF covering corporate structure, full officer history, capital events, red flags, and key changes over time — far more detail than the network graph alone. Search for a company and click the "Due Diligence" button in the search toolbar to purchase one.',
+  },
+  {
     question: 'Do I need to pay or create an account?',
-    answer: 'No charge, no account, no signup required. The app is free to use. But we do love coffee, so you can buy us one in the link below the FAQ 🤗',
+    answer: 'The network graph is completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company.',
   },
   {
     question: 'Can I get API access?',
@@ -333,25 +337,30 @@ export default function App() {
         />
       </Box>
 
-      {/* V3 index announcement — remove after a few days */}
+      {/* Due Diligence feature highlight */}
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
-          gap: 1,
+          alignItems: 'flex-start',
+          gap: 1.5,
           px: 2,
-          py: 0.75,
+          py: 1.25,
           borderRadius: 2,
-          bgcolor: 'rgba(25, 118, 210, 0.06)',
-          border: '1px solid rgba(25, 118, 210, 0.2)',
+          bgcolor: 'rgba(255, 167, 38, 0.06)',
+          border: '1px solid rgba(255, 167, 38, 0.25)',
           maxWidth: 500,
           width: '100%',
         }}
       >
-        <AutoAwesomeIcon sx={{ fontSize: 16, color: 'primary.main', flexShrink: 0 }} />
-        <Typography variant="caption" sx={{ color: 'primary.light', lineHeight: 1.4 }}>
-          We just upgraded to a cleaner, faster data index. Searches should feel snappier and return more accurate results.
-        </Typography>
+        <DescriptionIcon sx={{ fontSize: 20, color: 'warning.main', flexShrink: 0, mt: 0.25 }} />
+        <Box>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: 'warning.light', display: 'block', mb: 0.25 }}>
+            Due Diligence Reports
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>
+            Get comprehensive company reports including corporate structure, officer history, capital changes, red flags, and more. Search for a company, then click the "Due Diligence" button in the toolbar.
+          </Typography>
+        </Box>
       </Box>
 
       {/* Dashboard link */}
