@@ -3257,7 +3257,7 @@ const SpanishCompanyNetworkGraph = ({
             startIcon={<DescriptionIcon />}
             sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
             onClick={async () => {
-              const name = searchQuery.trim();
+              const name = (lastSearchContext?.query || searchQuery || '').trim();
               if (!name) return;
               try {
                 const res = await fetch('https://payments.ncdata.eu/api/stripe/create-dd-checkout', {
