@@ -3268,7 +3268,7 @@ const SpanishCompanyNetworkGraph = ({
                     companyIdentifier: name,
                     companyName: name,
                     options: {},
-                    returnUrl: window.location.origin,
+                    returnUrl: window.location.href,
                   }),
                 });
                 const data = await res.json();
@@ -3599,7 +3599,7 @@ const SpanishCompanyNetworkGraph = ({
                             companyIdentifier: name,
                             companyName: name,
                             options: {},
-                            returnUrl: window.location.origin,
+                            returnUrl: window.location.href,
                           }),
                         })
                           .then(res => res.json())
@@ -3946,7 +3946,7 @@ const SpanishCompanyNetworkGraph = ({
                     companyIdentifier: name,
                     companyName: name,
                     options: {},
-                    returnUrl: window.location.origin,
+                    returnUrl: window.location.href,
                   }),
                 })
                   .then(res => res.json())
