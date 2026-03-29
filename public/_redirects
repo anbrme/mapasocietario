@@ -1,2 +1,3 @@
 # SPA fallback — serve index.html for all routes not matching a static file
 /dashboard  /index.html  200
+/public-search  /index.html  200

@@ -8,6 +8,18 @@ import Dashboard from './components/Dashboard';
 import { FilterProvider } from './contexts/FilterProvider';
 import './index.css';
 
+// If user cancelled a DD payment, redirect back to the page they came from
+const params = new URLSearchParams(window.location.search);
+if (params.get('dd_payment_cancelled') === 'true') {
+  const returnUrl = localStorage.getItem('dd_return_url');
+  localStorage.removeItem('dd_return_url');
+  if (returnUrl) {
+    window.location.replace(returnUrl);
+  } else {
+    window.location.replace('/');
+  }
+}
+
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',

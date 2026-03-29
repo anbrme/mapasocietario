@@ -3273,6 +3273,7 @@ const SpanishCompanyNetworkGraph = ({
                 });
                 const data = await res.json();
                 if (data.url) {
+                  localStorage.setItem('dd_return_url', window.location.href);
                   window.location.href = data.url;
                 }
               } catch (err) {
@@ -3604,7 +3605,7 @@ const SpanishCompanyNetworkGraph = ({
                         })
                           .then(res => res.json())
                           .then(data => {
-                            if (data.url) { win.location.href = data.url; } else { win.close(); }
+                            if (data.url) { localStorage.setItem('dd_return_url', window.location.href); win.location.href = data.url; } else { win.close(); }
                           })
                           .catch(err => { console.error('DD checkout error:', err); if (win) win.close(); });
                       }}
@@ -3951,7 +3952,7 @@ const SpanishCompanyNetworkGraph = ({
                 })
                   .then(res => res.json())
                   .then(data => {
-                    if (data.url) { win.location.href = data.url; } else { win.close(); }
+                    if (data.url) { localStorage.setItem('dd_return_url', window.location.href); win.location.href = data.url; } else { win.close(); }
                   })
                   .catch(err => { console.error('DD checkout error:', err); if (win) win.close(); });
               }}
