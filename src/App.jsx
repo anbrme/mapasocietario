@@ -48,7 +48,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'What is a Due Diligence report?',
-    answer: 'A Due Diligence report is a comprehensive PDF covering corporate structure, full officer history, capital events, red flags, and key changes over time — far more detail than the network graph alone. Search for a company and click the "Due Diligence" button in the search toolbar to purchase one.',
+    answer: 'A Due Diligence report is a comprehensive PDF with an AI-powered analysis and sanctions cross-checking, covering corporate structure, full officer history, capital events, red flags, and key changes over time — far more detail than the network graph alone. Search for a company and click the "Due Diligence" button in the search toolbar to purchase one.',
   },
   {
     question: 'Do I need to pay or create an account?',
@@ -358,7 +358,7 @@ export default function App() {
             Due Diligence Reports
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>
-            Get comprehensive company reports including corporate structure, officer history, capital changes, red flags, and more. Search for a company, then click the "Due Diligence" button in the toolbar.
+            Get comprehensive company reports including AI-powered analysis and sanctions cross-checking, corporate structure, officer history, capital changes, red flags, and more. Search for a company, then click the "Due Diligence" button in the toolbar.
           </Typography>
         </Box>
       </Box>

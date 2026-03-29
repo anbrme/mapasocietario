@@ -3256,33 +3256,28 @@ const SpanishCompanyNetworkGraph = ({
             size="small"
             startIcon={<DescriptionIcon />}
             sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
-            onClick={() => {
+            onClick={async () => {
               const name = searchQuery.trim();
               if (!name) return;
-              const win = window.open('about:blank', '_blank');
-              fetch('https://payments.ncdata.eu/api/stripe/create-dd-checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  country: 'es',
-                  companyIdentifier: name,
-                  companyName: name,
-                  options: {},
-                  returnUrl: window.location.origin,
-                }),
-              })
-                .then(res => res.json())
-                .then(data => {
-                  if (data.url) {
-                    win.location.href = data.url;
-                  } else {
-                    win.close();
-                  }
-                })
-                .catch(err => {
-                  console.error('DD checkout error:', err);
-                  if (win) win.close();
+              try {
+                const res = await fetch('https://payments.ncdata.eu/api/stripe/create-dd-checkout', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    country: 'es',
+                    companyIdentifier: name,
+                    companyName: name,
+                    options: {},
+                    returnUrl: window.location.origin,
+                  }),
                 });
+                const data = await res.json();
+                if (data.url) {
+                  window.location.href = data.url;
+                }
+              } catch (err) {
+                console.error('DD checkout error:', err);
+              }
             }}
           >
             Due Diligence
