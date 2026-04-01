@@ -356,7 +356,7 @@ export default function App() {
         <DescriptionIcon sx={{ fontSize: 20, color: 'warning.main', flexShrink: 0, mt: 0.25 }} />
         <Box>
           <Typography variant="caption" sx={{ fontWeight: 700, color: 'warning.light', display: 'block', mb: 0.25 }}>
-            Due Diligence Reports, only EUR 0.50 per company
+            Due Diligence Reports, only EUR 2.50 per company
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4 }}>
             Get comprehensive company reports including AI-powered analysis and sanctions cross-checking, corporate structure, officer history, capital changes, red flags, and more. Search for a company, then click the "Due Diligence" button in the toolbar.
