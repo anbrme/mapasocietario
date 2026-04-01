@@ -8,7 +8,19 @@ import App from './App';
 import Dashboard from './components/Dashboard';
 const DueDiligencePage = lazy(() => import('./components/DueDiligencePage'));
 import { FilterProvider } from './contexts/FilterProvider';
+import usePageTracking from './hooks/usePageTracking';
 import './index.css';
+
+function AppRoutes() {
+  usePageTracking();
+  return (
+    <Routes>
+      <Route path="/" element={<App />} />
+      <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
+      <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
+    </Routes>
+  );
+}
 
 // Handle DD payment return
 const params = new URLSearchParams(window.location.search);
@@ -129,6 +141,15 @@ if (ddSessionId && /^cs_(test|live)_[A-Za-z0-9]{10,}$/.test(ddSessionId)) {
         body: blob,
       }).catch(err => console.warn('Failed to store report in R2 for re-download:', err));
 
+      // Track purchase in GA4
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', 'purchase', {
+          currency: 'EUR',
+          value: 2.50,
+          items: [{ item_name: `DD Report — ${verifyData.country?.toUpperCase()}`, item_category: 'Due Diligence', price: 2.50, quantity: 1 }],
+        });
+      }
+
       localStorage.removeItem('dd_pending_session');
       statusEl.style.background = '#2e7d32';
       statusEl.textContent = 'Your Due Diligence report has been downloaded!';
@@ -163,11 +184,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <CssBaseline />
         <BrowserRouter>
           <TermsProvider>
-            <Routes>
-              <Route path="/" element={<App />} />
-              <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
-              <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
-            </Routes>
+            <AppRoutes />
           </TermsProvider>
         </BrowserRouter>
       </ThemeProvider>
