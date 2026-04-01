@@ -187,6 +187,14 @@ export default function App() {
         <title>Mapa Societario | Grafo de empresas y administradores en Espa&ntilde;a</title>
         <meta name="description" content="Explora relaciones societarias de empresas espa&ntilde;olas con un grafo interactivo basado en BORME. Informes Due Diligence con IA, sanciones y an&aacute;lisis de riesgos." />
         <link rel="canonical" href="https://mapasocietario.es/" />
+        <meta property="og:title" content="Mapa Societario | Grafo de empresas y administradores en Espana" />
+        <meta property="og:description" content="Explora relaciones societarias de empresas espanolas con un grafo interactivo basado en BORME. Informes Due Diligence con IA, sanciones y analisis de riesgos." />
+        <meta property="og:url" content="https://mapasocietario.es/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Mapa Societario" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Mapa Societario | Grafo de empresas y administradores en Espana" />
+        <meta name="twitter:description" content="Explora relaciones societarias de empresas espanolas con un grafo interactivo basado en BORME. Informes Due Diligence con IA y analisis de riesgos." />
       </Helmet>
 
       {/* Hero section */}
