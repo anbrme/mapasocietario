@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { TermsProvider } from './contexts/TermsProvider';
 import App from './App';
 import Dashboard from './components/Dashboard';
+const DueDiligencePage = lazy(() => import('./components/DueDiligencePage'));
 import { FilterProvider } from './contexts/FilterProvider';
 import './index.css';
 
@@ -156,16 +158,19 @@ const darkTheme = createTheme({
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ThemeProvider theme={darkTheme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <TermsProvider>
-          <Routes>
-            <Route path="/" element={<App />} />
-            <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
-          </Routes>
-        </TermsProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    <HelmetProvider>
+      <ThemeProvider theme={darkTheme}>
+        <CssBaseline />
+        <BrowserRouter>
+          <TermsProvider>
+            <Routes>
+              <Route path="/" element={<App />} />
+              <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
+              <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
+            </Routes>
+          </TermsProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </HelmetProvider>
   </React.StrictMode>
 );

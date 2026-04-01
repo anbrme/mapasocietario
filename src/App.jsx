@@ -27,6 +27,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import DescriptionIcon from '@mui/icons-material/Description';
 import { debounce } from 'lodash';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { spanishCompaniesService } from './services/spanishCompaniesService';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
 const SampleReportViewer = lazy(() => import('./components/SampleReportViewer'));
@@ -182,6 +183,12 @@ export default function App() {
         overflowY: 'auto',
       }}
     >
+      <Helmet>
+        <title>Mapa Societario | Grafo de empresas y administradores en Espa&ntilde;a</title>
+        <meta name="description" content="Explora relaciones societarias de empresas espa&ntilde;olas con un grafo interactivo basado en BORME. Informes Due Diligence con IA, sanciones y an&aacute;lisis de riesgos." />
+        <link rel="canonical" href="https://mapasocietario.es/" />
+      </Helmet>
+
       {/* Hero section */}
       <Box sx={{ textAlign: 'center', mt: 1 }}>
         <AccountTreeIcon
@@ -548,7 +555,14 @@ export default function App() {
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
           <Link
-            href="/dashboard.html"
+            href="/due-diligence"
+            variant="caption"
+            sx={{ fontSize: '0.65rem', color: 'warning.light', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+          >
+            Due Diligence Reports
+          </Link>
+          <Link
+            href="/dashboard"
             variant="caption"
             sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >

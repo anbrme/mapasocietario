@@ -6,14 +6,14 @@
     <title>Mapa Societario | Grafo de empresas y administradores en Espa&ntilde;a</title>
     <meta
       name="description"
-      content="Explora relaciones societarias de empresas espa&ntilde;olas con un grafo interactivo basado en BORME. Busca empresas y administradores en segundos."
+      content="Explora relaciones societarias de empresas espa&ntilde;olas con un grafo interactivo basado en BORME. Informes Due Diligence con IA, sanciones y an&aacute;lisis de riesgos."
     />
     <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
     <meta name="googlebot" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="theme-color" content="#0a0e1a" />
     <meta name="author" content="Mapa Societario" />
-    <link rel="canonical" id="canonical-link" href="https://mapasocietario.pages.dev/" />
+    <link rel="canonical" id="canonical-link" href="https://mapasocietario.es/" />
     <meta property="og:locale" content="es_ES" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Mapa Societario" />
@@ -22,8 +22,8 @@
       property="og:description"
       content="Visualiza relaciones entre empresas y directivos con datos del Registro Mercantil (BORME)."
     />
-    <meta property="og:url" id="og-url" content="https://mapasocietario.pages.dev/" />
-    <meta property="og:image" id="og-image" content="https://mapasocietario.pages.dev/og-image.svg" />
+    <meta property="og:url" id="og-url" content="https://mapasocietario.es/" />
+    <meta property="og:image" id="og-image" content="https://mapasocietario.es/og-image.svg" />
     <meta property="og:image:alt" content="Mapa Societario: buscador de relaciones societarias en Espa&ntilde;a" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Mapa Societario | Grafo de empresas y administradores en Espa&ntilde;a" />
@@ -31,7 +31,7 @@
       name="twitter:description"
       content="Busca empresas y administradores y explora su red societaria a partir de datos BORME."
     />
-    <meta name="twitter:image" id="twitter-image" content="https://mapasocietario.pages.dev/og-image.svg" />
+    <meta name="twitter:image" id="twitter-image" content="https://mapasocietario.es/og-image.svg" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -71,14 +71,22 @@
             },
             {
               '@type': 'FAQPage',
-              inLanguage: 'en',
+              inLanguage: 'es',
               mainEntity: [
                 {
                   '@type': 'Question',
-                  name: 'What should I know before using this app?',
+                  name: 'What is Mapa Societario?',
                   acceptedAnswer: {
                     '@type': 'Answer',
-                    text: 'Software is provided as-is, with no liability for errors, omissions, or outcomes. The application is in active development.',
+                    text: 'Mapa Societario is a free interactive network graph that visualizes corporate relationships between Spanish companies and their officers, based on official BORME (Registro Mercantil) data.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'What is a Due Diligence report?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'A Due Diligence report is a comprehensive AI-powered PDF covering corporate structure, full officer history, capital events, sanctions cross-checking, red flags, and key changes over time. Available for any Spanish company via a one-time purchase.',
                   },
                 },
                 {
@@ -86,7 +94,15 @@
                   name: 'Do I need to pay or create an account?',
                   acceptedAnswer: {
                     '@type': 'Answer',
-                    text: 'No charge, no account, no signup required. The app is free to use.',
+                    text: 'The interactive network graph is completely free with no account required. Due Diligence reports are a paid feature available via one-time purchase per company.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Is the data accurate?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Data is sourced from official Spanish public registries (BORME) and updated regularly. While we strive for accuracy, always verify critical information with official sources.',
                   },
                 },
                 {
@@ -94,18 +110,33 @@
                   name: 'Can I get API access?',
                   acceptedAnswer: {
                     '@type': 'Answer',
-                    text: 'An API is being developed and will be available after the experimental phase.',
-                  },
-                },
-                {
-                  '@type': 'Question',
-                  name: 'Will this improve over time?',
-                  acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'Yes. Expect continuous improvements at a sustained pace.',
+                    text: 'Yes. Contact app@ncdata.eu with a brief description of your use case.',
                   },
                 },
               ],
+            },
+            {
+              '@type': 'Organization',
+              name: 'Mapa Societario',
+              url: `${siteUrl}/`,
+              description: 'Corporate intelligence and due diligence reports for Spanish companies.',
+              contactPoint: {
+                '@type': 'ContactPoint',
+                email: 'app@ncdata.eu',
+                contactType: 'customer service',
+              },
+            },
+            {
+              '@type': 'Product',
+              name: 'Due Diligence Report',
+              description: 'AI-powered corporate due diligence report for Spanish companies, including sanctions screening, officer history, capital events, and risk analysis.',
+              offers: {
+                '@type': 'Offer',
+                price: '2.50',
+                priceCurrency: 'EUR',
+                availability: 'https://schema.org/InStock',
+              },
+              brand: { '@type': 'Brand', name: 'Mapa Societario' },
             },
           ],
         };
