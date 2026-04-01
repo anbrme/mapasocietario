@@ -1060,8 +1060,8 @@ const SpanishCompanyNetworkGraph = ({
         try {
           const pgData = await spanishCompaniesService.pgExpandCompany(query);
           const canonicalName = pgData.company_name || query;
-          const canonicalNorm = normalizeCompanyName(canonicalName);
-          const queryNorm = normalizeCompanyName(query);
+          const canonicalNorm = normalizeCompanyName(canonicalName).toLowerCase();
+          const queryNorm = normalizeCompanyName(query).toLowerCase();
           const nameMatches = canonicalNorm.includes(queryNorm) || queryNorm.includes(canonicalNorm);
           if (pgData.success && pgData.officers && pgData.officers.length > 0 && nameMatches) {
             pgHandled = true;
@@ -2076,7 +2076,9 @@ const SpanishCompanyNetworkGraph = ({
         }
 
         // V3 fallback: get company profile from borme_companies_v3
-        if (!usedPG) {
+        // Also fall back when PG returned no officers (e.g. newly indexed company)
+        const pgReturnedOfficers = usedPG && data?.success && data.officers && data.officers.length > 0;
+        if (!pgReturnedOfficers) {
           try {
             const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName);
             if (v3.company) {
