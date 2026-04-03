@@ -12,6 +12,13 @@ html, body, #root {
   font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
 }
 
+/* Hide prerendered static content once JS is available.
+   The static HTML inside #root is for non-JS crawlers only;
+   React replaces it on mount. This prevents the brief flash. */
+#root > main {
+  display: none;
+}
+
 /* Dark-themed scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
