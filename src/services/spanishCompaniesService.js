@@ -402,6 +402,24 @@ class SpanishCompaniesService {
   }
 
   /**
+   * Expand an officer using borme_companies_v3 — returns companies where the
+   * officer appears in officers_active or officers_resigned with explicit status.
+   */
+  async expandOfficerV3(officerName, options = {}) {
+    const { size = 200 } = options;
+    const params = new URLSearchParams({
+      name: officerName,
+      size: size.toString(),
+    });
+    const response = await this.fetchWithRetry(
+      `${this.baseUrl}/bormes/v3/expand-officer?${params}`,
+      { method: 'GET' }
+    );
+    if (!response.ok) throw new Error(`expandOfficerV3 ${response.status}`);
+    return response.json();
+  }
+
+  /**
    * Convert a borme_companies_v3 document into an array of v2-compatible entries
    * that addCompanyWithOfficersToGraph can consume unchanged.
    *

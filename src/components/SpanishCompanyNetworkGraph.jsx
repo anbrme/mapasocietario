@@ -1014,26 +1014,8 @@ const SpanishCompanyNetworkGraph = ({
 
     try {
       if (effectiveSearchType === 'officer') {
-        // Officer search: try PostgreSQL first for canonical company names, fall back to ES
-        let data;
-        let pgOfficers = null;
-        try {
-          const pgData = await spanishCompaniesService.pgExpandOfficer(query);
-          if (pgData.success && pgData.officers && pgData.officers.length > 0) {
-            pgOfficers = pgData.officers;
-          }
-        } catch {
-          // PG unavailable, will use ES below
-        }
-
-        if (pgOfficers) {
-          data = { success: true, officers: pgOfficers };
-        } else {
-          data = await spanishCompaniesService.workingSearch(query, {
-            size: searchResultSize,
-            officerMode: true,
-          });
-        }
+        // Officer search: use borme_companies_v3 for explicit active/resigned status
+        const data = await spanishCompaniesService.expandOfficerV3(query);
 
         const fetchedCount = data.officers?.length || 0;
         if (data.success && fetchedCount > 0) {
@@ -1047,167 +1029,49 @@ const SpanishCompanyNetworkGraph = ({
             exactMatch: false,
             size: searchResultSize,
             offset: fetchedCount,
-            hasMore: data.hasMore,
+            hasMore: false, // v3 returns all companies for this officer
             total: data.total || fetchedCount,
           });
           setSearchQuery('');
         } else {
-          setError(`No se encontraron resultados para el directivo "${query}".`);
+          setError(`No results found for officer "${query}".`);
         }
       } else {
-        // Company search: try PostgreSQL first for complete officer list, fall back to ES
-        let pgHandled = false;
-        try {
-          const pgData = await spanishCompaniesService.pgExpandCompany(query);
-          const canonicalName = pgData.company_name || query;
-          const canonicalNorm = normalizeCompanyName(canonicalName).toLowerCase();
-          const queryNorm = normalizeCompanyName(query).toLowerCase();
-          const nameMatches = canonicalNorm.includes(queryNorm) || queryNorm.includes(canonicalNorm);
-          if (pgData.success && pgData.officers && pgData.officers.length > 0 && nameMatches) {
-            pgHandled = true;
-            const companyId = companyNameToId(normalizeCompanyName(canonicalName));
+        // Company search: use borme_companies_v3 (clean, pre-aggregated index with
+        // explicit officers_active/officers_resigned arrays)
+        const v3Data = await spanishCompaniesService.searchCompaniesV3(query, {
+          size: searchResultSize,
+          exact: exactMatch,
+        });
 
-            // Build nodes/links directly from PG officer list (same logic as expandCompanyNode PG path)
-            setGraphData(prevData => {
-              const newNodes = [...prevData.nodes];
-              const newLinks = [...prevData.links];
-              const anchor = computeGraphCentroid(prevData.nodes, viewportCenter);
+        const v3Results = v3Data.results || [];
+        if (v3Results.length > 0) {
+          // Convert v3 company docs to v2-compatible entries for the graph
+          const entries = v3Results.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
+          const filtered = filterCompanyMatches(entries, query);
 
-              // Add company node if not already present
-              if (!newNodes.find(n => n.id === companyId)) {
-                newNodes.push({
-                  id: companyId,
-                  name: canonicalName,
-                  type: 'spanish-company-group',
-                  companySummary: { entries: [], totalEntries: pgData.officers.length, dateRange: {} },
-                  ...anchor,
-                  fx: anchor.x,
-                  fy: anchor.y,
-                });
-              }
-
-              // Deduplicate by (name, role) — most recent per pair (PG returns DESC by entry_date).
-              // This mirrors spanishOfficerAnalyzer: a cessation from role X does not mark
-              // the officer as resigned from the distinct role Y.
-              const seenByNameRole = new Map(); // key: "NAME||ROLE"
-              const uniqueOfficerNames = new Map(); // key: NAME → first entry (for node creation)
-              pgData.officers.forEach(o => {
-                const nameKey = (o.name || '').toUpperCase();
-                const roleKey = (o.specific_role || o.position || '').toUpperCase();
-                const pairKey = `${nameKey}||${roleKey}`;
-                if (!seenByNameRole.has(pairKey)) seenByNameRole.set(pairKey, o);
-                if (!uniqueOfficerNames.has(nameKey)) uniqueOfficerNames.set(nameKey, o);
-              });
-
-              // Create officer nodes (one per unique name)
-              const searchNewOfficerCount = (() => {
-                let count = 0;
-                uniqueOfficerNames.forEach((_o, nk) => {
-                  const oid = `officer-${nk.toLowerCase().replace(/\s+/g, '-')}`;
-                  if (!newNodes.find(n => n.id === oid)) count++;
-                });
-                return count;
-              })();
-              let idx = 0;
-              uniqueOfficerNames.forEach((officer, nameKey) => {
-                const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
-                if (!newNodes.find(n => n.id === officerId)) {
-                  const pos = ringPosition({
-                    anchor,
-                    index: idx,
-                    total: searchNewOfficerCount,
-                    existingNodes: newNodes,
-                    radius: 160,
-                    minDistance: 45,
-                  });
-                  newNodes.push({
-                    id: officerId,
-                    name: officer.name,
-                    type: 'officer',
-                    subtype: 'individual',
-                    positions: [],
-                    companies: [canonicalName],
-                    ...pos,
-                    fx: pos.x,
-                    fy: pos.y,
-                  });
-                }
-                idx++;
-              });
-
-              // Create links (one per name+role pair, category from most recent entry)
-              seenByNameRole.forEach((officer, pairKey) => {
-                const nameKey = (officer.name || '').toUpperCase();
-                const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
-                const roleSlug = (officer.specific_role || officer.position || '')
-                  .toLowerCase().replace(/[^a-z0-9]/g, '');
-                const linkId = `${companyId}--${officerId}--${roleSlug}`;
-                if (!newLinks.find(l => l.id === linkId)) {
-                  newLinks.push({
-                    id: linkId,
-                    source: companyId,
-                    target: officerId,
-                    relationship: officer.specific_role || officer.position || '',
-                    category: normalizeCategoryKey(officer.event_type),
-                  });
-                }
-              });
-
-              return { nodes: newNodes, links: newLinks };
+          if (filtered.length > 0) {
+            await addCompanyWithOfficersToGraph(filtered);
+            filtered.forEach(company => {
+              const companyName = normalizeCompanyName(company.name || company.company_name || '');
+              const companyId = companyNameToId(companyName);
+              setPinnedNodeIds(prev => new Set([...prev, companyId]));
             });
-
-            setPinnedNodeIds(prev => new Set([...prev, companyId]));
             setLastSearchContext({
               query,
               searchType: 'company',
-              exactMatch: true,
+              exactMatch: exactMatch,
               size: searchResultSize,
-              offset: pgData.officers.length,
-              hasMore: false,
-              total: pgData.officers.length,
+              offset: v3Results.length,
+              hasMore: false, // v3 company docs are complete (all officers pre-aggregated)
+              total: v3Data.total || v3Results.length,
             });
             setSearchQuery('');
-          }
-        } catch {
-          // PG unavailable, fall through to ES
-        }
-
-        if (!pgHandled) {
-          // Fall back to borme_companies_v3 (clean, pre-aggregated index)
-          const v3Data = await spanishCompaniesService.searchCompaniesV3(query, {
-            size: searchResultSize,
-            exact: exactMatch,
-          });
-
-          const v3Results = v3Data.results || [];
-          if (v3Results.length > 0) {
-            // Convert v3 company docs to v2-compatible entries for the graph
-            const entries = v3Results.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
-            const filtered = filterCompanyMatches(entries, query);
-
-            if (filtered.length > 0) {
-              await addCompanyWithOfficersToGraph(filtered);
-              filtered.forEach(company => {
-                const companyName = normalizeCompanyName(company.name || company.company_name || '');
-                const companyId = companyNameToId(companyName);
-                setPinnedNodeIds(prev => new Set([...prev, companyId]));
-              });
-              setLastSearchContext({
-                query,
-                searchType: 'company',
-                exactMatch: exactMatch,
-                size: searchResultSize,
-                offset: v3Results.length,
-                hasMore: false, // v3 company docs are complete (all officers pre-aggregated)
-                total: v3Data.total || v3Results.length,
-              });
-              setSearchQuery('');
-            } else {
-              setError(`No precise company match found for "${query}". Try a broader search.`);
-            }
           } else {
-            setError(`No results found for "${query}".`);
+            setError(`No precise company match found for "${query}". Try a broader search.`);
           }
+        } else {
+          setError(`No results found for "${query}".`);
         }
       }
     } catch (err) {
@@ -1845,16 +1709,8 @@ const SpanishCompanyNetworkGraph = ({
   // Expand officer node to show other companies
   const expandOfficerNode = useCallback(async officerNode => {
     try {
-      // Try PostgreSQL first for canonical company names; fall back to ES if unavailable
-      let data;
-      try {
-        data = await spanishCompaniesService.pgExpandOfficer(officerNode.name.trim());
-      } catch {
-        data = await spanishCompaniesService.workingSearch(officerNode.name.trim(), {
-          size: searchResultSize,
-          officerMode: true,
-        });
-      }
+      // Use borme_companies_v3 for explicit active/resigned status
+      const data = await spanishCompaniesService.expandOfficerV3(officerNode.name.trim());
 
       if (data.success && data.officers && data.officers.length > 0) {
         // Group officer results by company name directly
@@ -1971,124 +1827,20 @@ const SpanishCompanyNetworkGraph = ({
       console.error('Error expanding officer node:', err);
       return false;
     }
-  }, [searchResultSize, viewportCenter]);
+  }, [viewportCenter]);
 
   // Expand company node to show its officers
   const expandCompanyNode = useCallback(
     async companyNode => {
       try {
         const companyName = companyNode.name.trim();
-        // Try PostgreSQL first for canonical officer names; fall back to ES if unavailable
-        let data;
-        let usedPG = false;
-        try {
-          data = await spanishCompaniesService.pgExpandCompany(companyName);
-          usedPG = true;
-        } catch {
-          // PG unavailable — fall through to v3 below
-        }
-
-        // PG path: pre-structured officers
-        if (usedPG && data?.success && data.officers && data.officers.length > 0) {
-          // PG returns pre-structured officers — add them directly to the graph
-          const canonicalName = data.company_name || companyName;
-          setGraphData(prevData => {
-            const newNodes = [...prevData.nodes];
-            const newLinks = [...prevData.links];
-            const anchor = isFinitePoint(companyNode)
-              ? { x: companyNode.x, y: companyNode.y }
-              : computeGraphCentroid(prevData.nodes, viewportCenter);
-
-            // Update the company node's name to the canonical PG name
-            if (canonicalName !== companyName) {
-              const nodeIdx = newNodes.findIndex(n => n.id === companyNode.id);
-              if (nodeIdx !== -1) newNodes[nodeIdx] = { ...newNodes[nodeIdx], name: canonicalName };
-            }
-
-            // Deduplicate by (name, role) — most recent per pair (PG returns DESC by entry_date).
-            const seenByNameRole = new Map();
-            const uniqueOfficerNames = new Map();
-            data.officers.forEach(o => {
-              const nameKey = (o.name || '').toUpperCase();
-              const roleKey = (o.specific_role || o.position || '').toUpperCase();
-              const pairKey = `${nameKey}||${roleKey}`;
-              if (!seenByNameRole.has(pairKey)) seenByNameRole.set(pairKey, o);
-              if (!uniqueOfficerNames.has(nameKey)) uniqueOfficerNames.set(nameKey, o);
-            });
-
-            // Count genuinely new officers for petal layout
-            const newOfficerCount = (() => {
-              let count = 0;
-              uniqueOfficerNames.forEach((_officer, nameKey) => {
-                const oid = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
-                if (!newNodes.find(n => n.id === oid)) count++;
-              });
-              return count;
-            })();
-            let idx = 0;
-            uniqueOfficerNames.forEach((officer, nameKey) => {
-              const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
-              if (!newNodes.find(n => n.id === officerId)) {
-                const pos = ringPosition({
-                  anchor,
-                  index: idx,
-                  total: newOfficerCount,
-                  existingNodes: newNodes,
-                  radius: 140,
-                  minDistance: 45,
-                });
-                newNodes.push({
-                  id: officerId,
-                  name: officer.name,
-                  type: 'officer',
-                  subtype: 'individual',
-                  positions: [],
-                  companies: [companyName],
-                  ...pos,
-                  fx: pos.x,
-                  fy: pos.y,
-                });
-              }
-              idx++;
-            });
-
-            seenByNameRole.forEach((officer, pairKey) => {
-              const nameKey = (officer.name || '').toUpperCase();
-              const officerId = `officer-${nameKey.toLowerCase().replace(/\s+/g, '-')}`;
-              const roleSlug = (officer.specific_role || officer.position || '')
-                .toLowerCase().replace(/[^a-z0-9]/g, '');
-              const linkId = `${companyNode.id}--${officerId}--${roleSlug}`;
-              if (!newLinks.find(l => l.id === linkId)) {
-                newLinks.push({
-                  id: linkId,
-                  source: companyNode.id,
-                  target: officerId,
-                  relationship: officer.specific_role || officer.position || '',
-                  category: normalizeCategoryKey(officer.event_type),
-                });
-              }
-            });
-
-            return { nodes: newNodes, links: newLinks };
-          });
-
+        // Use borme_companies_v3 for clean, pre-aggregated officers with
+        // explicit active/resigned status
+        const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName);
+        if (v3.company) {
+          const entries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
+          await addCompanyWithOfficersToGraph(entries, companyNode);
           return true;
-        }
-
-        // V3 fallback: get company profile from borme_companies_v3
-        // Also fall back when PG returned no officers (e.g. newly indexed company)
-        const pgReturnedOfficers = usedPG && data?.success && data.officers && data.officers.length > 0;
-        if (!pgReturnedOfficers) {
-          try {
-            const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName);
-            if (v3.company) {
-              const entries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
-              await addCompanyWithOfficersToGraph(entries, companyNode);
-              return true;
-            }
-          } catch (v3Err) {
-            console.warn('V3 company profile fallback failed:', v3Err.message);
-          }
         }
         return false;
       } catch (err) {
@@ -2096,7 +1848,7 @@ const SpanishCompanyNetworkGraph = ({
         return false;
       }
     },
-    [addCompanyWithOfficersToGraph, searchResultSize]
+    [addCompanyWithOfficersToGraph]
   );
 
   // Expand a node (called on double-click)
