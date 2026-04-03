@@ -1,5 +1,4 @@
-# SPA fallback — serve index.html for all routes not matching a static file
-/app  /index.html  200
-/dashboard  /index.html  200
-/due-diligence  /index.html  200
-/public-search  /index.html  200
+# SPA fallback — Cloudflare Pages serves static files first, so prerendered
+# routes (due-diligence/index.html, dashboard/index.html, etc.) are served
+# directly. This catch-all only handles routes with no static file.
+/*  /index.html  200
