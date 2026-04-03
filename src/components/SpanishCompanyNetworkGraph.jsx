@@ -1573,7 +1573,8 @@ const SpanishCompanyNetworkGraph = ({
           // Prefer specific_role (actual job title) over position (BORME section name)
           const roleLabel = entry.specific_role || entry.role || entry.position;
           if (roleLabel) group.roles.push(roleLabel);
-          if (entry.entry_type) group.categories.push(entry.entry_type);
+          const catText = entry.event_type || entry.entry_type;
+          if (catText) group.categories.push(catText);
         });
 
         const companyEntries = Array.from(companiesMap.values());
@@ -1679,7 +1680,12 @@ const SpanishCompanyNetworkGraph = ({
 
             // Add link between officer and company
             const relationship = group.roles[0] || '';
-            const category = normalizeCategoryKey(group.categories[0]);
+            // If any entry is a cessation, the link is ceased (cessation supersedes appointment)
+            const hasCessation = group.categories.some(c => {
+              const cl = (c || '').toLowerCase();
+              return cl.includes('cese') || cl.includes('dimis') || cl.includes('revoc');
+            });
+            const category = hasCessation ? 'ceses_dimisiones' : normalizeCategoryKey(group.categories[0]);
             const linkId = `${officerId}-${companyId}`;
             if (!newLinks.find(l => l.id === linkId)) {
               newLinks.push({
@@ -1804,6 +1810,12 @@ const SpanishCompanyNetworkGraph = ({
 
             // Always add link (even if company node already existed)
             const relationship = group.roles[0] || '';
+            // If any entry is a cessation, the link is ceased
+            const hasCessation = group.categories.some(c => {
+              const cl = (c || '').toLowerCase();
+              return cl.includes('cese') || cl.includes('dimis') || cl.includes('revoc');
+            });
+            const category = hasCessation ? 'ceses_dimisiones' : normalizeCategoryKey(group.categories[0]);
             const linkId = `${officerNode.id}-${companyId}`;
             if (!newLinks.find(l => l.id === linkId)) {
               newLinks.push({
@@ -1812,7 +1824,7 @@ const SpanishCompanyNetworkGraph = ({
                 target: companyId,
                 type: 'officer-company',
                 relationship: relationship,
-                category: normalizeCategoryKey(group.categories[0]),
+                category: category,
                 date: group.entries[0]?.indexed_date || group.entries[0]?.date || null,
               });
             }
