@@ -224,7 +224,7 @@ export default function LandingPage() {
                   '&:hover': { bgcolor: '#1565c0' },
                 }}
               >
-                Search companies
+                Search companies and officers
               </Button>
               <Button
                 variant="outlined"
