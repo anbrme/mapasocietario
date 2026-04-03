@@ -26,6 +26,12 @@ const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>${siteUrl}/app</loc>
+    <lastmod>${buildDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>${siteUrl}/due-diligence</loc>
     <lastmod>${buildDate}</lastmod>
     <changefreq>weekly</changefreq>

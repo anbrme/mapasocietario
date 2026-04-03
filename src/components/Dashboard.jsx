@@ -47,6 +47,7 @@ import {
 } from 'recharts';
 import { statsService } from '../services/statsService';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 const COLORS = {
   formations: '#4caf50',
@@ -309,6 +310,15 @@ export default function Dashboard() {
 
   return (
     <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 3 }, height: '100vh', overflowY: 'auto' }}>
+      <Helmet>
+        <title>Dashboard | Mapa Societario — Spanish Corporate Activity Analytics</title>
+        <meta name="description" content="Live analytics dashboard tracking Spanish corporate activity — company formations, dissolutions, officer changes, capital events, and trends by province and company type." />
+        <link rel="canonical" href="https://mapasocietario.es/dashboard" />
+        <meta property="og:title" content="Dashboard | Mapa Societario — Spanish Corporate Activity Analytics" />
+        <meta property="og:description" content="Live analytics dashboard tracking Spanish corporate activity — formations, dissolutions, officer changes, and trends by province." />
+        <meta property="og:url" content="https://mapasocietario.es/dashboard" />
+        <meta property="og:type" content="website" />
+      </Helmet>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
         <Tooltip title="Volver al buscador">
@@ -317,7 +327,7 @@ export default function Dashboard() {
           </IconButton>
         </Tooltip>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
             Registro Mercantil en Cifras
           </Typography>
           <Typography variant="body2" color="text.secondary">

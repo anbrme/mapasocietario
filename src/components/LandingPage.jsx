@@ -134,17 +134,17 @@ export default function LandingPage() {
   return (
     <>
       <Helmet>
-        <title>Mapa Societario | Grafo de empresas y administradores en Espa&ntilde;a</title>
-        <meta name="description" content="Explora relaciones societarias de empresas espa&ntilde;olas con un grafo interactivo basado en BORME. Informes Due Diligence con IA, sanciones y an&aacute;lisis de riesgos." />
+        <title>Mapa Societario | Spanish Company Search &amp; Corporate Relationship Graph</title>
+        <meta name="description" content="Investigate Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history lookup, and AI-powered due diligence reports from EUR 2.50." />
         <link rel="canonical" href="https://mapasocietario.es/" />
-        <meta property="og:title" content="Mapa Societario | Grafo de empresas y administradores en Espana" />
-        <meta property="og:description" content="Explora relaciones societarias de empresas espanolas con un grafo interactivo basado en BORME. Informes Due Diligence con IA, sanciones y analisis de riesgos." />
+        <meta property="og:title" content="Mapa Societario | Spanish Company Search & Corporate Relationship Graph" />
+        <meta property="og:description" content="Investigate Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history, and AI-powered due diligence reports." />
         <meta property="og:url" content="https://mapasocietario.es/" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Mapa Societario" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Mapa Societario | Grafo de empresas y administradores en Espana" />
-        <meta name="twitter:description" content="Explora relaciones societarias de empresas espanolas con un grafo interactivo basado en BORME. Informes Due Diligence con IA y analisis de riesgos." />
+        <meta name="twitter:title" content="Mapa Societario | Spanish Company Search & Corporate Relationship Graph" />
+        <meta name="twitter:description" content="Investigate Spanish companies and directors instantly. BORME-based corporate graph, officer history, and due diligence reports from EUR 2.50." />
       </Helmet>
 
       <Box
