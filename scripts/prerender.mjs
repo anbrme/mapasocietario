@@ -27,6 +27,25 @@ const baseHtml = readFileSync(path.join(distDir, 'index.html'), 'utf8');
 
 const routes = [
   {
+    path: '/app',
+    title: 'Search | Mapa Societario',
+    description:
+      'Search Spanish companies and officers by name. Explore corporate relationships in an interactive network graph based on official BORME data.',
+    ogType: 'website',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Mapa Societario &mdash; Company &amp; Officer Search</h1>
+        <p>Search for any Spanish company or officer and explore their corporate relationships in an interactive network graph.</p>
+        <ul>
+          <li>Search by company name (e.g. Inditex, Repsol)</li>
+          <li>Search by officer name (e.g. Amancio Ortega)</li>
+          <li>Visualize corporate connections in real time</li>
+          <li>Purchase Due Diligence reports from the search toolbar</li>
+        </ul>
+        <p><a href="/">Back to Mapa Societario</a></p>
+      </main>`,
+  },
+  {
     path: '/due-diligence',
     title: 'Due Diligence Reports | Mapa Societario',
     description:
@@ -45,7 +64,7 @@ const routes = [
           <li><strong>Capital Events</strong> &mdash; Track capital increases, reductions, mergers, and other corporate actions.</li>
           <li><strong>PDF Report</strong> &mdash; Professional, downloadable PDF for compliance files, investor reviews, or internal records.</li>
         </ul>
-        <p><a href="/">Search for a company to get started</a></p>
+        <p><a href="/app">Search for a company to get started</a></p>
       </main>`,
   },
   {

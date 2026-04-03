@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { TermsProvider } from './contexts/TermsProvider';
 import App from './App';
+import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 const DueDiligencePage = lazy(() => import('./components/DueDiligencePage'));
 import { FilterProvider } from './contexts/FilterProvider';
@@ -15,7 +16,8 @@ function AppRoutes() {
   usePageTracking();
   return (
     <Routes>
-      <Route path="/" element={<App />} />
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/app" element={<App />} />
       <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
       <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
     </Routes>

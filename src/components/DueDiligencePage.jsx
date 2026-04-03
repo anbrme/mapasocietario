@@ -74,7 +74,7 @@ export default function DueDiligencePage() {
           variant="contained"
           size="large"
           startIcon={<SearchIcon />}
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/app')}
           sx={{
             textTransform: 'none',
             fontWeight: 600,
