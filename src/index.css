@@ -7,7 +7,6 @@
 html, body, #root {
   height: 100%;
   width: 100%;
-  overflow: hidden;
   background: #0a0e1a;
   color: #e0e0e0;
   font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;

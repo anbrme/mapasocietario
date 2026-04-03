@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import {
   Box,
   Typography,
@@ -6,6 +6,10 @@ import {
   Link,
   Paper,
   Chip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  CircularProgress,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import SecurityIcon from '@mui/icons-material/Security';
@@ -14,6 +18,8 @@ import HistoryIcon from '@mui/icons-material/History';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import GavelIcon from '@mui/icons-material/Gavel';
 import SearchIcon from '@mui/icons-material/Search';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+const SampleReportViewer = lazy(() => import('./SampleReportViewer'));
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
@@ -158,6 +164,36 @@ export default function DueDiligencePage() {
             </Box>
           ))}
         </Box>
+
+        {/* Sample report preview */}
+        <Accordion
+          disableGutters
+          elevation={0}
+          sx={{
+            width: '100%',
+            bgcolor: 'rgba(255, 167, 38, 0.04)',
+            border: '1px solid rgba(255, 167, 38, 0.2)',
+            borderRadius: '8px !important',
+            '&:before': { display: 'none' },
+          }}
+        >
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon sx={{ color: 'warning.main', fontSize: 18 }} />}
+            sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.75 } }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DescriptionIcon sx={{ fontSize: 18, color: 'warning.main' }} />
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'warning.light' }}>
+                See a sample Due Diligence report
+              </Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0, pb: 1.5 }}>
+            <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={24} /></Box>}>
+              <SampleReportViewer />
+            </Suspense>
+          </AccordionDetails>
+        </Accordion>
 
         {/* Trust signals */}
         <Box component="section" sx={{ width: '100%', textAlign: 'center', py: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
