@@ -26,6 +26,6 @@
   <g transform="translate(120,120)">
     <rect x="0" y="0" width="540" height="190" rx="20" fill="rgba(10,14,26,0.62)" stroke="rgba(255,255,255,0.16)" />
     <text x="34" y="78" fill="#ffffff" font-size="62" font-family="Inter, Arial, sans-serif" font-weight="700">Mapa Societario</text>
-    <text x="34" y="128" fill="#cde7ff" font-size="31" font-family="Inter, Arial, sans-serif" font-weight="500">Empresas y administradores en España</text>
+    <text x="34" y="128" fill="#cde7ff" font-size="28" font-family="Inter, Arial, sans-serif" font-weight="500">Spanish company &amp; director search</text>
   </g>
 </svg>

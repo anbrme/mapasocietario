@@ -23,7 +23,7 @@
       content="Investigate Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history, and AI-powered due diligence reports."
     />
     <meta property="og:url" id="og-url" content="https://mapasocietario.es/" />
-    <meta property="og:image" id="og-image" content="https://mapasocietario.es/og-image.svg" />
+    <meta property="og:image" id="og-image" content="https://mapasocietario.es/og-image.png" />
     <meta property="og:image:alt" content="Mapa Societario: Spanish corporate relationship search engine" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Mapa Societario | Spanish Company Search &amp; Corporate Relationship Graph" />
@@ -31,7 +31,7 @@
       name="twitter:description"
       content="Investigate Spanish companies and directors instantly. BORME-based corporate graph, officer history, and due diligence reports from EUR 2.50."
     />
-    <meta name="twitter:image" id="twitter-image" content="https://mapasocietario.es/og-image.svg" />
+    <meta name="twitter:image" id="twitter-image" content="https://mapasocietario.es/og-image.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -44,7 +44,7 @@
       (() => {
         const siteUrl = window.location.origin;
         const pageUrl = `${window.location.origin}${window.location.pathname}`;
-        const imageUrl = `${siteUrl}/og-image.svg`;
+        const imageUrl = `${siteUrl}/og-image.png`;
         const canonicalLink = document.getElementById('canonical-link');
         const ogUrlTag = document.getElementById('og-url');
         const ogImageTag = document.getElementById('og-image');
@@ -130,14 +130,43 @@
               '@type': 'Product',
               name: 'Due Diligence Report',
               description: 'AI-powered corporate due diligence report for Spanish companies, including sanctions screening, officer history, capital events, and risk analysis.',
-              image: `${siteUrl}/og-image.svg`,
+              image: `${siteUrl}/og-image.png`,
+              url: `${siteUrl}/due-diligence`,
+              brand: { '@type': 'Brand', name: 'Mapa Societario' },
               offers: {
                 '@type': 'Offer',
                 price: '2.50',
                 priceCurrency: 'EUR',
                 availability: 'https://schema.org/InStock',
+                url: `${siteUrl}/due-diligence`,
+                seller: { '@type': 'Organization', name: 'Mapa Societario' },
+                shippingDetails: {
+                  '@type': 'OfferShippingDetails',
+                  shippingRate: {
+                    '@type': 'MonetaryAmount',
+                    value: '0',
+                    currency: 'EUR',
+                  },
+                  deliveryTime: {
+                    '@type': 'ShippingDeliveryTime',
+                    handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 0, unitCode: 'MIN' },
+                    transitTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 2, unitCode: 'MIN' },
+                  },
+                  shippingDestination: {
+                    '@type': 'DefinedRegion',
+                    addressCountry: '*',
+                  },
+                },
+                hasMerchantReturnPolicy: {
+                  '@type': 'MerchantReturnPolicy',
+                  applicableCountry: '*',
+                  returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+                  merchantReturnDays: 0,
+                  returnMethod: 'https://schema.org/ReturnByMail',
+                  returnFees: 'https://schema.org/FreeReturn',
+                  itemCondition: 'https://schema.org/NewCondition',
+                },
               },
-              brand: { '@type': 'Brand', name: 'Mapa Societario' },
             },
           ],
         };
