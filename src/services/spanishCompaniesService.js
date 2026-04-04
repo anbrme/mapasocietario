@@ -406,7 +406,7 @@ class SpanishCompaniesService {
    * officer appears in officers_active or officers_resigned with explicit status.
    */
   async expandOfficerV3(officerName, options = {}) {
-    const { size = 200 } = options;
+    const { size = 200, exactMatch = true } = options;
     const params = new URLSearchParams({
       name: officerName,
       size: size.toString(),
@@ -416,7 +416,19 @@ class SpanishCompaniesService {
       { method: 'GET' }
     );
     if (!response.ok) throw new Error(`expandOfficerV3 ${response.status}`);
-    return response.json();
+    const data = await response.json();
+
+    // The API does substring matching — "PIÑEIRO GOMEZ JOSE" also returns
+    // "PIÑEIRO GOMEZ JOSE MANUEL". Filter to exact name match client-side.
+    if (exactMatch && data.officers) {
+      const normalized = officerName.trim().toLowerCase();
+      data.officers = data.officers.filter(entry => {
+        const entryName = (entry.officer_name || entry.name || '').trim().toLowerCase();
+        return entryName === normalized;
+      });
+    }
+
+    return data;
   }
 
   /**
