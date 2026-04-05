@@ -304,21 +304,26 @@ export default function AdminPage() {
 function buildMailtoLink(order) {
   const companyName = order.companyName || order.companyIdentifier || 'your company';
   const orderUrl = `https://mapasocietario.es/order/${order.sessionId}`;
-  const subject = `Your Due Diligence Report is ready — ${companyName}`;
-  const body = `Hello,
-
-Your Due Diligence report for ${companyName} is ready for download, including the financial statements analysis.
-
-You can download your reports here:
-${orderUrl}
-
-Download links are available for 7 days. Please save a copy for your records.
-
-If you have any questions, reply to this email.
-
-Best regards,
-Mapa Societario
-mapasocietario.es`;
+  const hasFS = order.hasAnalysis;
+  const subject = `Your Due Diligence Report is ready - ${companyName}`;
+  const body = [
+    'Hello,',
+    '',
+    `Your Due Diligence report for ${companyName} is ready for download${hasFS ? ', including the financial statements analysis.' : '.'}`,
+    '',
+    'You can download your reports here:',
+    orderUrl,
+    '',
+    'Download links are available for 7 days.',
+    'Please save a copy for your records.',
+    '',
+    'If you have any questions, please reply to this email.',
+    '',
+    'Best regards,',
+    'NC Data',
+    '',
+    'https://mapasocietario.es',
+  ].join('\n');
 
   const to = order.customerEmail || '';
   return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

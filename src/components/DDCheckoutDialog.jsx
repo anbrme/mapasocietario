@@ -12,22 +12,29 @@ import {
   FormControlLabel,
   CircularProgress,
   Alert,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import EmailIcon from '@mui/icons-material/Email';
+import TranslateIcon from '@mui/icons-material/Translate';
 
 const PAYMENTS_API = 'https://payments.ncdata.eu';
-const DD_PRICE = 2.50;
-const FS_PRICE = 9.90;
+const DD_PRICE = 17.50;
+const FS_PRICE = 2.50;
+const VAT_RATE = 0.21;
 
 export default function DDCheckoutDialog({ open, onClose, companyName, country = 'es' }) {
   const [includeFS, setIncludeFS] = useState(false);
   const [email, setEmail] = useState('');
+  const [lang, setLang] = useState('es');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const totalPrice = DD_PRICE + (includeFS ? FS_PRICE : 0);
+  const subtotal = DD_PRICE + (includeFS ? FS_PRICE : 0);
+  const vatAmount = subtotal * VAT_RATE;
+  const totalPrice = subtotal + vatAmount;
 
   const handleCheckout = async () => {
     if (!email.trim()) {
@@ -37,9 +44,10 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     setError('');
     setLoading(true);
     try {
-      const options = includeFS
-        ? { financialStatements: true, email: email.trim() }
-        : {};
+      const options = {
+        language: lang,
+        ...(includeFS ? { financialStatements: true, email: email.trim() } : {}),
+      };
       const res = await fetch(`${PAYMENTS_API}/api/stripe/create-dd-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -186,6 +194,24 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           }}
         />
 
+        {/* Language selector */}
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <TranslateIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            Report language:
+          </Typography>
+          <ToggleButtonGroup
+            value={lang}
+            exclusive
+            onChange={(_, v) => v && setLang(v)}
+            size="small"
+            sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1.5, fontSize: '0.7rem', textTransform: 'none' } }}
+          >
+            <ToggleButton value="es">Espanol</ToggleButton>
+            <ToggleButton value="en">English</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+
         {error && (
           <Alert severity="error" sx={{ mt: 2, fontSize: '0.75rem' }}>
             {error}
@@ -194,6 +220,21 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, flexDirection: 'column', gap: 1 }}>
+        {/* Price breakdown */}
+        <Box sx={{ width: '100%', mb: 0.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>Subtotal</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>EUR {subtotal.toFixed(2)}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>IVA (21%)</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>EUR {vatAmount.toFixed(2)}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1, mt: 0.5, pt: 0.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>Total</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>EUR {totalPrice.toFixed(2)}</Typography>
+          </Box>
+        </Box>
         <Button
           variant="contained"
           fullWidth

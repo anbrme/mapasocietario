@@ -16,7 +16,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HourglassTopIcon from '@mui/icons-material/HourglassTop';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import DownloadIcon from '@mui/icons-material/Download';
-import EmailIcon from '@mui/icons-material/Email';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { Helmet } from 'react-helmet-async';
 
 const POLL_INTERVAL = 15_000; // 15 seconds
@@ -39,6 +39,7 @@ export default function OrderStatusPage() {
   const [orderData, setOrderData] = useState(null); // verified payment data
   const [ddReportReady, setDdReportReady] = useState(false);
   const [financialStatementsReady, setFinancialStatementsReady] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const hasFinancialStatements = orderData?.options?.financialStatements === true;
 
@@ -257,9 +258,24 @@ export default function OrderStatusPage() {
                 )}
               </Box>
 
-              <Alert severity="info" variant="outlined" sx={{ mt: 1, '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
-                Bookmark this page to check back later. This page auto-refreshes every 15 seconds.
-              </Alert>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
+                  We will send you an email when your report is ready. You can also save this page link to check back later.
+                </Alert>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  sx={{ textTransform: 'none', fontSize: '0.75rem', alignSelf: 'flex-start' }}
+                >
+                  {copied ? 'Copied!' : 'Copy order link'}
+                </Button>
+              </Box>
             </Box>
           )}
 
