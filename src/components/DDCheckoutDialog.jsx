@@ -30,8 +30,8 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   const totalPrice = DD_PRICE + (includeFS ? FS_PRICE : 0);
 
   const handleCheckout = async () => {
-    if (includeFS && !email.trim()) {
-      setError('Email is required for financial statements delivery.');
+    if (!email.trim()) {
+      setError('Email is required to receive your report.');
       return;
     }
     setError('');
@@ -170,7 +170,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         <TextField
           fullWidth
           size="small"
-          label={includeFS ? 'Email (required for delivery)' : 'Email (optional, for receipt)'}
+          label="Email (required)"
           placeholder="your@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}

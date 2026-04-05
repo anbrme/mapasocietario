@@ -320,7 +320,8 @@ Best regards,
 Mapa Societario
 mapasocietario.es`;
 
-  return `mailto:${order.customerEmail}?from=orders@ncdata.eu&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const to = order.customerEmail || '';
+  return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function OrderCard({ order, onUpload, uploading }) {
@@ -412,17 +413,15 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
             {expanded ? 'Hide' : 'View'} Analysis
           </Button>
         )}
-        {order.customerEmail && (
-          <Button
-            size="small"
-            startIcon={<EmailOutlinedIcon sx={{ fontSize: 14 }} />}
-            href={buildMailtoLink(order)}
-            component="a"
-            sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-          >
-            Notify
-          </Button>
-        )}
+        <Button
+          size="small"
+          startIcon={<EmailOutlinedIcon sx={{ fontSize: 14 }} />}
+          href={buildMailtoLink(order)}
+          component="a"
+          sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+        >
+          Notify
+        </Button>
         <Chip
           label={order.hasAnalysis ? 'Analysis OK' : 'No Analysis'}
           size="small"
