@@ -18,6 +18,7 @@ import HourglassTopIcon from '@mui/icons-material/HourglassTop';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import DescriptionIcon from '@mui/icons-material/Description';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { Helmet } from 'react-helmet-async';
 
 const PAYMENTS_API = 'https://payments.ncdata.eu';
@@ -300,6 +301,28 @@ export default function AdminPage() {
   );
 }
 
+function buildMailtoLink(order) {
+  const companyName = order.companyName || order.companyIdentifier || 'your company';
+  const orderUrl = `https://mapasocietario.es/order/${order.sessionId}`;
+  const subject = `Your Due Diligence Report is ready — ${companyName}`;
+  const body = `Hello,
+
+Your Due Diligence report for ${companyName} is ready for download, including the financial statements analysis.
+
+You can download your reports here:
+${orderUrl}
+
+Download links are available for 7 days. Please save a copy for your records.
+
+If you have any questions, reply to this email.
+
+Best regards,
+Mapa Societario
+mapasocietario.es`;
+
+  return `mailto:${order.customerEmail}?from=orders@ncdata.eu&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 function OrderCard({ order, onUpload, uploading }) {
   const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -387,6 +410,17 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
             sx={{ textTransform: 'none', fontSize: '0.75rem' }}
           >
             {expanded ? 'Hide' : 'View'} Analysis
+          </Button>
+        )}
+        {order.customerEmail && (
+          <Button
+            size="small"
+            startIcon={<EmailOutlinedIcon sx={{ fontSize: 14 }} />}
+            href={buildMailtoLink(order)}
+            component="a"
+            sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+          >
+            Notify
           </Button>
         )}
         <Chip

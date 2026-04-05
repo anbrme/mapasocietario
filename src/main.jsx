@@ -86,6 +86,7 @@ if (ddSessionId && /^cs_(test|live|free)_[A-Za-z0-9_]{10,}$/.test(ddSessionId)) 
       if (!verifyData.paid) throw new Error(verifyData.reason || verifyData.error || 'Payment not confirmed');
 
       // Step 2: If financial statements requested, redirect to order page
+      // DD report is generated AFTER admin uploads cuentas anuales + LLM analysis
       if (verifyData.options?.financialStatements) {
         localStorage.removeItem('dd_pending_session');
         localStorage.removeItem('dd_include_fs');
