@@ -3918,6 +3918,12 @@ const SpanishCompanyNetworkGraph = ({
         )}
         {graphAreaContent}
         {nodeManagementOverlays}
+        <DDCheckoutDialog
+          open={ddCheckoutOpen}
+          onClose={() => setDdCheckoutOpen(false)}
+          companyName={ddCheckoutCompany}
+          country="es"
+        />
       </Box>
     );
   }
