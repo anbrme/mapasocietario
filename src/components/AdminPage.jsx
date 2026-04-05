@@ -389,7 +389,7 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
         borderRadius: 2,
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         <CheckCircleIcon sx={{ color: 'success.main', fontSize: 24 }} />
         <Box sx={{ flex: 1, minWidth: 200 }}>
           <Typography variant="body2" sx={{ fontWeight: 700 }}>
