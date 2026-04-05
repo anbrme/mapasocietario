@@ -21,8 +21,8 @@ import EmailIcon from '@mui/icons-material/Email';
 import TranslateIcon from '@mui/icons-material/Translate';
 
 const PAYMENTS_API = 'https://payments.ncdata.eu';
-const DD_PRICE = 17.50;
-const FS_PRICE = 2.50;
+const DD_PRICE = 2.50;
+const FS_PRICE = 17.50;
 const VAT_RATE = 0.21;
 
 export default function DDCheckoutDialog({ open, onClose, companyName, country = 'es' }) {

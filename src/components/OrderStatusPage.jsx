@@ -333,6 +333,21 @@ export default function OrderStatusPage() {
                     Download Financial Statements (PDF)
                   </Button>
                 )}
+
+                <Button
+                  variant="text"
+                  href="/app"
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                    color: 'text.secondary',
+                    mt: 0.5,
+                    '&:hover': { color: 'text.primary' },
+                  }}
+                >
+                  Search another company
+                </Button>
               </Box>
             </Box>
           )}
