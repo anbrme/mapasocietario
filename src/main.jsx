@@ -8,6 +8,7 @@ import App from './App';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 const DueDiligencePage = lazy(() => import('./components/DueDiligencePage'));
+const OrderStatusPage = lazy(() => import('./components/OrderStatusPage'));
 import { FilterProvider } from './contexts/FilterProvider';
 import usePageTracking from './hooks/usePageTracking';
 import './index.css';
@@ -19,6 +20,7 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/app" element={<App />} />
       <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
+      <Route path="/order/:sessionId" element={<Suspense fallback={null}><OrderStatusPage /></Suspense>} />
       <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
     </Routes>
   );
@@ -81,7 +83,16 @@ if (ddSessionId && /^cs_(test|live)_[A-Za-z0-9]{10,}$/.test(ddSessionId)) {
       const verifyData = await verifyRes.json();
       if (!verifyData.paid) throw new Error(verifyData.reason || verifyData.error || 'Payment not confirmed');
 
-      // Step 2: If report already stored in R2, download directly
+      // Step 2: If financial statements requested, redirect to order page
+      if (verifyData.options?.financialStatements) {
+        localStorage.removeItem('dd_pending_session');
+        localStorage.removeItem('dd_include_fs');
+        statusEl.remove();
+        window.location.replace(`/order/${ddSessionId}`);
+        return;
+      }
+
+      // Step 3: If report already stored in R2, download directly
       if (verifyData.reportReady) {
         statusEl.textContent = 'Downloading your report…';
         const dlRes = await fetch(`https://payments.ncdata.eu/api/stripe/get-dd-report?sessionId=${ddSessionId}`);
@@ -97,7 +108,7 @@ if (ddSessionId && /^cs_(test|live)_[A-Za-z0-9]{10,}$/.test(ddSessionId)) {
         // If download fails, fall through to regenerate
       }
 
-      // Step 3: Generate report
+      // Step 4: Generate report
       statusEl.textContent = 'Payment confirmed! Generating your Due Diligence report… This may take up to 60 seconds.';
       const apiUrl = 'https://api.ncdata.eu';
       let endpoint, body;
