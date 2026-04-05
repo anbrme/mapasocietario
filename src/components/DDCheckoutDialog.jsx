@@ -10,7 +10,6 @@ import {
   TextField,
   Checkbox,
   FormControlLabel,
-  Chip,
   CircularProgress,
   Alert,
 } from '@mui/material';
@@ -49,6 +48,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           companyIdentifier: companyName,
           companyName,
           options,
+          email: email.trim() || undefined,
           returnUrl: window.location.href,
         }),
       });
@@ -134,29 +134,13 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             border: '1px solid',
             borderColor: includeFS ? 'rgba(25,118,210,0.2)' : 'rgba(255,255,255,0.06)',
             transition: 'all 0.2s',
-            opacity: 0.55,
-            position: 'relative',
           }}
         >
-          <Chip
-            label="Coming Soon"
-            size="small"
-            sx={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              fontSize: '0.65rem',
-              height: 20,
-              fontWeight: 700,
-              bgcolor: 'rgba(25,118,210,0.15)',
-              color: 'primary.light',
-            }}
-          />
           <FormControlLabel
             control={
               <Checkbox
-                checked={false}
-                disabled
+                checked={includeFS}
+                onChange={(e) => setIncludeFS(e.target.checked)}
                 size="small"
                 sx={{ '&.Mui-checked': { color: 'primary.main' } }}
               />
@@ -164,17 +148,17 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             label={
               <Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <AccountBalanceIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.disabled' }}>
+                  <AccountBalanceIcon sx={{ fontSize: 16, color: includeFS ? 'primary.main' : 'text.secondary' }} />
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: includeFS ? 'text.primary' : 'text.secondary' }}>
                     Financial Statements (Cuentas Anuales)
                   </Typography>
                 </Box>
-                <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25, ml: 3 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25, ml: 3 }}>
                   Official PDF from Registro Mercantil + AI-powered financial analysis (OCR + LLM).
                   Delivered within 1-2 business days.
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25, ml: 3, fontWeight: 600 }}>
-                  EUR {FS_PRICE.toFixed(2)}
+                <Typography variant="caption" sx={{ color: includeFS ? 'primary.light' : 'text.secondary', display: 'block', mt: 0.25, ml: 3, fontWeight: 600 }}>
+                  + EUR {FS_PRICE.toFixed(2)}
                 </Typography>
               </Box>
             }
@@ -182,7 +166,25 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           />
         </Box>
 
-        {/* Email field (shown when FS is selected - disabled for now) */}
+        {/* Email field */}
+        <TextField
+          fullWidth
+          size="small"
+          label={includeFS ? 'Email (required for delivery)' : 'Email (optional, for receipt)'}
+          placeholder="your@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          InputProps={{
+            startAdornment: <EmailIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 1 }} />,
+          }}
+          sx={{
+            mt: 2,
+            '& .MuiOutlinedInput-root': {
+              fontSize: '0.85rem',
+              bgcolor: 'rgba(255,255,255,0.03)',
+            },
+          }}
+        />
 
         {error && (
           <Alert severity="error" sx={{ mt: 2, fontSize: '0.75rem' }}>

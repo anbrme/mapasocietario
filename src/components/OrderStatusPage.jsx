@@ -44,7 +44,7 @@ export default function OrderStatusPage() {
 
   // Verify payment on mount
   useEffect(() => {
-    if (!sessionId || !/^cs_(test|live)_[A-Za-z0-9]{10,}$/.test(sessionId)) {
+    if (!sessionId || !/^cs_(test|live|free)_[A-Za-z0-9_]{10,}$/.test(sessionId)) {
       setStatus('error');
       setErrorMsg('Invalid session ID.');
       return;

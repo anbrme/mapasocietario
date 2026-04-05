@@ -9,6 +9,7 @@ import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 const DueDiligencePage = lazy(() => import('./components/DueDiligencePage'));
 const OrderStatusPage = lazy(() => import('./components/OrderStatusPage'));
+const AdminPage = lazy(() => import('./components/AdminPage'));
 import { FilterProvider } from './contexts/FilterProvider';
 import usePageTracking from './hooks/usePageTracking';
 import './index.css';
@@ -21,6 +22,7 @@ function AppRoutes() {
       <Route path="/app" element={<App />} />
       <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
       <Route path="/order/:sessionId" element={<Suspense fallback={null}><OrderStatusPage /></Suspense>} />
+      <Route path="/admin" element={<Suspense fallback={null}><AdminPage /></Suspense>} />
       <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
     </Routes>
   );
@@ -44,7 +46,7 @@ const ddSessionId = params.get('dd_payment_success') === 'true' && params.get('s
   ? params.get('session_id')
   : localStorage.getItem('dd_pending_session');
 
-if (ddSessionId && /^cs_(test|live)_[A-Za-z0-9]{10,}$/.test(ddSessionId)) {
+if (ddSessionId && /^cs_(test|live|free)_[A-Za-z0-9_]{10,}$/.test(ddSessionId)) {
   // Clean URL and persist session for retry
   if (params.get('dd_payment_success')) {
     window.history.replaceState({}, '', window.location.pathname);
