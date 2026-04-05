@@ -59,6 +59,7 @@ import {
   Description as DescriptionIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
+import DDCheckoutDialog from './DDCheckoutDialog';
 import ForceGraph2D from 'react-force-graph-2d';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import { useTerms } from '../hooks/useTerms';
@@ -483,6 +484,10 @@ const SpanishCompanyNetworkGraph = ({
   const [editNodeSubtype, setEditNodeSubtype] = useState('individual');
   const [mergeTargetOption, setMergeTargetOption] = useState(null);
   const [mergeSearchText, setMergeSearchText] = useState('');
+
+  // DD Checkout dialog state
+  const [ddCheckoutOpen, setDdCheckoutOpen] = useState(false);
+  const [ddCheckoutCompany, setDdCheckoutCompany] = useState('');
 
   // Container dimensions for ForceGraph2D (callback ref to detect DOM attachment in Dialog Portal)
   const [containerEl, setContainerEl] = useState(null);
@@ -3022,29 +3027,11 @@ const SpanishCompanyNetworkGraph = ({
             size="small"
             startIcon={<DescriptionIcon />}
             sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
-            onClick={async () => {
+            onClick={() => {
               const name = (lastSearchContext?.query || searchQuery || '').trim();
               if (!name) return;
-              try {
-                const res = await fetch('https://payments.ncdata.eu/api/stripe/create-dd-checkout', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    country: 'es',
-                    companyIdentifier: name,
-                    companyName: name,
-                    options: {},
-                    returnUrl: window.location.href,
-                  }),
-                });
-                const data = await res.json();
-                if (data.url) {
-                  localStorage.setItem('dd_return_url', window.location.href);
-                  window.location.href = data.url;
-                }
-              } catch (err) {
-                console.error('DD checkout error:', err);
-              }
+              setDdCheckoutCompany(name);
+              setDdCheckoutOpen(true);
             }}
           >
             Due Diligence
@@ -3357,23 +3344,8 @@ const SpanishCompanyNetworkGraph = ({
                       onClick={() => {
                         const name = contextNode.name;
                         if (!name) return;
-                        const win = window.open('about:blank', '_blank');
-                        fetch('https://payments.ncdata.eu/api/stripe/create-dd-checkout', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            country: 'es',
-                            companyIdentifier: name,
-                            companyName: name,
-                            options: {},
-                            returnUrl: window.location.href,
-                          }),
-                        })
-                          .then(res => res.json())
-                          .then(data => {
-                            if (data.url) { localStorage.setItem('dd_return_url', window.location.href); win.location.href = data.url; } else { win.close(); }
-                          })
-                          .catch(err => { console.error('DD checkout error:', err); if (win) win.close(); });
+                        setDdCheckoutCompany(name);
+                        setDdCheckoutOpen(true);
                       }}
                       sx={{ color: '#ffeb3b', '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
                     >
@@ -3704,23 +3676,8 @@ const SpanishCompanyNetworkGraph = ({
                 closeNodeContextMenu();
                 const name = contextNode.name;
                 if (!name) return;
-                const win = window.open('about:blank', '_blank');
-                fetch('https://payments.ncdata.eu/api/stripe/create-dd-checkout', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    country: 'es',
-                    companyIdentifier: name,
-                    companyName: name,
-                    options: {},
-                    returnUrl: window.location.href,
-                  }),
-                })
-                  .then(res => res.json())
-                  .then(data => {
-                    if (data.url) { localStorage.setItem('dd_return_url', window.location.href); win.location.href = data.url; } else { win.close(); }
-                  })
-                  .catch(err => { console.error('DD checkout error:', err); if (win) win.close(); });
+                setDdCheckoutCompany(name);
+                setDdCheckoutOpen(true);
               }}
             >
               <ListItemIcon>
@@ -4014,6 +3971,12 @@ const SpanishCompanyNetworkGraph = ({
         </DialogActions>
       </Dialog>
       {nodeManagementOverlays}
+      <DDCheckoutDialog
+        open={ddCheckoutOpen}
+        onClose={() => setDdCheckoutOpen(false)}
+        companyName={ddCheckoutCompany}
+        country="es"
+      />
     </>
   );
 };

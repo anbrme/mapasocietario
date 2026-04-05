@@ -43,7 +43,7 @@ const CAPABILITIES = [
   {
     icon: <DescriptionIcon />,
     title: 'Due Diligence PDF',
-    desc: 'Purchase a comprehensive AI-powered report with sanctions screening, risk scoring, capital history, and red flag analysis.',
+    desc: 'Purchase a comprehensive AI-powered report with sanctions screening, risk scoring, capital history, and red flag analysis. Add financial statements with AI analysis.',
     color: '#f57c00',
   },
   {
@@ -79,7 +79,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'What is a Due Diligence report?',
-    answer: 'A comprehensive PDF with AI-powered analysis and sanctions cross-checking, covering corporate structure, full officer history, capital events, red flags, and key changes over time — far more detail than the network graph alone.',
+    answer: 'A comprehensive PDF with AI-powered analysis and sanctions cross-checking, covering corporate structure, full officer history, capital events, red flags, and key changes over time — far more detail than the network graph alone. You can also add official financial statements (Cuentas Anuales) from the Registro Mercantil, including an AI-powered financial analysis with key ratios and trends.',
   },
   {
     question: 'Can I get API access?',

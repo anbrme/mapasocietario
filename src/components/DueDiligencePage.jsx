@@ -17,6 +17,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import HistoryIcon from '@mui/icons-material/History';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import GavelIcon from '@mui/icons-material/Gavel';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SearchIcon from '@mui/icons-material/Search';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 const SampleReportViewer = lazy(() => import('./SampleReportViewer'));
@@ -131,6 +132,53 @@ export default function DueDiligencePage() {
           ))}
         </Box>
 
+        {/* Financial Statements add-on */}
+        <Paper
+          elevation={0}
+          sx={{
+            width: '100%',
+            p: 3,
+            bgcolor: 'rgba(25,118,210,0.04)',
+            border: '1px solid rgba(25,118,210,0.15)',
+            borderRadius: 2,
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <Chip
+            label="Coming Soon"
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              fontSize: '0.65rem',
+              height: 22,
+              fontWeight: 700,
+              bgcolor: 'rgba(25,118,210,0.15)',
+              color: 'primary.light',
+            }}
+          />
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 1.5 }}>
+            <AccountBalanceIcon sx={{ color: 'primary.main', mt: 0.25, fontSize: 28 }} />
+            <Box>
+              <Typography variant="body1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Financial Statements (Cuentas Anuales)
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, mb: 1.5 }}>
+                Add official financial statements from the Registro Mercantil to your Due Diligence report.
+                Includes the original PDF plus an AI-powered financial analysis with key ratios, revenue trends,
+                and red flags — extracted via OCR and LLM.
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Chip label="Official Registro Mercantil document" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
+                <Chip label="AI financial analysis" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
+                <Chip label="1-2 business days delivery" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
+              </Box>
+            </Box>
+          </Box>
+        </Paper>
+
         {/* How it works */}
         <Box component="section" sx={{ width: '100%' }}>
           <Typography variant="h6" component="h2" sx={{ fontWeight: 600, mb: 1.5 }}>
@@ -139,7 +187,7 @@ export default function DueDiligencePage() {
           {[
             { step: '1', text: 'Search for a company on the home page' },
             { step: '2', text: 'Click the "Due Diligence" button in the toolbar' },
-            { step: '3', text: 'Complete payment via Stripe (EUR 2.50)' },
+            { step: '3', text: 'Choose your options and complete payment via Stripe' },
             { step: '4', text: 'Your PDF report is generated and downloaded automatically' },
           ].map(s => (
             <Box key={s.step} sx={{ display: 'flex', gap: 1.5, mb: 1.5, alignItems: 'center' }}>
