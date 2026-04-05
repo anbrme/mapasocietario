@@ -232,7 +232,7 @@ export default function OrderStatusPage() {
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {hasFinancialStatements
-                      ? 'We are manually retrieving the financial statements from the Registro Mercantil. This usually takes 1-2 business days. We will notify you by email when your report is ready.'
+                      ? 'We are manually retrieving the financial statements from the Registro Mercantil. This usually takes 30-45 minutes. We will notify you by email when your report is ready.'
                       : 'Your report is being generated. This page will update automatically.'}
                   </Typography>
                 </Box>
