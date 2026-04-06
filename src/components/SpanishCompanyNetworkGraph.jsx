@@ -1451,9 +1451,14 @@ const SpanishCompanyNetworkGraph = ({
               ceses_dimisiones: [],
             };
 
+            // Track previous names (from name change grouping) for link annotation
+            const previousNamesUpper = (summary.previousNames || []).map(n => n.toUpperCase());
+
             // Process each entry to extract officers
             summary.entries.forEach(entry => {
               const entryDate = entry.indexed_date || entry.date;
+              // Track which company name this entry originally came from
+              const entrySourceName = (entry.name || entry.company_name || '').trim();
               const getOfficerCategory = officer => {
                 const categoryHint = `${officer?.category || ''} ${officer?.type || ''} ${
                   officer?.raw_entry || ''
@@ -1494,6 +1499,7 @@ const SpanishCompanyNetworkGraph = ({
                       date: entryDate,
                       entry_identifier: entry.identifier,
                       source_parser: 'primary',
+                      _sourceCompanyName: entrySourceName,
                     });
                   });
                 }
@@ -1511,6 +1517,7 @@ const SpanishCompanyNetworkGraph = ({
                         date: entryDate,
                         entry_identifier: entry.identifier,
                         source_parser: 'network_fallback',
+                        _sourceCompanyName: entrySourceName,
                       });
                     });
                   }
@@ -1536,6 +1543,7 @@ const SpanishCompanyNetworkGraph = ({
                     date: entryDate,
                     entry_identifier: entry.identifier,
                     source_parser: 'direct_officers_fallback',
+                    _sourceCompanyName: entrySourceName,
                   });
                 });
               }
@@ -1666,6 +1674,9 @@ const SpanishCompanyNetworkGraph = ({
                 const posEffKey = `${normalizedName}||${(officer.position || '').trim().toLowerCase()}`;
                 const effectiveCategory =
                   officerEffectiveCategory[posEffKey]?.category || officer.category;
+                // Check if this officer came from a previous (old) company name
+                const isFromPreviousName = officer._sourceCompanyName &&
+                  previousNamesUpper.includes(officer._sourceCompanyName.toUpperCase());
                 newLinks.push({
                   id: linkId,
                   source: companyId,
@@ -1674,6 +1685,7 @@ const SpanishCompanyNetworkGraph = ({
                   relationship: officer.specific_role || officer.position,
                   category: effectiveCategory,
                   date: officer.date || null,
+                  ...(isFromPreviousName && { fromPreviousName: officer._sourceCompanyName }),
                 });
               }
             });
@@ -1870,6 +1882,9 @@ const SpanishCompanyNetworkGraph = ({
             const category = hasCessation ? 'ceses_dimisiones' : normalizeCategoryKey(group.categories[0]);
             const linkId = `${officerId}-${companyId}`;
             if (!newLinks.find(l => l.id === linkId)) {
+              // Check if all entries for this officer came from a previous name
+              const prevNames = group.previousNames || [];
+              const fromPrevName = prevNames.length > 0 ? prevNames[0] : null;
               newLinks.push({
                 id: linkId,
                 source: officerId,
@@ -1878,6 +1893,7 @@ const SpanishCompanyNetworkGraph = ({
                 relationship: relationship,
                 category: category,
                 date: group.entries[0]?.indexed_date || group.entries[0]?.date || null,
+                ...(fromPrevName && { fromPreviousName: fromPrevName }),
               });
             }
           });
@@ -2029,6 +2045,8 @@ const SpanishCompanyNetworkGraph = ({
             const category = hasCessation ? 'ceses_dimisiones' : normalizeCategoryKey(group.categories[0]);
             const linkId = `${officerNode.id}-${companyId}`;
             if (!newLinks.find(l => l.id === linkId)) {
+              const prevNames = group.previousNames || [];
+              const fromPrevName = prevNames.length > 0 ? prevNames[0] : null;
               newLinks.push({
                 id: linkId,
                 source: officerNode.id,
@@ -2037,6 +2055,7 @@ const SpanishCompanyNetworkGraph = ({
                 relationship: relationship,
                 category: category,
                 date: group.entries[0]?.indexed_date || group.entries[0]?.date || null,
+                ...(fromPrevName && { fromPreviousName: fromPrevName }),
               });
             }
           });
@@ -2873,16 +2892,25 @@ const SpanishCompanyNetworkGraph = ({
         linkColor = '#90a4ae'; // Blue-grey for unknown / company-company
       }
 
-      // Draw link
+      // Draw link — dashed for officers from a previous company name
       ctx.beginPath();
+      if (link.fromPreviousName) {
+        ctx.setLineDash([Math.max(4, 6 / globalScale), Math.max(2, 3 / globalScale)]);
+      }
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
-      ctx.strokeStyle = linkColor;
-      ctx.lineWidth = Math.max(0.3, 1 / globalScale); // Adjust line width with zoom
+      ctx.strokeStyle = link.fromPreviousName ? (linkColor + 'AA') : linkColor; // Slightly transparent for old-name links
+      ctx.lineWidth = Math.max(0.3, 1 / globalScale);
       ctx.stroke();
+      ctx.setLineDash([]); // Reset dash
 
       // Conditional link label rendering
-      const edgeLabel = normalizeEdgeLabelText(link.relationship, link.category);
+      let edgeLabel = normalizeEdgeLabelText(link.relationship, link.category);
+      if (link.fromPreviousName) {
+        edgeLabel = edgeLabel
+          ? `${edgeLabel} (bajo ${link.fromPreviousName})`
+          : `(bajo ${link.fromPreviousName})`;
+      }
       if (edgeLabel) {
         const isDense = filteredGraphData.links.length > MAX_LINKS_FOR_LABELS;
         let shouldRenderLabel = false;
