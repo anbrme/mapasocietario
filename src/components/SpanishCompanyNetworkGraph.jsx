@@ -657,20 +657,75 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [visible, embedded]);
 
+  // Helper: given a list of v3 company entries, check for name change relationships,
+  // fetch the related company data, and return { entries, aliasMap } so officers are unified.
+  const fetchWithNameChangeRelations = useCallback(async (entries) => {
+    const allEntries = [...entries];
+    const aliasMap = new Map();
+    const namesInEntries = new Set(
+      entries.map(e => (e.name || e.company_name || '').trim().toUpperCase()).filter(Boolean)
+    );
+
+    for (const name of [...namesInEntries]) {
+      try {
+        const acResult = await spanishCompaniesService.autocompleteCompanies(name, { limit: 3 });
+        const match = (acResult.suggestions || []).find(
+          s => (s.name || '').trim().toUpperCase() === name
+        );
+        if (!match) continue;
+
+        let relatedName = null;
+        if (match.has_new_name && match.new_company_name) {
+          relatedName = match.new_company_name;
+          aliasMap.set(
+            normalizeCompanyName(name).toUpperCase(),
+            normalizeCompanyName(relatedName).toUpperCase()
+          );
+        } else if (match.is_alias && match.original_name) {
+          relatedName = match.original_name;
+          aliasMap.set(
+            normalizeCompanyName(relatedName).toUpperCase(),
+            normalizeCompanyName(name).toUpperCase()
+          );
+        }
+
+        if (relatedName && !namesInEntries.has(relatedName.trim().toUpperCase())) {
+          try {
+            const v3 = await spanishCompaniesService.getCompanyProfileV3(relatedName);
+            if (v3.company) {
+              const relatedEntries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
+              allEntries.push(...relatedEntries);
+              namesInEntries.add(relatedName.trim().toUpperCase());
+              console.log(`[NetworkGraph] Added related company "${relatedName}" for name change`);
+            }
+          } catch (err) {
+            console.log(`[NetworkGraph] Error fetching related company "${relatedName}":`, err);
+          }
+        }
+      } catch (err) {
+        console.log(`[NetworkGraph] Error checking name change for "${name}":`, err);
+      }
+    }
+
+    return { entries: allEntries, aliasMap: aliasMap.size > 0 ? aliasMap : null };
+  }, []);
+
   // Auto-load initial data when dialog opens with initialCompanyData or initialOfficerData
   useEffect(() => {
     if (!visible && !embedded) return;
 
     if (initialCompanyData && initialCompanyData.length > 0) {
-      addCompanyWithOfficersToGraph(initialCompanyData);
-      // Pin initial company nodes so they survive filtering
-      initialCompanyData.forEach(company => {
-        const companyName = normalizeCompanyName(company.name || company.company_name || '');
-        if (companyName) {
-          const companyId = companyNameToId(companyName);
-          setPinnedNodeIds(prev => new Set([...prev, companyId]));
-        }
-      });
+      (async () => {
+        const { entries, aliasMap } = await fetchWithNameChangeRelations(initialCompanyData);
+        await addCompanyWithOfficersToGraph(entries, null, aliasMap);
+        entries.forEach(company => {
+          const companyName = normalizeCompanyName(company.name || company.company_name || '');
+          if (companyName) {
+            const companyId = companyNameToId(companyName);
+            setPinnedNodeIds(prev => new Set([...prev, companyId]));
+          }
+        });
+      })();
     } else if (initialOfficerData && initialOfficerData.name) {
       const entries = initialOfficerData.companies || [];
       if (entries.length > 0) {
@@ -1052,12 +1107,14 @@ const SpanishCompanyNetworkGraph = ({
         const v3Results = v3Data.results || [];
         if (v3Results.length > 0) {
           // Convert v3 company docs to v2-compatible entries for the graph
-          const entries = v3Results.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
-          const filtered = filterCompanyMatches(entries, query);
+          const baseEntries = v3Results.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
+          const filtered = filterCompanyMatches(baseEntries, query);
 
           if (filtered.length > 0) {
-            await addCompanyWithOfficersToGraph(filtered);
-            filtered.forEach(company => {
+            // Check for name changes and fetch related company data
+            const { entries: withRelated, aliasMap } = await fetchWithNameChangeRelations(filtered);
+            await addCompanyWithOfficersToGraph(withRelated, null, aliasMap);
+            withRelated.forEach(company => {
               const companyName = normalizeCompanyName(company.name || company.company_name || '');
               const companyId = companyNameToId(companyName);
               setPinnedNodeIds(prev => new Set([...prev, companyId]));
@@ -1162,7 +1219,7 @@ const SpanishCompanyNetworkGraph = ({
 
   // Add company with all its officers to the graph
   const addCompanyWithOfficersToGraph = useCallback(
-    async (searchResults, anchorNode = null) => {
+    async (searchResults, anchorNode = null, nameChangeAliasMap = null) => {
 
       setIsLoading(true);
       setError(null);
@@ -1186,28 +1243,48 @@ const SpanishCompanyNetworkGraph = ({
             if (companyName.length > 200) return;
             const cleanName = normalizeCompanyName(companyName);
 
-            if (!companiesByName[cleanName]) {
-              companiesByName[cleanName] = {
+            // Resolve name change aliases: group old name entries under the new (current) name
+            let groupKey = cleanName;
+            if (nameChangeAliasMap) {
+              const resolved = nameChangeAliasMap.get(cleanName.toUpperCase());
+              if (resolved) {
+                const newNameEntry = searchResults.find(
+                  c => normalizeCompanyName(c.name || c.company_name || '').toUpperCase() === resolved
+                );
+                groupKey = newNameEntry
+                  ? normalizeCompanyName(newNameEntry.name || newNameEntry.company_name)
+                  : cleanName;
+              }
+            }
+
+            if (!companiesByName[groupKey]) {
+              companiesByName[groupKey] = {
                 entries: [],
                 dateRange: { earliest: null, latest: null },
+                previousNames: [],
               };
             }
 
-            companiesByName[cleanName].entries.push(company);
+            companiesByName[groupKey].entries.push(company);
+
+            // Track previous names
+            if (groupKey !== cleanName && !companiesByName[groupKey].previousNames.includes(cleanName)) {
+              companiesByName[groupKey].previousNames.push(cleanName);
+            }
 
             // Track date range
             const entryDate = new Date(company.indexed_date || company.date || 0);
             if (
-              !companiesByName[cleanName].dateRange.earliest ||
-              entryDate < companiesByName[cleanName].dateRange.earliest
+              !companiesByName[groupKey].dateRange.earliest ||
+              entryDate < companiesByName[groupKey].dateRange.earliest
             ) {
-              companiesByName[cleanName].dateRange.earliest = entryDate;
+              companiesByName[groupKey].dateRange.earliest = entryDate;
             }
             if (
-              !companiesByName[cleanName].dateRange.latest ||
-              entryDate > companiesByName[cleanName].dateRange.latest
+              !companiesByName[groupKey].dateRange.latest ||
+              entryDate > companiesByName[groupKey].dateRange.latest
             ) {
-              companiesByName[cleanName].dateRange.latest = entryDate;
+              companiesByName[groupKey].dateRange.latest = entryDate;
             }
           });
 
@@ -1278,9 +1355,11 @@ const SpanishCompanyNetworkGraph = ({
                 id: companyId,
                 name: companyName,
                 type: 'spanish-company-group',
+                previousNames: summary.previousNames || [],
                 companySummary: {
                   entries: summary.entries,
                   totalEntries: summary.entries.length,
+                  previousNames: summary.previousNames || [],
                   dateRange: {
                     earliest: summary.dateRange.earliest?.toISOString(),
                     latest: summary.dateRange.latest?.toISOString(),
@@ -1855,8 +1934,9 @@ const SpanishCompanyNetworkGraph = ({
         // explicit active/resigned status
         const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName);
         if (v3.company) {
-          const entries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
-          await addCompanyWithOfficersToGraph(entries, companyNode);
+          const baseEntries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
+          const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries);
+          await addCompanyWithOfficersToGraph(entries, companyNode, aliasMap);
           return true;
         }
         return false;
@@ -1865,7 +1945,7 @@ const SpanishCompanyNetworkGraph = ({
         return false;
       }
     },
-    [addCompanyWithOfficersToGraph]
+    [addCompanyWithOfficersToGraph, fetchWithNameChangeRelations]
   );
 
   // Expand a node (called on double-click)
