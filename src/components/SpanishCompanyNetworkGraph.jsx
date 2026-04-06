@@ -1657,7 +1657,7 @@ const SpanishCompanyNetworkGraph = ({
                 officerAliasMap.set(match.original_name.trim().toUpperCase(), name);
               }
             }
-          } catch (err) {
+          } catch {
             // Non-fatal
           }
         }
@@ -1855,7 +1855,7 @@ const SpanishCompanyNetworkGraph = ({
                 expandAliasMap.set(match.original_name.trim().toUpperCase(), name);
               }
             }
-          } catch (err) { /* non-fatal */ }
+          } catch { /* non-fatal */ }
         }
 
         // Group officer results by company name, merging name-changed companies
