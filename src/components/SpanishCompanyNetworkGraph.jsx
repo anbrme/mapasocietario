@@ -1637,23 +1637,55 @@ const SpanishCompanyNetworkGraph = ({
         // If searchResults is a single result, wrap it in an array
         const results = Array.isArray(searchResults) ? searchResults : [searchResults];
 
-        // Group officer results by company name directly
-        // Officer results from backend have { company_name, company, role, ... } structure
+        // Check for name change aliases among the companies this officer appears in
+        const uniqueNames = new Set(
+          results
+            .map(e => (e.company_name || e.company || e.name || '').trim().toUpperCase())
+            .filter(Boolean)
+        );
+        const officerAliasMap = new Map(); // oldNameUpper → newNameUpper
+        for (const name of uniqueNames) {
+          try {
+            const acResult = await spanishCompaniesService.autocompleteCompanies(name, { limit: 3 });
+            const match = (acResult.suggestions || []).find(
+              s => (s.name || '').trim().toUpperCase() === name
+            );
+            if (match) {
+              if (match.has_new_name && match.new_company_name) {
+                officerAliasMap.set(name, match.new_company_name.trim().toUpperCase());
+              } else if (match.is_alias && match.original_name) {
+                officerAliasMap.set(match.original_name.trim().toUpperCase(), name);
+              }
+            }
+          } catch (err) {
+            // Non-fatal
+          }
+        }
+
+        // Group officer results by company name, merging name-changed companies
         const companiesMap = new Map();
         results.forEach(entry => {
           const companyName = (entry.company_name || entry.company || entry.name || '').trim();
           if (!companyName) return;
-          const key = companyName.toUpperCase();
+          let key = companyName.toUpperCase();
+          // Resolve old name → new name for grouping
+          const resolved = officerAliasMap.get(key);
+          if (resolved) key = resolved;
           if (!companiesMap.has(key)) {
+            const displayName = resolved ? resolved : companyName;
             companiesMap.set(key, {
-              name: companyName,
+              name: displayName,
               entries: [],
               roles: [],
               categories: [],
+              previousNames: [],
             });
           }
           const group = companiesMap.get(key);
           group.entries.push(entry);
+          if (resolved && !group.previousNames.includes(companyName)) {
+            group.previousNames.push(companyName);
+          }
           // Prefer specific_role (actual job title) over position (BORME section name)
           const roleLabel = entry.specific_role || entry.role || entry.position;
           if (roleLabel) group.roles.push(roleLabel);
@@ -1803,17 +1835,46 @@ const SpanishCompanyNetworkGraph = ({
       const data = await spanishCompaniesService.expandOfficerV3(officerNode.name.trim());
 
       if (data.success && data.officers && data.officers.length > 0) {
-        // Group officer results by company name directly
+        // Check for name change aliases among the companies
+        const uniqueNames = new Set(
+          data.officers
+            .map(e => (e.company_name || e.company || e.name || '').trim().toUpperCase())
+            .filter(Boolean)
+        );
+        const expandAliasMap = new Map();
+        for (const name of uniqueNames) {
+          try {
+            const acResult = await spanishCompaniesService.autocompleteCompanies(name, { limit: 3 });
+            const match = (acResult.suggestions || []).find(
+              s => (s.name || '').trim().toUpperCase() === name
+            );
+            if (match) {
+              if (match.has_new_name && match.new_company_name) {
+                expandAliasMap.set(name, match.new_company_name.trim().toUpperCase());
+              } else if (match.is_alias && match.original_name) {
+                expandAliasMap.set(match.original_name.trim().toUpperCase(), name);
+              }
+            }
+          } catch (err) { /* non-fatal */ }
+        }
+
+        // Group officer results by company name, merging name-changed companies
         const companiesMap = new Map();
         data.officers.forEach(entry => {
           const companyName = (entry.company_name || entry.company || entry.name || '').trim();
           if (!companyName) return;
-          const key = companyName.toUpperCase();
+          let key = companyName.toUpperCase();
+          const resolved = expandAliasMap.get(key);
+          if (resolved) key = resolved;
           if (!companiesMap.has(key)) {
-            companiesMap.set(key, { name: companyName, entries: [], roles: [], categories: [] });
+            const displayName = resolved ? resolved : companyName;
+            companiesMap.set(key, { name: displayName, entries: [], roles: [], categories: [], previousNames: [] });
           }
           const group = companiesMap.get(key);
           group.entries.push(entry);
+          if (resolved && !group.previousNames.includes(companyName)) {
+            group.previousNames.push(companyName);
+          }
           const roleText = entry.specific_role || entry.role || entry.position || '';
           if (roleText && !BORME_SECTION_NAMES.has(roleText.toLowerCase())) group.roles.push(roleText);
           const catText = entry.entry_type || entry.event_type;
