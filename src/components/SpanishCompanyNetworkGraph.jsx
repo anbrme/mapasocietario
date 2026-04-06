@@ -659,6 +659,10 @@ const SpanishCompanyNetworkGraph = ({
 
   // Helper: given a list of v3 company entries, check for name change relationships,
   // fetch the related company data, and return { entries, aliasMap } so officers are unified.
+  //
+  // The autocomplete API only stores alias info on the OLD name (has_new_name → new name).
+  // The NEW name returns is_alias:false with no link back. So when we only have the new
+  // name, we also do a v3 search to discover the old name among sibling results.
   const fetchWithNameChangeRelations = useCallback(async (entries) => {
     const allEntries = [...entries];
     const aliasMap = new Map();
@@ -668,25 +672,74 @@ const SpanishCompanyNetworkGraph = ({
 
     for (const name of [...namesInEntries]) {
       try {
-        const acResult = await spanishCompaniesService.autocompleteCompanies(name, { limit: 3 });
+        const acResult = await spanishCompaniesService.autocompleteCompanies(name, { limit: 5 });
         const match = (acResult.suggestions || []).find(
           s => (s.name || '').trim().toUpperCase() === name
         );
-        if (!match) continue;
 
         let relatedName = null;
-        if (match.has_new_name && match.new_company_name) {
-          relatedName = match.new_company_name;
-          aliasMap.set(
-            normalizeCompanyName(name).toUpperCase(),
-            normalizeCompanyName(relatedName).toUpperCase()
+        if (match) {
+          if (match.has_new_name && match.new_company_name) {
+            relatedName = match.new_company_name;
+            aliasMap.set(
+              normalizeCompanyName(name).toUpperCase(),
+              normalizeCompanyName(relatedName).toUpperCase()
+            );
+          } else if (match.is_alias && match.original_name) {
+            relatedName = match.original_name;
+            aliasMap.set(
+              normalizeCompanyName(relatedName).toUpperCase(),
+              normalizeCompanyName(name).toUpperCase()
+            );
+          }
+        }
+
+        // If autocomplete didn't find a relationship, check if any OTHER suggestion
+        // for this query has has_new_name pointing to this name (reverse lookup).
+        if (!relatedName && acResult.suggestions) {
+          const reverseMatch = acResult.suggestions.find(
+            s =>
+              s.has_new_name &&
+              (s.new_company_name || '').trim().toUpperCase() === name &&
+              (s.name || '').trim().toUpperCase() !== name
           );
-        } else if (match.is_alias && match.original_name) {
-          relatedName = match.original_name;
-          aliasMap.set(
-            normalizeCompanyName(relatedName).toUpperCase(),
-            normalizeCompanyName(name).toUpperCase()
-          );
+          if (reverseMatch) {
+            relatedName = reverseMatch.name;
+            aliasMap.set(
+              normalizeCompanyName(relatedName).toUpperCase(),
+              normalizeCompanyName(name).toUpperCase()
+            );
+          }
+        }
+
+        // Still no relationship? Try a v3 search — the search engine often returns
+        // both old and new name as sibling results. Check those for has_new_name.
+        if (!relatedName && namesInEntries.size === 1) {
+          try {
+            const searchResult = await spanishCompaniesService.searchCompaniesV3(name, { size: 5 });
+            for (const sibling of searchResult.results || []) {
+              const siblingName = (sibling.company_name || '').trim().toUpperCase();
+              if (siblingName && siblingName !== name && !namesInEntries.has(siblingName)) {
+                const sibAc = await spanishCompaniesService.autocompleteCompanies(siblingName, { limit: 3 });
+                const sibMatch = (sibAc.suggestions || []).find(
+                  s => (s.name || '').trim().toUpperCase() === siblingName
+                );
+                if (
+                  sibMatch?.has_new_name &&
+                  (sibMatch.new_company_name || '').trim().toUpperCase() === name
+                ) {
+                  relatedName = sibMatch.name || siblingName;
+                  aliasMap.set(
+                    normalizeCompanyName(relatedName).toUpperCase(),
+                    normalizeCompanyName(name).toUpperCase()
+                  );
+                  break;
+                }
+              }
+            }
+          } catch {
+            // Non-fatal
+          }
         }
 
         if (relatedName && !namesInEntries.has(relatedName.trim().toUpperCase())) {
@@ -1108,13 +1161,26 @@ const SpanishCompanyNetworkGraph = ({
         if (v3Results.length > 0) {
           // Convert v3 company docs to v2-compatible entries for the graph
           const baseEntries = v3Results.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
-          const filtered = filterCompanyMatches(baseEntries, query);
+          // Check for name changes on ALL results before filtering,
+          // so that old-name entries with has_new_name are discovered
+          const { entries: withRelated, aliasMap } = await fetchWithNameChangeRelations(baseEntries);
+          const filtered = filterCompanyMatches(withRelated, query);
+          // Also include entries that didn't match the query but are linked via name change
+          const aliasedEntries = aliasMap
+            ? withRelated.filter(e => {
+                const n = (e.name || e.company_name || '').trim().toUpperCase();
+                // Keep if it's a name that maps to a query match or is mapped FROM a query match
+                return [...aliasMap.entries()].some(([old, cur]) => n === old || n === cur);
+              })
+            : [];
+          const merged = [...filtered];
+          aliasedEntries.forEach(e => {
+            if (!merged.includes(e)) merged.push(e);
+          });
 
-          if (filtered.length > 0) {
-            // Check for name changes and fetch related company data
-            const { entries: withRelated, aliasMap } = await fetchWithNameChangeRelations(filtered);
-            await addCompanyWithOfficersToGraph(withRelated, null, aliasMap);
-            withRelated.forEach(company => {
+          if (merged.length > 0) {
+            await addCompanyWithOfficersToGraph(merged, null, aliasMap);
+            merged.forEach(company => {
               const companyName = normalizeCompanyName(company.name || company.company_name || '');
               const companyId = companyNameToId(companyName);
               setPinnedNodeIds(prev => new Set([...prev, companyId]));
