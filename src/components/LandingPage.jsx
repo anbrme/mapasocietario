@@ -24,6 +24,10 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SecurityIcon from '@mui/icons-material/Security';
+import MouseIcon from '@mui/icons-material/Mouse';
+import TouchAppIcon from '@mui/icons-material/TouchApp';
+import PreviewIcon from '@mui/icons-material/Preview';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
@@ -59,6 +63,45 @@ const USE_CASES = [
   { icon: <TrendingUpIcon />, label: 'Sales / lead research', desc: 'Identify decision-makers and map corporate groups for targeted outreach.' },
   { icon: <NewspaperIcon />, label: 'Journalists / investigators', desc: 'Trace connections between companies and individuals across the registry.' },
   { icon: <GavelIcon />, label: 'Investors / M&A screening', desc: 'Evaluate corporate history, officer track records, and red flags before deals.' },
+];
+
+const HOW_TO_STEPS = [
+  {
+    number: '1',
+    icon: <SearchIcon />,
+    title: 'Search',
+    desc: 'Type a company or officer name in the search bar. Select from the autocomplete suggestions to load the entity and its connections into the graph.',
+  },
+  {
+    number: '2',
+    icon: <TouchAppIcon />,
+    title: 'Double-click to expand',
+    desc: 'Double-click any node in the graph to expand it — for a company, this loads all its officers; for an officer, it loads all their companies.',
+  },
+  {
+    number: '3',
+    icon: <MouseIcon />,
+    title: 'Right-click for actions',
+    desc: 'Right-click any node to open a context menu. You can edit or merge nodes, hide them, delete them, preview the full data, or buy a Due Diligence report.',
+  },
+  {
+    number: '4',
+    icon: <PreviewIcon />,
+    title: 'Preview company data',
+    desc: 'Select "Vista previa de datos" from the right-click menu to see a detailed overview: current officers sorted by seniority, address, capital, corporate events — all before buying a report.',
+  },
+  {
+    number: '5',
+    icon: <ZoomInIcon />,
+    title: 'Navigate the graph',
+    desc: 'Scroll to zoom in/out. Drag the canvas to pan. Drag individual nodes to reposition them. Use the settings panel to adjust node size, label size, and physics.',
+  },
+  {
+    number: '6',
+    icon: <DescriptionIcon />,
+    title: 'Buy a Due Diligence report',
+    desc: 'From the right-click menu or the data preview, purchase a comprehensive PDF with AI analysis, sanctions screening, red flags, officer network, and optional financial statements.',
+  },
 ];
 
 const DIFFERENTIATORS = [
@@ -373,93 +416,90 @@ export default function LandingPage() {
         >
           <Section>
             <SectionLabel>How it works</SectionLabel>
-            <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 4, letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1, letterSpacing: '-0.02em' }}>
               From search to insight in seconds
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4, maxWidth: 560 }}>
+              The graph is fully interactive. Here's what you can do:
             </Typography>
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-                gap: 3,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+                gap: 2,
               }}
             >
-              {/* Graph preview placeholder */}
-              <Box
-                sx={{
-                  borderRadius: 2,
-                  border: '1px solid rgba(25,118,210,0.2)',
-                  bgcolor: 'rgba(25,118,210,0.04)',
-                  p: 4,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: 240,
-                  gap: 2,
-                }}
-              >
-                <HubIcon sx={{ fontSize: 64, color: 'primary.main', opacity: 0.3 }} />
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                    Interactive network graph
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    Type a company or officer name and watch the relationship network unfold in real time.
-                  </Typography>
-                </Box>
-                <Button
-                  size="small"
-                  startIcon={<SearchIcon />}
-                  onClick={() => navigate('/app')}
+              {HOW_TO_STEPS.map((step) => (
+                <Box
+                  key={step.number}
                   sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    color: 'primary.main',
-                    mt: 1,
+                    p: 2.5,
+                    borderRadius: 2,
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    bgcolor: 'rgba(255,255,255,0.02)',
+                    display: 'flex',
+                    gap: 2,
+                    alignItems: 'flex-start',
+                    transition: 'border-color 0.2s, background-color 0.2s',
+                    '&:hover': {
+                      borderColor: 'rgba(25,118,210,0.25)',
+                      bgcolor: 'rgba(255,255,255,0.035)',
+                    },
                   }}
                 >
-                  Try it now
-                </Button>
-              </Box>
-
-              {/* Report preview placeholder */}
-              <Box
+                  <Box
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(25,118,210,0.12)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      color: 'primary.main',
+                      '& .MuiSvgIcon-root': { fontSize: 18 },
+                    }}
+                  >
+                    {step.icon}
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      {step.title}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.55 }}>
+                      {step.desc}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'center' }}>
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<SearchIcon />}
+                onClick={() => navigate('/app')}
+                sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+              >
+                Try it now
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<DescriptionIcon />}
+                onClick={() => navigate('/due-diligence')}
                 sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
                   borderRadius: 2,
-                  border: '1px solid rgba(255,167,38,0.2)',
-                  bgcolor: 'rgba(255,167,38,0.04)',
-                  p: 4,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: 240,
-                  gap: 2,
+                  borderColor: 'rgba(255,167,38,0.5)',
+                  color: 'warning.light',
+                  '&:hover': { borderColor: '#f57c00', bgcolor: 'rgba(255,167,38,0.08)' },
                 }}
               >
-                <DescriptionIcon sx={{ fontSize: 64, color: 'warning.main', opacity: 0.3 }} />
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                    Due Diligence PDF report
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    AI-powered analysis, sanctions screening, officer history, red flags — delivered as a professional PDF.
-                  </Typography>
-                </Box>
-                <Button
-                  size="small"
-                  startIcon={<DescriptionIcon />}
-                  onClick={() => navigate('/due-diligence')}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    color: 'warning.main',
-                    mt: 1,
-                  }}
-                >
-                  See sample report
-                </Button>
-              </Box>
+                See sample report
+              </Button>
             </Box>
           </Section>
         </Box>
