@@ -2637,22 +2637,56 @@ const SpanishCompanyNetworkGraph = ({
             }
           }
 
-          // Compute current officers: last event per officer name determines status
-          // An officer is "current" if their latest event is a nombramiento or reelección
+          // Compute current officers grouped by person with all their positions
+          // An officer+position is "current" if their latest event for that position
+          // is a nombramiento or reelección (not a cese/revocación)
           const allOfficerEvents = [];
           ['nombramientos', 'reelecciones', 'ceses_dimisiones', 'revocaciones'].forEach(cat => {
             datedOfficers[cat].forEach(o => allOfficerEvents.push({ ...o, category: cat }));
           });
-          const currentOfficersMap = new Map();
-          // Sort by date ascending so the last entry wins
+          // For each officer+position pair, find the latest event
+          const positionStatusMap = new Map(); // "NAME|POSITION" → latest event
           allOfficerEvents
             .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0))
             .forEach(o => {
-              const key = (o.name || '').toUpperCase();
-              currentOfficersMap.set(key, o);
+              const key = `${(o.name || '').toUpperCase()}|${(o.position || '').toUpperCase()}`;
+              positionStatusMap.set(key, o);
             });
-          const currentOfficers = Array.from(currentOfficersMap.values())
-            .filter(o => o.category === 'nombramientos' || o.category === 'reelecciones');
+          // Group active positions by officer name
+          const officerPositionsMap = new Map(); // NAME → { name, positions: [{ position, date }] }
+          positionStatusMap.forEach(o => {
+            if (o.category !== 'nombramientos' && o.category !== 'reelecciones') return;
+            const nameKey = (o.name || '').toUpperCase();
+            if (!officerPositionsMap.has(nameKey)) {
+              officerPositionsMap.set(nameKey, { name: o.name, positions: [] });
+            }
+            officerPositionsMap.get(nameKey).positions.push({
+              position: o.position || '',
+              date: o.date || '',
+            });
+          });
+
+          // Position importance tiers for sorting
+          const positionTier = (pos) => {
+            const p = (pos || '').toUpperCase();
+            if (p.startsWith('PRESIDENTE') || p.startsWith('PDTE') || p.startsWith('PRES.')) return 0;
+            if (p.startsWith('VICEPRESIDENTE') || p.startsWith('VPDTE') || p.startsWith('VICEPTE')) return 1;
+            if (p.startsWith('CONSEJERO') || p.startsWith('CONS.') || p.startsWith('CONS ')) return 2;
+            if (p.startsWith('ADMINISTRADOR') || p.startsWith('ADM.') || p.startsWith('ADM ')) return 3;
+            if (p.startsWith('SECRETARIO') || p.startsWith('SECRET.') || p.startsWith('SRIO')) return 4;
+            if (p.startsWith('LIQUIDADOR') || p.startsWith('LIQ.') || p.startsWith('LIQ ')) return 5;
+            if (p.startsWith('VOCAL')) return 6;
+            if (p.startsWith('AUDITOR') || p.startsWith('AUD.')) return 8;
+            if (p.startsWith('APO') || p.startsWith('APODERADO')) return 9;
+            return 7; // other
+          };
+
+          // Sort each officer's positions by tier, then sort officers by their best tier, then alphabetically
+          const currentOfficers = Array.from(officerPositionsMap.values()).map(o => {
+            o.positions.sort((a, b) => positionTier(a.position) - positionTier(b.position) || a.position.localeCompare(b.position));
+            return { ...o, bestTier: positionTier(o.positions[0]?.position) };
+          });
+          currentOfficers.sort((a, b) => a.bestTier - b.bestTier || (a.name || '').localeCompare(b.name || ''));
 
           setPreviewData({
             type: 'company',
@@ -4486,7 +4520,7 @@ const SpanishCompanyNetworkGraph = ({
                     </Box>
                   </Paper>
 
-                  {/* Current officers */}
+                  {/* Current officers — grouped by person, sorted by position importance */}
                   {e?.currentOfficers?.length > 0 && (
                     <>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#1976d2' }}>
@@ -4497,17 +4531,35 @@ const SpanishCompanyNetworkGraph = ({
                           <TableHead>
                             <TableRow>
                               <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Fecha nombramiento</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Cargo(s)</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {e.currentOfficers.map((o, i) => (
-                              <TableRow key={i}>
-                                <TableCell>{o.name || '-'}</TableCell>
-                                <TableCell>{o.position || '-'}</TableCell>
-                                <TableCell>{o.date ? formatDate(o.date) : '-'}</TableCell>
-                              </TableRow>
+                            {e.currentOfficers.map((officer, i) => (
+                              officer.positions.length === 1 ? (
+                                <TableRow key={i}>
+                                  <TableCell>{officer.name || '-'}</TableCell>
+                                  <TableCell>{officer.positions[0].position || '-'}</TableCell>
+                                  <TableCell>{officer.positions[0].date ? formatDate(officer.positions[0].date) : '-'}</TableCell>
+                                </TableRow>
+                              ) : (
+                                officer.positions.map((pos, j) => (
+                                  <TableRow key={`${i}-${j}`}>
+                                    {j === 0 ? (
+                                      <TableCell rowSpan={officer.positions.length} sx={{ verticalAlign: 'top', borderBottom: '2px solid rgba(255,255,255,0.12)' }}>
+                                        {officer.name || '-'}
+                                      </TableCell>
+                                    ) : null}
+                                    <TableCell sx={j === officer.positions.length - 1 ? { borderBottom: '2px solid rgba(255,255,255,0.12)' } : undefined}>
+                                      {pos.position || '-'}
+                                    </TableCell>
+                                    <TableCell sx={j === officer.positions.length - 1 ? { borderBottom: '2px solid rgba(255,255,255,0.12)' } : undefined}>
+                                      {pos.date ? formatDate(pos.date) : '-'}
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )
                             ))}
                           </TableBody>
                         </Table>
