@@ -2512,6 +2512,9 @@ const SpanishCompanyNetworkGraph = ({
         const company = v3?.company;
         const events = eventsData?.events || [];
 
+        console.log('[Preview] v3 company:', company);
+        console.log('[Preview] events count:', events.length, 'sample:', events[0]);
+
         if (!company && events.length === 0) {
           // Fallback: use data already in the node
           const summary = contextNode.companySummary;
@@ -2523,9 +2526,9 @@ const SpanishCompanyNetworkGraph = ({
           }
         } else {
           // Extract rich data from events (capital, address, activity, CIF, dated officers)
-          // Sort events newest first
+          // Sort events newest first — v3 events use event_date field
           const sortedEvents = [...events].sort((a, b) =>
-            new Date(b.indexed_date || b.date || 0) - new Date(a.indexed_date || a.date || 0)
+            new Date(b.event_date || b.indexed_date || b.date || 0) - new Date(a.event_date || a.indexed_date || a.date || 0)
           );
 
           let latestCapital = null;
@@ -2536,21 +2539,21 @@ const SpanishCompanyNetworkGraph = ({
 
           for (const evt of sortedEvents) {
             const pd = evt.parsed_details || {};
-            const evtDate = evt.indexed_date || evt.date || '';
+            const evtDate = evt.event_date || evt.indexed_date || evt.date || '';
 
-            // Capital
+            // Capital — v3 events store capital as a float directly on the event
             if (!latestCapital) {
-              const cap = pd.capital || pd.capital_social || evt.capital || evt.capital_social;
+              const cap = evt.capital || pd.capital || pd.capital_social || evt.capital_social;
               if (cap && cap !== '0' && cap !== '0.00' && cap !== 0) latestCapital = cap;
             }
-            // Address
+            // Address — v3 events store address directly on the event
             if (!latestAddress) {
-              const addr = pd.cambio_de_domicilio_social || pd.domicilio || pd.address || evt.domicilio || evt.address;
+              const addr = evt.address || pd.cambio_de_domicilio_social || pd.domicilio || pd.address || evt.domicilio;
               if (addr) latestAddress = addr;
             }
-            // Activity
+            // Activity — v3 events store activity directly
             if (!latestActivity) {
-              const act = pd.objeto_social || pd.activity || evt.objeto_social || evt.activity;
+              const act = evt.activity || pd.objeto_social || pd.activity || evt.objeto_social;
               if (act) latestActivity = act;
             }
             // CIF
@@ -2560,19 +2563,23 @@ const SpanishCompanyNetworkGraph = ({
             }
 
             // Dated officers from events
-            const evtOfficers = evt.officers || {};
-            ['nombramientos', 'reelecciones', 'ceses_dimisiones', 'revocaciones'].forEach(cat => {
-              if (evtOfficers[cat]) {
-                evtOfficers[cat].forEach(o => {
-                  if (o.name) {
-                    datedOfficers[cat].push({
-                      name: o.name,
-                      position: o.position || o.position_normalized || '',
-                      date: o.date || evtDate,
-                    });
-                  }
-                });
-              }
+            // v3 events return officers as a flat array with event_type field
+            const evtOfficers = evt.officers || [];
+            const officerList = Array.isArray(evtOfficers) ? evtOfficers : [];
+            officerList.forEach(o => {
+              if (!o.name) return;
+              // Map event_type to our category keys
+              const evtType = (o.event_type || '').toLowerCase();
+              let cat = 'nombramientos';
+              if (evtType.includes('cese') || evtType.includes('dimisi')) cat = 'ceses_dimisiones';
+              else if (evtType.includes('reelecc')) cat = 'reelecciones';
+              else if (evtType.includes('revocac')) cat = 'revocaciones';
+              else if (evtType.includes('nombr')) cat = 'nombramientos';
+              datedOfficers[cat].push({
+                name: o.name,
+                position: o.position_normalized || o.position || '',
+                date: o.date || evtDate,
+              });
             });
           }
 
@@ -2612,19 +2619,47 @@ const SpanishCompanyNetworkGraph = ({
             });
           }
 
-          // Compute date range from the v3 company doc
-          const firstSeen = company?.first_seen || (sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].indexed_date : null);
-          const lastSeen = company?.last_seen || (sortedEvents.length > 0 ? sortedEvents[0].indexed_date : null);
+          // Compute date range from the v3 company doc, falling back to events
+          const firstSeen = company?.first_seen || (sortedEvents.length > 0 ? (sortedEvents[sortedEvents.length - 1].event_date || sortedEvents[sortedEvents.length - 1].indexed_date) : null);
+          const lastSeen = company?.last_seen || (sortedEvents.length > 0 ? (sortedEvents[0].event_date || sortedEvents[0].indexed_date) : null);
 
           // Previous names from the node
           const previousNames = contextNode.companySummary?.previousNames || contextNode.previousNames || [];
+
+          // Format capital with thousands separator
+          let formattedCapital = null;
+          if (latestCapital) {
+            const num = typeof latestCapital === 'number' ? latestCapital : parseFloat(String(latestCapital).replace(/[^\d.,]/g, '').replace(',', '.'));
+            if (!isNaN(num)) {
+              formattedCapital = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 2 }).format(num) + ' \u20AC';
+            } else {
+              formattedCapital = String(latestCapital);
+            }
+          }
+
+          // Compute current officers: last event per officer name determines status
+          // An officer is "current" if their latest event is a nombramiento or reelección
+          const allOfficerEvents = [];
+          ['nombramientos', 'reelecciones', 'ceses_dimisiones', 'revocaciones'].forEach(cat => {
+            datedOfficers[cat].forEach(o => allOfficerEvents.push({ ...o, category: cat }));
+          });
+          const currentOfficersMap = new Map();
+          // Sort by date ascending so the last entry wins
+          allOfficerEvents
+            .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0))
+            .forEach(o => {
+              const key = (o.name || '').toUpperCase();
+              currentOfficersMap.set(key, o);
+            });
+          const currentOfficers = Array.from(currentOfficersMap.values())
+            .filter(o => o.category === 'nombramientos' || o.category === 'reelecciones');
 
           setPreviewData({
             type: 'company',
             name: company?.company_name || name,
             company,
             enriched: {
-              capital: latestCapital,
+              capital: formattedCapital,
               address: latestAddress,
               activity: latestActivity,
               cif: latestCif,
@@ -2632,6 +2667,7 @@ const SpanishCompanyNetworkGraph = ({
               lastSeen,
               previousNames,
               officers: datedOfficers,
+              currentOfficers,
               eventCount: events.length,
             },
           });
@@ -4450,7 +4486,36 @@ const SpanishCompanyNetworkGraph = ({
                     </Box>
                   </Paper>
 
-                  {/* Officers by category */}
+                  {/* Current officers */}
+                  {e?.currentOfficers?.length > 0 && (
+                    <>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#1976d2' }}>
+                        Directivos actuales ({e.currentOfficers.length})
+                      </Typography>
+                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Fecha nombramiento</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {e.currentOfficers.map((o, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{o.name || '-'}</TableCell>
+                                <TableCell>{o.position || '-'}</TableCell>
+                                <TableCell>{o.date ? formatDate(o.date) : '-'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  )}
+
+                  {/* Officers by category (historical) */}
                   {e?.officers && (
                     <>
                       {officerTable(e.officers.nombramientos, '#43a047', 'Nombramientos')}
@@ -4480,6 +4545,20 @@ const SpanishCompanyNetworkGraph = ({
                 if (!byCompany[companyName]) byCompany[companyName] = [];
                 byCompany[companyName].push(o);
               });
+              // v3 expand-officer returns: officer_name, company_name, specific_role,
+              // event_type ("nombramientos"/"ceses_dimisiones"), status ("active"/"ceased"), date
+              const resolveStatus = (o) => {
+                const st = (o.status || '').toLowerCase();
+                if (st === 'active') return { label: 'Activo', color: 'success' };
+                if (st === 'ceased') return { label: 'Cesado', color: 'error' };
+                const evt = (o.event_type || '').toLowerCase();
+                if (evt.includes('nombr') || evt.includes('reelecc')) return { label: 'Activo', color: 'success' };
+                if (evt.includes('cese') || evt.includes('dimis') || evt.includes('revoc')) return { label: 'Cesado', color: 'error' };
+                return { label: 'Desconocido', color: 'default' };
+              };
+              const resolvePosition = (o) => o.specific_role || o.position_normalized || o.role || o.position || '-';
+              const resolveDate = (o) => o.date || o.event_date || '';
+
               return (
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
@@ -4502,20 +4581,19 @@ const SpanishCompanyNetworkGraph = ({
                         </TableHead>
                         <TableBody>
                           {companyOfficers.map((o, i) => {
-                            const category = o.category || '';
-                            const isActive = category === 'nombramientos' || category === 'reelecciones';
+                            const status = resolveStatus(o);
                             return (
                               <TableRow key={i}>
-                                <TableCell>{o.position || o.position_normalized || '-'}</TableCell>
+                                <TableCell>{resolvePosition(o)}</TableCell>
                                 <TableCell>
                                   <Chip
-                                    label={CATEGORY_LABELS[category] || category || 'Desconocido'}
+                                    label={status.label}
                                     size="small"
-                                    color={isActive ? 'success' : 'error'}
+                                    color={status.color}
                                     variant="outlined"
                                   />
                                 </TableCell>
-                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
+                                <TableCell>{formatDate(resolveDate(o))}</TableCell>
                               </TableRow>
                             );
                           })}
