@@ -57,6 +57,8 @@ import {
   DeleteOutline as DeleteOutlineIcon,
   CallMerge as CallMergeIcon,
   Description as DescriptionIcon,
+  Preview as PreviewIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import DDCheckoutDialog from './DDCheckoutDialog';
@@ -488,6 +490,14 @@ const SpanishCompanyNetworkGraph = ({
   // DD Checkout dialog state
   const [ddCheckoutOpen, setDdCheckoutOpen] = useState(false);
   const [ddCheckoutCompany, setDdCheckoutCompany] = useState('');
+
+  // Data preview modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
+  const [previewNodeName, setPreviewNodeName] = useState('');
+  const [previewNodeType, setPreviewNodeType] = useState('company');
 
   // Container dimensions for ForceGraph2D (callback ref to detect DOM attachment in Dialog Portal)
   const [containerEl, setContainerEl] = useState(null);
@@ -2469,6 +2479,58 @@ const SpanishCompanyNetworkGraph = ({
     closeNodeContextMenu();
   }, [contextNode, hideNode, closeNodeContextMenu]);
 
+  // Data preview: fetch company or officer data and show in modal
+  const openDataPreview = useCallback(async () => {
+    if (!contextNode) return;
+    const name = contextNode.name;
+    const isOfficer = contextNode.type === 'officer';
+    closeNodeContextMenu();
+    setPreviewNodeName(name);
+    setPreviewNodeType(isOfficer ? 'officer' : 'company');
+    setPreviewData(null);
+    setPreviewError(null);
+    setPreviewLoading(true);
+    setPreviewOpen(true);
+
+    try {
+      if (isOfficer) {
+        const data = await spanishCompaniesService.expandOfficerV3(name);
+        if (data.success && data.officers?.length > 0) {
+          setPreviewData({ type: 'officer', name, officers: data.officers, total: data.total || data.officers.length });
+        } else {
+          setPreviewError('No se encontraron datos para este directivo.');
+        }
+      } else {
+        const v3 = await spanishCompaniesService.getCompanyProfileV3(name);
+        if (v3.company) {
+          const entries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
+          const parsed = parseSpanishCompanyData(entries[0] || v3.company);
+          setPreviewData({
+            type: 'company',
+            name: v3.company.company_name || name,
+            company: v3.company,
+            entries,
+            parsed,
+          });
+        } else {
+          // Fallback: use data already in the node
+          const summary = contextNode.companySummary;
+          if (summary?.entries?.length > 0) {
+            const parsed = parseSpanishCompanyData(summary.entries[0]);
+            setPreviewData({ type: 'company', name, entries: summary.entries, parsed, company: null });
+          } else {
+            setPreviewError('No se encontraron datos para esta empresa.');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Preview] Error fetching data:', err);
+      setPreviewError(`Error al obtener datos: ${err.message}`);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [contextNode, closeNodeContextMenu]);
+
   const saveNodeEdit = useCallback(() => {
     if (!contextNode) return;
     const nextName = editNodeName.trim();
@@ -2854,6 +2916,24 @@ const SpanishCompanyNetworkGraph = ({
           ctx.strokeText(truncatedLabel, node.x, labelY);
           ctx.fillStyle = '#e0e0e0';
           ctx.fillText(truncatedLabel, node.x, labelY);
+
+          // Show previous names as subtitle "(antes: ...)"
+          const prevNames = node.companySummary?.previousNames || node.previousNames;
+          if (prevNames && prevNames.length > 0) {
+            const subtitleFontSize = Math.max(fontSize * 0.7, 3);
+            ctx.font = `italic ${subtitleFontSize}px Sans-Serif`;
+            const subtitleText = `(antes: ${prevNames[0]}${prevNames.length > 1 ? ` +${prevNames.length - 1}` : ''})`;
+            const maxSubLen = Math.max(20, Math.round(40 * globalScale));
+            const truncatedSubtitle = subtitleText.length > maxSubLen
+              ? subtitleText.substring(0, maxSubLen) + '...)'
+              : subtitleText;
+            const subtitleY = labelY + subtitleFontSize * 1.3;
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.lineWidth = 2.5 / globalScale;
+            ctx.strokeText(truncatedSubtitle, node.x, subtitleY);
+            ctx.fillStyle = 'rgba(180, 180, 180, 0.85)';
+            ctx.fillText(truncatedSubtitle, node.x, subtitleY);
+          }
         }
       }
     },
@@ -3905,6 +3985,12 @@ const SpanishCompanyNetworkGraph = ({
                 : 'Sin nodos compatibles para fusionar'}
             </ListItemText>
           </MenuItem>
+          <MenuItem onClick={openDataPreview}>
+            <ListItemIcon>
+              <PreviewIcon fontSize="small" color="info" />
+            </ListItemIcon>
+            <ListItemText>Vista previa de datos</ListItemText>
+          </MenuItem>
           {contextNode && contextNode.type !== 'officer' && (
             <MenuItem
               onClick={() => {
@@ -4110,6 +4196,319 @@ const SpanishCompanyNetworkGraph = ({
             <Button color="error" variant="contained" onClick={confirmDeleteNode}>
               Eliminar
             </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Data Preview Modal — non-copyable */}
+        <Dialog
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          maxWidth="md"
+          fullWidth
+          container={overlayContainer}
+          PaperProps={{
+            sx: {
+              maxHeight: '85vh',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none',
+            },
+            onContextMenu: e => e.preventDefault(),
+            onCopy: e => e.preventDefault(),
+          }}
+        >
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {previewNodeType === 'officer' ? <PersonIcon /> : <BusinessIcon />}
+              <Typography variant="h6" component="span" noWrap sx={{ maxWidth: 500 }}>
+                {previewNodeName}
+              </Typography>
+              <Chip
+                label={previewNodeType === 'officer' ? 'Directivo' : 'Empresa'}
+                size="small"
+                color={previewNodeType === 'officer' ? 'warning' : 'primary'}
+                variant="outlined"
+              />
+            </Box>
+            <IconButton onClick={() => setPreviewOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers sx={{ userSelect: 'none' }}>
+            {previewLoading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+                <CircularProgress size={40} />
+                <Typography sx={{ ml: 2 }} color="text.secondary">Cargando datos...</Typography>
+              </Box>
+            )}
+            {previewError && (
+              <Alert severity="warning" sx={{ my: 2 }}>{previewError}</Alert>
+            )}
+            {previewData && previewData.type === 'company' && (() => {
+              const company = previewData.company;
+              const p = previewData.parsed;
+              const activeOfficers = company?.officers_active || p?.officers?.nombramientos || [];
+              const resignedOfficers = company?.officers_resigned || p?.officers?.ceses_dimisiones || [];
+              const reelectedOfficers = p?.officers?.reelecciones || [];
+              const revokedOfficers = p?.officers?.revocaciones || [];
+              return (
+                <Box>
+                  {/* Overview section */}
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+                    <InfoIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
+                    Resumen
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+                      {(company?.company_name || previewData.name) && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Denominación</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {company?.company_name || previewData.name}
+                          </Typography>
+                        </Box>
+                      )}
+                      {(p?.cif || company?.identifiers?.[0]) && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
+                          <Typography variant="body2">{p?.cif || company?.identifiers?.[0]}</Typography>
+                        </Box>
+                      )}
+                      {p?.address && (
+                        <Box sx={{ gridColumn: '1 / -1' }}>
+                          <Typography variant="caption" color="text.secondary">Domicilio</Typography>
+                          <Typography variant="body2">{p.address}</Typography>
+                        </Box>
+                      )}
+                      {p?.activity && (
+                        <Box sx={{ gridColumn: '1 / -1' }}>
+                          <Typography variant="caption" color="text.secondary">Objeto social</Typography>
+                          <Typography variant="body2">{p.activity}</Typography>
+                        </Box>
+                      )}
+                      {p?.capital && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Capital social</Typography>
+                          <Typography variant="body2">{p.capital}</Typography>
+                        </Box>
+                      )}
+                      {(company?.first_seen || company?.last_seen) && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Rango de datos</Typography>
+                          <Typography variant="body2">
+                            {company?.first_seen ? formatDate(company.first_seen) : '?'} — {company?.last_seen ? formatDate(company.last_seen) : '?'}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Paper>
+
+                  {/* Active officers */}
+                  {activeOfficers.length > 0 && (
+                    <>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#43a047' }}>
+                        Nombramientos ({activeOfficers.length})
+                      </Typography>
+                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {activeOfficers.map((o, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{o.name || o.name_normalized || '-'}</TableCell>
+                                <TableCell>{o.position || o.position_normalized || '-'}</TableCell>
+                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  )}
+
+                  {/* Re-elections */}
+                  {reelectedOfficers.length > 0 && (
+                    <>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#43a047' }}>
+                        Reelecciones ({reelectedOfficers.length})
+                      </Typography>
+                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {reelectedOfficers.map((o, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{o.name || '-'}</TableCell>
+                                <TableCell>{o.position || '-'}</TableCell>
+                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  )}
+
+                  {/* Resigned officers */}
+                  {resignedOfficers.length > 0 && (
+                    <>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#e53935' }}>
+                        Ceses/Dimisiones ({resignedOfficers.length})
+                      </Typography>
+                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {resignedOfficers.map((o, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{o.name || o.name_normalized || '-'}</TableCell>
+                                <TableCell>{o.position || o.position_normalized || '-'}</TableCell>
+                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  )}
+
+                  {/* Revocations */}
+                  {revokedOfficers.length > 0 && (
+                    <>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#e53935' }}>
+                        Revocaciones ({revokedOfficers.length})
+                      </Typography>
+                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {revokedOfficers.map((o, i) => (
+                              <TableRow key={i}>
+                                <TableCell>{o.name || '-'}</TableCell>
+                                <TableCell>{o.position || '-'}</TableCell>
+                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  )}
+
+                  {/* Watermark */}
+                  <Typography
+                    variant="caption"
+                    sx={{ display: 'block', textAlign: 'center', color: 'text.disabled', mt: 2, fontStyle: 'italic' }}
+                  >
+                    Vista previa — para un informe completo, adquiera una Due Diligence
+                  </Typography>
+                </Box>
+              );
+            })()}
+
+            {previewData && previewData.type === 'officer' && (() => {
+              const officers = previewData.officers || [];
+              // Group by company
+              const byCompany = {};
+              officers.forEach(o => {
+                const companyName = o.company_name || o.company || 'Desconocida';
+                if (!byCompany[companyName]) byCompany[companyName] = [];
+                byCompany[companyName].push(o);
+              });
+              return (
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+                    <PersonIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
+                    Cargos en {Object.keys(byCompany).length} empresa{Object.keys(byCompany).length !== 1 ? 's' : ''}
+                  </Typography>
+                  {Object.entries(byCompany).map(([companyName, companyOfficers]) => (
+                    <Paper key={companyName} variant="outlined" sx={{ p: 2, mb: 2 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
+                        <BusinessIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'text-bottom' }} />
+                        {companyName}
+                      </Typography>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {companyOfficers.map((o, i) => {
+                            const category = o.category || '';
+                            const isActive = category === 'nombramientos' || category === 'reelecciones';
+                            return (
+                              <TableRow key={i}>
+                                <TableCell>{o.position || o.position_normalized || '-'}</TableCell>
+                                <TableCell>
+                                  <Chip
+                                    label={CATEGORY_LABELS[category] || category || 'Desconocido'}
+                                    size="small"
+                                    color={isActive ? 'success' : 'error'}
+                                    variant="outlined"
+                                  />
+                                </TableCell>
+                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </Paper>
+                  ))}
+                  <Typography
+                    variant="caption"
+                    sx={{ display: 'block', textAlign: 'center', color: 'text.disabled', mt: 2, fontStyle: 'italic' }}
+                  >
+                    Vista previa — para un informe completo, adquiera una Due Diligence
+                  </Typography>
+                </Box>
+              );
+            })()}
+          </DialogContent>
+          <DialogActions>
+            {previewData?.type === 'company' && (
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<DescriptionIcon />}
+                onClick={() => {
+                  setPreviewOpen(false);
+                  setDdCheckoutCompany(previewNodeName);
+                  setDdCheckoutOpen(true);
+                }}
+              >
+                Comprar Due Diligence
+              </Button>
+            )}
+            <Button onClick={() => setPreviewOpen(false)}>Cerrar</Button>
           </DialogActions>
         </Dialog>
       </>
