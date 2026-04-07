@@ -2501,26 +2501,140 @@ const SpanishCompanyNetworkGraph = ({
           setPreviewError('No se encontraron datos para este directivo.');
         }
       } else {
-        const v3 = await spanishCompaniesService.getCompanyProfileV3(name);
-        if (v3.company) {
-          const entries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
-          const parsed = parseSpanishCompanyData(entries[0] || v3.company);
-          setPreviewData({
-            type: 'company',
-            name: v3.company.company_name || name,
-            company: v3.company,
-            entries,
-            parsed,
-          });
-        } else {
+        // Fetch both the company profile and events in parallel
+        const [v3Result, eventsResult] = await Promise.allSettled([
+          spanishCompaniesService.getCompanyProfileV3(name),
+          spanishCompaniesService.getCompanyEventsV3(name, { size: 100 }),
+        ]);
+
+        const v3 = v3Result.status === 'fulfilled' ? v3Result.value : null;
+        const eventsData = eventsResult.status === 'fulfilled' ? eventsResult.value : null;
+        const company = v3?.company;
+        const events = eventsData?.events || [];
+
+        if (!company && events.length === 0) {
           // Fallback: use data already in the node
           const summary = contextNode.companySummary;
           if (summary?.entries?.length > 0) {
-            const parsed = parseSpanishCompanyData(summary.entries[0]);
-            setPreviewData({ type: 'company', name, entries: summary.entries, parsed, company: null });
+            const parsedFallback = parseSpanishCompanyData(summary.entries[0]);
+            setPreviewData({ type: 'company', name, entries: summary.entries, parsed: parsedFallback, company: null, enriched: null });
           } else {
             setPreviewError('No se encontraron datos para esta empresa.');
           }
+        } else {
+          // Extract rich data from events (capital, address, activity, CIF, dated officers)
+          // Sort events newest first
+          const sortedEvents = [...events].sort((a, b) =>
+            new Date(b.indexed_date || b.date || 0) - new Date(a.indexed_date || a.date || 0)
+          );
+
+          let latestCapital = null;
+          let latestAddress = null;
+          let latestActivity = null;
+          let latestCif = null;
+          const datedOfficers = { nombramientos: [], reelecciones: [], ceses_dimisiones: [], revocaciones: [] };
+
+          for (const evt of sortedEvents) {
+            const pd = evt.parsed_details || {};
+            const evtDate = evt.indexed_date || evt.date || '';
+
+            // Capital
+            if (!latestCapital) {
+              const cap = pd.capital || pd.capital_social || evt.capital || evt.capital_social;
+              if (cap && cap !== '0' && cap !== '0.00' && cap !== 0) latestCapital = cap;
+            }
+            // Address
+            if (!latestAddress) {
+              const addr = pd.cambio_de_domicilio_social || pd.domicilio || pd.address || evt.domicilio || evt.address;
+              if (addr) latestAddress = addr;
+            }
+            // Activity
+            if (!latestActivity) {
+              const act = pd.objeto_social || pd.activity || evt.objeto_social || evt.activity;
+              if (act) latestActivity = act;
+            }
+            // CIF
+            if (!latestCif) {
+              const cif = evt.cif || evt.nif || pd.cif;
+              if (cif) latestCif = cif;
+            }
+
+            // Dated officers from events
+            const evtOfficers = evt.officers || {};
+            ['nombramientos', 'reelecciones', 'ceses_dimisiones', 'revocaciones'].forEach(cat => {
+              if (evtOfficers[cat]) {
+                evtOfficers[cat].forEach(o => {
+                  if (o.name) {
+                    datedOfficers[cat].push({
+                      name: o.name,
+                      position: o.position || o.position_normalized || '',
+                      date: o.date || evtDate,
+                    });
+                  }
+                });
+              }
+            });
+          }
+
+          // Deduplicate officers by name+position+category, keeping the latest date
+          const dedupeOfficers = (officers) => {
+            const map = new Map();
+            officers.forEach(o => {
+              const key = `${(o.name || '').toUpperCase()}|${(o.position || '').toUpperCase()}`;
+              const existing = map.get(key);
+              if (!existing || new Date(o.date || 0) > new Date(existing.date || 0)) {
+                map.set(key, o);
+              }
+            });
+            return Array.from(map.values());
+          };
+
+          Object.keys(datedOfficers).forEach(cat => {
+            datedOfficers[cat] = dedupeOfficers(datedOfficers[cat]);
+          });
+
+          // If events didn't have officers, fall back to v3 company doc (undated)
+          const hasEventOfficers = Object.values(datedOfficers).some(arr => arr.length > 0);
+          if (!hasEventOfficers && company) {
+            (company.officers_active || []).forEach(o => {
+              datedOfficers.nombramientos.push({
+                name: o.name || o.name_normalized,
+                position: o.position_normalized || '',
+                date: '',
+              });
+            });
+            (company.officers_resigned || []).forEach(o => {
+              datedOfficers.ceses_dimisiones.push({
+                name: o.name || o.name_normalized,
+                position: o.position_normalized || '',
+                date: '',
+              });
+            });
+          }
+
+          // Compute date range from the v3 company doc
+          const firstSeen = company?.first_seen || (sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].indexed_date : null);
+          const lastSeen = company?.last_seen || (sortedEvents.length > 0 ? sortedEvents[0].indexed_date : null);
+
+          // Previous names from the node
+          const previousNames = contextNode.companySummary?.previousNames || contextNode.previousNames || [];
+
+          setPreviewData({
+            type: 'company',
+            name: company?.company_name || name,
+            company,
+            enriched: {
+              capital: latestCapital,
+              address: latestAddress,
+              activity: latestActivity,
+              cif: latestCif,
+              firstSeen,
+              lastSeen,
+              previousNames,
+              officers: datedOfficers,
+              eventCount: events.length,
+            },
+          });
         }
       }
     } catch (err) {
@@ -4246,12 +4360,35 @@ const SpanishCompanyNetworkGraph = ({
               <Alert severity="warning" sx={{ my: 2 }}>{previewError}</Alert>
             )}
             {previewData && previewData.type === 'company' && (() => {
-              const company = previewData.company;
-              const p = previewData.parsed;
-              const activeOfficers = company?.officers_active || p?.officers?.nombramientos || [];
-              const resignedOfficers = company?.officers_resigned || p?.officers?.ceses_dimisiones || [];
-              const reelectedOfficers = p?.officers?.reelecciones || [];
-              const revokedOfficers = p?.officers?.revocaciones || [];
+              const e = previewData.enriched;
+              const officerTable = (officers, color, title) => officers.length > 0 && (
+                <>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color }}>
+                    {title} ({officers.length})
+                  </Typography>
+                  <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {officers.map((o, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{o.name || '-'}</TableCell>
+                            <TableCell>{o.position || '-'}</TableCell>
+                            <TableCell>{o.date ? formatDate(o.date) : '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </>
+              );
+
               return (
                 <Box>
                   {/* Overview section */}
@@ -4261,162 +4398,65 @@ const SpanishCompanyNetworkGraph = ({
                   </Typography>
                   <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                      {(company?.company_name || previewData.name) && (
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">Denominación</Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {company?.company_name || previewData.name}
+                      <Box sx={{ gridColumn: '1 / -1' }}>
+                        <Typography variant="caption" color="text.secondary">Denominación</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {previewData.name}
+                        </Typography>
+                        {e?.previousNames?.length > 0 && (
+                          <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
+                            Antes: {e.previousNames.join(', ')}
                           </Typography>
-                        </Box>
-                      )}
-                      {(p?.cif || company?.identifiers?.[0]) && (
+                        )}
+                      </Box>
+                      {e?.cif && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
-                          <Typography variant="body2">{p?.cif || company?.identifiers?.[0]}</Typography>
+                          <Typography variant="body2">{e.cif}</Typography>
                         </Box>
                       )}
-                      {p?.address && (
-                        <Box sx={{ gridColumn: '1 / -1' }}>
+                      {e?.address && (
+                        <Box sx={{ gridColumn: e?.cif ? 'auto' : '1 / -1' }}>
                           <Typography variant="caption" color="text.secondary">Domicilio</Typography>
-                          <Typography variant="body2">{p.address}</Typography>
+                          <Typography variant="body2">{e.address}</Typography>
                         </Box>
                       )}
-                      {p?.activity && (
+                      {e?.activity && (
                         <Box sx={{ gridColumn: '1 / -1' }}>
                           <Typography variant="caption" color="text.secondary">Objeto social</Typography>
-                          <Typography variant="body2">{p.activity}</Typography>
+                          <Typography variant="body2">{e.activity}</Typography>
                         </Box>
                       )}
-                      {p?.capital && (
+                      {e?.capital && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">Capital social</Typography>
-                          <Typography variant="body2">{p.capital}</Typography>
+                          <Typography variant="body2">{e.capital}</Typography>
                         </Box>
                       )}
-                      {(company?.first_seen || company?.last_seen) && (
+                      {(e?.firstSeen || e?.lastSeen) && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Rango de datos</Typography>
+                          <Typography variant="caption" color="text.secondary">Rango de publicaciones BORME</Typography>
                           <Typography variant="body2">
-                            {company?.first_seen ? formatDate(company.first_seen) : '?'} — {company?.last_seen ? formatDate(company.last_seen) : '?'}
+                            {e.firstSeen ? formatDate(e.firstSeen) : '?'} — {e.lastSeen ? formatDate(e.lastSeen) : '?'}
                           </Typography>
+                        </Box>
+                      )}
+                      {e?.eventCount > 0 && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Publicaciones encontradas</Typography>
+                          <Typography variant="body2">{e.eventCount}</Typography>
                         </Box>
                       )}
                     </Box>
                   </Paper>
 
-                  {/* Active officers */}
-                  {activeOfficers.length > 0 && (
+                  {/* Officers by category */}
+                  {e?.officers && (
                     <>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#43a047' }}>
-                        Nombramientos ({activeOfficers.length})
-                      </Typography>
-                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {activeOfficers.map((o, i) => (
-                              <TableRow key={i}>
-                                <TableCell>{o.name || o.name_normalized || '-'}</TableCell>
-                                <TableCell>{o.position || o.position_normalized || '-'}</TableCell>
-                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </>
-                  )}
-
-                  {/* Re-elections */}
-                  {reelectedOfficers.length > 0 && (
-                    <>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#43a047' }}>
-                        Reelecciones ({reelectedOfficers.length})
-                      </Typography>
-                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {reelectedOfficers.map((o, i) => (
-                              <TableRow key={i}>
-                                <TableCell>{o.name || '-'}</TableCell>
-                                <TableCell>{o.position || '-'}</TableCell>
-                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </>
-                  )}
-
-                  {/* Resigned officers */}
-                  {resignedOfficers.length > 0 && (
-                    <>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#e53935' }}>
-                        Ceses/Dimisiones ({resignedOfficers.length})
-                      </Typography>
-                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {resignedOfficers.map((o, i) => (
-                              <TableRow key={i}>
-                                <TableCell>{o.name || o.name_normalized || '-'}</TableCell>
-                                <TableCell>{o.position || o.position_normalized || '-'}</TableCell>
-                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </>
-                  )}
-
-                  {/* Revocations */}
-                  {revokedOfficers.length > 0 && (
-                    <>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#e53935' }}>
-                        Revocaciones ({revokedOfficers.length})
-                      </Typography>
-                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {revokedOfficers.map((o, i) => (
-                              <TableRow key={i}>
-                                <TableCell>{o.name || '-'}</TableCell>
-                                <TableCell>{o.position || '-'}</TableCell>
-                                <TableCell>{formatDate(o.date || o.fecha)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                      {officerTable(e.officers.nombramientos, '#43a047', 'Nombramientos')}
+                      {officerTable(e.officers.reelecciones, '#43a047', 'Reelecciones')}
+                      {officerTable(e.officers.ceses_dimisiones, '#e53935', 'Ceses/Dimisiones')}
+                      {officerTable(e.officers.revocaciones, '#e53935', 'Revocaciones')}
                     </>
                   )}
 
