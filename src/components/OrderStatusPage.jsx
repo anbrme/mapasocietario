@@ -310,9 +310,24 @@ export default function OrderStatusPage() {
               <Box sx={{ textAlign: 'center', py: 2 }}>
                 <CircularProgress size={32} />
               </Box>
-              <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
-                You can save this page link to come back anytime within 7 days to re-download your report.
-              </Alert>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
+                  You can save this page link to come back anytime within 7 days to re-download your report.
+                </Alert>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  sx={{ textTransform: 'none', fontSize: '0.75rem', alignSelf: 'flex-start' }}
+                >
+                  {copied ? 'Copied!' : 'Copy order link'}
+                </Button>
+              </Box>
             </Box>
           )}
 
