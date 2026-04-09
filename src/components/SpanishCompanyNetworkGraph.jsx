@@ -2426,7 +2426,10 @@ const SpanishCompanyNetworkGraph = ({
       const now = Date.now();
       const last = lastClickRef.current;
       const nodeId = normalizeNodeId(node.id);
-      const threshold = embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS;
+      const TOUCH_DOUBLE_TAP_MS = 300;
+      const threshold = isTouchDevice
+        ? TOUCH_DOUBLE_TAP_MS
+        : (embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS);
       const browserDoubleClick = Number(event?.detail) >= 2;
 
       if (
@@ -2453,7 +2456,7 @@ const SpanishCompanyNetworkGraph = ({
               preventDefault: () => {},
             };
             handleNodeRightClick(node, syntheticEvent);
-          }, threshold + 50);
+          }, TOUCH_DOUBLE_TAP_MS + 50);
         }
       }
     },
