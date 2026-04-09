@@ -21,11 +21,13 @@ import { Helmet } from 'react-helmet-async';
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 const PAYMENTS_API = 'https://payments.ncdata.eu';
+const API_URL = 'https://api.ncdata.eu';
 
 /**
  * Possible order states:
  * - verifying:   initial payment verification
- * - processing:  payment confirmed, report(s) being prepared
+ * - generating:  DD-only order, generating report client-side
+ * - processing:  payment confirmed, report(s) being prepared (FS orders)
  * - ready:       all files available for download
  * - error:       something went wrong
  */
@@ -34,14 +36,80 @@ export default function OrderStatusPage() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
 
-  const [status, setStatus] = useState('verifying'); // verifying | processing | ready | error
+  const [status, setStatus] = useState('verifying'); // verifying | generating | processing | ready | error
   const [errorMsg, setErrorMsg] = useState('');
   const [orderData, setOrderData] = useState(null); // verified payment data
   const [ddReportReady, setDdReportReady] = useState(false);
   const [financialStatementsReady, setFinancialStatementsReady] = useState(false);
   const [copied, setCopied] = useState(false);
+  const generatingRef = React.useRef(false);
 
   const hasFinancialStatements = orderData?.options?.financialStatements === true;
+
+  // Generate DD report, store in R2, then mark ready
+  const generateReport = React.useCallback(async (data) => {
+    if (generatingRef.current) return;
+    generatingRef.current = true;
+
+    try {
+      setStatus('generating');
+
+      let endpoint, body;
+      if (data.country === 'es') {
+        endpoint = `${API_URL}/bormes/dd-report/company`;
+        body = { company_name: data.companyIdentifier, options: data.options || {} };
+      } else if (data.country === 'uk') {
+        endpoint = `${API_URL}/uk/dd-report/company`;
+        body = { company_number: data.companyIdentifier, options: data.options || {} };
+      } else if (data.country === 'fr') {
+        endpoint = `${API_URL}/fr/dd-report/company`;
+        body = { siren: data.companyIdentifier, options: data.options || {} };
+      } else {
+        throw new Error(`Unsupported country: ${data.country}`);
+      }
+
+      const reportRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!reportRes.ok) {
+        const errData = await reportRes.json().catch(() => ({}));
+        throw new Error(errData.error || `Report generation failed (HTTP ${reportRes.status})`);
+      }
+
+      const contentType = reportRes.headers.get('content-type') || '';
+      if (!contentType.includes('pdf') && !contentType.includes('octet-stream')) {
+        const errData = await reportRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'Server returned an unexpected response instead of a PDF');
+      }
+
+      const blob = await reportRes.blob();
+
+      // Store in R2 for 7-day re-download
+      await fetch(`${PAYMENTS_API}/api/stripe/store-dd-report?sessionId=${sessionId}`, {
+        method: 'POST',
+        body: blob,
+      });
+
+      // Track purchase in GA4
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', 'purchase', {
+          currency: 'EUR',
+          value: 2.50,
+          items: [{ item_name: `DD Report — ${data.country?.toUpperCase()}`, item_category: 'Due Diligence', price: 2.50, quantity: 1 }],
+        });
+      }
+
+      setDdReportReady(true);
+      setStatus('ready');
+    } catch (err) {
+      console.error('Report generation error:', err);
+      setStatus('error');
+      setErrorMsg(err.message);
+      generatingRef.current = false;
+    }
+  }, [sessionId]);
 
   // Verify payment on mount
   useEffect(() => {
@@ -68,20 +136,24 @@ export default function OrderStatusPage() {
         setOrderData(data);
         setDdReportReady(!!data.reportReady);
 
-        // If no financial statements requested and report is ready, go straight to ready
-        if (!data.options?.financialStatements && data.reportReady) {
+        if (data.reportReady) {
+          // Report already in R2, go straight to download
           setStatus('ready');
-        } else {
+        } else if (data.options?.financialStatements) {
+          // FS order — wait for admin upload
           setStatus('processing');
+        } else {
+          // DD-only order, report not yet generated — generate it now
+          generateReport(data);
         }
       } catch (err) {
         setStatus('error');
         setErrorMsg(err.message);
       }
     })();
-  }, [sessionId]);
+  }, [sessionId, generateReport]);
 
-  // Poll for readiness when processing
+  // Poll for readiness when processing (FS orders only)
   useEffect(() => {
     if (status !== 'processing') return;
 
@@ -218,6 +290,29 @@ export default function OrderStatusPage() {
                 </Link>{' '}
                 for assistance.
               </Typography>
+            </Box>
+          )}
+
+          {/* Generating (DD-only, report being created) */}
+          {status === 'generating' && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <HourglassTopIcon sx={{ color: 'warning.main', fontSize: 28 }} />
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Generating your Due Diligence report
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    This may take up to 60 seconds. Please do not close this page.
+                  </Typography>
+                </Box>
+              </Box>
+              <Box sx={{ textAlign: 'center', py: 2 }}>
+                <CircularProgress size={32} />
+              </Box>
+              <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
+                You can save this page link to come back anytime within 7 days to re-download your report.
+              </Alert>
             </Box>
           )}
 

@@ -422,10 +422,18 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
         <Typography variant="body2" sx={{ fontWeight: 700 }}>
           {order.companyName || order.companyIdentifier}
         </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-          {order.country?.toUpperCase()} &middot; {date}
-          {order.customerEmail && ` · ${order.customerEmail}`}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            {order.country?.toUpperCase()} &middot; {date}
+            {order.customerEmail && ` · ${order.customerEmail}`}
+          </Typography>
+          <Chip
+            label={order.type === 'dd_only' ? 'DD' : 'DD + FS'}
+            size="small"
+            color={order.type === 'dd_only' ? 'default' : 'warning'}
+            sx={{ fontSize: '0.6rem', height: 18, ml: 0.5 }}
+          />
+        </Box>
         <Typography variant="caption" sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.65rem' }}>
           {order.sessionId}
         </Typography>
@@ -462,22 +470,24 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
             <DeleteOutlineIcon sx={{ fontSize: 18 }} />
           </IconButton>
         )}
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={uploading ? <CircularProgress size={14} /> : <UploadFileIcon />}
-          disabled={uploading}
-          onClick={() => onUpload(order.sessionId)}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 600,
-            bgcolor: 'warning.main',
-            color: '#000',
-            '&:hover': { bgcolor: 'warning.dark' },
-          }}
-        >
-          {uploading ? 'Processing...' : 'Upload PDF'}
-        </Button>
+        {order.type !== 'dd_only' && (
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={uploading ? <CircularProgress size={14} /> : <UploadFileIcon />}
+            disabled={uploading}
+            onClick={() => onUpload(order.sessionId)}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              bgcolor: 'warning.main',
+              color: '#000',
+              '&:hover': { bgcolor: 'warning.dark' },
+            }}
+          >
+            {uploading ? 'Processing...' : 'Upload PDF'}
+          </Button>
+        )}
       </Box>
     </Paper>
   );
@@ -503,10 +513,18 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
           <Typography variant="body2" sx={{ fontWeight: 700 }}>
             {order.companyName || order.companyIdentifier}
           </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-            {order.country?.toUpperCase()} &middot; Completed {date}
-            {order.customerEmail && ` · ${order.customerEmail}`}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {order.country?.toUpperCase()} &middot; Completed {date}
+              {order.customerEmail && ` · ${order.customerEmail}`}
+            </Typography>
+            <Chip
+              label={order.type === 'dd_only' ? 'DD' : 'DD + FS'}
+              size="small"
+              color={order.type === 'dd_only' ? 'default' : 'warning'}
+              sx={{ fontSize: '0.6rem', height: 18, ml: 0.5 }}
+            />
+          </Box>
           <Typography variant="caption" sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.65rem' }}>
             {order.sessionId}
           </Typography>
