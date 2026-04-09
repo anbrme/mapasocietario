@@ -2137,30 +2137,11 @@ const SpanishCompanyNetworkGraph = ({
     [expandOfficerNode, expandCompanyNode]
   );
 
-  // Double-click detection via onNodeClick (library has no onNodeDoubleClick)
+  // handleNodeClick is defined after handleNodeRightClick (below) for mobile touch support
   const DOUBLE_CLICK_MS = 450;
   const EMBEDDED_DOUBLE_CLICK_MS = 750;
-  const handleNodeClick = useCallback(
-    (node, event) => {
-      const now = Date.now();
-      const last = lastClickRef.current;
-      const nodeId = normalizeNodeId(node.id);
-      const threshold = embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS;
-      const browserDoubleClick = Number(event?.detail) >= 2;
-
-      if (
-        browserDoubleClick ||
-        (isSameNodeId(last.nodeId, nodeId) && now - last.time < threshold)
-      ) {
-        // Double click detected
-        lastClickRef.current = { nodeId: null, time: 0 };
-        expandNode(node);
-      } else {
-        lastClickRef.current = { nodeId, time: now };
-      }
-    },
-    [expandNode, embedded, isFullscreen]
-  );
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const singleTapTimerRef = useRef(null);
 
   const contextNode = React.useMemo(() => {
     if (!activeNodeId) return null;
@@ -2381,8 +2362,7 @@ const SpanishCompanyNetworkGraph = ({
     [activeNodeId]
   );
 
-  // Right-click on node to open actions menu
-  const longPressRef = useRef(null);
+  // Right-click on node to open actions menu (desktop), also called by single tap on touch devices
   const handleNodeRightClick = useCallback(
     (node, event) => {
       event.preventDefault();
@@ -2440,71 +2420,45 @@ const SpanishCompanyNetworkGraph = ({
     [closeHiddenNodesMenu, containerEl]
   );
 
-  // Long-press on node to open actions menu (mobile touch support)
-  useEffect(() => {
-    if (!containerEl) return;
-    const canvas = containerEl.querySelector('canvas');
-    if (!canvas) return;
+  // Click/tap handler — desktop: double-click expands; mobile: single tap opens context menu, double tap expands
+  const handleNodeClick = useCallback(
+    (node, event) => {
+      const now = Date.now();
+      const last = lastClickRef.current;
+      const nodeId = normalizeNodeId(node.id);
+      const threshold = embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS;
+      const browserDoubleClick = Number(event?.detail) >= 2;
 
-    const LONG_PRESS_MS = 500;
-    const MOVE_THRESHOLD = 10;
-
-    const onTouchStart = (e) => {
-      if (e.touches.length !== 1) return;
-      const touch = e.touches[0];
-      longPressRef.current = {
-        timer: setTimeout(() => {
-          if (!fgRef.current || !longPressRef.current) return;
-          const rect = canvas.getBoundingClientRect();
-          const x = touch.clientX - rect.left;
-          const y = touch.clientY - rect.top;
-          const graphCoords = fgRef.current.screen2GraphCoords(x, y);
-          const hitNode = graphData.nodes.find(n => {
-            const dx = n.x - graphCoords.x;
-            const dy = n.y - graphCoords.y;
-            return Math.sqrt(dx * dx + dy * dy) < nodeSize + 5;
-          });
-          if (hitNode) {
-            e.preventDefault();
-            const syntheticEvent = { clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => {} };
-            handleNodeRightClick(hitNode, syntheticEvent);
-          }
-          longPressRef.current = null;
-        }, LONG_PRESS_MS),
-        startX: touch.clientX,
-        startY: touch.clientY,
-      };
-    };
-
-    const onTouchMove = (e) => {
-      if (!longPressRef.current) return;
-      const touch = e.touches[0];
-      const dx = touch.clientX - longPressRef.current.startX;
-      const dy = touch.clientY - longPressRef.current.startY;
-      if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD) {
-        clearTimeout(longPressRef.current.timer);
-        longPressRef.current = null;
+      if (
+        browserDoubleClick ||
+        (isSameNodeId(last.nodeId, nodeId) && now - last.time < threshold)
+      ) {
+        // Double click/tap detected — expand node
+        if (singleTapTimerRef.current) {
+          clearTimeout(singleTapTimerRef.current);
+          singleTapTimerRef.current = null;
+        }
+        lastClickRef.current = { nodeId: null, time: 0 };
+        expandNode(node);
+      } else {
+        lastClickRef.current = { nodeId, time: now };
+        // On touch devices, single tap opens context menu after waiting for possible double-tap
+        if (isTouchDevice) {
+          if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+          singleTapTimerRef.current = setTimeout(() => {
+            singleTapTimerRef.current = null;
+            const syntheticEvent = {
+              clientX: event?.clientX ?? event?.changedTouches?.[0]?.clientX ?? 0,
+              clientY: event?.clientY ?? event?.changedTouches?.[0]?.clientY ?? 0,
+              preventDefault: () => {},
+            };
+            handleNodeRightClick(node, syntheticEvent);
+          }, threshold + 50);
+        }
       }
-    };
-
-    const onTouchEnd = () => {
-      if (longPressRef.current) {
-        clearTimeout(longPressRef.current.timer);
-        longPressRef.current = null;
-      }
-    };
-
-    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', onTouchMove, { passive: true });
-    canvas.addEventListener('touchend', onTouchEnd, { passive: true });
-    canvas.addEventListener('touchcancel', onTouchEnd, { passive: true });
-    return () => {
-      canvas.removeEventListener('touchstart', onTouchStart);
-      canvas.removeEventListener('touchmove', onTouchMove);
-      canvas.removeEventListener('touchend', onTouchEnd);
-      canvas.removeEventListener('touchcancel', onTouchEnd);
-    };
-  }, [containerEl, graphData.nodes, nodeSize, handleNodeRightClick]);
+    },
+    [expandNode, embedded, isFullscreen, handleNodeRightClick]
+  );
 
   const openEditNodeDialog = useCallback(() => {
     if (!contextNode) return;
