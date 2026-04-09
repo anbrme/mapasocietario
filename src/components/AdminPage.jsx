@@ -19,6 +19,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import DescriptionIcon from '@mui/icons-material/Description';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { Helmet } from 'react-helmet-async';
 
 const PAYMENTS_API = 'https://payments.ncdata.eu';
@@ -36,6 +37,12 @@ export default function AdminPage() {
   const [uploadProgress, setUploadProgress] = useState('');
   const [expandedAnalysis, setExpandedAnalysis] = useState(null);
   const [analysisCache, setAnalysisCache] = useState({});
+  const [deletingSession, setDeletingSession] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [pendingCollapsed, setPendingCollapsed] = useState(false);
+  const [completedCollapsed, setCompletedCollapsed] = useState(false);
+  const [pendingVisible, setPendingVisible] = useState(5);
+  const [completedVisible, setCompletedVisible] = useState(5);
   const fileInputRef = useRef(null);
 
   const fetchOrders = useCallback(async (key) => {
@@ -148,6 +155,30 @@ export default function AdminPage() {
     }
   };
 
+  const handleDelete = async (sessionId) => {
+    setDeletingSession(sessionId);
+    setError('');
+    try {
+      const res = await fetch(
+        `${PAYMENTS_API}/api/stripe/delete-fs-order?sessionId=${encodeURIComponent(sessionId)}`,
+        {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${adminKey}` },
+        }
+      );
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Delete failed (HTTP ${res.status})`);
+      }
+      setOrders((prev) => prev.filter((o) => o.sessionId !== sessionId));
+    } catch (err) {
+      setError(`Delete error: ${err.message}`);
+    } finally {
+      setDeletingSession(null);
+      setConfirmDelete(null);
+    }
+  };
+
   // Login screen
   if (!authenticated) {
     return (
@@ -247,55 +278,94 @@ export default function AdminPage() {
         )}
 
         {/* Pending Orders */}
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
+          onClick={() => setPendingCollapsed(!pendingCollapsed)}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, cursor: 'pointer', userSelect: 'none' }}
+        >
           <HourglassTopIcon sx={{ fontSize: 20, color: 'warning.main' }} />
-          Pending Orders ({pendingOrders.length})
-        </Typography>
-
-        {pendingOrders.length === 0 && !loading && (
-          <Paper sx={{ p: 3, mb: 4, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 2, textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              No pending financial statement orders.
-            </Typography>
-          </Paper>
-        )}
-
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
-          {pendingOrders.map((order) => (
-            <OrderCard
-              key={order.sessionId}
-              order={order}
-              onUpload={handleFileSelect}
-              uploading={uploadingSession === order.sessionId}
-            />
-          ))}
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, flex: 1 }}>
+            Pending Orders ({pendingOrders.length})
+          </Typography>
+          {pendingCollapsed ? <ExpandMoreIcon sx={{ color: 'text.secondary' }} /> : <ExpandLessIcon sx={{ color: 'text.secondary' }} />}
         </Box>
+
+        <Collapse in={!pendingCollapsed}>
+          {pendingOrders.length === 0 && !loading && (
+            <Paper sx={{ p: 3, mb: 4, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 2, textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                No pending financial statement orders.
+              </Typography>
+            </Paper>
+          )}
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
+            {pendingOrders.slice(0, pendingVisible).map((order) => (
+              <OrderCard
+                key={order.sessionId}
+                order={order}
+                onUpload={handleFileSelect}
+                uploading={uploadingSession === order.sessionId}
+                onDelete={(id) => setConfirmDelete(id)}
+                confirmingDelete={confirmDelete === order.sessionId}
+                onConfirmDelete={handleDelete}
+                onCancelDelete={() => setConfirmDelete(null)}
+                deleting={deletingSession === order.sessionId}
+              />
+            ))}
+            {pendingOrders.length > pendingVisible && (
+              <Button
+                size="small"
+                onClick={() => setPendingVisible((v) => v + 5)}
+                sx={{ textTransform: 'none', alignSelf: 'center', fontSize: '0.8rem' }}
+              >
+                Show more ({pendingOrders.length - pendingVisible} remaining)
+              </Button>
+            )}
+          </Box>
+        </Collapse>
 
         {/* Completed Orders */}
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
+          onClick={() => setCompletedCollapsed(!completedCollapsed)}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, cursor: 'pointer', userSelect: 'none' }}
+        >
           <CheckCircleIcon sx={{ fontSize: 20, color: 'success.main' }} />
-          Completed Orders ({completedOrders.length})
-        </Typography>
-
-        {completedOrders.length === 0 && !loading && (
-          <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 2, textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              No completed orders yet.
-            </Typography>
-          </Paper>
-        )}
-
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {completedOrders.map((order) => (
-            <CompletedOrderCard
-              key={order.sessionId}
-              order={order}
-              expanded={expandedAnalysis === order.sessionId}
-              analysis={analysisCache[order.sessionId]}
-              onToggleAnalysis={() => fetchAnalysis(order.sessionId)}
-            />
-          ))}
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, flex: 1 }}>
+            Completed Orders ({completedOrders.length})
+          </Typography>
+          {completedCollapsed ? <ExpandMoreIcon sx={{ color: 'text.secondary' }} /> : <ExpandLessIcon sx={{ color: 'text.secondary' }} />}
         </Box>
+
+        <Collapse in={!completedCollapsed}>
+          {completedOrders.length === 0 && !loading && (
+            <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 2, textAlign: 'center' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                No completed orders yet.
+              </Typography>
+            </Paper>
+          )}
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {completedOrders.slice(0, completedVisible).map((order) => (
+              <CompletedOrderCard
+                key={order.sessionId}
+                order={order}
+                expanded={expandedAnalysis === order.sessionId}
+                analysis={analysisCache[order.sessionId]}
+                onToggleAnalysis={() => fetchAnalysis(order.sessionId)}
+              />
+            ))}
+            {completedOrders.length > completedVisible && (
+              <Button
+                size="small"
+                onClick={() => setCompletedVisible((v) => v + 5)}
+                sx={{ textTransform: 'none', alignSelf: 'center', fontSize: '0.8rem', mt: 1 }}
+              >
+                Show more ({completedOrders.length - completedVisible} remaining)
+              </Button>
+            )}
+          </Box>
+        </Collapse>
       </Box>
     </>
   );
@@ -329,7 +399,7 @@ function buildMailtoLink(order) {
   return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function OrderCard({ order, onUpload, uploading }) {
+function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onConfirmDelete, onCancelDelete, deleting }) {
   const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   }) : '—';
@@ -360,22 +430,55 @@ function OrderCard({ order, onUpload, uploading }) {
           {order.sessionId}
         </Typography>
       </Box>
-      <Button
-        variant="contained"
-        size="small"
-        startIcon={uploading ? <CircularProgress size={14} /> : <UploadFileIcon />}
-        disabled={uploading}
-        onClick={() => onUpload(order.sessionId)}
-        sx={{
-          textTransform: 'none',
-          fontWeight: 600,
-          bgcolor: 'warning.main',
-          color: '#000',
-          '&:hover': { bgcolor: 'warning.dark' },
-        }}
-      >
-        {uploading ? 'Processing...' : 'Upload PDF'}
-      </Button>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        {confirmingDelete ? (
+          <>
+            <Button
+              variant="contained"
+              size="small"
+              color="error"
+              disabled={deleting}
+              onClick={() => onConfirmDelete(order.sessionId)}
+              sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.75rem' }}
+            >
+              {deleting ? <CircularProgress size={14} /> : 'Confirm'}
+            </Button>
+            <Button
+              size="small"
+              disabled={deleting}
+              onClick={onCancelDelete}
+              sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+            >
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <IconButton
+            size="small"
+            onClick={() => onDelete(order.sessionId)}
+            title="Delete order"
+            sx={{ color: 'text.disabled', '&:hover': { color: 'error.main' } }}
+          >
+            <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        )}
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={uploading ? <CircularProgress size={14} /> : <UploadFileIcon />}
+          disabled={uploading}
+          onClick={() => onUpload(order.sessionId)}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+            bgcolor: 'warning.main',
+            color: '#000',
+            '&:hover': { bgcolor: 'warning.dark' },
+          }}
+        >
+          {uploading ? 'Processing...' : 'Upload PDF'}
+        </Button>
+      </Box>
     </Paper>
   );
 }
