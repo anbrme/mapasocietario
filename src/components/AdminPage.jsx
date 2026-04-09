@@ -162,7 +162,7 @@ export default function AdminPage() {
       const res = await fetch(
         `${PAYMENTS_API}/api/stripe/delete-fs-order?sessionId=${encodeURIComponent(sessionId)}`,
         {
-          method: 'DELETE',
+          method: 'POST',
           headers: { 'Authorization': `Bearer ${adminKey}` },
         }
       );
