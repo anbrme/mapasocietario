@@ -2429,14 +2429,22 @@ const SpanishCompanyNetworkGraph = ({
       const threshold = embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS;
       const browserDoubleClick = Number(event?.detail) >= 2;
 
-      // On touch devices, single tap opens context menu immediately
+      // On touch devices: first tap selects node, second tap on same node opens context menu
       if (isTouchDevice) {
-        const syntheticEvent = {
-          clientX: event?.clientX ?? 0,
-          clientY: event?.clientY ?? 0,
-          preventDefault: () => {},
-        };
-        handleNodeRightClick(node, syntheticEvent);
+        if (isSameNodeId(last.nodeId, nodeId) && now - last.time < 600) {
+          // Second tap on same node — open context menu
+          lastClickRef.current = { nodeId: null, time: 0 };
+          const syntheticEvent = {
+            clientX: event?.clientX ?? 0,
+            clientY: event?.clientY ?? 0,
+            preventDefault: () => {},
+          };
+          handleNodeRightClick(node, syntheticEvent);
+        } else {
+          // First tap — just select/highlight the node
+          lastClickRef.current = { nodeId, time: now };
+          setActiveNodeId(nodeId);
+        }
         return;
       }
 
@@ -4168,7 +4176,7 @@ const SpanishCompanyNetworkGraph = ({
             <ListItemIcon>
               <NetworkIcon fontSize="small" color="primary" />
             </ListItemIcon>
-            <ListItemText>Buscar relaciones</ListItemText>
+            <ListItemText>Expandir nodo</ListItemText>
           </MenuItem>
           <MenuItem onClick={openEditNodeDialog}>
             <ListItemIcon>
