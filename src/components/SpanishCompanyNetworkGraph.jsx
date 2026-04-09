@@ -2426,38 +2426,28 @@ const SpanishCompanyNetworkGraph = ({
       const now = Date.now();
       const last = lastClickRef.current;
       const nodeId = normalizeNodeId(node.id);
-      const TOUCH_DOUBLE_TAP_MS = 300;
-      const threshold = isTouchDevice
-        ? TOUCH_DOUBLE_TAP_MS
-        : (embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS);
+      const threshold = embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS;
       const browserDoubleClick = Number(event?.detail) >= 2;
+
+      // On touch devices, single tap opens context menu immediately
+      if (isTouchDevice) {
+        const syntheticEvent = {
+          clientX: event?.clientX ?? 0,
+          clientY: event?.clientY ?? 0,
+          preventDefault: () => {},
+        };
+        handleNodeRightClick(node, syntheticEvent);
+        return;
+      }
 
       if (
         browserDoubleClick ||
         (isSameNodeId(last.nodeId, nodeId) && now - last.time < threshold)
       ) {
-        // Double click/tap detected — expand node
-        if (singleTapTimerRef.current) {
-          clearTimeout(singleTapTimerRef.current);
-          singleTapTimerRef.current = null;
-        }
         lastClickRef.current = { nodeId: null, time: 0 };
         expandNode(node);
       } else {
         lastClickRef.current = { nodeId, time: now };
-        // On touch devices, single tap opens context menu after waiting for possible double-tap
-        if (isTouchDevice) {
-          if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
-          singleTapTimerRef.current = setTimeout(() => {
-            singleTapTimerRef.current = null;
-            const syntheticEvent = {
-              clientX: event?.clientX ?? event?.changedTouches?.[0]?.clientX ?? 0,
-              clientY: event?.clientY ?? event?.changedTouches?.[0]?.clientY ?? 0,
-              preventDefault: () => {},
-            };
-            handleNodeRightClick(node, syntheticEvent);
-          }, TOUCH_DOUBLE_TAP_MS + 50);
-        }
       }
     },
     [expandNode, embedded, isFullscreen, handleNodeRightClick]
@@ -4174,6 +4164,12 @@ const SpanishCompanyNetworkGraph = ({
             </Box>
           )}
           <Divider />
+          <MenuItem onClick={() => { closeNodeContextMenu(); if (contextNode) expandNode(contextNode); }}>
+            <ListItemIcon>
+              <NetworkIcon fontSize="small" color="primary" />
+            </ListItemIcon>
+            <ListItemText>Buscar relaciones</ListItemText>
+          </MenuItem>
           <MenuItem onClick={openEditNodeDialog}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
