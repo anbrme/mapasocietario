@@ -2382,6 +2382,7 @@ const SpanishCompanyNetworkGraph = ({
   );
 
   // Right-click on node to open actions menu
+  const longPressRef = useRef(null);
   const handleNodeRightClick = useCallback(
     (node, event) => {
       event.preventDefault();
@@ -2438,6 +2439,72 @@ const SpanishCompanyNetworkGraph = ({
     },
     [closeHiddenNodesMenu, containerEl]
   );
+
+  // Long-press on node to open actions menu (mobile touch support)
+  useEffect(() => {
+    if (!containerEl) return;
+    const canvas = containerEl.querySelector('canvas');
+    if (!canvas) return;
+
+    const LONG_PRESS_MS = 500;
+    const MOVE_THRESHOLD = 10;
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      longPressRef.current = {
+        timer: setTimeout(() => {
+          if (!fgRef.current || !longPressRef.current) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = touch.clientX - rect.left;
+          const y = touch.clientY - rect.top;
+          const graphCoords = fgRef.current.screen2GraphCoords(x, y);
+          const hitNode = graphData.nodes.find(n => {
+            const dx = n.x - graphCoords.x;
+            const dy = n.y - graphCoords.y;
+            return Math.sqrt(dx * dx + dy * dy) < nodeSize + 5;
+          });
+          if (hitNode) {
+            e.preventDefault();
+            const syntheticEvent = { clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => {} };
+            handleNodeRightClick(hitNode, syntheticEvent);
+          }
+          longPressRef.current = null;
+        }, LONG_PRESS_MS),
+        startX: touch.clientX,
+        startY: touch.clientY,
+      };
+    };
+
+    const onTouchMove = (e) => {
+      if (!longPressRef.current) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - longPressRef.current.startX;
+      const dy = touch.clientY - longPressRef.current.startY;
+      if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD) {
+        clearTimeout(longPressRef.current.timer);
+        longPressRef.current = null;
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (longPressRef.current) {
+        clearTimeout(longPressRef.current.timer);
+        longPressRef.current = null;
+      }
+    };
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: true });
+    canvas.addEventListener('touchend', onTouchEnd, { passive: true });
+    canvas.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+      canvas.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [containerEl, graphData.nodes, nodeSize, handleNodeRightClick]);
 
   const openEditNodeDialog = useCallback(() => {
     if (!contextNode) return;
