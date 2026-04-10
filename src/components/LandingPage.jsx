@@ -41,24 +41,28 @@ const CAPABILITIES = [
     title: 'Company network graph',
     desc: 'Search any Spanish company and instantly see its directors, officers, and corporate connections in an interactive force graph.',
     color: '#1976d2',
+    href: '/app',
   },
   {
     icon: <PersonIcon />,
     title: 'Officer lookup',
     desc: 'Search an officer by name and discover every company they are or were associated with — appointments, resignations, roles.',
     color: '#f57c00',
+    href: '/app',
   },
   {
     icon: <DescriptionIcon />,
     title: 'Due Diligence PDF',
     desc: 'Purchase a comprehensive AI-powered report with sanctions screening, risk scoring, capital history, and red flag analysis. Add financial statements with AI analysis.',
     color: '#f57c00',
+    href: '/due-diligence',
   },
   {
     icon: <BarChartIcon />,
     title: 'Analytics dashboard',
     desc: 'Monitor formations, dissolutions, officer changes, and capital trends across Spain — filterable by province and date.',
     color: '#1976d2',
+    href: '/dashboard',
   },
 ];
 
@@ -295,6 +299,28 @@ export default function LandingPage() {
               >
                 View sample report
               </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                startIcon={<BarChartIcon />}
+                onClick={() => navigate('/dashboard')}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '1rem',
+                  borderRadius: 2,
+                  borderColor: 'rgba(25,118,210,0.5)',
+                  color: '#64b5f6',
+                  '&:hover': {
+                    borderColor: '#1976d2',
+                    bgcolor: 'rgba(25,118,210,0.08)',
+                  },
+                }}
+              >
+                Open dashboard
+              </Button>
             </Box>
           </Section>
         </Box>
@@ -369,16 +395,22 @@ export default function LandingPage() {
             {CAPABILITIES.map((cap) => (
               <Paper
                 key={cap.title}
+                component="a"
+                href={cap.href}
                 elevation={0}
                 sx={{
+                  display: 'block',
                   p: 3,
                   bgcolor: 'rgba(255,255,255,0.02)',
                   border: '1px solid rgba(255,255,255,0.07)',
                   borderRadius: 2,
-                  transition: 'border-color 0.2s, background-color 0.2s',
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  transition: 'border-color 0.2s, background-color 0.2s, transform 0.2s',
                   '&:hover': {
-                    borderColor: `${cap.color}40`,
-                    bgcolor: 'rgba(255,255,255,0.035)',
+                    borderColor: `${cap.color}80`,
+                    bgcolor: 'rgba(255,255,255,0.04)',
+                    transform: 'translateY(-2px)',
                   },
                 }}
               >
