@@ -20,6 +20,10 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import SpeedIcon from '@mui/icons-material/Speed';
 import HubIcon from '@mui/icons-material/Hub';
 import PaymentsIcon from '@mui/icons-material/Payments';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import PublicIcon from '@mui/icons-material/Public';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import EventIcon from '@mui/icons-material/Event';
 import GavelIcon from '@mui/icons-material/Gavel';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -131,10 +135,10 @@ const FAQ_ITEMS = [
 ];
 
 const PROOF_ITEMS = [
+  'By Nurnberg Consulting SL (Madrid, since 2013)',
   'Based on official BORME publications',
   'Free graph exploration',
   'Reports from EUR 2.50',
-  'No account required',
 ];
 
 // Shared section wrapper for consistent vertical rhythm
@@ -603,6 +607,137 @@ export default function LandingPage() {
         </Box>
 
         {/* ============================================================
+            WHO'S BEHIND IT (TRUST / OWNERSHIP)
+        ============================================================ */}
+        <Section>
+          <SectionLabel>Who's behind it</SectionLabel>
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1, letterSpacing: '-0.02em' }}>
+            A real company with real professionals behind it
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, maxWidth: 640, lineHeight: 1.6 }}>
+            Mapa Societario is operated by <strong>Nurnberg Consulting SL</strong>, a Madrid-based
+            consultancy specialised in corporate intelligence and business research. We've been helping
+            clients navigate European corporate registries since 2013.
+          </Typography>
+
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2.5, sm: 3.5 },
+              bgcolor: 'rgba(255,255,255,0.025)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 2,
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 2.5, sm: 3.5 },
+              alignItems: { xs: 'flex-start', sm: 'center' },
+            }}
+          >
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: 2,
+                bgcolor: 'rgba(25,118,210,0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'primary.main',
+                flexShrink: 0,
+                '& .MuiSvgIcon-root': { fontSize: 32 },
+              }}
+            >
+              <BusinessCenterIcon />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Nurnberg Consulting SL
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.55 }}>
+                Corporate intelligence &amp; business research consultancy
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 1.5, lineHeight: 1.55, fontFamily: 'monospace' }}>
+                NIF B86829538
+              </Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: { xs: 1.25, sm: 2.5 },
+                  mb: 1.5,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <LocationOnIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    Madrid, Spain
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <EventIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    Operating since 2013
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <PublicIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                  <Link
+                    href="https://nurnbergconsulting.com"
+                    target="_blank"
+                    rel="noopener"
+                    variant="caption"
+                    sx={{ color: 'primary.light', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    nurnbergconsulting.com
+                  </Link>
+                </Box>
+              </Box>
+            </Box>
+          </Paper>
+
+          <Box
+            sx={{
+              mt: 2.5,
+              p: { xs: 2.5, sm: 3 },
+              borderRadius: 2,
+              bgcolor: 'rgba(25,118,210,0.05)',
+              border: '1px solid rgba(25,118,210,0.2)',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <HubIcon sx={{ fontSize: 18, color: 'primary.light' }} />
+              <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.light' }}>
+                Need broader coverage? Try NC Data
+              </Typography>
+            </Box>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.6, mb: 1.25 }}>
+              Mapa Societario is our dedicated Spanish product. For multi-jurisdiction investigations,
+              we also operate <strong>NC Data</strong>, a more comprehensive investigative platform
+              covering companies in Spain, the United Kingdom, France and Switzerland &mdash; with Italy
+              coming soon. NC Data offers deeper entity resolution, cross-border linking and advanced
+              due diligence workflows for professional users.
+            </Typography>
+            <Link
+              href="https://ncdata.eu"
+              target="_blank"
+              rel="noopener"
+              variant="caption"
+              sx={{
+                color: 'primary.light',
+                textDecoration: 'none',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.5,
+                '&:hover': { textDecoration: 'underline' },
+              }}
+            >
+              Visit ncdata.eu &rarr;
+            </Link>
+          </Box>
+        </Section>
+
+        {/* ============================================================
             FAQ
         ============================================================ */}
         <Section>
@@ -733,7 +868,16 @@ export default function LandingPage() {
               lineHeight: 1.5,
             }}
           >
-            &copy; {new Date().getFullYear()} Mapa Societario &middot; Free to use, no account required &middot; Data sourced from BORME (Registro Mercantil)
+            &copy; {new Date().getFullYear()} Mapa Societario &middot; A product of{' '}
+            <Link
+              href="https://nurnbergconsulting.com"
+              target="_blank"
+              rel="noopener"
+              sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+            >
+              Nurnberg Consulting SL
+            </Link>
+            {' '}(Madrid, Spain) &middot; Data sourced from BORME (Registro Mercantil)
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
             <Link
@@ -767,6 +911,15 @@ export default function LandingPage() {
               sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
             >
               Public API docs
+            </Link>
+            <Link
+              href="https://ncdata.eu"
+              target="_blank"
+              rel="noopener"
+              variant="caption"
+              sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+            >
+              NC Data (multi-country)
             </Link>
             <Link
               href="/privacy.html"
