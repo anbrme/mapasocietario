@@ -242,7 +242,9 @@ export default function DueDiligencePage() {
                 >
                   NC Data
                 </Link>
-                , a more comprehensive investigative platform for professional users.
+                , a full-fledged investigation platform for professional users with one-of-a-kind
+                tools such as <strong>Document Studio</strong> for fine-tuned AI analysis of
+                complex documents.
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, mt: 1.5, flexWrap: 'wrap' }}>
                 <Link

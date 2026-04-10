@@ -707,15 +707,18 @@ export default function LandingPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <HubIcon sx={{ fontSize: 18, color: 'primary.light' }} />
               <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.light' }}>
-                Need broader coverage? Try NC Data
+                Need a full investigation platform? Try NC Data
               </Typography>
             </Box>
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.6, mb: 1.25 }}>
-              Mapa Societario is our dedicated Spanish product. For multi-jurisdiction investigations,
-              we also operate <strong>NC Data</strong>, a more comprehensive investigative platform
-              covering companies in Spain, the United Kingdom, France and Switzerland &mdash; with Italy
-              coming soon. NC Data offers deeper entity resolution, cross-border linking and advanced
-              due diligence workflows for professional users.
+              Mapa Societario is our dedicated Spanish product. For professional investigators,
+              we also operate <strong>NC Data</strong>, a full-fledged investigation platform
+              covering companies in Spain, the United Kingdom, France and Switzerland &mdash; with
+              Italy coming soon. Beyond corporate due diligence, NC Data includes one-of-a-kind,
+              cutting-edge tools such as <strong>Document Studio</strong>, which lets users
+              fine-tune AI for sophisticated analysis of complex, context-heavy documents, along
+              with deeper entity resolution, cross-border linking and advanced investigative
+              workflows for demanding use cases.
             </Typography>
             <Link
               href="https://ncdata.eu"
