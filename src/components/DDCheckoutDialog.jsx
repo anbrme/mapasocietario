@@ -234,6 +234,20 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             <Typography variant="body2" sx={{ fontWeight: 700 }}>Total</Typography>
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>EUR {totalPrice.toFixed(2)}</Typography>
           </Box>
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              mt: 1,
+              px: 1,
+              color: 'text.disabled',
+              fontSize: '0.68rem',
+              lineHeight: 1.45,
+            }}
+          >
+            Invoiced by <strong>Nurnberg Consulting SL</strong> &middot; NIF B86829538 &middot; Madrid, Spain.
+            Payments securely processed by Stripe.
+          </Typography>
         </Box>
         <Button
           variant="contained"

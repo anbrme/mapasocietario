@@ -20,6 +20,8 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SearchIcon from '@mui/icons-material/Search';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import HubIcon from '@mui/icons-material/Hub';
 const SampleReportViewer = lazy(() => import('./SampleReportViewer'));
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -179,6 +181,109 @@ export default function DueDiligencePage() {
           </Box>
         </Paper>
 
+        {/* Service provided by (trust / ownership) */}
+        <Paper
+          elevation={0}
+          sx={{
+            width: '100%',
+            p: 3,
+            bgcolor: 'rgba(255,255,255,0.025)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 2,
+          }}
+        >
+          <Typography
+            variant="overline"
+            sx={{
+              display: 'block',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              color: 'primary.light',
+              mb: 1,
+            }}
+          >
+            Service provided by
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: 1.5,
+                bgcolor: 'rgba(25,118,210,0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'primary.main',
+                flexShrink: 0,
+              }}
+            >
+              <BusinessCenterIcon sx={{ fontSize: 24 }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.25 }}>
+                Nurnberg Consulting SL
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 0.75, lineHeight: 1.5, fontFamily: 'monospace', fontSize: '0.7rem' }}>
+                NIF B86829538 &middot; Madrid, Spain
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1, lineHeight: 1.5 }}>
+                Corporate intelligence &amp; business research consultancy, operating since 2013.
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.5 }}>
+                Mapa Societario is our dedicated Spanish corporate research product. For multi-jurisdiction
+                investigations covering the UK, France, Switzerland and (soon) Italy, we also operate{' '}
+                <Link
+                  href="https://ncdata.eu"
+                  target="_blank"
+                  rel="noopener"
+                  sx={{ color: 'primary.light', fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  NC Data
+                </Link>
+                , a more comprehensive investigative platform for professional users.
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, mt: 1.5, flexWrap: 'wrap' }}>
+                <Link
+                  href="https://nurnbergconsulting.com"
+                  target="_blank"
+                  rel="noopener"
+                  sx={{
+                    fontSize: '0.72rem',
+                    color: 'primary.light',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    '&:hover': { textDecoration: 'underline' },
+                  }}
+                >
+                  <BusinessCenterIcon sx={{ fontSize: 13 }} /> nurnbergconsulting.com
+                </Link>
+                <Link
+                  href="https://ncdata.eu"
+                  target="_blank"
+                  rel="noopener"
+                  sx={{
+                    fontSize: '0.72rem',
+                    color: 'primary.light',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    '&:hover': { textDecoration: 'underline' },
+                  }}
+                >
+                  <HubIcon sx={{ fontSize: 13 }} /> ncdata.eu
+                </Link>
+              </Box>
+            </Box>
+          </Box>
+        </Paper>
+
         {/* How it works */}
         <Box component="section" sx={{ width: '100%' }}>
           <Typography variant="h6" component="h2" sx={{ fontWeight: 600, mb: 1.5 }}>
@@ -245,10 +350,22 @@ export default function DueDiligencePage() {
 
         {/* Trust signals */}
         <Box component="section" sx={{ width: '100%', textAlign: 'center', py: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6 }}>
-            Data sourced from official BORME (Registro Mercantil) filings. Payments secured by{' '}
+          <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6, display: 'block' }}>
+            Data sourced from official BORME (Registro Mercantil) filings. Payments securely processed by{' '}
             <Link href="https://stripe.com" target="_blank" rel="noopener" sx={{ color: 'text.secondary' }}>Stripe</Link>.
             Reports available for re-download within 24 hours of purchase.
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6, display: 'block', mt: 0.5 }}>
+            Service provided and invoiced by{' '}
+            <Link
+              href="https://nurnbergconsulting.com"
+              target="_blank"
+              rel="noopener"
+              sx={{ color: 'text.secondary', fontWeight: 600 }}
+            >
+              Nurnberg Consulting SL
+            </Link>
+            {' '}&middot; Madrid, Spain &middot; Operating since 2013
           </Typography>
         </Box>
 
