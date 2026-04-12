@@ -22,6 +22,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import HubIcon from '@mui/icons-material/Hub';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 const SampleReportViewer = lazy(() => import('./SampleReportViewer'));
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -75,6 +76,7 @@ export default function DueDiligencePage() {
             <Chip label="From EUR 2.50" color="warning" size="small" sx={{ fontWeight: 600 }} />
             <Chip label="Instant delivery" variant="outlined" size="small" />
             <Chip label="No account needed" variant="outlined" size="small" />
+            <Chip label="+ Free monitoring" size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(22,163,74,0.15)', color: '#16a34a' }} />
           </Box>
         </Box>
 
@@ -133,6 +135,37 @@ export default function DueDiligencePage() {
             </Paper>
           ))}
         </Box>
+
+        {/* Free monitoring included */}
+        <Paper
+          elevation={0}
+          sx={{
+            width: '100%',
+            p: 3,
+            bgcolor: 'rgba(22,163,74,0.06)',
+            border: '1px solid rgba(22,163,74,0.2)',
+            borderRadius: 2,
+          }}
+        >
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+            <NotificationsActiveIcon sx={{ color: '#16a34a', mt: 0.25, fontSize: 28 }} />
+            <Box>
+              <Typography variant="body1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Monitorización gratuita incluida
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, mb: 1.5 }}>
+                Cada informe Due Diligence incluye monitorización gratuita de la empresa. Recibirás alertas
+                por email cuando se publiquen nuevos actos en el BORME (nombramientos, ceses, cambios de capital,
+                disoluciones) o cuando un regulador internacional emita una advertencia a través de IOSCO.
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Chip label="Alertas BORME" variant="outlined" size="small" sx={{ fontSize: '0.7rem', borderColor: 'rgba(22,163,74,0.3)', color: '#16a34a' }} />
+                <Chip label="Alertas IOSCO (90+ reguladores)" variant="outlined" size="small" sx={{ fontSize: '0.7rem', borderColor: 'rgba(22,163,74,0.3)', color: '#16a34a' }} />
+                <Chip label="Email automático" variant="outlined" size="small" sx={{ fontSize: '0.7rem', borderColor: 'rgba(22,163,74,0.3)', color: '#16a34a' }} />
+              </Box>
+            </Box>
+          </Box>
+        </Paper>
 
         {/* Financial Statements add-on */}
         <Paper
