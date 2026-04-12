@@ -17,11 +17,15 @@ import HourglassTopIcon from '@mui/icons-material/HourglassTop';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import DownloadIcon from '@mui/icons-material/Download';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { Helmet } from 'react-helmet-async';
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 const PAYMENTS_API = 'https://payments.ncdata.eu';
 const API_URL = 'https://api.ncdata.eu';
+// Flask backend hosting the anonymous alert endpoint. Lives on rag.ncdata.eu
+// behind the Nginx /bormes/* location block.
+const ALERTS_API = 'https://rag.ncdata.eu/bormes/v3/alerts';
 
 /**
  * Possible order states:
@@ -43,6 +47,14 @@ export default function OrderStatusPage() {
   const [financialStatementsReady, setFinancialStatementsReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const generatingRef = React.useRef(false);
+
+  // Free-monitoring opt-in state (Day 1b anonymous flow).
+  // Mapasocietario.es has no user accounts — anonymous DD buyers land
+  // here after paying, and this card offers them free alerts on the
+  // company they just bought a report on. Consent event = button click.
+  const [monitorState, setMonitorState] = useState('idle'); // idle | loading | success | error
+  const [monitorError, setMonitorError] = useState('');
+  const [monitorAlert, setMonitorAlert] = useState(null);
 
   const hasFinancialStatements = orderData?.options?.financialStatements === true;
 
@@ -222,6 +234,38 @@ export default function OrderStatusPage() {
   }, [sessionId, orderData]);
 
   const companyLabel = orderData?.companyName || orderData?.companyIdentifier || '';
+
+  const handleStartMonitoring = useCallback(async () => {
+    if (!sessionId) return;
+    setMonitorState('loading');
+    setMonitorError('');
+    try {
+      const res = await fetch(`${ALERTS_API}/anonymous`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stripe_session_id: sessionId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || `Failed (HTTP ${res.status})`);
+      }
+      setMonitorAlert(data.alert);
+      setMonitorState('success');
+    } catch (err) {
+      setMonitorError(err?.message || 'Failed to enable monitoring');
+      setMonitorState('error');
+    }
+  }, [sessionId]);
+
+  // Only offer free monitoring for Spanish companies — BORME is the
+  // primary signal source and alone justifies the "free trial" hook.
+  // Show the card once the report is ready (no point offering it while
+  // the report is still generating) or while the order is still
+  // processing for financial statements (user sees the option early).
+  const showMonitorCard =
+    orderData &&
+    (orderData.country || '').toLowerCase() === 'es' &&
+    (status === 'ready' || status === 'processing');
 
   return (
     <>
@@ -462,6 +506,119 @@ export default function OrderStatusPage() {
             </Box>
           )}
         </Paper>
+
+        {/* Free monitoring opt-in card (Day 1b anonymous flow).
+            Offered to Spanish DD buyers after the report is ready or
+            while the FS order is still processing. Opt-in means the
+            button click — we use the customer email from the verified
+            Stripe session, not a form field, so there's nothing for the
+            user to type. */}
+        {showMonitorCard && (
+          <Paper
+            elevation={0}
+            sx={{
+              width: '100%',
+              p: 3,
+              border: '1px solid',
+              borderColor:
+                monitorState === 'success'
+                  ? 'rgba(46,125,50,0.4)'
+                  : 'rgba(255,167,38,0.3)',
+              borderRadius: 2,
+              bgcolor:
+                monitorState === 'success'
+                  ? 'rgba(46,125,50,0.08)'
+                  : 'rgba(255,167,38,0.04)',
+            }}
+          >
+            {monitorState === 'success' ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <CheckCircleIcon sx={{ color: 'success.main', fontSize: 28 }} />
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      Monitoring activated
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      We'll email you when there's new BORME corporate
+                      activity or a global regulator warning (IOSCO) for{' '}
+                      <strong>{monitorAlert?.entity_name || companyLabel}</strong>.
+                    </Typography>
+                  </Box>
+                </Box>
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', mt: 0.5 }}
+                >
+                  One-click unsubscribe in every email. Free for as long
+                  as you stay subscribed.
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <NotificationsActiveIcon
+                    sx={{ color: 'warning.main', fontSize: 28 }}
+                  />
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      Monitor {companyLabel} for free
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      Get email alerts when BORME publishes corporate
+                      events (officer changes, capital moves, insolvency,
+                      dissolution, name changes) or when a global
+                      regulator flags the company via IOSCO.
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {monitorState === 'error' && (
+                  <Alert
+                    severity="error"
+                    onClose={() => setMonitorState('idle')}
+                  >
+                    {monitorError}
+                  </Alert>
+                )}
+
+                <Button
+                  variant="contained"
+                  onClick={handleStartMonitoring}
+                  disabled={monitorState === 'loading'}
+                  startIcon={
+                    monitorState === 'loading' ? (
+                      <CircularProgress size={16} color="inherit" />
+                    ) : (
+                      <NotificationsActiveIcon />
+                    )
+                  }
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    py: 1.25,
+                    borderRadius: 2,
+                    bgcolor: 'warning.main',
+                    color: '#000',
+                    '&:hover': { bgcolor: 'warning.dark' },
+                  }}
+                >
+                  {monitorState === 'loading'
+                    ? 'Enabling…'
+                    : 'Start free monitoring'}
+                </Button>
+
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.disabled', textAlign: 'center' }}
+                >
+                  Sent to the email you used at checkout. One-click
+                  unsubscribe in every message.
+                </Typography>
+              </Box>
+            )}
+          </Paper>
+        )}
 
         {/* Order reference */}
         {sessionId && (
