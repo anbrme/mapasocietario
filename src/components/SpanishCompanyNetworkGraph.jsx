@@ -4746,6 +4746,15 @@ const SpanishCompanyNetworkGraph = ({
             <Button onClick={() => setPreviewOpen(false)}>Cerrar</Button>
           </DialogActions>
         </Dialog>
+
+        {/* Officer Timeline Dialog */}
+        <OfficerTimelineDialog
+          open={timelineDialogOpen}
+          officerName={timelineOfficerName}
+          officerRecords={timelineOfficerRecords}
+          onClose={() => setTimelineDialogOpen(false)}
+          container={overlayContainer}
+        />
       </>
     );
   })();
@@ -4851,12 +4860,6 @@ const SpanishCompanyNetworkGraph = ({
         onClose={() => setDdCheckoutOpen(false)}
         companyName={ddCheckoutCompany}
         country="es"
-      />
-      <OfficerTimelineDialog
-        open={timelineDialogOpen}
-        officerName={timelineOfficerName}
-        officerRecords={timelineOfficerRecords}
-        onClose={() => setTimelineDialogOpen(false)}
       />
     </>
   );
