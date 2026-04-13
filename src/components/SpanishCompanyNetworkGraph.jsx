@@ -4265,9 +4265,31 @@ const SpanishCompanyNetworkGraph = ({
                 setTimelineOfficerRecords([]);
                 setTimelineDialogOpen(true);
                 try {
-                  const data = await spanishCompaniesService.expandOfficerV3(name);
-                  if (data.success && data.officers?.length > 0) {
-                    setTimelineOfficerRecords(data.officers);
+                  // Query all name variants (from merged nodes) for complete timeline
+                  const nameVariants = contextNode.nameVariants || [];
+                  const allNames = [name, ...nameVariants.filter(v => v !== name)];
+                  const allRecords = [];
+                  const seenKeys = new Set();
+                  await Promise.all(
+                    allNames.map(async (queryName) => {
+                      try {
+                        const data = await spanishCompaniesService.expandOfficerV3(queryName);
+                        if (data.success && data.officers?.length > 0) {
+                          data.officers.forEach(o => {
+                            const key = `${(o.company_name || '').toUpperCase()}|${(o.specific_role || o.position || '').toUpperCase()}|${o.date || o.event_date || ''}`;
+                            if (!seenKeys.has(key)) {
+                              seenKeys.add(key);
+                              allRecords.push(o);
+                            }
+                          });
+                        }
+                      } catch (err) {
+                        console.warn(`[Timeline] Failed to expand variant "${queryName}":`, err.message);
+                      }
+                    })
+                  );
+                  if (allRecords.length > 0) {
+                    setTimelineOfficerRecords(allRecords);
                   }
                 } catch (err) {
                   console.error('Error fetching officer timeline:', err);
@@ -4811,6 +4833,7 @@ const SpanishCompanyNetworkGraph = ({
           open={timelineDialogOpen}
           officerName={timelineOfficerName}
           officerRecords={timelineOfficerRecords}
+          nameVariants={contextNode?.nameVariants}
           onClose={() => setTimelineDialogOpen(false)}
           container={overlayContainer}
         />

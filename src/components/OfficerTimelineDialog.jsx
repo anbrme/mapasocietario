@@ -245,7 +245,7 @@ const OfficerGanttTimeline = ({ companies }) => {
 };
 
 // ─── Main Dialog ─────────────────────────────────────────────────────────────
-const OfficerTimelineDialog = ({ open, officerName, officerRecords, onClose, container }) => {
+const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants, onClose, container }) => {
   const [copied, setCopied] = useState(false);
 
   // Transform flat officer records into the companies structure the Gantt expects
@@ -307,6 +307,16 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, onClose, con
         )}
       </DialogTitle>
       <DialogContent dividers>
+        {nameVariants && nameVariants.length > 0 && (
+          <Box sx={{ mb: 2, p: 1.5, bgcolor: 'info.50', border: '1px solid', borderColor: 'info.200', borderRadius: 1 }}>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: 'info.dark' }}>
+              Datos combinados de nodos fusionados: {nameVariants.join(' / ')}
+            </Typography>
+            <Typography variant="caption" display="block" sx={{ color: 'text.secondary', mt: 0.25 }}>
+              Si los nombres corresponden a personas distintas, la línea temporal puede mezclar datos no relacionados.
+            </Typography>
+          </Box>
+        )}
         {companies.length > 0 ? (
           <>
             <OfficerGanttTimeline companies={companies} />
