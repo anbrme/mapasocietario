@@ -186,16 +186,16 @@ export default function LandingPage() {
     <>
       <Helmet>
         <title>Mapa Societario | Spanish Company Search &amp; Corporate Relationship Graph</title>
-        <meta name="description" content="Investigate Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history lookup, and AI-powered due diligence reports from EUR 2.50." />
+        <meta name="description" content="Due diligence on Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history lookup, and AI-powered due diligence reports from EUR 2.50." />
         <link rel="canonical" href="https://mapasocietario.es/" />
         <meta property="og:title" content="Mapa Societario | Spanish Company Search & Corporate Relationship Graph" />
-        <meta property="og:description" content="Investigate Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history, and AI-powered due diligence reports." />
+        <meta property="og:description" content="Due diligence on Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history, and AI-powered due diligence reports." />
         <meta property="og:url" content="https://mapasocietario.es/" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Mapa Societario" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Mapa Societario | Spanish Company Search & Corporate Relationship Graph" />
-        <meta name="twitter:description" content="Investigate Spanish companies and directors instantly. BORME-based corporate graph, officer history, and due diligence reports from EUR 2.50." />
+        <meta name="twitter:description" content="Due diligence on Spanish companies and directors instantly. BORME-based corporate graph, officer history, and due diligence reports from EUR 2.50." />
       </Helmet>
 
       <Box
@@ -243,7 +243,7 @@ export default function LandingPage() {
                 mx: 'auto',
               }}
             >
-              Investigate Spanish companies and directors in seconds
+              Due diligence on Spanish companies and directors in seconds
             </Typography>
             <Typography
               variant="body1"
@@ -383,7 +383,7 @@ export default function LandingPage() {
         <Section>
           <SectionLabel>What you can do</SectionLabel>
           <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 4, letterSpacing: '-0.02em' }}>
-            Explore corporate relationships, investigate officers, and generate reports
+            Explore corporate relationships, perform due diligence on officers, and generate reports
           </Typography>
           <Box
             sx={{
