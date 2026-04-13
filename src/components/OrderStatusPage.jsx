@@ -221,9 +221,10 @@ export default function OrderStatusPage() {
         .replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
       const date = new Date().toISOString().slice(0, 10);
       a.href = URL.createObjectURL(blob);
+      const langPrefix = (orderData?.options?.language || orderData?.country || 'ES').toUpperCase();
       a.download = type === 'financial-statements'
         ? `Financial_Statements_${safeName}_${date}.pdf`
-        : `${(orderData?.country || 'ES').toUpperCase()}_DD_Report_${safeName}_${date}.pdf`;
+        : `${langPrefix}_DD_Report_${safeName}_${date}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

@@ -195,19 +195,45 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         />
 
         {/* Language selector */}
-        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <TranslateIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Report language:
+        <Box
+          sx={{
+            mt: 2,
+            p: 1.5,
+            borderRadius: 1.5,
+            bgcolor: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+          }}
+        >
+          <TranslateIcon sx={{ fontSize: 20, color: 'warning.main' }} />
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mr: 'auto' }}>
+            Report language
           </Typography>
           <ToggleButtonGroup
             value={lang}
             exclusive
             onChange={(_, v) => v && setLang(v)}
             size="small"
-            sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1.5, fontSize: '0.7rem', textTransform: 'none' } }}
+            sx={{
+              '& .MuiToggleButton-root': {
+                py: 0.5,
+                px: 2,
+                fontSize: '0.8rem',
+                textTransform: 'none',
+                fontWeight: 600,
+                borderColor: 'rgba(255,255,255,0.15)',
+                color: 'text.secondary',
+                '&.Mui-selected': {
+                  bgcolor: 'warning.main',
+                  color: '#000',
+                  '&:hover': { bgcolor: 'warning.dark' },
+                },
+              },
+            }}
           >
-            <ToggleButton value="es">Espanol</ToggleButton>
+            <ToggleButton value="es">Español</ToggleButton>
             <ToggleButton value="en">English</ToggleButton>
           </ToggleButtonGroup>
         </Box>
