@@ -2296,12 +2296,23 @@ const SpanishCompanyNetworkGraph = ({
         if (!sourceNode || !targetNode) return prev;
         if (getNodeGroupType(sourceNode) !== getNodeGroupType(targetNode)) return prev;
 
+        // Preserve all name variants so preview/DD can query every spelling
+        const targetVariants = targetNode.nameVariants || [];
+        const sourceVariants = sourceNode.nameVariants || [];
+        const allVariants = uniqStrings([
+          ...targetVariants,
+          ...sourceVariants,
+          // If the source had a different name, keep it as a variant
+          ...(sourceNode.name && sourceNode.name !== targetNode.name ? [sourceNode.name] : []),
+        ]);
+
         const mergedTargetNode = {
           ...targetNode,
           companies: uniqStrings([
             ...(targetNode.companies || []),
             ...(sourceNode.companies || []),
           ]),
+          nameVariants: allVariants,
           subtype: targetNode.subtype || sourceNode.subtype,
           expanded: !!(targetNode.expanded || sourceNode.expanded),
           data: targetNode.data || sourceNode.data,
@@ -2524,9 +2535,40 @@ const SpanishCompanyNetworkGraph = ({
 
     try {
       if (isOfficer) {
-        const data = await spanishCompaniesService.expandOfficerV3(name);
-        if (data.success && data.officers?.length > 0) {
-          setPreviewData({ type: 'officer', name, officers: data.officers, total: data.total || data.officers.length });
+        // Query all name variants (from merged nodes) to get complete appointment history
+        const nameVariants = contextNode.nameVariants || [];
+        const allNames = [name, ...nameVariants.filter(v => v !== name)];
+
+        const allOfficers = [];
+        const seenKeys = new Set();
+        await Promise.all(
+          allNames.map(async (queryName) => {
+            try {
+              const data = await spanishCompaniesService.expandOfficerV3(queryName);
+              if (data.success && data.officers?.length > 0) {
+                data.officers.forEach(o => {
+                  // Deduplicate by company+role+date
+                  const key = `${(o.company_name || '').toUpperCase()}|${(o.specific_role || o.position || '').toUpperCase()}|${o.date || o.event_date || ''}`;
+                  if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    allOfficers.push(o);
+                  }
+                });
+              }
+            } catch (err) {
+              console.warn(`[Preview] Failed to expand variant "${queryName}":`, err.message);
+            }
+          })
+        );
+
+        if (allOfficers.length > 0) {
+          setPreviewData({
+            type: 'officer',
+            name,
+            officers: allOfficers,
+            total: allOfficers.length,
+            nameVariants: allNames.length > 1 ? allNames : undefined,
+          });
         } else {
           setPreviewError('No se encontraron datos para este directivo.');
         }
@@ -4412,6 +4454,9 @@ const SpanishCompanyNetworkGraph = ({
             />
             <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
               Recomendación: fusiona solo nodos que representen claramente la misma entidad.
+              En el BORME, un mismo directivo puede aparecer como «SANCHEZ GOMEZ JUAN» y «JUAN SANCHEZ GOMEZ».
+              Al fusionar, los datos de ambas variantes se combinan en la vista previa y el informe.
+              Si se trata de personas distintas con nombres similares, la fusión mezclará datos no relacionados.
             </Typography>
           </DialogContent>
           <DialogActions>
@@ -4655,6 +4700,7 @@ const SpanishCompanyNetworkGraph = ({
 
             {previewData && previewData.type === 'officer' && (() => {
               const officers = previewData.officers || [];
+              const variants = previewData.nameVariants;
               // Group by company
               const byCompany = {};
               officers.forEach(o => {
@@ -4678,6 +4724,19 @@ const SpanishCompanyNetworkGraph = ({
 
               return (
                 <Box>
+                  {variants && variants.length > 1 && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                        Datos combinados de nodos fusionados
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Variantes de nombre: {variants.join(' / ')}
+                      </Typography>
+                      <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                        Si los nombres corresponden a personas distintas, los cargos mostrados pueden mezclar datos de personas diferentes.
+                      </Typography>
+                    </Alert>
+                  )}
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
                     <PersonIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
                     Cargos en {Object.keys(byCompany).length} empresa{Object.keys(byCompany).length !== 1 ? 's' : ''}
