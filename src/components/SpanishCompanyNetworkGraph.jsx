@@ -62,6 +62,8 @@ import {
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import DDCheckoutDialog from './DDCheckoutDialog';
+import OfficerTimelineDialog from './OfficerTimelineDialog';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import ForceGraph2D from 'react-force-graph-2d';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import { useTerms } from '../hooks/useTerms';
@@ -490,6 +492,12 @@ const SpanishCompanyNetworkGraph = ({
   // DD Checkout dialog state
   const [ddCheckoutOpen, setDdCheckoutOpen] = useState(false);
   const [ddCheckoutCompany, setDdCheckoutCompany] = useState('');
+
+  // Officer timeline dialog state
+  const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
+  const [timelineOfficerName, setTimelineOfficerName] = useState('');
+  const [timelineOfficerRecords, setTimelineOfficerRecords] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   // Data preview modal state
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -4203,6 +4211,35 @@ const SpanishCompanyNetworkGraph = ({
             </ListItemIcon>
             <ListItemText>Vista previa de datos</ListItemText>
           </MenuItem>
+          {contextNode && contextNode.type === 'officer' && (
+            <MenuItem
+              disabled={timelineLoading}
+              onClick={async () => {
+                const name = contextNode.name;
+                closeNodeContextMenu();
+                if (!name) return;
+                setTimelineLoading(true);
+                setTimelineOfficerName(name);
+                setTimelineOfficerRecords([]);
+                setTimelineDialogOpen(true);
+                try {
+                  const data = await spanishCompaniesService.expandOfficerV3(name);
+                  if (data.success && data.officers?.length > 0) {
+                    setTimelineOfficerRecords(data.officers);
+                  }
+                } catch (err) {
+                  console.error('Error fetching officer timeline:', err);
+                } finally {
+                  setTimelineLoading(false);
+                }
+              }}
+            >
+              <ListItemIcon>
+                <TimelineIcon fontSize="small" color="primary" />
+              </ListItemIcon>
+              <ListItemText>Línea temporal</ListItemText>
+            </MenuItem>
+          )}
           {contextNode && contextNode.type !== 'officer' && (
             <MenuItem
               onClick={() => {
@@ -4814,6 +4851,12 @@ const SpanishCompanyNetworkGraph = ({
         onClose={() => setDdCheckoutOpen(false)}
         companyName={ddCheckoutCompany}
         country="es"
+      />
+      <OfficerTimelineDialog
+        open={timelineDialogOpen}
+        officerName={timelineOfficerName}
+        officerRecords={timelineOfficerRecords}
+        onClose={() => setTimelineDialogOpen(false)}
       />
     </>
   );
