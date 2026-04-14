@@ -201,6 +201,8 @@ class SpanishCompaniesService {
           value: suggestion.original_name || suggestion.company_name, // Use original name for search
           id: suggestion.id, // Include the company ID for exact lookups
           identifier: suggestion.id,
+          // Canonical key — ALWAYS pass this to downstream v3 lookups.
+          company_name_normalized: suggestion.company_name_normalized || suggestion.id,
           last_updated: suggestion.last_updated,
           score: suggestion.score || 0,
           type: suggestion.type || 'company',
