@@ -3531,9 +3531,16 @@ const SpanishCompanyNetworkGraph = ({
           onChange={(event, value) => {
             if (value && typeof value === 'object') {
               setSelectedAutocomplete(value);
-              const selectedName = value.name || value.value || '';
-              setSearchQuery(selectedName);
-              handleSearch(selectedName, value.type === 'company');
+              // Display: new/current name; Search: canonical key (original_name for aliases).
+              // The profile is stored under the ORIGINAL name when the company was renamed,
+              // so downstream lookups must use that (e.g. "CACTUS CAPITAL" → search
+              // "EJEVAERN CONSULTING" to find the actual profile).
+              const displayName = value.name || value.company_name || value.value || '';
+              const searchKey = value.is_alias
+                ? (value.original_name || value.value || displayName)
+                : (value.company_name_normalized || value.value || displayName);
+              setSearchQuery(displayName);
+              handleSearch(searchKey, value.type === 'company');
             } else if (typeof value === 'string') {
               setSearchQuery(value);
               setSelectedAutocomplete(null);
