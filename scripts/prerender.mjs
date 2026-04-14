@@ -54,7 +54,7 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Due Diligence Reports</h1>
-        <p>Comprehensive, AI-powered due diligence reports for any Spanish company. From <strong>EUR&nbsp;2.50</strong> per report.</p>
+        <p>Comprehensive, AI-powered due diligence reports for any Spanish company. From <strong>EUR&nbsp;22.50</strong> per report.</p>
         <h2>What's included</h2>
         <ul>
           <li><strong>Corporate Structure</strong> &mdash; Full mapping of officers, shareholders, and subsidiaries from official BORME filings.</li>
