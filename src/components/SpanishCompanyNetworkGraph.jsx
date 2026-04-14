@@ -3586,9 +3586,19 @@ const SpanishCompanyNetworkGraph = ({
                       {option.cif}
                     </Typography>
                   )}
-                  {option.type === 'officer' && option.company_count != null && (
-                    <Typography variant="caption" color="text.secondary">
-                      {option.company_count} empresa{option.company_count !== 1 ? 's' : ''}
+                  {(option.type === 'officer' || option.type === 'officer_sole_shareholder') &&
+                    option.company_count != null && option.company_count > 0 && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        {option.company_count} empresa{option.company_count !== 1 ? 's' : ''} (cargo)
+                      </Typography>
+                    )}
+                  {option.is_sole_shareholder && option.owns && option.owns.length > 0 && (
+                    <Typography
+                      variant="caption"
+                      sx={{ display: 'block', color: 'warning.dark', fontStyle: 'italic' }}
+                    >
+                      Socio único de: {option.owns.slice(0, 2).join(', ')}
+                      {option.owns.length > 2 && ` +${option.owns.length - 2}`}
                     </Typography>
                   )}
                 </Box>

@@ -292,13 +292,17 @@ class SpanishCompaniesService {
 
       const result = await response.json();
 
-      // Transform suggestions to the format expected by the UI
+      // Transform suggestions to the format expected by the UI.
+      // Some suggestions may be sole_shareholder individuals (people who own
+      // a company but aren't necessarily officers); preserve that signal.
       const suggestions = (result.suggestions || []).map(suggestion => ({
-        name: suggestion.name, // UI expects 'name' field
+        name: suggestion.name,
         label: suggestion.label || suggestion.name,
         value: suggestion.name,
-        type: 'officer',
+        type: suggestion.type === 'sole_shareholder' ? 'officer_sole_shareholder' : 'officer',
         company_count: suggestion.company_count || 0,
+        is_sole_shareholder: !!suggestion.is_sole_shareholder,
+        owns: suggestion.owns || null,
       }));
       return {
         suggestions: suggestions,
