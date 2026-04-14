@@ -2562,11 +2562,26 @@ const SpanishCompanyNetworkGraph = ({
           })
         );
 
-        if (allOfficers.length > 0) {
+        // Also fetch companies where this person is sole shareholder (100% owner)
+        let whollyOwned = [];
+        try {
+          const ownedRes = await spanishCompaniesService.getCompaniesOwnedByShareholder(
+            name,
+            { limit: 100 },
+          );
+          whollyOwned = (ownedRes.companies || []).filter(
+            c => c.shareholder_type === 'individual',
+          );
+        } catch (err) {
+          console.warn('[Preview] Failed to fetch wholly-owned companies:', err.message);
+        }
+
+        if (allOfficers.length > 0 || whollyOwned.length > 0) {
           setPreviewData({
             type: 'officer',
             name,
             officers: allOfficers,
+            whollyOwned,
             total: allOfficers.length,
             nameVariants: allNames.length > 1 ? allNames : undefined,
           });
@@ -4794,6 +4809,7 @@ const SpanishCompanyNetworkGraph = ({
               const resolvePosition = (o) => o.specific_role || o.position_normalized || o.role || o.position || '-';
               const resolveDate = (o) => o.date || o.event_date || '';
 
+              const whollyOwned = previewData.whollyOwned || [];
               return (
                 <Box>
                   {variants && variants.length > 1 && (
@@ -4809,6 +4825,63 @@ const SpanishCompanyNetworkGraph = ({
                       </Typography>
                     </Alert>
                   )}
+
+                  {/* Wholly-owned companies (sole shareholder positions) */}
+                  {whollyOwned.length > 0 && (
+                    <Box sx={{ mb: 2.5 }}>
+                      <Alert severity="warning" sx={{ mb: 1.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          Socio único de {whollyOwned.length} empresa{whollyOwned.length !== 1 ? 's' : ''}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Esta persona figura como propietaria al 100% de las empresas siguientes.
+                        </Typography>
+                      </Alert>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                        {whollyOwned.map((c, i) => {
+                          const isDissolved = c.is_dissolved;
+                          const isInConcurso = c.is_in_concurso;
+                          return (
+                            <Paper
+                              key={`wo-${i}`}
+                              variant="outlined"
+                              sx={{
+                                p: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                bgcolor: isDissolved
+                                  ? 'error.50'
+                                  : isInConcurso
+                                    ? 'warning.50'
+                                    : 'background.paper',
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+                                <BusinessIcon sx={{ fontSize: 16, color: isDissolved ? 'error.main' : 'primary.main' }} />
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    fontWeight: 500,
+                                    textDecoration: isDissolved ? 'line-through' : 'none',
+                                  }}
+                                  noWrap
+                                >
+                                  {c.name}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                                {isDissolved && <Chip label="Disuelta" size="small" color="error" />}
+                                {isInConcurso && <Chip label="Concurso" size="small" color="warning" />}
+                                <Chip label="100%" size="small" color={isDissolved ? 'error' : 'success'} />
+                              </Box>
+                            </Paper>
+                          );
+                        })}
+                      </Box>
+                    </Box>
+                  )}
+
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
                     <PersonIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
                     Cargos en {Object.keys(byCompany).length} empresa{Object.keys(byCompany).length !== 1 ? 's' : ''}
