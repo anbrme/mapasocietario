@@ -115,7 +115,7 @@ const HOW_TO_STEPS = [
 const DIFFERENTIATORS = [
   { icon: <VerifiedIcon />, title: 'Spanish registry focus', desc: 'Purpose-built for BORME data — not a generic international database.' },
   { icon: <HubIcon />, title: 'Relationship graph', desc: 'Visual network exploration, not just record lookup. See connections at a glance.' },
-  { icon: <PaymentsIcon />, title: 'Cheap one-off reports', desc: 'EUR 2.50 per Due Diligence report. No subscription, no account required.' },
+  { icon: <PaymentsIcon />, title: 'Cheap one-off reports', desc: 'EUR 22.50 per Due Diligence report. No subscription, no account required.' },
   { icon: <SpeedIcon />, title: 'Fast exploratory workflow', desc: 'From search to insight in seconds. Type a name, explore the graph, buy a report.' },
 ];
 
@@ -126,7 +126,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Do I need to pay or create an account?',
-    answer: 'The network graph is completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company (EUR 2.50).',
+    answer: 'The network graph is completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company (EUR 22.50).',
   },
   {
     question: 'What is a Due Diligence report?',
@@ -142,7 +142,7 @@ const PROOF_ITEMS = [
   'By Nurnberg Consulting SL (Madrid, since 2013)',
   'Based on official BORME publications',
   'Free graph exploration',
-  'Reports from EUR 2.50',
+  'Reports from EUR 22.50',
 ];
 
 // Shared section wrapper for consistent vertical rhythm
@@ -186,7 +186,7 @@ export default function LandingPage() {
     <>
       <Helmet>
         <title>Mapa Societario | Spanish Company Search &amp; Corporate Relationship Graph</title>
-        <meta name="description" content="Due diligence on Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history lookup, and AI-powered due diligence reports from EUR 2.50." />
+        <meta name="description" content="Due diligence on Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history lookup, and AI-powered due diligence reports from EUR 22.50." />
         <link rel="canonical" href="https://mapasocietario.es/" />
         <meta property="og:title" content="Mapa Societario | Spanish Company Search & Corporate Relationship Graph" />
         <meta property="og:description" content="Due diligence on Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history, and AI-powered due diligence reports." />
@@ -195,7 +195,7 @@ export default function LandingPage() {
         <meta property="og:site_name" content="Mapa Societario" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Mapa Societario | Spanish Company Search & Corporate Relationship Graph" />
-        <meta name="twitter:description" content="Due diligence on Spanish companies and directors instantly. BORME-based corporate graph, officer history, and due diligence reports from EUR 2.50." />
+        <meta name="twitter:description" content="Due diligence on Spanish companies and directors instantly. BORME-based corporate graph, officer history, and due diligence reports from EUR 22.50." />
       </Helmet>
 
       <Box
