@@ -43,10 +43,10 @@ export default function DueDiligencePage() {
     <>
       <Helmet>
         <title>Due Diligence Reports | Mapa Societario</title>
-        <meta name="description" content="AI-powered due diligence reports for Spanish companies. Sanctions screening, corporate structure, officer history, risk analysis, and more. From EUR 2.50 per company." />
+        <meta name="description" content="AI-powered due diligence reports for Spanish companies. Sanctions screening, corporate structure, officer history, risk analysis, and more. From EUR 22.50 per company." />
         <link rel="canonical" href="https://mapasocietario.es/due-diligence" />
         <meta property="og:title" content="Due Diligence Reports | Mapa Societario" />
-        <meta property="og:description" content="AI-powered due diligence reports for Spanish companies. Sanctions screening, risk analysis, officer history. From EUR 2.50." />
+        <meta property="og:description" content="AI-powered due diligence reports for Spanish companies. Sanctions screening, risk analysis, officer history. From EUR 22.50." />
         <meta property="og:url" content="https://mapasocietario.es/due-diligence" />
         <meta property="og:type" content="product" />
       </Helmet>
@@ -73,7 +73,7 @@ export default function DueDiligencePage() {
             AI-powered corporate intelligence for Spanish companies. Get a comprehensive PDF report with sanctions screening, risk analysis, and full corporate history — based on official BORME data.
           </Typography>
           <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Chip label="From EUR 2.50" color="warning" size="small" sx={{ fontWeight: 600 }} />
+            <Chip label="From EUR 22.50" color="warning" size="small" sx={{ fontWeight: 600 }} />
             <Chip label="Instant delivery" variant="outlined" size="small" />
             <Chip label="No account needed" variant="outlined" size="small" />
             <Chip label="+ Free monitoring" size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(22,163,74,0.15)', color: '#16a34a' }} />

@@ -49,7 +49,7 @@ const routes = [
     path: '/due-diligence',
     title: 'Due Diligence Reports | Mapa Societario',
     description:
-      'AI-powered due diligence reports for Spanish companies. Sanctions screening, corporate structure, officer history, risk analysis, and more. From EUR 2.50 per company.',
+      'AI-powered due diligence reports for Spanish companies. Sanctions screening, corporate structure, officer history, risk analysis, and more. From EUR 22.50 per company.',
     ogType: 'product',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">

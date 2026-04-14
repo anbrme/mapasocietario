@@ -108,8 +108,8 @@ export default function OrderStatusPage() {
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'purchase', {
           currency: 'EUR',
-          value: 2.50,
-          items: [{ item_name: `DD Report — ${data.country?.toUpperCase()}`, item_category: 'Due Diligence', price: 2.50, quantity: 1 }],
+          value: 22.50,
+          items: [{ item_name: `DD Report — ${data.country?.toUpperCase()}`, item_category: 'Due Diligence', price: 22.50, quantity: 1 }],
         });
       }
 
