@@ -203,7 +203,7 @@ class SpanishCompaniesService {
           identifier: suggestion.id,
           last_updated: suggestion.last_updated,
           score: suggestion.score || 0,
-          type: 'company',
+          type: suggestion.type || 'company',
           // Include alias information for UI display
           is_alias: suggestion.is_alias || false,
           original_name: suggestion.original_name || null,
@@ -212,6 +212,8 @@ class SpanishCompaniesService {
           // Reverse lookup: old name has a new name
           has_new_name: suggestion.has_new_name || false,
           new_company_name: suggestion.new_company_name || null,
+          // Sole shareholder support: list of companies owned by this entity
+          owns: suggestion.owns || null,
         };
       });
 

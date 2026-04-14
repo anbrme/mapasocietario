@@ -43,6 +43,7 @@ import {
   CenterFocusStrong as CenterIcon,
   Refresh as RefreshIcon,
   Business as BusinessIcon,
+  AccountTree as AccountTreeIcon,
   Settings as SettingsIcon,
   Fullscreen as FullscreenIcon,
   FullscreenExit as FullscreenExitIcon,
@@ -3533,16 +3534,55 @@ const SpanishCompanyNetworkGraph = ({
           }}
           renderOption={(props, option) => (
             <Box component="li" {...props} key={option.label + (option.cif || '')}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                {option.type === 'company' ? (
-                  <BusinessIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, width: '100%' }}>
+                {option.type === 'sole_shareholder' ? (
+                  <AccountTreeIcon sx={{ fontSize: 16, color: 'warning.main', mt: 0.3 }} />
+                ) : option.type === 'company' ? (
+                  <BusinessIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.3 }} />
                 ) : (
-                  <PersonIcon sx={{ fontSize: 16, color: 'info.main' }} />
+                  <PersonIcon sx={{ fontSize: 16, color: 'info.main', mt: 0.3 }} />
                 )}
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="body2">{option.name || option.label}</Typography>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                    <Typography variant="body2">{option.name || option.label}</Typography>
+                    {option.type === 'sole_shareholder' && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontSize: '0.65rem',
+                          color: 'warning.dark',
+                          bgcolor: 'warning.light',
+                          px: 0.6,
+                          py: 0.1,
+                          borderRadius: 0.5,
+                        }}
+                      >
+                        Socio único
+                      </Typography>
+                    )}
+                  </Box>
+                  {option.type === 'sole_shareholder' && option.owns && option.owns.length > 0 && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', fontStyle: 'italic' }}
+                    >
+                      Socio único de: {option.owns.slice(0, 2).join(', ')}
+                      {option.owns.length > 2 && ` +${option.owns.length - 2}`}
+                    </Typography>
+                  )}
+                  {option.is_alias && option.original_name && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      Antes: {option.original_name}
+                    </Typography>
+                  )}
+                  {option.has_new_name && option.new_company_name && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      Ahora: {option.new_company_name}
+                    </Typography>
+                  )}
                   {option.type === 'company' && option.cif && (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                       {option.cif}
                     </Typography>
                   )}
