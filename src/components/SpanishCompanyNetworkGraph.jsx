@@ -4330,7 +4330,7 @@ const SpanishCompanyNetworkGraph = ({
             ...(tablePosition.x != null
               ? { left: tablePosition.x, top: tablePosition.y }
               : { right: 12, top: 12 }),
-            width: isTableCollapsed ? 'auto' : 420,
+            width: isTableCollapsed ? 'auto' : 520,
             maxHeight: isTableCollapsed ? 'auto' : '70%',
             zIndex: 20,
             display: 'flex',
