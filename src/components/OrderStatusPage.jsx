@@ -76,6 +76,15 @@ export default function OrderStatusPage() {
       } else if (data.country === 'fr') {
         endpoint = `${API_URL}/fr/dd-report/company`;
         body = { siren: data.companyIdentifier, options: data.options || {} };
+      } else if (data.country === 'ch') {
+        endpoint = `${API_URL}/ch/dd-report/company`;
+        body = { chid: data.companyIdentifier, options: data.options || {} };
+      } else if (data.country === 'it') {
+        // companyIdentifier may be a VAT code or an OpenAPI.it company id;
+        // the server's /it/dd-report/company endpoint introspects the
+        // ``identifier`` field and runs IT-start if needed.
+        endpoint = `${API_URL}/it/dd-report/company`;
+        body = { identifier: data.companyIdentifier, options: data.options || {} };
       } else {
         throw new Error(`Unsupported country: ${data.country}`);
       }

@@ -1328,7 +1328,14 @@ const SpanishCompanyNetworkGraph = ({
             if (companyName.length > 200) return;
             const cleanName = normalizeCompanyName(companyName);
 
-            // Resolve name change aliases: group old name entries under the new (current) name
+            // Resolve name change aliases: group old name entries under the new (current) name.
+            //
+            // Previously the fallback (no matching newNameEntry in searchResults) silently
+            // kept ``cleanName`` (the old name) as the group key, so the graph node ended
+            // up labelled with the previous denomination even though autocomplete had
+            // correctly resolved the current one. Fall back to the ``resolved`` new name
+            // instead — it's already normalised, so at worst the label is uppercase but
+            // always correct; a nicer-cased sibling entry still wins when present.
             let groupKey = cleanName;
             if (nameChangeAliasMap) {
               const resolved = nameChangeAliasMap.get(cleanName.toUpperCase());
@@ -1338,7 +1345,7 @@ const SpanishCompanyNetworkGraph = ({
                 );
                 groupKey = newNameEntry
                   ? normalizeCompanyName(newNameEntry.name || newNameEntry.company_name)
-                  : cleanName;
+                  : resolved;
               }
             }
 
