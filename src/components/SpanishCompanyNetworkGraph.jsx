@@ -1302,6 +1302,88 @@ const SpanishCompanyNetworkGraph = ({
     }
   };
 
+  // Fetch companies that this entity (company or person) is sole shareholder OF,
+  // and append ownership nodes/links (entity → owned company). This is the OUTGOING
+  // ownership direction — e.g. FASTIGHETSBYRAN → ALICANTE ESTATE GROUP.
+  const addOwnedCompaniesForEntity = useCallback(async (entityName, entityId, entityKind) => {
+    if (!entityName || !entityId) return;
+    try {
+      const result = await spanishCompaniesService.getCompaniesOwnedByShareholder(entityName, {
+        limit: 50,
+      });
+      const owned = result?.companies || [];
+      console.debug('[OwnsCompanies]', entityName, { count: owned.length });
+      if (!result?.success || owned.length === 0) return;
+
+      setGraphData(prev => {
+        const entityNode = prev.nodes.find(n => n.id === entityId);
+        if (!entityNode) return prev;
+
+        const newNodes = [...prev.nodes];
+        const newLinks = [...prev.links];
+
+        owned.forEach((c, idx) => {
+          const cName = (c.name || c.company_name || '').trim();
+          if (!cName) return;
+          // For a person entity we only want companies owned by the person (shareholder_type: individual)
+          // For a company entity the shareholder is the company itself.
+          if (entityKind === 'person' && c.shareholder_type && c.shareholder_type !== 'individual') return;
+
+          const cId = companyNameToId(cName);
+          const targetUpper = normalizeCompanyName(cName).toUpperCase();
+          let existing = newNodes.find(
+            n => n.id === cId ||
+              (n.type === 'spanish-company-group' && normalizeCompanyName(n.name).toUpperCase() === targetUpper)
+          );
+          const resolvedId = existing ? existing.id : cId;
+          if (resolvedId === entityId) return;
+
+          if (!existing) {
+            const baseX = Number.isFinite(entityNode.x) ? entityNode.x : 0;
+            const baseY = Number.isFinite(entityNode.y) ? entityNode.y : 0;
+            const angle = (idx / Math.max(owned.length, 1)) * 2 * Math.PI + Math.PI; // offset to avoid overlap with inbound shareholders
+            const dist = 100;
+            const px = baseX + Math.cos(angle) * dist;
+            const py = baseY + Math.sin(angle) * dist;
+            newNodes.push({
+              id: resolvedId,
+              name: cName,
+              type: 'spanish-company-group',
+              previousNames: [],
+              companySummary: {
+                entries: [],
+                totalEntries: 0,
+                previousNames: [],
+                dateRange: { earliest: null, latest: null },
+              },
+              x: px,
+              y: py,
+              fx: px,
+              fy: py,
+            });
+          }
+
+          const linkId = `ownership-${entityId}-${resolvedId}`;
+          if (!newLinks.find(l => l.id === linkId)) {
+            newLinks.push({
+              id: linkId,
+              source: entityId,
+              target: resolvedId,
+              type: 'ownership',
+              relationship: 'Socio único',
+              category: 'socio_unico',
+              date: null,
+            });
+          }
+        });
+
+        return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
+      });
+    } catch (err) {
+      console.warn('[OwnsCompanies] Fetch failed for', entityName, err?.message || err);
+    }
+  }, []);
+
   // Fetch sole-shareholder data for a company and append ownership nodes/links.
   // Fire-and-forget: runs after the initial company insert so the graph appears
   // immediately and ownership info streams in. Idempotent — safe to call repeatedly.
@@ -1849,7 +1931,7 @@ const SpanishCompanyNetworkGraph = ({
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
         });
 
-        // Fire-and-forget shareholder fetches per unique company.
+        // Fire-and-forget shareholder fetches per unique company (both directions).
         if (showShareholders) {
           const uniqueNames = new Set();
           searchResults.forEach(c => {
@@ -1858,7 +1940,9 @@ const SpanishCompanyNetworkGraph = ({
             uniqueNames.add(normalizeCompanyName(raw));
           });
           uniqueNames.forEach(n => {
-            addShareholdersForCompany(n, companyNameToId(n));
+            const cId = companyNameToId(n);
+            addShareholdersForCompany(n, cId);        // who owns it
+            addOwnedCompaniesForEntity(n, cId, 'company'); // what it owns
           });
         }
 
@@ -1869,7 +1953,7 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [extractOfficersFromText, isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany]
+    [extractOfficersFromText, isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity]
   );
 
   // Add officer to graph with associated companies
@@ -2069,7 +2153,8 @@ const SpanishCompanyNetworkGraph = ({
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
         });
 
-        // Fire-and-forget shareholder fetches for the companies discovered for this officer.
+        // Fire-and-forget shareholder fetches for the companies discovered for this officer,
+        // and for the officer themselves (companies they may be sole shareholder of).
         if (showShareholders) {
           const uniqueCompanyNames = new Set();
           (searchResults || []).forEach(group => {
@@ -2078,8 +2163,16 @@ const SpanishCompanyNetworkGraph = ({
             uniqueCompanyNames.add(normalizeCompanyName(raw));
           });
           uniqueCompanyNames.forEach(n => {
-            addShareholdersForCompany(n, companyNameToId(n));
+            const cId = companyNameToId(n);
+            addShareholdersForCompany(n, cId);
+            addOwnedCompaniesForEntity(n, cId, 'company');
           });
+          // Officer may be a sole shareholder of other companies that don't appear here.
+          const officerName = (officerNameParam || '').trim();
+          if (officerName) {
+            const officerId = `officer-${officerName.toLowerCase().replace(/\s+/g, '-')}`;
+            addOwnedCompaniesForEntity(officerName, officerId, 'person');
+          }
         }
       } catch (err) {
         console.error('Error adding officer to graph:', err);
@@ -2088,7 +2181,7 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany]
+    [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity]
   );
 
   // Expand officer node to show other companies
@@ -2247,7 +2340,9 @@ const SpanishCompanyNetworkGraph = ({
         if (showShareholders) {
           companyEntries.forEach(group => {
             const cn = normalizeCompanyName(group.name || 'Unknown Company');
-            addShareholdersForCompany(cn, companyNameToId(cn));
+            const cId = companyNameToId(cn);
+            addShareholdersForCompany(cn, cId);
+            addOwnedCompaniesForEntity(cn, cId, 'company');
           });
         }
         return true;
@@ -2257,7 +2352,7 @@ const SpanishCompanyNetworkGraph = ({
       console.error('Error expanding officer node:', err);
       return false;
     }
-  }, [viewportCenter, showShareholders, addShareholdersForCompany]);
+  }, [viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity]);
 
   // Expand company node to show its officers
   const expandCompanyNode = useCallback(
