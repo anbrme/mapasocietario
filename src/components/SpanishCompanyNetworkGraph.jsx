@@ -3537,6 +3537,37 @@ const SpanishCompanyNetworkGraph = ({
       ctx.stroke();
       ctx.setLineDash([]); // Reset dash
 
+      // Arrowhead at the target end. react-force-graph's built-in linkDirectionalArrow is
+      // suppressed when a custom linkCanvasObject is in 'replace' mode, so we draw it here.
+      {
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        if (length > 0) {
+          const ux = dx / length;
+          const uy = dy / length;
+          // Back the arrow off from the target node's edge so the tip is visible.
+          const tipOffset = nodeSize + 1;
+          const tipX = end.x - ux * tipOffset;
+          const tipY = end.y - uy * tipOffset;
+          const arrowLen = Math.max(4, 6 / globalScale);
+          const arrowHalfWidth = arrowLen * 0.55;
+          const baseX = tipX - ux * arrowLen;
+          const baseY = tipY - uy * arrowLen;
+          const leftX = baseX + -uy * arrowHalfWidth;
+          const leftY = baseY + ux * arrowHalfWidth;
+          const rightX = baseX - -uy * arrowHalfWidth;
+          const rightY = baseY - ux * arrowHalfWidth;
+          ctx.beginPath();
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(leftX, leftY);
+          ctx.lineTo(rightX, rightY);
+          ctx.closePath();
+          ctx.fillStyle = linkColor;
+          ctx.fill();
+        }
+      }
+
       // Conditional link label rendering
       let edgeLabel = normalizeEdgeLabelText(link.relationship, link.category);
       if (link.fromPreviousName) {
@@ -3599,7 +3630,7 @@ const SpanishCompanyNetworkGraph = ({
         }
       }
     },
-    [filteredGraphData.links, parallelLinkMeta, labelSize]
+    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize]
   );
 
   // Graph controls
