@@ -514,10 +514,9 @@ const SpanishCompanyNetworkGraph = ({
     setContainerEl(node);
   }, []);
   const [containerDimensions, setContainerDimensions] = useState({ width: 800, height: 500 });
-  const viewportCenter = React.useMemo(() => ({
-    x: containerDimensions.width / 2,
-    y: containerDimensions.height / 2,
-  }), [containerDimensions.width, containerDimensions.height]);
+  // ForceGraph2D's camera is anchored at world (0, 0) — placing initial nodes there
+  // keeps the first frame centered. (DOM half-dimensions would render off to the bottom-right.)
+  const viewportCenter = React.useMemo(() => ({ x: 0, y: 0 }), []);
   const [containerReady, setContainerReady] = useState(false);
 
   // Double-click detection via single click timer
@@ -1364,7 +1363,7 @@ const SpanishCompanyNetworkGraph = ({
             const baseX = Number.isFinite(companyNode.x) ? companyNode.x : 0;
             const baseY = Number.isFinite(companyNode.y) ? companyNode.y : 0;
             const angle = (idx / Math.max(shareholders.length, 1)) * 2 * Math.PI;
-            const dist = 120;
+            const dist = 80;
             const px = baseX + Math.cos(angle) * dist;
             const py = baseY + Math.sin(angle) * dist;
 
@@ -1382,6 +1381,8 @@ const SpanishCompanyNetworkGraph = ({
                   },
                   x: px,
                   y: py,
+                  fx: px,
+                  fy: py,
                 }
               : {
                   id: shId,
@@ -1397,6 +1398,8 @@ const SpanishCompanyNetworkGraph = ({
                   ],
                   x: px,
                   y: py,
+                  fx: px,
+                  fy: py,
                 };
             newNodes.push(newNode);
           }
