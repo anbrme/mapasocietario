@@ -1311,6 +1311,12 @@ const SpanishCompanyNetworkGraph = ({
     if (!companyName || !companyId) return;
     try {
       const result = await spanishCompaniesService.getCompanySoleShareholderData(companyName);
+      console.debug('[Shareholders]', companyName, {
+        success: result?.success,
+        companies: (result?.sole_shareholders || []).length,
+        individuals: (result?.sole_shareholder_individuals || []).length,
+        lost: result?.sole_shareholder_lost,
+      });
       if (!result?.success) return;
 
       const companyShareholders = (result.sole_shareholders || []).map(s => ({
