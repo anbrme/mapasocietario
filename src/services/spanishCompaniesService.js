@@ -2302,12 +2302,14 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
           success: false,
           error: result.error,
           sole_shareholders: [],
+          sole_shareholder_individuals: [],
           sole_shareholder_lost: false,
         };
       }
       return {
         success: true,
         sole_shareholders: result.sole_shareholders || [],
+        sole_shareholder_individuals: result.sole_shareholder_individuals || [],
         sole_shareholder_lost: result.sole_shareholder_lost || false,
         company_name: companyName,
       };
@@ -2317,6 +2319,7 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
         success: false,
         error: error.message,
         sole_shareholders: [],
+        sole_shareholder_individuals: [],
         sole_shareholder_lost: false,
       };
     }
