@@ -1516,6 +1516,92 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [isCompanyOfficer]);
 
+  // Fetch real appointment/cessation event dates per company via borme_events_v3
+  // and patch existing officer-company links with link.events = [{ category, date }, ...].
+  // Runs fire-and-forget after the initial graph build — dates appear progressively.
+  const enrichLinksWithEventDates = useCallback(async (companyNamesRaw) => {
+    const unique = Array.from(
+      new Set(
+        (companyNamesRaw || [])
+          .map(n => normalizeCompanyName(n))
+          .filter(Boolean)
+      )
+    );
+    if (unique.length === 0) return;
+
+    const results = await Promise.all(
+      unique.map(async cname => {
+        try {
+          const resp = await spanishCompaniesService.getCompanyEventsV3(cname);
+          return { company: cname, events: resp?.events || [] };
+        } catch (err) {
+          console.warn(`[enrichLinks] events fetch failed for "${cname}":`, err?.message || err);
+          return { company: cname, events: [] };
+        }
+      })
+    );
+
+    // Build (officerUpper|companyUpper|category) → Set<date>
+    const eventMap = new Map();
+    results.forEach(({ company, events }) => {
+      const companyUpper = company.toUpperCase();
+      events.forEach(evt => {
+        const evtDate = evt.event_date || evt.indexed_date || evt.date;
+        if (!evtDate) return;
+        (evt.officers || []).forEach(o => {
+          const officerUpper = (o.name || '').trim().toUpperCase();
+          if (!officerUpper) return;
+          const evtType = (o.event_type || '').toLowerCase();
+          let cat = null;
+          if (evtType.includes('cese') || evtType.includes('dimisi')) cat = 'ceses_dimisiones';
+          else if (evtType.includes('reelecc')) cat = 'reelecciones';
+          else if (evtType.includes('revocac')) cat = 'revocaciones';
+          else if (evtType.includes('nombr')) cat = 'nombramientos';
+          if (!cat) return;
+          const key = `${officerUpper}|${companyUpper}|${cat}`;
+          if (!eventMap.has(key)) eventMap.set(key, new Set());
+          eventMap.get(key).add(evtDate);
+        });
+      });
+    });
+
+    if (eventMap.size === 0) return;
+
+    setGraphData(prev => {
+      const nodesById = new Map(prev.nodes.map(n => [n.id, n]));
+      const newLinks = prev.links.map(link => {
+        const sourceNode =
+          typeof link.source === 'object' ? link.source : nodesById.get(link.source);
+        const targetNode =
+          typeof link.target === 'object' ? link.target : nodesById.get(link.target);
+        if (!sourceNode || !targetNode) return link;
+
+        let officerNode, companyNode;
+        if (sourceNode.type === 'officer') {
+          officerNode = sourceNode;
+          companyNode = targetNode;
+        } else if (targetNode.type === 'officer') {
+          officerNode = targetNode;
+          companyNode = sourceNode;
+        } else {
+          return link;
+        }
+
+        const officerUpper = (officerNode.name || '').toUpperCase();
+        const companyUpper = (companyNode.name || '').toUpperCase();
+        const events = [];
+        ['nombramientos', 'ceses_dimisiones', 'reelecciones', 'revocaciones'].forEach(cat => {
+          const dates = eventMap.get(`${officerUpper}|${companyUpper}|${cat}`);
+          if (dates) dates.forEach(d => events.push({ category: cat, date: d }));
+        });
+
+        if (events.length === 0) return link;
+        return { ...link, events };
+      });
+      return { nodes: prev.nodes, links: newLinks };
+    });
+  }, []);
+
   // Add company with all its officers to the graph
   const addCompanyWithOfficersToGraph = useCallback(
     async (searchResults, anchorNode = null, nameChangeAliasMap = null) => {
@@ -1934,20 +2020,25 @@ const SpanishCompanyNetworkGraph = ({
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
         });
 
+        // Collect unique company names across the search results
+        const uniqueCompanyNames = new Set();
+        searchResults.forEach(c => {
+          const raw = c.name || c.company_name || '';
+          if (!raw || raw.length > 200) return;
+          uniqueCompanyNames.add(normalizeCompanyName(raw));
+        });
+
         // Fire-and-forget shareholder fetches per unique company (both directions).
         if (showShareholders) {
-          const uniqueNames = new Set();
-          searchResults.forEach(c => {
-            const raw = c.name || c.company_name || '';
-            if (!raw || raw.length > 200) return;
-            uniqueNames.add(normalizeCompanyName(raw));
-          });
-          uniqueNames.forEach(n => {
+          uniqueCompanyNames.forEach(n => {
             const cId = companyNameToId(n);
             addShareholdersForCompany(n, cId);        // who owns it
             addOwnedCompaniesForEntity(n, cId, 'company'); // what it owns
           });
         }
+
+        // Fire-and-forget: enrich links with real appointment/cessation event dates
+        enrichLinksWithEventDates(Array.from(uniqueCompanyNames));
 
       } catch (err) {
         console.error('Error adding company with officers to graph:', err);
@@ -1956,7 +2047,7 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [extractOfficersFromText, isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity]
+    [extractOfficersFromText, isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates]
   );
 
   // Add officer to graph with associated companies
@@ -2156,15 +2247,17 @@ const SpanishCompanyNetworkGraph = ({
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
         });
 
+        // Collect unique company names for this officer's expanded results
+        const uniqueCompanyNames = new Set();
+        (searchResults || []).forEach(group => {
+          const raw = group?.name || '';
+          if (!raw) return;
+          uniqueCompanyNames.add(normalizeCompanyName(raw));
+        });
+
         // Fire-and-forget shareholder fetches for the companies discovered for this officer,
         // and for the officer themselves (companies they may be sole shareholder of).
         if (showShareholders) {
-          const uniqueCompanyNames = new Set();
-          (searchResults || []).forEach(group => {
-            const raw = group?.name || '';
-            if (!raw) return;
-            uniqueCompanyNames.add(normalizeCompanyName(raw));
-          });
           uniqueCompanyNames.forEach(n => {
             const cId = companyNameToId(n);
             addShareholdersForCompany(n, cId);
@@ -2177,6 +2270,9 @@ const SpanishCompanyNetworkGraph = ({
             addOwnedCompaniesForEntity(officerName, officerId, 'person');
           }
         }
+
+        // Fire-and-forget: enrich links with real appointment/cessation event dates
+        enrichLinksWithEventDates(Array.from(uniqueCompanyNames));
       } catch (err) {
         console.error('Error adding officer to graph:', err);
         setError(`Error al añadir directivo al grafo: ${err.message}`);
@@ -2184,7 +2280,7 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity]
+    [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates]
   );
 
   // Expand officer node to show other companies
@@ -3697,17 +3793,40 @@ const SpanishCompanyNetworkGraph = ({
         officerNode = targetNode;
       }
 
-      rows.push({
+      const baseRow = {
         company: companyName || '-',
         officer: officerName || '-',
         companyNode,
         officerNode,
         position: link.relationship || '-',
-        category: link.category || '-',
-        date: formatDate(link.date),
-      });
+      };
+
+      // Prefer the per-event entries enriched from borme_events_v3.
+      // Fall back to the link-level category/date until enrichment arrives.
+      if (Array.isArray(link.events) && link.events.length > 0) {
+        link.events.forEach(ev => {
+          rows.push({
+            ...baseRow,
+            category: ev.category,
+            date: formatDate(ev.date),
+            dateRaw: ev.date || null,
+          });
+        });
+      } else {
+        rows.push({
+          ...baseRow,
+          category: link.category || '-',
+          date: formatDate(link.date),
+          dateRaw: link.date || null,
+        });
+      }
     });
-    rows.sort((a, b) => a.company.localeCompare(b.company) || a.officer.localeCompare(b.officer));
+    rows.sort(
+      (a, b) =>
+        a.company.localeCompare(b.company) ||
+        a.officer.localeCompare(b.officer) ||
+        (a.dateRaw || '').localeCompare(b.dateRaw || '')
+    );
     return rows;
   }, [filteredGraphData]);
 
