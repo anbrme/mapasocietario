@@ -546,6 +546,7 @@ const SpanishCompanyNetworkGraph = ({
 
   // Graph settings
   const [showSettings, setShowSettings] = useState(false);
+  const [showShareholders, setShowShareholders] = useState(true);
   const [nodeSize, setNodeSize] = useState(9);
   const [labelSize, setLabelSize] = useState(9);
   const [linkDistance, setLinkDistance] = useState(80);
@@ -1720,6 +1721,19 @@ const SpanishCompanyNetworkGraph = ({
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
         });
 
+        // Fire-and-forget shareholder fetches per unique company.
+        if (showShareholders) {
+          const uniqueNames = new Set();
+          searchResults.forEach(c => {
+            const raw = c.name || c.company_name || '';
+            if (!raw || raw.length > 200) return;
+            uniqueNames.add(normalizeCompanyName(raw));
+          });
+          uniqueNames.forEach(n => {
+            addShareholdersForCompany(n, companyNameToId(n));
+          });
+        }
+
       } catch (err) {
         console.error('Error adding company with officers to graph:', err);
         setError(`Error al añadir empresa al grafo: ${err.message}`);
@@ -1727,7 +1741,7 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [extractOfficersFromText, isCompanyOfficer, viewportCenter]
+    [extractOfficersFromText, isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany]
   );
 
   // Add officer to graph with associated companies
@@ -1926,6 +1940,19 @@ const SpanishCompanyNetworkGraph = ({
 
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
         });
+
+        // Fire-and-forget shareholder fetches for the companies discovered for this officer.
+        if (showShareholders) {
+          const uniqueCompanyNames = new Set();
+          (searchResults || []).forEach(group => {
+            const raw = group?.name || '';
+            if (!raw) return;
+            uniqueCompanyNames.add(normalizeCompanyName(raw));
+          });
+          uniqueCompanyNames.forEach(n => {
+            addShareholdersForCompany(n, companyNameToId(n));
+          });
+        }
       } catch (err) {
         console.error('Error adding officer to graph:', err);
         setError(`Error al añadir directivo al grafo: ${err.message}`);
@@ -1933,8 +1960,117 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [isCompanyOfficer, viewportCenter]
+    [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany]
   );
+
+  // Fetch sole-shareholder data for a company and append ownership nodes/links.
+  // Fire-and-forget: runs after the initial company insert so the graph appears
+  // immediately and ownership info streams in. Idempotent — safe to call repeatedly.
+  const addShareholdersForCompany = useCallback(async (companyName, companyId) => {
+    if (!companyName || !companyId) return;
+    try {
+      const result = await spanishCompaniesService.getCompanySoleShareholderData(companyName);
+      if (!result?.success) return;
+      const shareholders = result.sole_shareholders || [];
+      if (shareholders.length === 0) return;
+
+      setGraphData(prev => {
+        const companyNode = prev.nodes.find(n => n.id === companyId);
+        if (!companyNode) return prev;
+
+        const newNodes = [...prev.nodes];
+        const newLinks = [...prev.links];
+
+        shareholders.forEach((sh, idx) => {
+          const shName = (sh.name || sh.shareholder_name || '').trim();
+          if (!shName) return;
+          const shTypeRaw = (sh.shareholder_type || sh.type || '').toLowerCase();
+          const isCompanyShareholder = shTypeRaw === 'company' || isCompanyOfficer(shName);
+
+          let shId;
+          let existingNode = null;
+          if (isCompanyShareholder) {
+            shId = companyNameToId(shName);
+            const target = normalizeCompanyName(shName).toUpperCase();
+            existingNode = newNodes.find(
+              n => n.id === shId ||
+                (n.type === 'spanish-company-group' && normalizeCompanyName(n.name).toUpperCase() === target)
+            );
+            if (existingNode) shId = existingNode.id;
+          } else {
+            const normalizedName = shName.toLowerCase().trim();
+            shId = `officer-${normalizedName.replace(/\s+/g, '-')}`;
+            existingNode = newNodes.find(
+              n => n.type === 'officer' && n.name.trim().toLowerCase() === normalizedName
+            );
+            if (existingNode) shId = existingNode.id;
+          }
+
+          // Don't link a company to itself.
+          if (shId === companyId) return;
+
+          if (!existingNode) {
+            const baseX = Number.isFinite(companyNode.x) ? companyNode.x : 0;
+            const baseY = Number.isFinite(companyNode.y) ? companyNode.y : 0;
+            const angle = (idx / Math.max(shareholders.length, 1)) * 2 * Math.PI;
+            const dist = 120;
+            const px = baseX + Math.cos(angle) * dist;
+            const py = baseY + Math.sin(angle) * dist;
+
+            const newNode = isCompanyShareholder
+              ? {
+                  id: shId,
+                  name: shName,
+                  type: 'spanish-company-group',
+                  previousNames: [],
+                  companySummary: {
+                    entries: [],
+                    totalEntries: 0,
+                    previousNames: [],
+                    dateRange: { earliest: null, latest: null },
+                  },
+                  x: px,
+                  y: py,
+                }
+              : {
+                  id: shId,
+                  name: shName,
+                  type: 'officer',
+                  subtype: 'individual',
+                  position: 'Socio único',
+                  category: 'nombramientos',
+                  data: sh,
+                  companies: [companyName],
+                  positions: [
+                    { company: companyName, position: 'Socio único', category: 'nombramientos' },
+                  ],
+                  x: px,
+                  y: py,
+                };
+            newNodes.push(newNode);
+          }
+
+          const ownershipLost = sh.is_lost || result.sole_shareholder_lost;
+          const linkId = `ownership-${shId}-${companyId}`;
+          if (!newLinks.find(l => l.id === linkId)) {
+            newLinks.push({
+              id: linkId,
+              source: shId,
+              target: companyId,
+              type: 'ownership',
+              relationship: 'Socio único',
+              category: ownershipLost ? 'socio_perdido' : 'socio_unico',
+              date: sh.date || sh.event_date || null,
+            });
+          }
+        });
+
+        return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
+      });
+    } catch (err) {
+      console.warn('[Shareholders] Fetch failed for', companyName, err?.message || err);
+    }
+  }, [isCompanyOfficer]);
 
   // Expand officer node to show other companies
   const expandOfficerNode = useCallback(async officerNode => {
@@ -2088,6 +2224,13 @@ const SpanishCompanyNetworkGraph = ({
 
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
         });
+
+        if (showShareholders) {
+          companyEntries.forEach(group => {
+            const cn = normalizeCompanyName(group.name || 'Unknown Company');
+            addShareholdersForCompany(cn, companyNameToId(cn));
+          });
+        }
         return true;
       }
       return false;
@@ -2095,7 +2238,7 @@ const SpanishCompanyNetworkGraph = ({
       console.error('Error expanding officer node:', err);
       return false;
     }
-  }, [viewportCenter]);
+  }, [viewportCenter, showShareholders, addShareholdersForCompany]);
 
   // Expand company node to show its officers
   const expandCompanyNode = useCallback(
@@ -3021,6 +3164,17 @@ const SpanishCompanyNetworkGraph = ({
       });
     }
 
+    if (!showShareholders) {
+      activeLinks = activeLinks.filter(l => l.type !== 'ownership');
+      // Drop nodes that became orphaned only because their ownership links were hidden.
+      const linkedIds = new Set();
+      activeLinks.forEach(l => {
+        linkedIds.add(normalizeNodeId(getNodeIdFromRef(l.source)));
+        linkedIds.add(normalizeNodeId(getNodeIdFromRef(l.target)));
+      });
+      activeNodes = activeNodes.filter(n => linkedIds.has(normalizeNodeId(n.id)) || pinnedNodeIds.has(normalizeNodeId(n.id)));
+    }
+
     // Apply status and position chip filters
     if (hasChipFilters) {
       activeLinks = activeLinks.filter(link => {
@@ -3088,7 +3242,7 @@ const SpanishCompanyNetworkGraph = ({
     });
 
     return { nodes: filteredNodes, links: filteredLinks };
-  }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds, statusFilters, positionFilters, hasChipFilters]);
+  }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds, statusFilters, positionFilters, hasChipFilters, showShareholders]);
 
   const parallelLinkMeta = React.useMemo(() => {
     const perPair = new Map();
@@ -3240,7 +3394,9 @@ const SpanishCompanyNetworkGraph = ({
       // Determine link color based on appointment category
       const cat = (link.category || '').toLowerCase();
       let linkColor;
-      if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
+      if (link.type === 'ownership') {
+        linkColor = cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d'; // Gold — sole shareholder
+      } else if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
         linkColor = '#43a047'; // Green — appointments and re-elections
       } else if (
         cat.includes('cese') || cat.includes('dimision') || cat.includes('dimisión') ||
@@ -3251,15 +3407,19 @@ const SpanishCompanyNetworkGraph = ({
         linkColor = '#90a4ae'; // Blue-grey for unknown / company-company
       }
 
-      // Draw link — dashed for officers from a previous company name
+      // Draw link — dashed for officers from a previous company name and for ownership links
       ctx.beginPath();
       if (link.fromPreviousName) {
         ctx.setLineDash([Math.max(4, 6 / globalScale), Math.max(2, 3 / globalScale)]);
+      } else if (link.type === 'ownership') {
+        ctx.setLineDash([Math.max(2, 3 / globalScale), Math.max(2, 3 / globalScale)]);
       }
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.strokeStyle = link.fromPreviousName ? (linkColor + 'AA') : linkColor; // Slightly transparent for old-name links
-      ctx.lineWidth = Math.max(0.3, 1 / globalScale);
+      ctx.lineWidth = link.type === 'ownership'
+        ? Math.max(0.6, 1.6 / globalScale)
+        : Math.max(0.3, 1 / globalScale);
       ctx.stroke();
       ctx.setLineDash([]); // Reset dash
 
@@ -3371,7 +3531,11 @@ const SpanishCompanyNetworkGraph = ({
       if (!sourceNode || !targetNode) return;
 
       let companyName, officerName;
-      if (sourceNode.type === 'officer') {
+      if (link.type === 'ownership') {
+        // Ownership: source is always shareholder (the "officer" column), target is owned company.
+        officerName = sourceNode.name;
+        companyName = targetNode.name;
+      } else if (sourceNode.type === 'officer') {
         officerName = sourceNode.name;
         companyName = targetNode.name;
       } else {
@@ -3752,6 +3916,18 @@ const SpanishCompanyNetworkGraph = ({
               return next;
             })}
           />
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          <Chip
+            label="Socio único"
+            size="small"
+            variant={showShareholders ? 'filled' : 'outlined'}
+            sx={
+              showShareholders
+                ? { bgcolor: '#fbc02d', color: '#212121', '&:hover': { bgcolor: '#f9a825' } }
+                : { borderColor: '#fbc02d', color: '#9e7b10' }
+            }
+            onClick={() => setShowShareholders(prev => !prev)}
+          />
           {availablePositions.length > 0 && (
             <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
           )}
@@ -3932,6 +4108,9 @@ const SpanishCompanyNetworkGraph = ({
             linkDirectionalArrowRelPos={1}
             linkDirectionalArrowColor={link => {
               const cat = (link.category || '').toLowerCase();
+              if (link.type === 'ownership') {
+                return cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d';
+              }
               if (
                 cat.includes('nombramiento') ||
                 cat.includes('reeleccion') ||
@@ -4238,6 +4417,16 @@ const SpanishCompanyNetworkGraph = ({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
           <Box sx={{ width: 14, height: 2, bgcolor: '#d32f2f' }} />
           <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>Ceses</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+          <Box
+            sx={{
+              width: 14,
+              height: 2,
+              backgroundImage: 'repeating-linear-gradient(to right, #fbc02d 0 4px, transparent 4px 7px)',
+            }}
+          />
+          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>Socio único</Typography>
         </Box>
         <Typography sx={{ fontSize: 'inherit', lineHeight: 1, ml: 'auto' }}>
           {embedded && !isFullscreen
