@@ -3726,6 +3726,17 @@ const SpanishCompanyNetworkGraph = ({
               // so downstream lookups must use that (e.g. "CACTUS CAPITAL" → search
               // "EJEVAERN CONSULTING" to find the actual profile).
               const displayName = value.name || value.company_name || value.value || '';
+
+              // Sole-shareholder-only individuals have no officer history, so expandOfficerV3
+              // returns nothing. Route through the owned companies instead — the fire-and-forget
+              // shareholder fetch will then add this person back as the sole shareholder node.
+              if (value.type === 'sole_shareholder' && Array.isArray(value.owns) && value.owns.length > 0) {
+                setSearchQuery(displayName);
+                // Search the first owned company as a company lookup.
+                handleSearch(value.owns[0], true, 'company');
+                return;
+              }
+
               const searchKey = value.is_alias
                 ? (value.original_name || value.value || displayName)
                 : (value.company_name_normalized || value.value || displayName);
