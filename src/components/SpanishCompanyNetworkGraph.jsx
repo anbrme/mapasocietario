@@ -529,6 +529,9 @@ const SpanishCompanyNetworkGraph = ({
   // Floating table panel state
   const [tablePosition, setTablePosition] = useState({ x: null, y: null }); // null = default position
   const [isTableCollapsed, setIsTableCollapsed] = useState(false);
+  // Date filter: click on a date cell filters the table to rows sharing same date + company + category
+  // Shape: { date, companyNodeId, category } or null
+  const [dateFilter, setDateFilter] = useState(null);
   const tableDragRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const dragFreezeRef = useRef(null);
@@ -3675,22 +3678,30 @@ const SpanishCompanyNetworkGraph = ({
           : filteredGraphData.nodes.find(n => n.id === link.target);
       if (!sourceNode || !targetNode) return;
 
-      let companyName, officerName;
+      let companyName, officerName, companyNode, officerNode;
       if (link.type === 'ownership') {
         // Ownership: source is always shareholder (the "officer" column), target is owned company.
         officerName = sourceNode.name;
         companyName = targetNode.name;
+        officerNode = sourceNode;
+        companyNode = targetNode;
       } else if (sourceNode.type === 'officer') {
         officerName = sourceNode.name;
         companyName = targetNode.name;
+        officerNode = sourceNode;
+        companyNode = targetNode;
       } else {
         companyName = sourceNode.name;
         officerName = targetNode.name;
+        companyNode = sourceNode;
+        officerNode = targetNode;
       }
 
       rows.push({
         company: companyName || '-',
         officer: officerName || '-',
+        companyNode,
+        officerNode,
         position: link.relationship || '-',
         category: link.category || '-',
         date: formatDate(link.date),
@@ -3700,12 +3711,31 @@ const SpanishCompanyNetworkGraph = ({
     return rows;
   }, [filteredGraphData]);
 
+  // Rows visible in the table after applying the optional date filter.
+  const visibleTableRows = React.useMemo(() => {
+    if (!dateFilter) return tableRows;
+    return tableRows.filter(
+      r =>
+        r.date === dateFilter.date &&
+        r.companyNode?.id === dateFilter.companyNodeId &&
+        r.category === dateFilter.category
+    );
+  }, [tableRows, dateFilter]);
+
+  // Clear the date filter automatically if the underlying rows no longer contain any match
+  // (e.g. user collapsed a node or changed filters).
+  React.useEffect(() => {
+    if (dateFilter && visibleTableRows.length === 0) {
+      setDateFilter(null);
+    }
+  }, [dateFilter, visibleTableRows.length]);
+
   // Copy table as TSV for Excel/Word paste
   const copyTableToClipboard = useCallback(() => {
     const headers = ['Empresa', 'Directivo', 'Cargo', 'Tipo', 'Fecha'];
     const tsv = [
       headers.join('\t'),
-      ...tableRows.map(row =>
+      ...visibleTableRows.map(row =>
         [
           row.company,
           row.officer,
@@ -3719,7 +3749,7 @@ const SpanishCompanyNetworkGraph = ({
       console.error('Failed to copy table:', err);
       setError('No se pudo copiar la tabla al portapapeles.');
     });
-  }, [tableRows]);
+  }, [visibleTableRows]);
 
   // Toggle fullscreen
   const toggleFullscreen = useCallback(() => {
@@ -4335,7 +4365,11 @@ const SpanishCompanyNetworkGraph = ({
               
               <TableIcon sx={{ fontSize: 16 }} />
               <Typography variant="subtitle2" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                Datos ({tableRows.length})
+                Datos (
+                {dateFilter
+                  ? `${visibleTableRows.length} / ${tableRows.length}`
+                  : tableRows.length}
+                )
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
@@ -4384,6 +4418,38 @@ const SpanishCompanyNetworkGraph = ({
               </Tooltip>
             </Box>
           </Box>
+
+          {/* Active date-filter chip */}
+          {!isTableCollapsed && dateFilter && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                px: 1,
+                py: 0.5,
+                bgcolor: '#fff8e1',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Chip
+                size="small"
+                color={
+                  dateFilter.category === 'ceses_dimisiones' ||
+                  dateFilter.category === 'revocaciones'
+                    ? 'error'
+                    : 'success'
+                }
+                label={`${CATEGORY_LABELS[dateFilter.category] || dateFilter.category} · ${dateFilter.date}`}
+                onDelete={() => setDateFilter(null)}
+                sx={{ fontSize: '0.65rem', height: 22 }}
+              />
+              <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', flexGrow: 1 }}>
+                {dateFilter.companyName || ''}
+              </Typography>
+            </Box>
+          )}
 
           {/* Table body (collapsible) */}
           {!isTableCollapsed && (
@@ -4457,7 +4523,7 @@ const SpanishCompanyNetworkGraph = ({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {tableRows.length === 0 ? (
+                  {visibleTableRows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} align="center" sx={{ py: 3, color: '#4b5563' }}>
                         <Typography variant="caption" sx={{ color: '#4b5563' }}>
@@ -4466,7 +4532,7 @@ const SpanishCompanyNetworkGraph = ({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    tableRows.map((row, idx) => (
+                    visibleTableRows.map((row, idx) => (
                       <TableRow
                         key={`${row.company}-${row.officer}-${row.position}-${idx}`}
                         hover
@@ -4476,6 +4542,11 @@ const SpanishCompanyNetworkGraph = ({
                         }}
                       >
                         <TableCell
+                          onClick={
+                            row.companyNode
+                              ? (e) => handleNodeRightClick(row.companyNode, e)
+                              : undefined
+                          }
                           sx={{
                             fontSize: '0.7rem',
                             py: 0.25,
@@ -4483,12 +4554,22 @@ const SpanishCompanyNetworkGraph = ({
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
+                            cursor: row.companyNode ? 'pointer' : 'default',
+                            color: row.companyNode ? 'primary.main' : 'inherit',
+                            '&:hover': row.companyNode
+                              ? { textDecoration: 'underline' }
+                              : undefined,
                           }}
-                          title={row.company}
+                          title={row.companyNode ? `Acciones sobre ${row.company}` : row.company}
                         >
                           {row.company}
                         </TableCell>
                         <TableCell
+                          onClick={
+                            row.officerNode
+                              ? (e) => handleNodeRightClick(row.officerNode, e)
+                              : undefined
+                          }
                           sx={{
                             fontSize: '0.7rem',
                             py: 0.25,
@@ -4496,8 +4577,13 @@ const SpanishCompanyNetworkGraph = ({
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
+                            cursor: row.officerNode ? 'pointer' : 'default',
+                            color: row.officerNode ? 'primary.main' : 'inherit',
+                            '&:hover': row.officerNode
+                              ? { textDecoration: 'underline' }
+                              : undefined,
                           }}
-                          title={row.officer}
+                          title={row.officerNode ? `Acciones sobre ${row.officer}` : row.officer}
                         >
                           {row.officer}
                         </TableCell>
@@ -4539,7 +4625,63 @@ const SpanishCompanyNetworkGraph = ({
                             {CATEGORY_LABELS[row.category] || row.category}
                           </Box>
                         </TableCell>
-                        <TableCell sx={{ fontSize: '0.7rem', py: 0.25, whiteSpace: 'nowrap' }}>
+                        <TableCell
+                          onClick={
+                            row.date && row.date !== '-' && row.companyNode
+                              ? () => {
+                                  const isActive =
+                                    dateFilter &&
+                                    dateFilter.date === row.date &&
+                                    dateFilter.companyNodeId === row.companyNode.id &&
+                                    dateFilter.category === row.category;
+                                  setDateFilter(
+                                    isActive
+                                      ? null
+                                      : {
+                                          date: row.date,
+                                          companyNodeId: row.companyNode.id,
+                                          companyName: row.company,
+                                          category: row.category,
+                                        }
+                                  );
+                                }
+                              : undefined
+                          }
+                          sx={{
+                            fontSize: '0.7rem',
+                            py: 0.25,
+                            whiteSpace: 'nowrap',
+                            cursor:
+                              row.date && row.date !== '-' && row.companyNode
+                                ? 'pointer'
+                                : 'default',
+                            color:
+                              dateFilter &&
+                              row.companyNode &&
+                              dateFilter.date === row.date &&
+                              dateFilter.companyNodeId === row.companyNode.id &&
+                              dateFilter.category === row.category
+                                ? 'primary.main'
+                                : 'inherit',
+                            fontWeight:
+                              dateFilter &&
+                              row.companyNode &&
+                              dateFilter.date === row.date &&
+                              dateFilter.companyNodeId === row.companyNode.id &&
+                              dateFilter.category === row.category
+                                ? 600
+                                : 400,
+                            '&:hover':
+                              row.date && row.date !== '-' && row.companyNode
+                                ? { textDecoration: 'underline' }
+                                : undefined,
+                          }}
+                          title={
+                            row.date && row.date !== '-' && row.companyNode
+                              ? `Filtrar por esta fecha en ${row.company}`
+                              : row.date
+                          }
+                        >
                           {row.date}
                         </TableCell>
                       </TableRow>
