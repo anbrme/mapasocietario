@@ -1303,6 +1303,115 @@ const SpanishCompanyNetworkGraph = ({
     }
   };
 
+  // Fetch sole-shareholder data for a company and append ownership nodes/links.
+  // Fire-and-forget: runs after the initial company insert so the graph appears
+  // immediately and ownership info streams in. Idempotent — safe to call repeatedly.
+  const addShareholdersForCompany = useCallback(async (companyName, companyId) => {
+    if (!companyName || !companyId) return;
+    try {
+      const result = await spanishCompaniesService.getCompanySoleShareholderData(companyName);
+      if (!result?.success) return;
+      const shareholders = result.sole_shareholders || [];
+      if (shareholders.length === 0) return;
+
+      setGraphData(prev => {
+        const companyNode = prev.nodes.find(n => n.id === companyId);
+        if (!companyNode) return prev;
+
+        const newNodes = [...prev.nodes];
+        const newLinks = [...prev.links];
+
+        shareholders.forEach((sh, idx) => {
+          const shName = (sh.name || sh.shareholder_name || '').trim();
+          if (!shName) return;
+          const shTypeRaw = (sh.shareholder_type || sh.type || '').toLowerCase();
+          const isCompanyShareholder = shTypeRaw === 'company' || isCompanyOfficer(shName);
+
+          let shId;
+          let existingNode = null;
+          if (isCompanyShareholder) {
+            shId = companyNameToId(shName);
+            const target = normalizeCompanyName(shName).toUpperCase();
+            existingNode = newNodes.find(
+              n => n.id === shId ||
+                (n.type === 'spanish-company-group' && normalizeCompanyName(n.name).toUpperCase() === target)
+            );
+            if (existingNode) shId = existingNode.id;
+          } else {
+            const normalizedName = shName.toLowerCase().trim();
+            shId = `officer-${normalizedName.replace(/\s+/g, '-')}`;
+            existingNode = newNodes.find(
+              n => n.type === 'officer' && n.name.trim().toLowerCase() === normalizedName
+            );
+            if (existingNode) shId = existingNode.id;
+          }
+
+          // Don't link a company to itself.
+          if (shId === companyId) return;
+
+          if (!existingNode) {
+            const baseX = Number.isFinite(companyNode.x) ? companyNode.x : 0;
+            const baseY = Number.isFinite(companyNode.y) ? companyNode.y : 0;
+            const angle = (idx / Math.max(shareholders.length, 1)) * 2 * Math.PI;
+            const dist = 120;
+            const px = baseX + Math.cos(angle) * dist;
+            const py = baseY + Math.sin(angle) * dist;
+
+            const newNode = isCompanyShareholder
+              ? {
+                  id: shId,
+                  name: shName,
+                  type: 'spanish-company-group',
+                  previousNames: [],
+                  companySummary: {
+                    entries: [],
+                    totalEntries: 0,
+                    previousNames: [],
+                    dateRange: { earliest: null, latest: null },
+                  },
+                  x: px,
+                  y: py,
+                }
+              : {
+                  id: shId,
+                  name: shName,
+                  type: 'officer',
+                  subtype: 'individual',
+                  position: 'Socio único',
+                  category: 'nombramientos',
+                  data: sh,
+                  companies: [companyName],
+                  positions: [
+                    { company: companyName, position: 'Socio único', category: 'nombramientos' },
+                  ],
+                  x: px,
+                  y: py,
+                };
+            newNodes.push(newNode);
+          }
+
+          const ownershipLost = sh.is_lost || result.sole_shareholder_lost;
+          const linkId = `ownership-${shId}-${companyId}`;
+          if (!newLinks.find(l => l.id === linkId)) {
+            newLinks.push({
+              id: linkId,
+              source: shId,
+              target: companyId,
+              type: 'ownership',
+              relationship: 'Socio único',
+              category: ownershipLost ? 'socio_perdido' : 'socio_unico',
+              date: sh.date || sh.event_date || null,
+            });
+          }
+        });
+
+        return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
+      });
+    } catch (err) {
+      console.warn('[Shareholders] Fetch failed for', companyName, err?.message || err);
+    }
+  }, [isCompanyOfficer]);
+
   // Add company with all its officers to the graph
   const addCompanyWithOfficersToGraph = useCallback(
     async (searchResults, anchorNode = null, nameChangeAliasMap = null) => {
@@ -1962,115 +2071,6 @@ const SpanishCompanyNetworkGraph = ({
     },
     [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany]
   );
-
-  // Fetch sole-shareholder data for a company and append ownership nodes/links.
-  // Fire-and-forget: runs after the initial company insert so the graph appears
-  // immediately and ownership info streams in. Idempotent — safe to call repeatedly.
-  const addShareholdersForCompany = useCallback(async (companyName, companyId) => {
-    if (!companyName || !companyId) return;
-    try {
-      const result = await spanishCompaniesService.getCompanySoleShareholderData(companyName);
-      if (!result?.success) return;
-      const shareholders = result.sole_shareholders || [];
-      if (shareholders.length === 0) return;
-
-      setGraphData(prev => {
-        const companyNode = prev.nodes.find(n => n.id === companyId);
-        if (!companyNode) return prev;
-
-        const newNodes = [...prev.nodes];
-        const newLinks = [...prev.links];
-
-        shareholders.forEach((sh, idx) => {
-          const shName = (sh.name || sh.shareholder_name || '').trim();
-          if (!shName) return;
-          const shTypeRaw = (sh.shareholder_type || sh.type || '').toLowerCase();
-          const isCompanyShareholder = shTypeRaw === 'company' || isCompanyOfficer(shName);
-
-          let shId;
-          let existingNode = null;
-          if (isCompanyShareholder) {
-            shId = companyNameToId(shName);
-            const target = normalizeCompanyName(shName).toUpperCase();
-            existingNode = newNodes.find(
-              n => n.id === shId ||
-                (n.type === 'spanish-company-group' && normalizeCompanyName(n.name).toUpperCase() === target)
-            );
-            if (existingNode) shId = existingNode.id;
-          } else {
-            const normalizedName = shName.toLowerCase().trim();
-            shId = `officer-${normalizedName.replace(/\s+/g, '-')}`;
-            existingNode = newNodes.find(
-              n => n.type === 'officer' && n.name.trim().toLowerCase() === normalizedName
-            );
-            if (existingNode) shId = existingNode.id;
-          }
-
-          // Don't link a company to itself.
-          if (shId === companyId) return;
-
-          if (!existingNode) {
-            const baseX = Number.isFinite(companyNode.x) ? companyNode.x : 0;
-            const baseY = Number.isFinite(companyNode.y) ? companyNode.y : 0;
-            const angle = (idx / Math.max(shareholders.length, 1)) * 2 * Math.PI;
-            const dist = 120;
-            const px = baseX + Math.cos(angle) * dist;
-            const py = baseY + Math.sin(angle) * dist;
-
-            const newNode = isCompanyShareholder
-              ? {
-                  id: shId,
-                  name: shName,
-                  type: 'spanish-company-group',
-                  previousNames: [],
-                  companySummary: {
-                    entries: [],
-                    totalEntries: 0,
-                    previousNames: [],
-                    dateRange: { earliest: null, latest: null },
-                  },
-                  x: px,
-                  y: py,
-                }
-              : {
-                  id: shId,
-                  name: shName,
-                  type: 'officer',
-                  subtype: 'individual',
-                  position: 'Socio único',
-                  category: 'nombramientos',
-                  data: sh,
-                  companies: [companyName],
-                  positions: [
-                    { company: companyName, position: 'Socio único', category: 'nombramientos' },
-                  ],
-                  x: px,
-                  y: py,
-                };
-            newNodes.push(newNode);
-          }
-
-          const ownershipLost = sh.is_lost || result.sole_shareholder_lost;
-          const linkId = `ownership-${shId}-${companyId}`;
-          if (!newLinks.find(l => l.id === linkId)) {
-            newLinks.push({
-              id: linkId,
-              source: shId,
-              target: companyId,
-              type: 'ownership',
-              relationship: 'Socio único',
-              category: ownershipLost ? 'socio_perdido' : 'socio_unico',
-              date: sh.date || sh.event_date || null,
-            });
-          }
-        });
-
-        return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
-      });
-    } catch (err) {
-      console.warn('[Shareholders] Fetch failed for', companyName, err?.message || err);
-    }
-  }, [isCompanyOfficer]);
 
   // Expand officer node to show other companies
   const expandOfficerNode = useCallback(async officerNode => {
