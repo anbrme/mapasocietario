@@ -1694,7 +1694,7 @@ const SpanishCompanyNetworkGraph = ({
               const positionKey = officer.position
                 ? officer.position.toLowerCase().replace(/[^a-z0-9]/g, '')
                 : 'unknownpos';
-              const linkId = `${companyId}-${officerNode.id}-${positionKey}`;
+              const linkId = `${officerNode.id}-${companyId}-${positionKey}`;
 
               if (!newLinks.find(l => l.id === linkId)) {
                 const posEffKey = `${normalizedName}||${(officer.position || '').trim().toLowerCase()}`;
@@ -1705,8 +1705,8 @@ const SpanishCompanyNetworkGraph = ({
                   previousNamesUpper.includes(officer._sourceCompanyName.toUpperCase());
                 newLinks.push({
                   id: linkId,
-                  source: companyId,
-                  target: officerNode.id,
+                  source: officerNode.id,
+                  target: companyId,
                   type: 'officer-company',
                   relationship: officer.specific_role || officer.position,
                   category: effectiveCategory,
@@ -3928,6 +3928,24 @@ const SpanishCompanyNetworkGraph = ({
             onZoom={handleZoom}
             linkDirectionalParticles={2}
             linkDirectionalParticleSpeed={0.005}
+            linkDirectionalArrowLength={4}
+            linkDirectionalArrowRelPos={1}
+            linkDirectionalArrowColor={link => {
+              const cat = (link.category || '').toLowerCase();
+              if (
+                cat.includes('nombramiento') ||
+                cat.includes('reeleccion') ||
+                cat.includes('reelección')
+              ) return '#43a047';
+              if (
+                cat.includes('cese') ||
+                cat.includes('dimision') ||
+                cat.includes('dimisión') ||
+                cat.includes('revocacion') ||
+                cat.includes('revocación')
+              ) return '#e53935';
+              return '#90a4ae';
+            }}
             d3AlphaDecay={0.08}
             d3VelocityDecay={0.8}
             cooldownTicks={40}
