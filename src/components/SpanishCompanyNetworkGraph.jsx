@@ -471,7 +471,7 @@ const SpanishCompanyNetworkGraph = ({
   const [statusFilters, setStatusFilters] = useState(new Set()); // 'active' | 'ceased'
   const [positionFilters, setPositionFilters] = useState(new Set());
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResultSize, setSearchResultSize] = useState(50);
+  const [searchResultSize, setSearchResultSize] = useState(100);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastSearchContext, setLastSearchContext] = useState(null);
 
@@ -1187,8 +1187,60 @@ const SpanishCompanyNetworkGraph = ({
 
         const v3Results = v3Data.results || [];
         if (v3Results.length > 0) {
-          // Convert v3 company docs to v2-compatible entries for the graph
-          const baseEntries = v3Results.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
+          // For companies whose officer lists overflow the UI cap (e.g. Caixabank,
+          // which has thousands of historical officers), fetch events up front to
+          // learn each officer's most recent date. Apoderados are then truncated
+          // newest-first instead of whatever order the v3 doc happened to use.
+          const overflowing = v3Results.filter(
+            c => (c.officers_active?.length || 0) + (c.officers_resigned?.length || 0) > searchResultSize
+          );
+          const officerDatesByCompany = new Map();
+          if (overflowing.length > 0) {
+            const eventFetchSize = Math.max(500, searchResultSize * 5);
+            const eventResults = await Promise.all(
+              overflowing.map(async c => {
+                const cname = c.company_name || c.company_name_normalized || '';
+                try {
+                  const resp = await spanishCompaniesService.getCompanyEventsV3(cname, {
+                    size: eventFetchSize,
+                  });
+                  return { cname, events: resp?.events || [] };
+                } catch (err) {
+                  console.warn(`[handleSearch] events fetch failed for "${cname}":`, err?.message || err);
+                  return { cname, events: [] };
+                }
+              })
+            );
+            eventResults.forEach(({ cname, events }) => {
+              const officerDates = new Map();
+              events.forEach(evt => {
+                const evtDate = evt.event_date || evt.indexed_date || evt.date;
+                if (!evtDate) return;
+                const dateMs = new Date(evtDate).getTime();
+                if (!dateMs) return;
+                (evt.officers || []).forEach(o => {
+                  const n = (o.name || o.name_normalized || '').trim().toUpperCase();
+                  const p = (o.position_normalized || o.position || '').trim().toUpperCase();
+                  if (!n) return;
+                  const key = `${n}|${p}`;
+                  const prev = officerDates.get(key) || 0;
+                  if (dateMs > prev) officerDates.set(key, dateMs);
+                });
+              });
+              officerDatesByCompany.set(normalizeCompanyName(cname).toUpperCase(), officerDates);
+            });
+          }
+
+          // Convert v3 company docs to v2-compatible entries for the graph.
+          // Admins (Presidente, Consejero, …) are always kept; apoderados and
+          // other non-board roles are capped at searchResultSize, newest first.
+          const baseEntries = v3Results.flatMap(c => {
+            const cname = normalizeCompanyName(c.company_name || c.company_name_normalized || '').toUpperCase();
+            return SpanishCompaniesService.v3CompanyToEntries(c, {
+              maxOfficers: searchResultSize,
+              officerDates: officerDatesByCompany.get(cname) || null,
+            });
+          });
           // Check for name changes on ALL results before filtering,
           // so that old-name entries with has_new_name are discovered
           const { entries: withRelated, aliasMap } = await fetchWithNameChangeRelations(baseEntries);
