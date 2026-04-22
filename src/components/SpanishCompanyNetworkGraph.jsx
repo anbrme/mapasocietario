@@ -2340,50 +2340,16 @@ const SpanishCompanyNetworkGraph = ({
     [viewportCenter]
   );
 
-  // Fetch every company a shareholder owns (up to 100) and plot each one with
-  // its officers in parallel. Ownership links back to the shareholder are
-  // wired automatically by addShareholdersForCompany inside the graph call.
+  // Plot every company the shareholder owns as a bare node with an ownership link
+  // back to the shareholder. Officers are NOT fetched — user can expand a
+  // subsidiary node on demand later. Reuses addOwnedCompaniesForEntity.
   const loadSubsidiariesForShareholder = useCallback(
-    async (entityName, entityKind) => {
-      if (!entityName) return;
+    async (entityName, entityId, entityKind) => {
+      if (!entityName || !entityId) return;
       setLoadingSubsidiaries(true);
       setError(null);
       try {
-        const result = await spanishCompaniesService.getCompaniesOwnedByShareholder(
-          entityName,
-          { limit: 100 }
-        );
-        const owned = result?.companies || [];
-        const filtered =
-          entityKind === 'person'
-            ? owned.filter(c => c.shareholder_type === 'individual')
-            : owned.filter(c => c.shareholder_type !== 'individual');
-        if (filtered.length === 0) {
-          setError(`No se encontraron empresas participadas por "${entityName}"`);
-          return;
-        }
-
-        const v3Responses = await Promise.all(
-          filtered.map(c => {
-            const name = (c.name || c.company_name || '').trim();
-            if (!name) return Promise.resolve([]);
-            return spanishCompaniesService
-              .searchV3(name, { size: 5, exact: true })
-              .then(res => res.results || [])
-              .catch(() => []);
-          })
-        );
-        const allEntries = v3Responses.flatMap(results =>
-          results.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c))
-        );
-        if (allEntries.length > 0) {
-          await addCompanyWithOfficersToGraph(allEntries);
-          allEntries.forEach(e => {
-            const companyName = normalizeCompanyName(e.name || e.company_name || '');
-            const companyId = companyNameToId(companyName);
-            setPinnedNodeIds(prev => new Set([...prev, companyId]));
-          });
-        }
+        await addOwnedCompaniesForEntity(entityName, entityId, entityKind);
       } catch (err) {
         console.error('Load subsidiaries failed:', err);
         setError(`Error al cargar participadas: ${err.message}`);
@@ -2392,7 +2358,7 @@ const SpanishCompanyNetworkGraph = ({
         setPendingSubsidiaries(null);
       }
     },
-    [addCompanyWithOfficersToGraph]
+    [addOwnedCompaniesForEntity]
   );
 
   // Expand officer node to show other companies
@@ -4332,6 +4298,7 @@ const SpanishCompanyNetworkGraph = ({
             onClick={() =>
               loadSubsidiariesForShareholder(
                 pendingSubsidiaries.entityName,
+                pendingSubsidiaries.entityId,
                 pendingSubsidiaries.entityKind
               )
             }
