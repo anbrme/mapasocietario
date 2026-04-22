@@ -350,6 +350,60 @@ const normalizeEdgeLabelText = (relationship, _category) => {
   return text;
 };
 
+// Convert v3 company docs to graph-ready entries with per-company officer caps.
+// Admins (Presidente, Consejero, …) are always kept; non-admin officers (apoderados,
+// auditors, …) are truncated newest-first. When any doc overflows `cap`, events are
+// fetched up front so non-admin sorting is date-accurate.
+const v3DocsToCappedEntries = async (docs, cap) => {
+  if (!cap || cap <= 0) {
+    return docs.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
+  }
+  const overflowing = docs.filter(
+    c => (c.officers_active?.length || 0) + (c.officers_resigned?.length || 0) > cap
+  );
+  const officerDatesByCompany = new Map();
+  if (overflowing.length > 0) {
+    const eventFetchSize = Math.max(500, cap * 5);
+    const eventResults = await Promise.all(
+      overflowing.map(async c => {
+        const cname = c.company_name || c.company_name_normalized || '';
+        try {
+          const resp = await spanishCompaniesService.getCompanyEventsV3(cname, { size: eventFetchSize });
+          return { cname, events: resp?.events || [] };
+        } catch (err) {
+          console.warn(`[v3DocsToCappedEntries] events fetch failed for "${cname}":`, err?.message || err);
+          return { cname, events: [] };
+        }
+      })
+    );
+    eventResults.forEach(({ cname, events }) => {
+      const officerDates = new Map();
+      events.forEach(evt => {
+        const evtDate = evt.event_date || evt.indexed_date || evt.date;
+        if (!evtDate) return;
+        const dateMs = new Date(evtDate).getTime();
+        if (!dateMs) return;
+        (evt.officers || []).forEach(o => {
+          const n = (o.name || o.name_normalized || '').trim().toUpperCase();
+          const p = (o.position_normalized || o.position || '').trim().toUpperCase();
+          if (!n) return;
+          const key = `${n}|${p}`;
+          const prev = officerDates.get(key) || 0;
+          if (dateMs > prev) officerDates.set(key, dateMs);
+        });
+      });
+      officerDatesByCompany.set(normalizeCompanyName(cname).toUpperCase(), officerDates);
+    });
+  }
+  return docs.flatMap(c => {
+    const cname = normalizeCompanyName(c.company_name || c.company_name_normalized || '').toUpperCase();
+    return SpanishCompaniesService.v3CompanyToEntries(c, {
+      maxOfficers: cap,
+      officerDates: officerDatesByCompany.get(cname) || null,
+    });
+  });
+};
+
 const dedupeGraphLinks = links => {
   const dedupedMap = new Map();
 
@@ -691,7 +745,8 @@ const SpanishCompanyNetworkGraph = ({
   // The autocomplete API only stores alias info on the OLD name (has_new_name → new name).
   // The NEW name returns is_alias:false with no link back. So when we only have the new
   // name, we also do a v3 search to discover the old name among sibling results.
-  const fetchWithNameChangeRelations = useCallback(async (entries) => {
+  const fetchWithNameChangeRelations = useCallback(async (entries, options = {}) => {
+    const { cap } = options;
     const allEntries = [...entries];
     const aliasMap = new Map();
     const namesInEntries = new Set(
@@ -774,7 +829,7 @@ const SpanishCompanyNetworkGraph = ({
           try {
             const v3 = await spanishCompaniesService.getCompanyProfileV3(relatedName);
             if (v3.company) {
-              const relatedEntries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
+              const relatedEntries = await v3DocsToCappedEntries([v3.company], cap);
               allEntries.push(...relatedEntries);
               namesInEntries.add(relatedName.trim().toUpperCase());
               console.log(`[NetworkGraph] Added related company "${relatedName}" for name change`);
@@ -797,7 +852,7 @@ const SpanishCompanyNetworkGraph = ({
 
     if (initialCompanyData && initialCompanyData.length > 0) {
       (async () => {
-        const { entries, aliasMap } = await fetchWithNameChangeRelations(initialCompanyData);
+        const { entries, aliasMap } = await fetchWithNameChangeRelations(initialCompanyData, { cap: searchResultSize });
         await addCompanyWithOfficersToGraph(entries, null, aliasMap);
         entries.forEach(company => {
           const companyName = normalizeCompanyName(company.name || company.company_name || '');
@@ -1187,63 +1242,12 @@ const SpanishCompanyNetworkGraph = ({
 
         const v3Results = v3Data.results || [];
         if (v3Results.length > 0) {
-          // For companies whose officer lists overflow the UI cap (e.g. Caixabank,
-          // which has thousands of historical officers), fetch events up front to
-          // learn each officer's most recent date. Apoderados are then truncated
-          // newest-first instead of whatever order the v3 doc happened to use.
-          const overflowing = v3Results.filter(
-            c => (c.officers_active?.length || 0) + (c.officers_resigned?.length || 0) > searchResultSize
-          );
-          const officerDatesByCompany = new Map();
-          if (overflowing.length > 0) {
-            const eventFetchSize = Math.max(500, searchResultSize * 5);
-            const eventResults = await Promise.all(
-              overflowing.map(async c => {
-                const cname = c.company_name || c.company_name_normalized || '';
-                try {
-                  const resp = await spanishCompaniesService.getCompanyEventsV3(cname, {
-                    size: eventFetchSize,
-                  });
-                  return { cname, events: resp?.events || [] };
-                } catch (err) {
-                  console.warn(`[handleSearch] events fetch failed for "${cname}":`, err?.message || err);
-                  return { cname, events: [] };
-                }
-              })
-            );
-            eventResults.forEach(({ cname, events }) => {
-              const officerDates = new Map();
-              events.forEach(evt => {
-                const evtDate = evt.event_date || evt.indexed_date || evt.date;
-                if (!evtDate) return;
-                const dateMs = new Date(evtDate).getTime();
-                if (!dateMs) return;
-                (evt.officers || []).forEach(o => {
-                  const n = (o.name || o.name_normalized || '').trim().toUpperCase();
-                  const p = (o.position_normalized || o.position || '').trim().toUpperCase();
-                  if (!n) return;
-                  const key = `${n}|${p}`;
-                  const prev = officerDates.get(key) || 0;
-                  if (dateMs > prev) officerDates.set(key, dateMs);
-                });
-              });
-              officerDatesByCompany.set(normalizeCompanyName(cname).toUpperCase(), officerDates);
-            });
-          }
-
-          // Convert v3 company docs to v2-compatible entries for the graph.
           // Admins (Presidente, Consejero, …) are always kept; apoderados and
           // other non-board roles are capped at searchResultSize, newest first.
-          const baseEntries = v3Results.flatMap(c => {
-            const cname = normalizeCompanyName(c.company_name || c.company_name_normalized || '').toUpperCase();
-            return SpanishCompaniesService.v3CompanyToEntries(c, {
-              maxOfficers: searchResultSize,
-              officerDates: officerDatesByCompany.get(cname) || null,
-            });
-          });
+          const baseEntries = await v3DocsToCappedEntries(v3Results, searchResultSize);
           // Check for name changes on ALL results before filtering,
           // so that old-name entries with has_new_name are discovered
-          const { entries: withRelated, aliasMap } = await fetchWithNameChangeRelations(baseEntries);
+          const { entries: withRelated, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: searchResultSize });
           const filtered = filterCompanyMatches(withRelated, query);
           // Also include entries that didn't match the query but are linked via name change
           const aliasedEntries = aliasMap
@@ -2592,8 +2596,8 @@ const SpanishCompanyNetworkGraph = ({
         // explicit active/resigned status
         const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName);
         if (v3.company) {
-          const baseEntries = SpanishCompaniesService.v3CompanyToEntries(v3.company);
-          const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries);
+          const baseEntries = await v3DocsToCappedEntries([v3.company], searchResultSize);
+          const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: searchResultSize });
           await addCompanyWithOfficersToGraph(entries, companyNode, aliasMap);
           return true;
         }
@@ -2603,7 +2607,7 @@ const SpanishCompanyNetworkGraph = ({
         return false;
       }
     },
-    [addCompanyWithOfficersToGraph, fetchWithNameChangeRelations]
+    [addCompanyWithOfficersToGraph, fetchWithNameChangeRelations, searchResultSize]
   );
 
   // Expand a node (called on double-click)
