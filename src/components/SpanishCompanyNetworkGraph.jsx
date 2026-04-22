@@ -543,6 +543,12 @@ const SpanishCompanyNetworkGraph = ({
   const searchTypeRef = useRef(searchType);
   searchTypeRef.current = searchType;
 
+  // When a sole_shareholder is selected from autocomplete, we plot the shareholder
+  // node immediately and defer fetching its N participadas until the user confirms
+  // (prevents silent N parallel v3 lookups on every selection).
+  const [pendingSubsidiaries, setPendingSubsidiaries] = useState(null);
+  const [loadingSubsidiaries, setLoadingSubsidiaries] = useState(false);
+
   // Terms hook for officer validation
   const { termData, isReady: termsAreReady } = useTerms();
 
@@ -2283,6 +2289,112 @@ const SpanishCompanyNetworkGraph = ({
     [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates]
   );
 
+  // Plot a bare shareholder node (no officers, no subsidiaries) so the user
+  // can see the entity on the canvas before deciding to fetch its participadas.
+  const plotBareShareholderNode = useCallback(
+    (entityName, entityKind) => {
+      if (!entityName) return null;
+      const isCompanyKind = entityKind === 'company';
+      const cleanName = isCompanyKind ? normalizeCompanyName(entityName) : entityName.trim();
+      const entityId = isCompanyKind
+        ? companyNameToId(cleanName)
+        : `officer-${cleanName.toLowerCase().replace(/\s+/g, '-')}`;
+
+      setGraphData(prev => {
+        if (prev.nodes.find(n => n.id === entityId)) return prev;
+        const anchor = computeGraphCentroid(prev.nodes, viewportCenter);
+        const position = { x: anchor.x, y: anchor.y };
+        const newNode = isCompanyKind
+          ? {
+              id: entityId,
+              name: cleanName,
+              type: 'spanish-company-group',
+              previousNames: [],
+              companySummary: {
+                entries: [],
+                totalEntries: 0,
+                previousNames: [],
+                dateRange: { earliest: null, latest: null },
+              },
+              ...position,
+              fx: position.x,
+              fy: position.y,
+            }
+          : {
+              id: entityId,
+              name: cleanName,
+              type: 'officer',
+              subtype: 'individual',
+              companies: [],
+              positions: [],
+              data: { name: cleanName, kind: 'individual' },
+              ...position,
+              fx: position.x,
+              fy: position.y,
+            };
+        return { nodes: [...prev.nodes, newNode], links: prev.links };
+      });
+      setPinnedNodeIds(prev => new Set([...prev, entityId]));
+      return entityId;
+    },
+    [viewportCenter]
+  );
+
+  // Fetch every company a shareholder owns (up to 100) and plot each one with
+  // its officers in parallel. Ownership links back to the shareholder are
+  // wired automatically by addShareholdersForCompany inside the graph call.
+  const loadSubsidiariesForShareholder = useCallback(
+    async (entityName, entityKind) => {
+      if (!entityName) return;
+      setLoadingSubsidiaries(true);
+      setError(null);
+      try {
+        const result = await spanishCompaniesService.getCompaniesOwnedByShareholder(
+          entityName,
+          { limit: 100 }
+        );
+        const owned = result?.companies || [];
+        const filtered =
+          entityKind === 'person'
+            ? owned.filter(c => c.shareholder_type === 'individual')
+            : owned.filter(c => c.shareholder_type !== 'individual');
+        if (filtered.length === 0) {
+          setError(`No se encontraron empresas participadas por "${entityName}"`);
+          return;
+        }
+
+        const v3Responses = await Promise.all(
+          filtered.map(c => {
+            const name = (c.name || c.company_name || '').trim();
+            if (!name) return Promise.resolve([]);
+            return spanishCompaniesService
+              .searchV3(name, { size: 5, exact: true })
+              .then(res => res.results || [])
+              .catch(() => []);
+          })
+        );
+        const allEntries = v3Responses.flatMap(results =>
+          results.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c))
+        );
+        if (allEntries.length > 0) {
+          await addCompanyWithOfficersToGraph(allEntries);
+          allEntries.forEach(e => {
+            const companyName = normalizeCompanyName(e.name || e.company_name || '');
+            const companyId = companyNameToId(companyName);
+            setPinnedNodeIds(prev => new Set([...prev, companyId]));
+          });
+        }
+      } catch (err) {
+        console.error('Load subsidiaries failed:', err);
+        setError(`Error al cargar participadas: ${err.message}`);
+      } finally {
+        setLoadingSubsidiaries(false);
+        setPendingSubsidiaries(null);
+      }
+    },
+    [addCompanyWithOfficersToGraph]
+  );
+
   // Expand officer node to show other companies
   const expandOfficerNode = useCallback(async officerNode => {
     try {
@@ -4002,13 +4114,27 @@ const SpanishCompanyNetworkGraph = ({
               // "EJEVAERN CONSULTING" to find the actual profile).
               const displayName = value.name || value.company_name || value.value || '';
 
-              // Sole-shareholder-only individuals have no officer history, so expandOfficerV3
-              // returns nothing. Route through the owned companies instead — the fire-and-forget
-              // shareholder fetch will then add this person back as the sole shareholder node.
-              if (value.type === 'sole_shareholder' && Array.isArray(value.owns) && value.owns.length > 0) {
-                setSearchQuery(displayName);
-                // Search the first owned company as a company lookup.
-                handleSearch(value.owns[0], true, 'company');
+              // Sole shareholder selection: plot the shareholder node and stage
+              // its participadas behind a confirmation pill. Avoids N silent
+              // parallel v3 lookups on every selection, and shows the true total
+              // (not just the autocomplete-capped sample in value.owns).
+              const isSoleShareholderCorporate = value.type === 'sole_shareholder';
+              const isSoleShareholderIndividual =
+                value.type === 'officer_sole_shareholder' || value.is_sole_shareholder;
+              if (
+                (isSoleShareholderCorporate || isSoleShareholderIndividual) &&
+                (value.owns_total > 0 || (Array.isArray(value.owns) && value.owns.length > 0))
+              ) {
+                const entityKind = isSoleShareholderCorporate ? 'company' : 'person';
+                const entityId = plotBareShareholderNode(displayName, entityKind);
+                const total = value.owns_total || value.owns?.length || 0;
+                setPendingSubsidiaries({
+                  entityName: displayName,
+                  entityId,
+                  entityKind,
+                  count: total,
+                });
+                setSearchQuery('');
                 return;
               }
 
@@ -4059,16 +4185,17 @@ const SpanishCompanyNetworkGraph = ({
                       </Typography>
                     )}
                   </Box>
-                  {option.type === 'sole_shareholder' && option.owns && option.owns.length > 0 && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: 'block', fontStyle: 'italic' }}
-                    >
-                      Socio único de: {option.owns.slice(0, 2).join(', ')}
-                      {option.owns.length > 2 && ` +${option.owns.length - 2}`}
-                    </Typography>
-                  )}
+                  {option.type === 'sole_shareholder' &&
+                    ((option.owns_total || 0) > 0 || (option.owns && option.owns.length > 0)) && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', fontStyle: 'italic' }}
+                      >
+                        Socio único de {option.owns_total || option.owns?.length || 0} empresa
+                        {(option.owns_total || option.owns?.length || 0) !== 1 ? 's' : ''}
+                      </Typography>
+                    )}
                   {option.is_alias && option.original_name && (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                       Antes: {option.original_name}
@@ -4090,15 +4217,16 @@ const SpanishCompanyNetworkGraph = ({
                         {option.company_count} empresa{option.company_count !== 1 ? 's' : ''} (cargo)
                       </Typography>
                     )}
-                  {option.is_sole_shareholder && option.owns && option.owns.length > 0 && (
-                    <Typography
-                      variant="caption"
-                      sx={{ display: 'block', color: 'warning.dark', fontStyle: 'italic' }}
-                    >
-                      Socio único de: {option.owns.slice(0, 2).join(', ')}
-                      {option.owns.length > 2 && ` +${option.owns.length - 2}`}
-                    </Typography>
-                  )}
+                  {option.is_sole_shareholder &&
+                    ((option.owns_total || 0) > 0 || (option.owns && option.owns.length > 0)) && (
+                      <Typography
+                        variant="caption"
+                        sx={{ display: 'block', color: 'warning.dark', fontStyle: 'italic' }}
+                      >
+                        Socio único de {option.owns_total || option.owns?.length || 0} empresa
+                        {(option.owns_total || option.owns?.length || 0) !== 1 ? 's' : ''}
+                      </Typography>
+                    )}
                 </Box>
               </Box>
             </Box>
@@ -4175,6 +4303,49 @@ const SpanishCompanyNetworkGraph = ({
           <SettingsIcon />
         </IconButton>
       </Box>
+
+      {pendingSubsidiaries && (
+        <Box
+          sx={{
+            mt: 1,
+            mx: 2,
+            p: 1.2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            bgcolor: 'warning.50',
+            border: '1px solid',
+            borderColor: 'warning.light',
+            borderRadius: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ flex: 1 }}>
+            <strong>{pendingSubsidiaries.entityName}</strong> es socio único de{' '}
+            {pendingSubsidiaries.count} empresa
+            {pendingSubsidiaries.count !== 1 ? 's' : ''}.
+          </Typography>
+          <Button
+            size="small"
+            variant="contained"
+            color="warning"
+            disabled={loadingSubsidiaries}
+            onClick={() =>
+              loadSubsidiariesForShareholder(
+                pendingSubsidiaries.entityName,
+                pendingSubsidiaries.entityKind
+              )
+            }
+            startIcon={loadingSubsidiaries ? <CircularProgress size={14} color="inherit" /> : null}
+          >
+            {loadingSubsidiaries
+              ? 'Cargando…'
+              : `Cargar ${pendingSubsidiaries.count} participada${pendingSubsidiaries.count !== 1 ? 's' : ''}`}
+          </Button>
+          <IconButton size="small" onClick={() => setPendingSubsidiaries(null)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      )}
 
       {lastSearchContext && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>

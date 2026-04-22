@@ -216,6 +216,7 @@ class SpanishCompaniesService {
           new_company_name: suggestion.new_company_name || null,
           // Sole shareholder support: list of companies owned by this entity
           owns: suggestion.owns || null,
+          owns_total: suggestion.owns_total || 0,
         };
       });
 
@@ -305,6 +306,7 @@ class SpanishCompaniesService {
         company_count: suggestion.company_count || 0,
         is_sole_shareholder: !!suggestion.is_sole_shareholder,
         owns: suggestion.owns || null,
+        owns_total: suggestion.owns_total || 0,
       }));
       return {
         suggestions: suggestions,
