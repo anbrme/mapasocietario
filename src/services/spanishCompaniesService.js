@@ -450,14 +450,13 @@ class SpanishCompaniesService {
    * parsing and goes straight to the primary-parser path.
    *
    * Options:
-   *   maxOfficers  — soft cap on total (active + resigned) officers. Admins
-   *                  (Presidente, Consejero, Administrador, …) are always kept;
-   *                  non-admin roles (Apoderado, Auditor, …) are truncated.
-   *   officerDates — Map("NAME|POSITION" → latestDateMs) used to sort
-   *                  non-admin officers by recency before truncating.
+   *   maxOfficers — soft cap on total (active + resigned) officers. Board roles
+   *                 (Presidente, Consejero, Administrador, …) are always kept;
+   *                 non-board roles (Apoderado, Auditor, unknown) are truncated
+   *                 newest-first using appointed_date / resigned_date.
    */
   static v3CompanyToEntries(company, options = {}) {
-    const { maxOfficers, officerDates = null } = options;
+    const { maxOfficers } = options;
     const name = company.company_name || company.company_name_normalized || '';
     let activeList = company.officers_active || [];
     let resignedList = company.officers_resigned || [];
@@ -466,7 +465,7 @@ class SpanishCompaniesService {
       const filtered = SpanishCompaniesService.prioritizeV3Officers(
         activeList,
         resignedList,
-        { maxOfficers, officerDates }
+        { maxOfficers }
       );
       activeList = filtered.active;
       resignedList = filtered.resigned;
@@ -503,14 +502,16 @@ class SpanishCompaniesService {
 
   /**
    * Rank and truncate officer lists from a v3 company doc so large companies
-   * (Caixabank etc.) don't blow up the graph. Admin-tier officers are always
-   * retained; the remaining budget is filled with non-admin officers sorted by
-   * most recent event date descending.
+   * (Caixabank etc. — tens of thousands of historical officers) don't blow up
+   * the graph. Everyone is ranked by (position tier ASC, date DESC) using
+   * appointed_date / resigned_date from the v3 officer objects, and the top
+   * `maxOfficers` are kept. This naturally puts board roles (Presidente,
+   * Consejero, Administrador, …) first, then fills the remainder with the most
+   * recent apoderados/auditors.
    */
   static prioritizeV3Officers(activeList, resignedList, options = {}) {
-    const { maxOfficers = 100, officerDates = null } = options;
+    const { maxOfficers = 100 } = options;
 
-    // Tiering mirrors positionTier used elsewhere in the UI.
     const tierFor = pos => {
       const p = (pos || '').toUpperCase();
       if (p.startsWith('PRESIDENTE') || p.startsWith('PDTE') || p.startsWith('PRES.')) return 0;
@@ -520,49 +521,42 @@ class SpanishCompaniesService {
       if (p.startsWith('SECRETARIO') || p.startsWith('SECRET.') || p.startsWith('SRIO')) return 4;
       if (p.startsWith('LIQUIDADOR') || p.startsWith('LIQ.') || p.startsWith('LIQ ')) return 5;
       if (p.startsWith('VOCAL')) return 6;
+      if (/^(MIE|MBRO|MRO|MIEM|M)\.?COM/.test(p)) return 6;
       if (p.startsWith('AUDITOR') || p.startsWith('AUD.')) return 8;
       if (p.startsWith('APO') || p.startsWith('APODERADO')) return 9;
       return 7;
     };
-    // Admins = board-level roles always retained; apoderados/auditors = capped.
-    const isAdmin = tier => tier <= 7 && tier !== undefined;
 
     const keyFor = o => {
       const n = (o.name || o.name_normalized || '').trim().toUpperCase();
       const p = (o.position_normalized || '').trim().toUpperCase();
       return `${n}|${p}`;
     };
-    const dateOf = o => {
-      if (!officerDates) return 0;
-      return officerDates.get(keyFor(o)) || 0;
+    const dateMs = o => {
+      const d = o.appointed_date || o.resigned_date || o.date;
+      if (!d) return 0;
+      const t = new Date(d).getTime();
+      return Number.isFinite(t) ? t : 0;
     };
 
-    const annotate = (list, source) => list.map(o => ({
+    const annotate = list => list.map(o => ({
       officer: o,
-      source,
       tier: tierFor(o.position_normalized || ''),
-      date: dateOf(o),
+      date: dateMs(o),
     }));
 
-    const all = [
-      ...annotate(activeList, 'active'),
-      ...annotate(resignedList, 'resigned'),
-    ];
-
-    const admins = all.filter(x => isAdmin(x.tier));
-    const nonAdmins = all.filter(x => !isAdmin(x.tier));
-    // Non-admins: most recent first; if no date, fall back to tier then name.
-    nonAdmins.sort((a, b) => {
-      if (b.date !== a.date) return b.date - a.date;
+    const all = [...annotate(activeList), ...annotate(resignedList)];
+    // Primary sort: tier ASC (board first). Secondary: date DESC (most recent first).
+    all.sort((a, b) => {
       if (a.tier !== b.tier) return a.tier - b.tier;
+      if (b.date !== a.date) return b.date - a.date;
       const an = (a.officer.name || a.officer.name_normalized || '').toUpperCase();
       const bn = (b.officer.name || b.officer.name_normalized || '').toUpperCase();
       return an.localeCompare(bn);
     });
 
-    const remaining = Math.max(0, maxOfficers - admins.length);
-    const keptNonAdmins = nonAdmins.slice(0, remaining);
-    const keptKeys = new Set([...admins, ...keptNonAdmins].map(x => keyFor(x.officer)));
+    const kept = all.slice(0, maxOfficers);
+    const keptKeys = new Set(kept.map(x => keyFor(x.officer)));
 
     return {
       active: activeList.filter(o => keptKeys.has(keyFor(o))),

@@ -351,57 +351,16 @@ const normalizeEdgeLabelText = (relationship, _category) => {
 };
 
 // Convert v3 company docs to graph-ready entries with per-company officer caps.
-// Admins (Presidente, Consejero, …) are always kept; non-admin officers (apoderados,
-// auditors, …) are truncated newest-first. When any doc overflows `cap`, events are
-// fetched up front so non-admin sorting is date-accurate.
-const v3DocsToCappedEntries = async (docs, cap) => {
+// Board roles (Presidente, Vicepresidente, Consejero, Administrador, Secretario,
+// Liquidador, Vocal, comisión members) are always kept. Non-board officers
+// (apoderados, auditors, unknown roles) are truncated newest-first using
+// appointed_date / resigned_date carried on each v3 officer object. Synchronous —
+// no extra network round-trips.
+const v3DocsToCappedEntries = (docs, cap) => {
   if (!cap || cap <= 0) {
     return docs.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
   }
-  const overflowing = docs.filter(
-    c => (c.officers_active?.length || 0) + (c.officers_resigned?.length || 0) > cap
-  );
-  const officerDatesByCompany = new Map();
-  if (overflowing.length > 0) {
-    const eventFetchSize = Math.max(500, cap * 5);
-    const eventResults = await Promise.all(
-      overflowing.map(async c => {
-        const cname = c.company_name || c.company_name_normalized || '';
-        try {
-          const resp = await spanishCompaniesService.getCompanyEventsV3(cname, { size: eventFetchSize });
-          return { cname, events: resp?.events || [] };
-        } catch (err) {
-          console.warn(`[v3DocsToCappedEntries] events fetch failed for "${cname}":`, err?.message || err);
-          return { cname, events: [] };
-        }
-      })
-    );
-    eventResults.forEach(({ cname, events }) => {
-      const officerDates = new Map();
-      events.forEach(evt => {
-        const evtDate = evt.event_date || evt.indexed_date || evt.date;
-        if (!evtDate) return;
-        const dateMs = new Date(evtDate).getTime();
-        if (!dateMs) return;
-        (evt.officers || []).forEach(o => {
-          const n = (o.name || o.name_normalized || '').trim().toUpperCase();
-          const p = (o.position_normalized || o.position || '').trim().toUpperCase();
-          if (!n) return;
-          const key = `${n}|${p}`;
-          const prev = officerDates.get(key) || 0;
-          if (dateMs > prev) officerDates.set(key, dateMs);
-        });
-      });
-      officerDatesByCompany.set(normalizeCompanyName(cname).toUpperCase(), officerDates);
-    });
-  }
-  return docs.flatMap(c => {
-    const cname = normalizeCompanyName(c.company_name || c.company_name_normalized || '').toUpperCase();
-    return SpanishCompaniesService.v3CompanyToEntries(c, {
-      maxOfficers: cap,
-      officerDates: officerDatesByCompany.get(cname) || null,
-    });
-  });
+  return docs.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c, { maxOfficers: cap }));
 };
 
 const dedupeGraphLinks = links => {
