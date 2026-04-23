@@ -84,7 +84,8 @@ const CATEGORY_LAYOUT_ANGLE = {
   revocaciones: Math.PI,
 };
 
-const SEARCH_SIZE_OPTIONS = [25, 50, 100, 200, 500];
+const OFFICERS_PER_COMPANY_OPTIONS = [25, 50, 100, 200, 500];
+const COMPANIES_PER_SEARCH_OPTIONS = [10, 25, 50, 100];
 
 // Normalize company name for consistent ID generation across all code paths
 const normalizeCompanyName = name => {
@@ -350,6 +351,38 @@ const normalizeEdgeLabelText = (relationship, _category) => {
   return text;
 };
 
+// Map a raw position string (as stored on link.relationship, e.g. "APO.SOL",
+// "CONS.EJECUTIVO", "MIE.COM.PER.", "APODERAD.SOL") to one of ~10 canonical
+// category labels used for filter chips. Keeps the chip row from growing to 50+
+// entries on large companies.
+const POSITION_CATEGORY_ORDER = [
+  'Presidente',
+  'Vicepresidente',
+  'Consejero',
+  'Administrador',
+  'Secretario',
+  'Liquidador',
+  'Vocal / Comisión',
+  'Apoderado',
+  'Auditor',
+  'Otros',
+];
+const positionCategoryFor = pos => {
+  const p = (pos || '').toUpperCase();
+  if (!p) return 'Otros';
+  if (p.startsWith('PRESIDENTE') || p.startsWith('PDTE') || p.startsWith('PRES.') || p.startsWith('PRE.COM')) return 'Presidente';
+  if (p.startsWith('VICEPRESIDENTE') || p.startsWith('VPDTE') || p.startsWith('VICEPTE') || p.startsWith('VIC.COM') || p.startsWith('VICPTE')) return 'Vicepresidente';
+  if (p.startsWith('CONSEJERO') || p.startsWith('CONS.') || p.startsWith('CONS ') || p.startsWith('CON.DEL') || p.startsWith('CONS.EJ') || p.startsWith('CONS.IND')) return 'Consejero';
+  if (p.startsWith('ADMINISTRADOR') || p.startsWith('ADM.') || p.startsWith('ADM ')) return 'Administrador';
+  if (p.startsWith('SECRETARIO') || p.startsWith('SECRET.') || p.startsWith('SRIO') || p.startsWith('SECR.')) return 'Secretario';
+  if (p.startsWith('LIQUIDADOR') || p.startsWith('LIQ.') || p.startsWith('LIQ ')) return 'Liquidador';
+  if (p.startsWith('VOCAL')) return 'Vocal / Comisión';
+  if (/^(MIE|MBRO|MRO|MIEM|M)\.?COM/.test(p)) return 'Vocal / Comisión';
+  if (p.startsWith('AUDITOR') || p.startsWith('AUD.')) return 'Auditor';
+  if (p.startsWith('APO') || p.startsWith('APODERADO') || p.startsWith('APD')) return 'Apoderado';
+  return 'Otros';
+};
+
 // Convert v3 company docs to graph-ready entries with per-company officer caps.
 // Board roles (Presidente, Vicepresidente, Consejero, Administrador, Secretario,
 // Liquidador, Vocal, comisión members) are always kept. Non-board officers
@@ -484,7 +517,11 @@ const SpanishCompanyNetworkGraph = ({
   const [statusFilters, setStatusFilters] = useState(new Set()); // 'active' | 'ceased'
   const [positionFilters, setPositionFilters] = useState(new Set());
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResultSize, setSearchResultSize] = useState(100);
+  // Per-company cap on officer nodes; apoderados truncated newest-first.
+  const [officersPerCompany, setOfficersPerCompany] = useState(100);
+  // Company-level cap sent as `size` to /bormes/v3/search — how many company
+  // docs the backend returns for a given query.
+  const [companiesPerSearch, setCompaniesPerSearch] = useState(25);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastSearchContext, setLastSearchContext] = useState(null);
 
@@ -811,7 +848,7 @@ const SpanishCompanyNetworkGraph = ({
 
     if (initialCompanyData && initialCompanyData.length > 0) {
       (async () => {
-        const { entries, aliasMap } = await fetchWithNameChangeRelations(initialCompanyData, { cap: searchResultSize });
+        const { entries, aliasMap } = await fetchWithNameChangeRelations(initialCompanyData, { cap: officersPerCompany });
         await addCompanyWithOfficersToGraph(entries, null, aliasMap);
         entries.forEach(company => {
           const companyName = normalizeCompanyName(company.name || company.company_name || '');
@@ -1182,7 +1219,7 @@ const SpanishCompanyNetworkGraph = ({
             query,
             searchType: 'officer',
             exactMatch: false,
-            size: searchResultSize,
+            size: companiesPerSearch,
             offset: fetchedCount,
             hasMore: false, // v3 returns all companies for this officer
             total: data.total || fetchedCount,
@@ -1195,18 +1232,17 @@ const SpanishCompanyNetworkGraph = ({
         // Company search: use borme_companies_v3 (clean, pre-aggregated index with
         // explicit officers_active/officers_resigned arrays)
         const v3Data = await spanishCompaniesService.searchCompaniesV3(query, {
-          size: searchResultSize,
+          size: companiesPerSearch,
           exact: exactMatch,
         });
 
         const v3Results = v3Data.results || [];
         if (v3Results.length > 0) {
-          // Admins (Presidente, Consejero, …) are always kept; apoderados and
-          // other non-board roles are capped at searchResultSize, newest first.
-          const baseEntries = await v3DocsToCappedEntries(v3Results, searchResultSize);
+          // Board roles always kept; apoderados/others capped per-company, newest first.
+          const baseEntries = await v3DocsToCappedEntries(v3Results, officersPerCompany);
           // Check for name changes on ALL results before filtering,
           // so that old-name entries with has_new_name are discovered
-          const { entries: withRelated, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: searchResultSize });
+          const { entries: withRelated, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
           const filtered = filterCompanyMatches(withRelated, query);
           // Also include entries that didn't match the query but are linked via name change
           const aliasedEntries = aliasMap
@@ -1232,7 +1268,7 @@ const SpanishCompanyNetworkGraph = ({
               query,
               searchType: 'company',
               exactMatch: exactMatch,
-              size: searchResultSize,
+              size: companiesPerSearch,
               offset: v3Results.length,
               hasMore: false, // v3 company docs are complete (all officers pre-aggregated)
               total: v3Data.total || v3Results.length,
@@ -2555,8 +2591,8 @@ const SpanishCompanyNetworkGraph = ({
         // explicit active/resigned status
         const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName);
         if (v3.company) {
-          const baseEntries = await v3DocsToCappedEntries([v3.company], searchResultSize);
-          const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: searchResultSize });
+          const baseEntries = await v3DocsToCappedEntries([v3.company], officersPerCompany);
+          const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
           await addCompanyWithOfficersToGraph(entries, companyNode, aliasMap);
           return true;
         }
@@ -2566,7 +2602,7 @@ const SpanishCompanyNetworkGraph = ({
         return false;
       }
     },
-    [addCompanyWithOfficersToGraph, fetchWithNameChangeRelations, searchResultSize]
+    [addCompanyWithOfficersToGraph, fetchWithNameChangeRelations, officersPerCompany]
   );
 
   // Expand a node (called on double-click)
@@ -3445,13 +3481,22 @@ const SpanishCompanyNetworkGraph = ({
   };
 
   // Available positions extracted from current graph links
+  // Group raw position strings into canonical category chips (Presidente,
+  // Consejero, Apoderado, …). For each category present in the graph we also
+  // track how many distinct link.relationship variants rolled up into it so the
+  // chip can show a count ("Apoderado (8)").
   const availablePositions = React.useMemo(() => {
-    const positions = new Set();
+    const variantsByCategory = new Map();
     graphData.links.forEach(link => {
       const rel = (link.relationship || '').trim();
-      if (rel) positions.add(rel);
+      if (!rel) return;
+      const cat = positionCategoryFor(rel);
+      if (!variantsByCategory.has(cat)) variantsByCategory.set(cat, new Set());
+      variantsByCategory.get(cat).add(rel);
     });
-    return [...positions].sort();
+    return POSITION_CATEGORY_ORDER
+      .filter(cat => variantsByCategory.has(cat))
+      .map(cat => ({ category: cat, variantCount: variantsByCategory.get(cat).size }));
   }, [graphData.links]);
 
   const hasChipFilters = statusFilters.size > 0 || positionFilters.size > 0;
@@ -3496,7 +3541,7 @@ const SpanishCompanyNetworkGraph = ({
 
         if (positionFilters.size > 0) {
           const rel = (link.relationship || '').trim();
-          if (!positionFilters.has(rel)) return false;
+          if (!positionFilters.has(positionCategoryFor(rel))) return false;
         }
 
         return true;
@@ -4053,14 +4098,29 @@ const SpanishCompanyNetworkGraph = ({
           </Select>
         </FormControl>
  
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Resultados</InputLabel>
+        <FormControl size="small" sx={{ minWidth: 110 }}>
+          <InputLabel>Empresas</InputLabel>
           <Select
-            value={searchResultSize}
-            onChange={e => setSearchResultSize(Number(e.target.value))}
-            label="Resultados"
+            value={companiesPerSearch}
+            onChange={e => setCompaniesPerSearch(Number(e.target.value))}
+            label="Empresas"
           >
-            {SEARCH_SIZE_OPTIONS.map(size => (
+            {COMPANIES_PER_SEARCH_OPTIONS.map(size => (
+              <MenuItem key={size} value={size}>
+                {size}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel>Cargos/empresa</InputLabel>
+          <Select
+            value={officersPerCompany}
+            onChange={e => setOfficersPerCompany(Number(e.target.value))}
+            label="Cargos/empresa"
+          >
+            {OFFICERS_PER_COMPANY_OPTIONS.map(size => (
               <MenuItem key={size} value={size}>
                 {size}
               </MenuItem>
@@ -4389,15 +4449,15 @@ const SpanishCompanyNetworkGraph = ({
           {availablePositions.length > 0 && (
             <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
           )}
-          {availablePositions.map(pos => (
+          {availablePositions.map(({ category, variantCount }) => (
             <Chip
-              key={pos}
-              label={pos}
+              key={category}
+              label={variantCount > 1 ? `${category} (${variantCount})` : category}
               size="small"
-              variant={positionFilters.has(pos) ? 'filled' : 'outlined'}
+              variant={positionFilters.has(category) ? 'filled' : 'outlined'}
               onClick={() => setPositionFilters(prev => {
                 const next = new Set(prev);
-                next.has(pos) ? next.delete(pos) : next.add(pos);
+                next.has(category) ? next.delete(category) : next.add(category);
                 return next;
               })}
             />
