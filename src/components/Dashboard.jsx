@@ -826,7 +826,7 @@ export default function Dashboard() {
 
       {/* Footer */}
       <Typography variant="body2" color="text.disabled" align="center" sx={{ mt: 'auto', pt: 3, pb: 1 }}>
-        Datos del Registro Mercantil (BORME). Actualizado diariamente.
+        Basado en datos del Boletín Oficial del Registro Mercantil (BORME). Actualizado diariamente.
       </Typography>
 
       </Box>{/* end scrollable tab content */}
