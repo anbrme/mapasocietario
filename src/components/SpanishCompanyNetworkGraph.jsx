@@ -1946,12 +1946,54 @@ const SpanishCompanyNetworkGraph = ({
             });
 
             // Add officer nodes and links to company
-            const allOfficersList = [
+            let allOfficersList = [
               ...allOfficers.nombramientos,
               ...allOfficers.reelecciones,
               ...allOfficers.revocaciones,
               ...allOfficers.ceses_dimisiones,
             ];
+
+            // Post-merge cap: the per-v3-doc cap already fired, but several docs
+            // (e.g. "CAIXABANK SA" + "CAIXABANK S.A." + a previous-name doc) get
+            // grouped into one company node here, stacking their capped officer
+            // lists. Apply the cap again on the merged list so the UI limit is
+            // actually enforced per company node.
+            if (officersPerCompany && allOfficersList.length > officersPerCompany) {
+              const tierFor = pos => {
+                const p = (pos || '').toUpperCase();
+                if (p.startsWith('PRESIDENTE') || p.startsWith('PDTE') || p.startsWith('PRES.') || p.startsWith('PRE.COM')) return 0;
+                if (p.startsWith('VICEPRESIDENTE') || p.startsWith('VPDTE') || p.startsWith('VICEPTE') || p.startsWith('VIC.COM')) return 1;
+                if (p.startsWith('CONSEJERO') || p.startsWith('CONS.') || p.startsWith('CONS ') || p.startsWith('CON.DEL')) return 2;
+                if (p.startsWith('ADMINISTRADOR') || p.startsWith('ADM.') || p.startsWith('ADM ')) return 3;
+                if (p.startsWith('SECRETARIO') || p.startsWith('SECRET.') || p.startsWith('SRIO')) return 4;
+                if (p.startsWith('LIQUIDADOR') || p.startsWith('LIQ.') || p.startsWith('LIQ ')) return 5;
+                if (p.startsWith('VOCAL')) return 6;
+                if (/^(MIE|MBRO|MRO|MIEM|M)\.?COM/.test(p)) return 6;
+                if (p.startsWith('AUDITOR') || p.startsWith('AUD.')) return 8;
+                if (p.startsWith('APO') || p.startsWith('APODERADO')) return 9;
+                return 7;
+              };
+              const dateOf = o => {
+                const v = o.appointed_date || o.resigned_date || o.date;
+                if (!v) return 0;
+                const t = new Date(v).getTime();
+                return Number.isFinite(t) ? t : 0;
+              };
+              allOfficersList.sort((a, b) => {
+                const ta = tierFor(a.position), tb = tierFor(b.position);
+                if (ta !== tb) return ta - tb;
+                const da = dateOf(a), db = dateOf(b);
+                if (db !== da) return db - da;
+                return (a.name || '').localeCompare(b.name || '');
+              });
+              allOfficersList = allOfficersList.slice(0, officersPerCompany);
+              // Rebuild per-category buckets so downstream link-category logic
+              // still sees the right events for each kept officer.
+              const keptKeys = new Set(allOfficersList.map(o => `${o.name}-${o.position}`));
+              Object.keys(allOfficers).forEach(k => {
+                allOfficers[k] = allOfficers[k].filter(o => keptKeys.has(`${o.name}-${o.position}`));
+              });
+            }
 
             // Determine effective (most recent) category per (officer, position) pair.
             // Mirrors spanishOfficerAnalyzer: tracks each role independently so a cessation
@@ -2104,7 +2146,7 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [extractOfficersFromText, isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates]
+    [extractOfficersFromText, isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates, officersPerCompany]
   );
 
   // Add officer to graph with associated companies
@@ -3480,24 +3522,51 @@ const SpanishCompanyNetworkGraph = ({
     return c.includes('nombramiento') || c.includes('reeleccion') || c.includes('reelección');
   };
 
-  // Available positions extracted from current graph links
-  // Group raw position strings into canonical category chips (Presidente,
-  // Consejero, Apoderado, …). For each category present in the graph we also
-  // track how many distinct link.relationship variants rolled up into it so the
-  // chip can show a count ("Apoderado (8)").
+  // Facet counts for the chip row — each chip's count reflects the other
+  // filter's state so users see how many items would remain if they picked it.
+  // Position chip counts honour the vigentes/cesados toggle; status chip counts
+  // honour the position toggle.
+  const linkPassesStatus = React.useCallback(link => {
+    if (statusFilters.size === 0) return true;
+    if (link.type && link.type !== 'officer-company') return true;
+    const active = isActiveLinkCategory(link.category);
+    const wantActive = statusFilters.has('active');
+    const wantCeased = statusFilters.has('ceased');
+    if (wantActive && !wantCeased && !active) return false;
+    if (wantCeased && !wantActive && active) return false;
+    return true;
+  }, [statusFilters]);
+  const linkPassesPosition = React.useCallback(link => {
+    if (positionFilters.size === 0) return true;
+    if (link.type && link.type !== 'officer-company') return true;
+    const rel = (link.relationship || '').trim();
+    return positionFilters.has(positionCategoryFor(rel));
+  }, [positionFilters]);
+
   const availablePositions = React.useMemo(() => {
-    const variantsByCategory = new Map();
+    const countByCategory = new Map();
     graphData.links.forEach(link => {
       const rel = (link.relationship || '').trim();
       if (!rel) return;
+      if (!linkPassesStatus(link)) return;
       const cat = positionCategoryFor(rel);
-      if (!variantsByCategory.has(cat)) variantsByCategory.set(cat, new Set());
-      variantsByCategory.get(cat).add(rel);
+      countByCategory.set(cat, (countByCategory.get(cat) || 0) + 1);
     });
     return POSITION_CATEGORY_ORDER
-      .filter(cat => variantsByCategory.has(cat))
-      .map(cat => ({ category: cat, variantCount: variantsByCategory.get(cat).size }));
-  }, [graphData.links]);
+      .filter(cat => countByCategory.has(cat))
+      .map(cat => ({ category: cat, count: countByCategory.get(cat) }));
+  }, [graphData.links, linkPassesStatus]);
+
+  const statusCounts = React.useMemo(() => {
+    let active = 0, ceased = 0;
+    graphData.links.forEach(link => {
+      if (link.type && link.type !== 'officer-company') return;
+      if (!linkPassesPosition(link)) return;
+      if (isActiveLinkCategory(link.category)) active++;
+      else ceased++;
+    });
+    return { active, ceased };
+  }, [graphData.links, linkPassesPosition]);
 
   const hasChipFilters = statusFilters.size > 0 || positionFilters.size > 0;
 
@@ -4413,7 +4482,7 @@ const SpanishCompanyNetworkGraph = ({
       {graphData.links.length > 0 && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1, alignItems: 'center' }}>
           <Chip
-            label="Vigentes"
+            label={`Vigentes (${statusCounts.active})`}
             size="small"
             variant={statusFilters.has('active') ? 'filled' : 'outlined'}
             color="success"
@@ -4424,7 +4493,7 @@ const SpanishCompanyNetworkGraph = ({
             })}
           />
           <Chip
-            label="Cesados"
+            label={`Cesados (${statusCounts.ceased})`}
             size="small"
             variant={statusFilters.has('ceased') ? 'filled' : 'outlined'}
             color="error"
@@ -4449,10 +4518,10 @@ const SpanishCompanyNetworkGraph = ({
           {availablePositions.length > 0 && (
             <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
           )}
-          {availablePositions.map(({ category, variantCount }) => (
+          {availablePositions.map(({ category, count }) => (
             <Chip
               key={category}
-              label={variantCount > 1 ? `${category} (${variantCount})` : category}
+              label={`${category} (${count})`}
               size="small"
               variant={positionFilters.has(category) ? 'filled' : 'outlined'}
               onClick={() => setPositionFilters(prev => {
