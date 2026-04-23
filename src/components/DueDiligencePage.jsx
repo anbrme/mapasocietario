@@ -266,7 +266,7 @@ export default function DueDiligencePage() {
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.5 }}>
                 Mapa Societario is our dedicated Spanish corporate research product. For multi-jurisdiction
-                investigations covering the UK, France, Switzerland and (soon) Italy, we also operate{' '}
+                investigations covering the UK, France, Switzerland and Italy, we also operate{' '}
                 <Link
                   href="https://ncdata.eu"
                   target="_blank"
