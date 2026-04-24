@@ -1574,7 +1574,7 @@ const SpanishCompanyNetworkGraph = ({
   }, [isCompanyOfficer]);
 
   // Fetch real appointment/cessation event dates per company via borme_events_v3
-  // and patch existing officer-company links with link.events = [{ category, date }, ...].
+  // and patch existing officer-company links with link.events = [{ category, date, position }, ...].
   // Runs fire-and-forget after the initial graph build — dates appear progressively.
   const enrichLinksWithEventDates = useCallback(async (companyNamesRaw) => {
     const unique = Array.from(
@@ -1598,7 +1598,9 @@ const SpanishCompanyNetworkGraph = ({
       })
     );
 
-    // Build (officerUpper|companyUpper|category) → Set<date>
+    // Build (officerUpper|companyUpper|category) → Map<"date|position", {date, position}>
+    // Keyed by date+position so that e.g. a revocation as "APO." and an appointment
+    // as "ADM." on the same date remain distinct rows with their own Cargo.
     const eventMap = new Map();
     results.forEach(({ company, events }) => {
       const companyUpper = company.toUpperCase();
@@ -1615,9 +1617,13 @@ const SpanishCompanyNetworkGraph = ({
           else if (evtType.includes('revocac')) cat = 'revocaciones';
           else if (evtType.includes('nombr')) cat = 'nombramientos';
           if (!cat) return;
+          const position = o.specific_role || o.position_normalized || o.role || o.position || '';
           const key = `${officerUpper}|${companyUpper}|${cat}`;
-          if (!eventMap.has(key)) eventMap.set(key, new Set());
-          eventMap.get(key).add(evtDate);
+          if (!eventMap.has(key)) eventMap.set(key, new Map());
+          const dedupKey = `${evtDate}|${position}`;
+          if (!eventMap.get(key).has(dedupKey)) {
+            eventMap.get(key).set(dedupKey, { date: evtDate, position });
+          }
         });
       });
     });
@@ -1648,8 +1654,12 @@ const SpanishCompanyNetworkGraph = ({
         const companyUpper = (companyNode.name || '').toUpperCase();
         const events = [];
         ['nombramientos', 'ceses_dimisiones', 'reelecciones', 'revocaciones'].forEach(cat => {
-          const dates = eventMap.get(`${officerUpper}|${companyUpper}|${cat}`);
-          if (dates) dates.forEach(d => events.push({ category: cat, date: d }));
+          const entries = eventMap.get(`${officerUpper}|${companyUpper}|${cat}`);
+          if (entries) {
+            entries.forEach(({ date, position }) => {
+              events.push({ category: cat, date, position });
+            });
+          }
         });
 
         if (events.length === 0) return link;
@@ -4014,6 +4024,7 @@ const SpanishCompanyNetworkGraph = ({
         link.events.forEach(ev => {
           rows.push({
             ...baseRow,
+            position: ev.position || baseRow.position,
             category: ev.category,
             date: formatDate(ev.date),
             dateRaw: ev.date || null,
