@@ -332,6 +332,36 @@ const normalizeCategoryKey = category => {
   return 'nombramientos';
 };
 
+// Resolve category for a v3 expand-officer entry. Prefer the explicit
+// `status` field (active/ceased) the backend copied from officers_active /
+// officers_resigned; fall back to `event_type` when status is absent.
+const resolveOfficerEntryCategory = entry => {
+  const status = (entry?.status || '').toLowerCase();
+  if (status === 'ceased' || status === 'resigned') return 'ceses_dimisiones';
+  if (status === 'active') {
+    const evt = (entry.event_type || entry.entry_type || '').toLowerCase();
+    if (evt.includes('reelecc')) return 'reelecciones';
+    return 'nombramientos';
+  }
+  return normalizeCategoryKey(entry?.event_type || entry?.entry_type);
+};
+
+const entryTimestamp = entry => {
+  const v = entry?.date || entry?.event_date || entry?.indexed_date;
+  if (!v) return 0;
+  const t = new Date(v).getTime();
+  return Number.isFinite(t) ? t : 0;
+};
+
+// Determine the effective category for a group of entries sharing the
+// same (officer, company, position). A ceased status wins unless a later
+// appointment exists for the same role.
+const resolveEffectiveCategoryForEntries = entries => {
+  if (!entries || entries.length === 0) return 'nombramientos';
+  const sorted = entries.slice().sort((a, b) => entryTimestamp(b) - entryTimestamp(a));
+  return resolveOfficerEntryCategory(sorted[0]);
+};
+
 const normalizeNameForMerge = value =>
   (value || '')
     .normalize('NFD')
@@ -2195,7 +2225,11 @@ const SpanishCompanyNetworkGraph = ({
           }
         }
 
-        // Group officer results by company name, merging name-changed companies
+        // Group officer results by (company, position), merging name-changed
+        // companies. Splitting per role is critical: one officer can hold
+        // multiple positions at the same company (e.g. APODERADO + ADM. MANCOM)
+        // with independent active/ceased status. Collapsing them would hide
+        // roles and mis-label status.
         const companiesMap = new Map();
         results.forEach(entry => {
           const companyName = (entry.company_name || entry.company || entry.name || '').trim();
@@ -2209,9 +2243,8 @@ const SpanishCompanyNetworkGraph = ({
             companiesMap.set(key, {
               name: displayName,
               entries: [],
-              roles: [],
-              categories: [],
               previousNames: [],
+              positionGroups: new Map(),
             });
           }
           const group = companiesMap.get(key);
@@ -2220,10 +2253,12 @@ const SpanishCompanyNetworkGraph = ({
             group.previousNames.push(companyName);
           }
           // Prefer specific_role (actual job title) over position (BORME section name)
-          const roleLabel = entry.specific_role || entry.role || entry.position;
-          if (roleLabel) group.roles.push(roleLabel);
-          const catText = entry.event_type || entry.entry_type;
-          if (catText) group.categories.push(catText);
+          const roleLabel = (entry.specific_role || entry.role || entry.position || '').trim();
+          const posKey = roleLabel.toLowerCase() || '_unknown_';
+          if (!group.positionGroups.has(posKey)) {
+            group.positionGroups.set(posKey, { role: roleLabel, entries: [] });
+          }
+          group.positionGroups.get(posKey).entries.push(entry);
         });
 
         const companyEntries = Array.from(companiesMap.values());
@@ -2327,30 +2362,40 @@ const SpanishCompanyNetworkGraph = ({
               newNodes.push(companyNode);
             }
 
-            // Add link between officer and company
-            const relationship = group.roles[0] || '';
-            // If any entry is a cessation, the link is ceased (cessation supersedes appointment)
-            const hasCessation = group.categories.some(c => {
-              const cl = (c || '').toLowerCase();
-              return cl.includes('cese') || cl.includes('dimis') || cl.includes('revoc');
-            });
-            const category = hasCessation ? 'ceses_dimisiones' : normalizeCategoryKey(group.categories[0]);
-            const linkId = `${officerId}-${companyId}`;
-            if (!newLinks.find(l => l.id === linkId)) {
-              // Check if all entries for this officer came from a previous name
-              const prevNames = group.previousNames || [];
-              const fromPrevName = prevNames.length > 0 ? prevNames[0] : null;
+            // One link per (officer, company, position) — category derived
+            // from the most recent event for that specific role, preferring
+            // the explicit status field (active/ceased) over event_type.
+            const prevNames = group.previousNames || [];
+            const fromPrevName = prevNames.length > 0 ? prevNames[0] : null;
+            if (!officerNode.positions) officerNode.positions = [];
+            group.positionGroups.forEach((posGroup, posKey) => {
+              const category = resolveEffectiveCategoryForEntries(posGroup.entries);
+              const linkIdSuffix = posKey.replace(/[^a-z0-9]/g, '') || 'unknownpos';
+              const linkId = `${officerId}-${companyId}-${linkIdSuffix}`;
+              if (newLinks.find(l => l.id === linkId)) return;
+              const latestEntry = posGroup.entries
+                .slice()
+                .sort((a, b) => entryTimestamp(b) - entryTimestamp(a))[0];
+              if (!officerNode.positions.some(
+                p => p.company === companyName && p.position === posGroup.role
+              )) {
+                officerNode.positions.push({
+                  company: companyName,
+                  position: posGroup.role,
+                  category,
+                });
+              }
               newLinks.push({
                 id: linkId,
                 source: officerId,
                 target: companyId,
                 type: 'officer-company',
-                relationship: relationship,
-                category: category,
-                date: group.entries[0]?.indexed_date || group.entries[0]?.date || null,
+                relationship: posGroup.role,
+                category,
+                date: latestEntry?.date || latestEntry?.event_date || latestEntry?.indexed_date || null,
                 ...(fromPrevName && { fromPreviousName: fromPrevName }),
               });
-            }
+            });
           });
 
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
@@ -2494,7 +2539,8 @@ const SpanishCompanyNetworkGraph = ({
           } catch { /* non-fatal */ }
         }
 
-        // Group officer results by company name, merging name-changed companies
+        // Group officer results by (company, position), merging name-changed
+        // companies. See addOfficerToGraph — same rationale: one role per link.
         const companiesMap = new Map();
         data.officers.forEach(entry => {
           const companyName = (entry.company_name || entry.company || entry.name || '').trim();
@@ -2504,17 +2550,26 @@ const SpanishCompanyNetworkGraph = ({
           if (resolved) key = resolved;
           if (!companiesMap.has(key)) {
             const displayName = resolved ? resolved : companyName;
-            companiesMap.set(key, { name: displayName, entries: [], roles: [], categories: [], previousNames: [] });
+            companiesMap.set(key, {
+              name: displayName,
+              entries: [],
+              previousNames: [],
+              positionGroups: new Map(),
+            });
           }
           const group = companiesMap.get(key);
           group.entries.push(entry);
           if (resolved && !group.previousNames.includes(companyName)) {
             group.previousNames.push(companyName);
           }
-          const roleText = entry.specific_role || entry.role || entry.position || '';
-          if (roleText && !BORME_SECTION_NAMES.has(roleText.toLowerCase())) group.roles.push(roleText);
-          const catText = entry.entry_type || entry.event_type;
-          if (catText) group.categories.push(catText);
+          const roleText = (entry.specific_role || entry.role || entry.position || '').trim();
+          const isSectionName = roleText && BORME_SECTION_NAMES.has(roleText.toLowerCase());
+          const posRole = isSectionName ? '' : roleText;
+          const posKey = posRole.toLowerCase() || '_unknown_';
+          if (!group.positionGroups.has(posKey)) {
+            group.positionGroups.set(posKey, { role: posRole, entries: [] });
+          }
+          group.positionGroups.get(posKey).entries.push(entry);
         });
         const companyEntries = Array.from(companiesMap.values());
 
@@ -2589,29 +2644,40 @@ const SpanishCompanyNetworkGraph = ({
               });
             }
 
-            // Always add link (even if company node already existed)
-            const relationship = group.roles[0] || '';
-            // If any entry is a cessation, the link is ceased
-            const hasCessation = group.categories.some(c => {
-              const cl = (c || '').toLowerCase();
-              return cl.includes('cese') || cl.includes('dimis') || cl.includes('revoc');
-            });
-            const category = hasCessation ? 'ceses_dimisiones' : normalizeCategoryKey(group.categories[0]);
-            const linkId = `${officerNode.id}-${companyId}`;
-            if (!newLinks.find(l => l.id === linkId)) {
-              const prevNames = group.previousNames || [];
-              const fromPrevName = prevNames.length > 0 ? prevNames[0] : null;
+            // One link per (officer, company, position). See addOfficerToGraph.
+            const prevNames = group.previousNames || [];
+            const fromPrevName = prevNames.length > 0 ? prevNames[0] : null;
+            const liveOfficerNode =
+              newNodes.find(n => n.id === officerNode.id) || officerNode;
+            if (!liveOfficerNode.positions) liveOfficerNode.positions = [];
+            group.positionGroups.forEach((posGroup, posKey) => {
+              const category = resolveEffectiveCategoryForEntries(posGroup.entries);
+              const linkIdSuffix = posKey.replace(/[^a-z0-9]/g, '') || 'unknownpos';
+              const linkId = `${officerNode.id}-${companyId}-${linkIdSuffix}`;
+              if (newLinks.find(l => l.id === linkId)) return;
+              const latestEntry = posGroup.entries
+                .slice()
+                .sort((a, b) => entryTimestamp(b) - entryTimestamp(a))[0];
+              if (!liveOfficerNode.positions.some(
+                p => p.company === companyName && p.position === posGroup.role
+              )) {
+                liveOfficerNode.positions.push({
+                  company: companyName,
+                  position: posGroup.role,
+                  category,
+                });
+              }
               newLinks.push({
                 id: linkId,
                 source: officerNode.id,
                 target: companyId,
                 type: 'officer-company',
-                relationship: relationship,
-                category: category,
-                date: group.entries[0]?.indexed_date || group.entries[0]?.date || null,
+                relationship: posGroup.role,
+                category,
+                date: latestEntry?.date || latestEntry?.event_date || latestEntry?.indexed_date || null,
                 ...(fromPrevName && { fromPreviousName: fromPrevName }),
               });
-            }
+            });
           });
 
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
@@ -2625,6 +2691,12 @@ const SpanishCompanyNetworkGraph = ({
             addOwnedCompaniesForEntity(cn, cId, 'company');
           });
         }
+        // Fire-and-forget: enrich links with real appointment/cessation dates
+        // from borme_events_v3 so tooltips/side panel show per-role history.
+        const enrichNames = companyEntries
+          .map(g => normalizeCompanyName(g.name || ''))
+          .filter(Boolean);
+        if (enrichNames.length) enrichLinksWithEventDates(enrichNames);
         return true;
       }
       return false;
@@ -2632,7 +2704,7 @@ const SpanishCompanyNetworkGraph = ({
       console.error('Error expanding officer node:', err);
       return false;
     }
-  }, [viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity]);
+  }, [viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates]);
 
   // Expand company node to show its officers
   const expandCompanyNode = useCallback(
