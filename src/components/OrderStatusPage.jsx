@@ -381,6 +381,11 @@ export default function OrderStatusPage() {
                 >
                   {copied ? 'Copied!' : 'Copy order link'}
                 </Button>
+                <Typography variant="caption" sx={{ color: 'text.disabled', mt: 0.5 }}>
+                  Taking longer than 2 minutes? Email{' '}
+                  <Link href="mailto:app@ncdata.eu" sx={{ color: 'text.secondary' }}>app@ncdata.eu</Link>
+                  {' '}with your order reference and we'll look into it.
+                </Typography>
               </Box>
             </Box>
           )}
@@ -439,6 +444,11 @@ export default function OrderStatusPage() {
                 >
                   {copied ? 'Copied!' : 'Copy order link'}
                 </Button>
+                <Typography variant="caption" sx={{ color: 'text.disabled', mt: 0.5 }}>
+                  Any question or concern? Email{' '}
+                  <Link href="mailto:app@ncdata.eu" sx={{ color: 'text.secondary' }}>app@ncdata.eu</Link>
+                  {' '}with your order reference — we usually reply within a few hours on business days.
+                </Typography>
               </Box>
             </Box>
           )}

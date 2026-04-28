@@ -383,12 +383,58 @@ export default function DueDiligencePage() {
           </AccordionDetails>
         </Accordion>
 
+        {/* Our commitment */}
+        <Paper
+          elevation={0}
+          sx={{
+            width: '100%',
+            p: 3,
+            bgcolor: 'rgba(255,255,255,0.025)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 2,
+          }}
+        >
+          <Typography
+            variant="overline"
+            sx={{
+              display: 'block',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              color: 'primary.light',
+              mb: 1,
+            }}
+          >
+            Our commitment to you
+          </Typography>
+          <Box component="ul" sx={{ pl: 2.5, my: 0, '& li': { mb: 0.75 } }}>
+            <Typography component="li" variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, display: 'list-item' }}>
+              <strong>Real people behind the product.</strong> Email{' '}
+              <Link href="mailto:app@ncdata.eu" sx={{ color: 'primary.light', fontWeight: 600 }}>app@ncdata.eu</Link>
+              {' '}with any question — we usually reply within a few hours on business days.
+            </Typography>
+            <Typography component="li" variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, display: 'list-item' }}>
+              <strong>Data quality guarantee.</strong> If your report contains data quality issues,
+              email us within 7 days and we'll re-issue it at no cost or refund the purchase.
+            </Typography>
+            <Typography component="li" variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, display: 'list-item' }}>
+              <strong>Re-download for 7 days.</strong> Save your order link to come back and download
+              your report again at any time within the first week.
+            </Typography>
+            <Typography component="li" variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, display: 'list-item' }}>
+              <strong>Privacy by default.</strong> Your email is used only to deliver the report and,
+              if you opt in, BORME alerts. We never resell or share it. See our{' '}
+              <Link href="/privacy.html" sx={{ color: 'primary.light' }}>privacy policy</Link>.
+            </Typography>
+          </Box>
+        </Paper>
+
         {/* Trust signals */}
         <Box component="section" sx={{ width: '100%', textAlign: 'center', py: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6, display: 'block' }}>
             Data sourced from official BORME (Registro Mercantil) filings. Payments securely processed by{' '}
             <Link href="https://stripe.com" target="_blank" rel="noopener" sx={{ color: 'text.secondary' }}>Stripe</Link>.
-            Reports available for re-download within 24 hours of purchase.
+            Reports available for re-download for 7 days after purchase.
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6, display: 'block', mt: 0.5 }}>
             Service provided and invoiced by{' '}
@@ -412,8 +458,14 @@ export default function DueDiligencePage() {
           <Link href="/about.html" variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
             About
           </Link>
+          <Link href="/terms.html" variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            Terms
+          </Link>
           <Link href="/privacy.html" variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
             Privacy
+          </Link>
+          <Link href="mailto:app@ncdata.eu" variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            Contact
           </Link>
         </Box>
       </Box>

@@ -193,6 +193,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             },
           }}
         />
+        <Typography variant="caption" sx={{ display: 'block', mt: 0.75, px: 0.5, color: 'text.disabled', fontSize: '0.7rem', lineHeight: 1.45 }}>
+          Used only to deliver your report and (if you opt in) BORME monitoring alerts. Never resold.
+        </Typography>
 
         {/* Language selector */}
         <Box
@@ -272,7 +275,25 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             }}
           >
             Invoiced by <strong>Nurnberg Consulting SL</strong> &middot; NIF B86829538 &middot; Madrid, Spain.
-            Payments securely processed by Stripe.
+            Payments securely processed by Stripe. By continuing you accept our{' '}
+            <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>terms</a>{' '}
+            and{' '}
+            <a href="/privacy.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>privacy policy</a>.
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'block',
+              mt: 0.75,
+              px: 1,
+              color: 'text.secondary',
+              fontSize: '0.72rem',
+              lineHeight: 1.5,
+            }}
+          >
+            Questions before paying? Email{' '}
+            <a href="mailto:app@ncdata.eu" style={{ color: '#8bc5ff', textDecoration: 'none' }}>app@ncdata.eu</a>
+            {' '}— we usually reply within a few hours on business days.
           </Typography>
         </Box>
         <Button
