@@ -297,7 +297,7 @@ export default function LandingPage() {
                   },
                 }}
               >
-                View sample report
+                Get a Due Diligence
               </Button>
               <Button
                 variant="outlined"
