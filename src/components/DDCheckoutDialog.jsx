@@ -82,7 +82,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     <Dialog
       open={open}
       onClose={loading ? undefined : onClose}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       PaperProps={{
         sx: {
@@ -92,18 +92,65 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         },
       }}
     >
-      <DialogTitle sx={{ pb: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <DescriptionIcon sx={{ color: 'warning.main', fontSize: 22 }} />
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            Due Diligence Report
-          </Typography>
+      <DialogTitle sx={{ pb: 1.25 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DescriptionIcon sx={{ color: 'warning.main', fontSize: 22 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                Due Diligence Report
+              </Typography>
+            </Box>
+            {companyName && (
+              <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
+                {companyName}
+              </Typography>
+            )}
+          </Box>
+          {/* Language selector — anchored to the header so it's always visible */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+              <TranslateIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.disabled',
+                  fontSize: '0.62rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  fontWeight: 600,
+                }}
+              >
+                Report language
+              </Typography>
+            </Box>
+            <ToggleButtonGroup
+              value={lang}
+              exclusive
+              onChange={(_, v) => v && setLang(v)}
+              size="small"
+              sx={{
+                '& .MuiToggleButton-root': {
+                  py: 0.4,
+                  px: 1.5,
+                  fontSize: '0.78rem',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderColor: 'rgba(255,255,255,0.15)',
+                  color: 'text.secondary',
+                  '&.Mui-selected': {
+                    bgcolor: 'warning.main',
+                    color: '#000',
+                    '&:hover': { bgcolor: 'warning.dark' },
+                  },
+                },
+              }}
+            >
+              <ToggleButton value="es">Español</ToggleButton>
+              <ToggleButton value="en">English</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
         </Box>
-        {companyName && (
-          <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
-            {companyName}
-          </Typography>
-        )}
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1 }}>
@@ -196,50 +243,6 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         <Typography variant="caption" sx={{ display: 'block', mt: 0.75, px: 0.5, color: 'text.disabled', fontSize: '0.7rem', lineHeight: 1.45 }}>
           Used only to deliver your report and (if you opt in) BORME monitoring alerts. Never resold.
         </Typography>
-
-        {/* Language selector */}
-        <Box
-          sx={{
-            mt: 2,
-            p: 1.5,
-            borderRadius: 1.5,
-            bgcolor: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-          }}
-        >
-          <TranslateIcon sx={{ fontSize: 20, color: 'warning.main' }} />
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, mr: 'auto' }}>
-            Report language
-          </Typography>
-          <ToggleButtonGroup
-            value={lang}
-            exclusive
-            onChange={(_, v) => v && setLang(v)}
-            size="small"
-            sx={{
-              '& .MuiToggleButton-root': {
-                py: 0.5,
-                px: 2,
-                fontSize: '0.8rem',
-                textTransform: 'none',
-                fontWeight: 600,
-                borderColor: 'rgba(255,255,255,0.15)',
-                color: 'text.secondary',
-                '&.Mui-selected': {
-                  bgcolor: 'warning.main',
-                  color: '#000',
-                  '&:hover': { bgcolor: 'warning.dark' },
-                },
-              },
-            }}
-          >
-            <ToggleButton value="es">Español</ToggleButton>
-            <ToggleButton value="en">English</ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
 
         {error && (
           <Alert severity="error" sx={{ mt: 2, fontSize: '0.75rem' }}>
