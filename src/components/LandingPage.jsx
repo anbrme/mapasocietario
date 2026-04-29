@@ -745,8 +745,7 @@ export default function LandingPage() {
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.6, mb: 1.25 }}>
               Mapa Societario is our dedicated Spanish product. For professional investigators,
               we also operate <strong>NC Data</strong>, a full-fledged investigation platform
-              covering companies in Spain, the United Kingdom, France and Switzerland &mdash; with
-              Italy coming soon. Beyond corporate due diligence, NC Data includes one-of-a-kind,
+              covering companies in Spain, the United Kingdom, France, Switzerland and Italy. Beyond corporate due diligence, NC Data includes one-of-a-kind,
               cutting-edge tools such as <strong>Document Studio</strong>, which lets users
               fine-tune AI for sophisticated analysis of complex, context-heavy documents, along
               with deeper entity resolution, cross-border linking and advanced investigative
