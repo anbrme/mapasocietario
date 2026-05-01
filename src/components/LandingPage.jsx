@@ -127,7 +127,7 @@ const FAQ_ITEMS = [
   {
     question: 'Do I need to pay or create an account?',
     answer: 'The network graph is completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company (EUR 22.50).',
-  },
+  }, 
   {
     question: 'What is a Due Diligence report?',
     answer: 'A comprehensive PDF with AI-powered analysis and sanctions cross-checking, covering corporate structure, full officer history, capital events, red flags, and key changes over time — far more detail than the network graph alone. You can also add official financial statements (Cuentas Anuales) from the Registro Mercantil, including an AI-powered financial analysis with key ratios and trends.',
