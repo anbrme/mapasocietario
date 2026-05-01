@@ -21,6 +21,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import TranslateIcon from '@mui/icons-material/Translate';
 
 const PAYMENTS_API = 'https://payments.ncdata.eu';
+const API_URL = 'https://api.ncdata.eu';
 const DD_PRICE = 22.50;
 const FS_PRICE = 17.50;
 const VAT_RATE = 0.21;
@@ -44,6 +45,40 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     setError('');
     setLoading(true);
     try {
+      // Pre-flight: confirm the Spanish company has a v3 profile before
+      // sending the buyer to Stripe. Foreign entities that appear only as
+      // bare-string sole_shareholders in another company have no profile
+      // to build a DD report from, and we don't want to charge for a
+      // report we can't deliver. The endpoint fails open on backend
+      // errors (returns exists: true with unverified: true), so transient
+      // ES issues don't block valid sales — only a confirmed miss does.
+      if (country === 'es' && companyName) {
+        try {
+          const checkRes = await fetch(`${API_URL}/bormes/dd-report/check-company`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ company_name: companyName }),
+          });
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            if (checkData && checkData.exists === false) {
+              setError(
+                `We could not find "${companyName}" in our Spanish corporate registry. ` +
+                `This usually means it is a foreign entity that appears only as a ` +
+                `shareholder of Spanish companies — we do not hold a corporate profile ` +
+                `for it, so a Due Diligence report cannot be generated. ` +
+                `If you believe this is wrong, please email app@ncdata.eu.`
+              );
+              setLoading(false);
+              return;
+            }
+          }
+          // Non-OK responses fall through to the Stripe call (fail-open).
+        } catch (preErr) {
+          console.warn('DD pre-check failed (proceeding anyway):', preErr);
+        }
+      }
+
       const options = {
         language: lang,
         ...(includeFS ? { financialStatements: true, email: email.trim() } : {}),
