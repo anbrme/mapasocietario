@@ -3838,6 +3838,31 @@ const SpanishCompanyNetworkGraph = ({
       ctx.fill();
       ctx.stroke();
 
+      // Deputy/PEP chip on officer nodes that match a Congreso deputy.
+      if (node.type === 'officer') {
+        const match = officerDeputyMatches[node.name];
+        if (match?.deputy) {
+          const isFormer = !!match.deputy.FECHABAJA;
+          const chipR = nodeRadius * 0.55;
+          const chipX = node.x + nodeRadius * 0.7;
+          const chipY = node.y - nodeRadius * 0.7;
+          ctx.beginPath();
+          ctx.arc(chipX, chipY, chipR, 0, 2 * Math.PI, false);
+          ctx.fillStyle = isFormer ? '#9ca3af' : '#f59e0b';
+          ctx.fill();
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          // Cap glyph size so it stays legible at any zoom
+          const glyphSize = Math.min(Math.max(chipR * 1.2, 6), 11);
+          ctx.font = `${glyphSize}px Sans-Serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#fff';
+          ctx.fillText('🏛', chipX, chipY);
+        }
+      }
+
       // Conditional label rendering based on density and zoom
       if (showNodeLabels) {
         const isDense = filteredGraphData.nodes.length > MAX_NODES_FOR_LABELS;
@@ -3889,7 +3914,7 @@ const SpanishCompanyNetworkGraph = ({
         }
       }
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches]
   );
 
   const linkCanvasObject = useCallback(
@@ -4154,13 +4179,27 @@ const SpanishCompanyNetworkGraph = ({
   const [officerDeputyMatches, setOfficerDeputyMatches] = useState({});
 
   useEffect(() => {
+    const officerNodeNames = filteredGraphData.nodes
+      .filter(n => n.type === 'officer')
+      .map(n => n.name);
+    const previewNames = [];
+    if (previewData?.type === 'officer' && previewData.name) {
+      previewNames.push(previewData.name);
+    }
+    if (previewData?.type === 'company') {
+      const e = previewData.enriched;
+      (e?.currentOfficers || []).forEach(o => o.name && previewNames.push(o.name));
+      ['nombramientos', 'reelecciones', 'ceses_dimisiones', 'revocaciones'].forEach(cat => {
+        (e?.officers?.[cat] || []).forEach(o => o.name && previewNames.push(o.name));
+      });
+    }
     const namesToCheck = Array.from(
-      new Set(
-        visibleTableRows
-          .map(r => r.officer)
-          .filter(name => name && officerDeputyMatches[name] === undefined)
-      )
-    );
+      new Set([
+        ...visibleTableRows.map(r => r.officer),
+        ...officerNodeNames,
+        ...previewNames,
+      ])
+    ).filter(name => name && officerDeputyMatches[name] === undefined);
     if (namesToCheck.length === 0) return;
     let cancelled = false;
     (async () => {
@@ -4179,7 +4218,7 @@ const SpanishCompanyNetworkGraph = ({
     return () => {
       cancelled = true;
     };
-  }, [visibleTableRows, officerDeputyMatches]);
+  }, [visibleTableRows, filteredGraphData.nodes, previewData, officerDeputyMatches]);
 
   // Clear the date filter automatically if the underlying rows no longer contain any match
   // (e.g. user collapsed a node or changed filters).
@@ -5837,10 +5876,28 @@ const SpanishCompanyNetworkGraph = ({
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {e.currentOfficers.map((officer, i) => (
-                              officer.positions.length === 1 ? (
+                            {e.currentOfficers.map((officer, i) => {
+                              const dm = officerDeputyMatches[officer.name];
+                              const deputyChip = dm?.deputy ? (
+                                <Chip
+                                  label={dm.deputy.FECHABAJA ? '🏛️ Ex-dip.' : `🏛️ Diputado${dm.deputy.FORMACIONELECTORAL ? ` · ${dm.deputy.FORMACIONELECTORAL}` : ''}`}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{
+                                    ml: 0.75,
+                                    height: 18,
+                                    fontSize: '0.6rem',
+                                    color: dm.deputy.FECHABAJA ? 'text.secondary' : 'warning.dark',
+                                    borderColor: dm.deputy.FECHABAJA ? 'grey.400' : 'warning.main',
+                                  }}
+                                />
+                              ) : null;
+                              return officer.positions.length === 1 ? (
                                 <TableRow key={i}>
-                                  <TableCell>{officer.name || '-'}</TableCell>
+                                  <TableCell>
+                                    {officer.name || '-'}
+                                    {deputyChip}
+                                  </TableCell>
                                   <TableCell>{officer.positions[0].position || '-'}</TableCell>
                                   <TableCell>{officer.positions[0].date ? formatDate(officer.positions[0].date) : '-'}</TableCell>
                                 </TableRow>
@@ -5850,6 +5907,7 @@ const SpanishCompanyNetworkGraph = ({
                                     {j === 0 ? (
                                       <TableCell rowSpan={officer.positions.length} sx={{ verticalAlign: 'top', borderBottom: '2px solid rgba(255,255,255,0.12)' }}>
                                         {officer.name || '-'}
+                                        {deputyChip}
                                       </TableCell>
                                     ) : null}
                                     <TableCell sx={j === officer.positions.length - 1 ? { borderBottom: '2px solid rgba(255,255,255,0.12)' } : undefined}>
@@ -5860,8 +5918,8 @@ const SpanishCompanyNetworkGraph = ({
                                     </TableCell>
                                   </TableRow>
                                 ))
-                              )
-                            ))}
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </TableContainer>
@@ -5914,8 +5972,109 @@ const SpanishCompanyNetworkGraph = ({
               const resolveDate = (o) => o.date || o.event_date || '';
 
               const whollyOwned = previewData.whollyOwned || [];
+              const deputyMatch = officerDeputyMatches[previewData.name];
               return (
                 <Box>
+                  {deputyMatch?.deputy && (() => {
+                    const d = deputyMatch.deputy;
+                    const isFormer = !!d.FECHABAJA;
+                    const fullName = d.APELLIDOS ? `${d.NOMBRE || ''} ${d.APELLIDOS}`.trim() : d.NOMBRE;
+                    const legs = Array.from(
+                      new Set((deputyMatch.rows || []).map(r => r.LEGISLATURA).filter(Boolean))
+                    );
+                    const allDates = (deputyMatch.rows || [])
+                      .map(r => r.FECHAINICIOLEGISLATURA)
+                      .filter(Boolean);
+                    const allEnds = (deputyMatch.rows || [])
+                      .map(r => r.FECHAFINLEGISLATURA || r.FECHABAJA)
+                      .filter(Boolean);
+                    const parseEs = s => {
+                      if (!s) return 0;
+                      const p = String(s).split('/');
+                      return p.length === 3 ? Date.parse(`${p[2]}-${p[1]}-${p[0]}`) || 0 : Date.parse(s) || 0;
+                    };
+                    const earliest = allDates.sort((a, b) => parseEs(a) - parseEs(b))[0];
+                    const sittingRow = (deputyMatch.rows || []).find(r => r.LEGISLATURAACTUAL === 'S');
+                    const latest = isFormer
+                      ? allEnds.sort((a, b) => parseEs(b) - parseEs(a))[0]
+                      : null;
+                    return (
+                      <Alert
+                        severity={isFormer ? 'info' : 'warning'}
+                        icon={false}
+                        sx={{ mb: 2, '& .MuiAlert-message': { width: '100%' } }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            🏛️ {isFormer ? 'Ex-diputado del Congreso' : 'Diputado del Congreso'}
+                          </Typography>
+                          <Chip
+                            label={`${Math.round(deputyMatch.confidence * 100)}% match`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ height: 18, fontSize: '0.6rem' }}
+                          />
+                        </Box>
+                        {fullName && fullName.toUpperCase() !== (previewData.name || '').toUpperCase() && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            Coincide con: <b>{fullName}</b>
+                          </Typography>
+                        )}
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.75, mt: 0.5 }}>
+                          {d.FORMACIONELECTORAL && (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">Partido</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>{d.FORMACIONELECTORAL}</Typography>
+                            </Box>
+                          )}
+                          {d.GRUPOPARLAMENTARIO && (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">Grupo</Typography>
+                              <Typography variant="body2">{d.GRUPOPARLAMENTARIO}</Typography>
+                            </Box>
+                          )}
+                          {d.CIRCUNSCRIPCION && (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">Circunscripción</Typography>
+                              <Typography variant="body2">{d.CIRCUNSCRIPCION}</Typography>
+                            </Box>
+                          )}
+                          {legs.length > 0 && (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
+                                Legislatura{legs.length !== 1 ? 's' : ''} ({legs.length})
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>
+                                {legs.join(', ')}
+                              </Typography>
+                            </Box>
+                          )}
+                          {(earliest || latest) && (
+                            <Box sx={{ gridColumn: '1 / -1' }}>
+                              <Typography variant="caption" color="text.secondary">Período</Typography>
+                              <Typography variant="body2">
+                                {earliest || '?'}
+                                {isFormer ? ` — ${latest || '?'}` : ' — actualidad'}
+                                {sittingRow?.LEGISLATURA ? ` (${sittingRow.LEGISLATURA})` : ''}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                        {d.BIOGRAFIA && (
+                          <Typography
+                            variant="caption"
+                            component="a"
+                            href={d.BIOGRAFIA}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{ display: 'block', mt: 1, color: 'primary.main', textDecoration: 'underline' }}
+                          >
+                            Ficha en congreso.es →
+                          </Typography>
+                        )}
+                      </Alert>
+                    );
+                  })()}
                   {variants && variants.length > 1 && (
                     <Alert severity="info" sx={{ mb: 2 }}>
                       <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
