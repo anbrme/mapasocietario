@@ -69,6 +69,7 @@ import ForceGraph2D from 'react-force-graph-2d';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import { useTerms } from '../hooks/useTerms';
 import { spanishCompaniesService, SpanishCompaniesService } from '../services/spanishCompaniesService';
+import { findDeputyMatch } from '../services/congresoOfficerMatcher';
 
 const CATEGORY_LABELS = {
   nombramientos: 'Nombramiento',
@@ -1193,6 +1194,22 @@ const SpanishCompanyNetworkGraph = ({
         }
 
         setAutocompleteOptions(results);
+
+        // Enrich officer options with Congreso deputy match in the background.
+        const officerOptions = results.filter(r => r.type === 'officer' && r.name);
+        if (officerOptions.length > 0) {
+          const matches = await Promise.all(
+            officerOptions.map(o => findDeputyMatch(o.name).catch(() => null))
+          );
+          if (searchTypeRef.current !== currentSearchType) return;
+          setAutocompleteOptions(prev => {
+            if (prev !== results) return prev;
+            return prev.map(opt => {
+              const idx = officerOptions.indexOf(opt);
+              return idx >= 0 ? { ...opt, _deputyMatch: matches[idx] } : opt;
+            });
+          });
+        }
       } catch (error) {
         console.error('Autocomplete error:', error);
         setAutocompleteOptions([]);
@@ -4131,6 +4148,39 @@ const SpanishCompanyNetworkGraph = ({
     );
   }, [tableRows, dateFilter]);
 
+  // Deputy (PEP) match cache keyed by officer name. Populated lazily for the
+  // officers shown in the table — `null` means "checked, no match" so we don't
+  // refetch the same name on every re-render.
+  const [officerDeputyMatches, setOfficerDeputyMatches] = useState({});
+
+  useEffect(() => {
+    const namesToCheck = Array.from(
+      new Set(
+        visibleTableRows
+          .map(r => r.officer)
+          .filter(name => name && officerDeputyMatches[name] === undefined)
+      )
+    );
+    if (namesToCheck.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(
+        namesToCheck.map(name => findDeputyMatch(name).catch(() => null))
+      );
+      if (cancelled) return;
+      setOfficerDeputyMatches(prev => {
+        const next = { ...prev };
+        namesToCheck.forEach((name, i) => {
+          next[name] = results[i] || null;
+        });
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleTableRows, officerDeputyMatches]);
+
   // Clear the date filter automatically if the underlying rows no longer contain any match
   // (e.g. user collapsed a node or changed filters).
   React.useEffect(() => {
@@ -4375,6 +4425,29 @@ const SpanishCompanyNetworkGraph = ({
                         }}
                       >
                         Socio único
+                      </Typography>
+                    )}
+                    {option._deputyMatch?.deputy && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontSize: '0.65rem',
+                          fontWeight: 600,
+                          color: option._deputyMatch.deputy.FECHABAJA
+                            ? 'text.secondary'
+                            : 'warning.dark',
+                          bgcolor: option._deputyMatch.deputy.FECHABAJA
+                            ? 'grey.100'
+                            : 'warning.light',
+                          px: 0.6,
+                          py: 0.1,
+                          borderRadius: 0.5,
+                        }}
+                      >
+                        🏛️ {option._deputyMatch.deputy.FECHABAJA ? 'Ex-diputado' : 'Diputado'}
+                        {option._deputyMatch.deputy.FORMACIONELECTORAL
+                          ? ` · ${option._deputyMatch.deputy.FORMACIONELECTORAL}`
+                          : ''}
                       </Typography>
                     )}
                   </Box>
@@ -5067,9 +5140,37 @@ const SpanishCompanyNetworkGraph = ({
                               ? { textDecoration: 'underline' }
                               : undefined,
                           }}
-                          title={row.officerNode ? `Acciones sobre ${row.officer}` : row.officer}
+                          title={
+                            officerDeputyMatches[row.officer]?.deputy
+                              ? `${row.officer} — ${officerDeputyMatches[row.officer].deputy.FECHABAJA ? 'Ex-diputado' : 'Diputado'}${officerDeputyMatches[row.officer].deputy.FORMACIONELECTORAL ? ' · ' + officerDeputyMatches[row.officer].deputy.FORMACIONELECTORAL : ''}`
+                              : row.officerNode
+                                ? `Acciones sobre ${row.officer}`
+                                : row.officer
+                          }
                         >
                           {row.officer}
+                          {officerDeputyMatches[row.officer]?.deputy && (
+                            <Box
+                              component="span"
+                              sx={{
+                                ml: 0.5,
+                                fontSize: '0.6rem',
+                                fontWeight: 600,
+                                px: 0.5,
+                                py: 0.05,
+                                borderRadius: 0.5,
+                                color: officerDeputyMatches[row.officer].deputy.FECHABAJA
+                                  ? '#6b7280'
+                                  : '#b26500',
+                                bgcolor: officerDeputyMatches[row.officer].deputy.FECHABAJA
+                                  ? '#f3f4f6'
+                                  : '#fff4e0',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              🏛️ {officerDeputyMatches[row.officer].deputy.FECHABAJA ? 'Ex-dip.' : 'Diputado'}
+                            </Box>
+                          )}
                         </TableCell>
                         <TableCell
                           sx={{
