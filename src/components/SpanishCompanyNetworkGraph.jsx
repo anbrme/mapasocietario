@@ -589,6 +589,11 @@ const SpanishCompanyNetworkGraph = ({
   const [previewNodeName, setPreviewNodeName] = useState('');
   const [previewNodeType, setPreviewNodeType] = useState('company');
 
+  // Deputy (PEP) match cache keyed by officer name. Populated lazily from a
+  // `useEffect` further down — declared up here so `nodeCanvasObject` (which
+  // also lives above the effect) can close over it without a TDZ error.
+  const [officerDeputyMatches, setOfficerDeputyMatches] = useState({});
+
   // Container dimensions for ForceGraph2D (callback ref to detect DOM attachment in Dialog Portal)
   const [containerEl, setContainerEl] = useState(null);
   const containerCallbackRef = useCallback(node => {
@@ -4173,11 +4178,10 @@ const SpanishCompanyNetworkGraph = ({
     );
   }, [tableRows, dateFilter]);
 
-  // Deputy (PEP) match cache keyed by officer name. Populated lazily for the
-  // officers shown in the table — `null` means "checked, no match" so we don't
-  // refetch the same name on every re-render.
-  const [officerDeputyMatches, setOfficerDeputyMatches] = useState({});
-
+  // Lazy enrichment for the officer-name → deputy-match cache. Triggers a
+  // background lookup for any officer surfaced in the table, the graph, or the
+  // open preview that isn't already cached. `null` in the cache = "checked, no
+  // match" so we don't refetch the same name on every re-render.
   useEffect(() => {
     const officerNodeNames = filteredGraphData.nodes
       .filter(n => n.type === 'officer')
