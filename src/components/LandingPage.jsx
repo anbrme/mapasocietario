@@ -124,7 +124,7 @@ const FAQ_ITEMS = [
     question: 'Is the data accurate and up-to-date?',
     answer: 'Data is sourced from official Spanish public registries (BORME) and updated daily. Since the data is parsed from PDF publications, you should be aware of some caveats — specifically, officers are identified by name, and while we use several techniques to avoid mismatches, always verify critical information with official sources.',
   },
-  {
+  { 
     question: 'Do I need to pay or create an account?',
     answer: 'The network graph is completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company (EUR 22.50).',
   }, 
