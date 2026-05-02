@@ -46,7 +46,7 @@ const CAPABILITIES = [
   {
     icon: <PersonIcon />,
     title: 'Officer lookup',
-    desc: 'Search an officer by name and discover every company they are or were associated with — appointments, resignations, roles.',
+    desc: 'Search an officer by name and discover every company they are or were associated with — appointments, resignations, roles. This includes a comprehensive history of all their corporate affiliations, sorted by seniority and recency, with key details like appointment dates, roles, and even current or former political positions highlighted.',
     color: '#f57c00',
     href: '/app',
   },
