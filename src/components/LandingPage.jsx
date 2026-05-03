@@ -122,7 +122,7 @@ const DIFFERENTIATORS = [
 const FAQ_ITEMS = [
   {
     question: 'Is the data accurate and up-to-date?',
-    answer: 'Data is sourced from official Spanish public registries (BORME) and updated daily. Since the data is parsed from PDF publications, you should be aware of some caveats — specifically, officers are identified by name, and while we use several techniques to avoid mismatches, always verify critical information with official sources.',
+    answer: 'Data is sourced from official Spanish public registries (BORME) and updated daily. The data covers the period from 1 January 2009 to the present, so companies formed or having registry activity before 1 January 2009 may show missing information (precisely, the information filed before 1 January 2009). Since the data is parsed from PDF publications, you should be aware of some caveats — specifically, officers are identified by name, and while we use several techniques to avoid mismatches, always verify critical information with official sources.',
   },
   { 
     question: 'Do I need to pay or create an account?',
