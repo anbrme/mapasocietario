@@ -126,7 +126,7 @@ const FAQ_ITEMS = [
   },
   { 
     question: 'Do I need to pay or create an account?',
-    answer: 'The network graph is completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company (EUR 22.50). Spanish financial statements (Cuentas Anuales) are an optional add-on for an additional EUR 17.50 per company. There are no subscriptions or recurring fees — just pay for the reports you need, when you need them.',
+    answer: 'The network graph as well as all options available by right-clicking on a node are completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company (EUR 22.50). Spanish financial statements (Cuentas Anuales) are an optional add-on for an additional EUR 17.50 per company. There are no subscriptions or recurring fees — just pay for the reports you need, when you need them.',
   }, 
   {
     question: 'What is a Due Diligence report?',
