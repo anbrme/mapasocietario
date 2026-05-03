@@ -21,6 +21,7 @@ const sitemapRoutes = [
   { path: '/', changefreq: 'daily', priority: '1.0' },
   { path: '/app', changefreq: 'daily', priority: '0.8' },
   { path: '/due-diligence', changefreq: 'weekly', priority: '0.9' },
+  { path: '/spanish-company-due-diligence', changefreq: 'weekly', priority: '0.9' },
   { path: '/dashboard', changefreq: 'daily', priority: '0.7' },
   { path: '/es', changefreq: 'weekly', priority: '0.9' },
   { path: '/es/informes-due-diligence-empresas', changefreq: 'weekly', priority: '0.8' },

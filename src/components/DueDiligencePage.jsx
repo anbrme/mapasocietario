@@ -43,11 +43,11 @@ export default function DueDiligencePage() {
   return (
     <>
       <Helmet>
-        <title>Due Diligence Reports | Mapa Societario</title>
-        <meta name="description" content="AI-powered due diligence reports for Spanish companies. Sanctions screening, corporate structure, officer history, risk analysis, and more. From EUR 22.50 per company." />
+        <title>Spanish Company Due Diligence Reports | Mapa Societario</title>
+        <meta name="description" content="Spanish company due diligence reports with BORME registry data, officer history, corporate relationship graphs, BOE sanctions checks, risk analysis, and PDF delivery from EUR 22.50." />
         <link rel="canonical" href="https://mapasocietario.es/due-diligence" />
-        <meta property="og:title" content="Due Diligence Reports | Mapa Societario" />
-        <meta property="og:description" content="AI-powered due diligence reports for Spanish companies. Sanctions screening, risk analysis, officer history. From EUR 22.50." />
+        <meta property="og:title" content="Spanish Company Due Diligence Reports | Mapa Societario" />
+        <meta property="og:description" content="Spanish company due diligence with BORME registry data, sanctions checks, risk analysis, officer history, and PDF delivery. From EUR 22.50." />
         <meta property="og:url" content="https://mapasocietario.es/due-diligence" />
         <meta property="og:type" content="product" />
       </Helmet>
@@ -68,7 +68,7 @@ export default function DueDiligencePage() {
         <Box sx={{ textAlign: 'center' }}>
           <DescriptionIcon sx={{ fontSize: 48, color: 'warning.main', mb: 1, opacity: 0.8 }} />
           <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-            Due Diligence Reports
+            Spanish Company Due Diligence Reports
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 520, mx: 'auto', lineHeight: 1.6 }}>
             AI-powered corporate intelligence for Spanish companies. Get a comprehensive PDF report with sanctions screening, risk analysis, and full corporate history — based on official BORME data.

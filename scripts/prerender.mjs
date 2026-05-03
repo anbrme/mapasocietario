@@ -56,13 +56,13 @@ const routes = [
   },
   {
     path: '/due-diligence',
-    title: 'Due Diligence Reports | Mapa Societario',
+    title: 'Spanish Company Due Diligence Reports | Mapa Societario',
     description:
-      'AI-powered due diligence reports for Spanish companies. Sanctions screening, corporate structure, officer history, risk analysis, and more. From EUR 22.50 per company.',
+      'Spanish company due diligence reports with BORME registry data, officer history, corporate relationship graphs, BOE sanctions checks, risk analysis, and PDF delivery from EUR 22.50.',
     ogType: 'product',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Due Diligence Reports</h1>
+        <h1>Spanish Company Due Diligence Reports</h1>
         <p>Comprehensive, AI-powered due diligence reports for any Spanish company. From <strong>EUR&nbsp;22.50</strong> per report.</p>
         ${disclaimerHtmlEn}
         <h2>What's included</h2>
@@ -74,7 +74,30 @@ const routes = [
           <li><strong>Capital Events</strong> &mdash; Track capital increases, reductions, mergers, and other corporate actions.</li>
           <li><strong>PDF Report</strong> &mdash; Professional, downloadable PDF for compliance files, investor reviews, or internal records.</li>
         </ul>
-        <p><a href="/app">Search for a company to get started</a></p>
+        <p><a href="/app">Search for a company to get started</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence guide</a></p>
+      </main>`,
+  },
+  {
+    path: '/spanish-company-due-diligence',
+    title: 'Spanish Company Due Diligence Reports | Mapa Societario',
+    description:
+      'Spanish company due diligence reports using BORME registry data, corporate relationship graphs, officer history, BOE sanctions checks, sole shareholders, and fully-owned participations.',
+    ogType: 'article',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Spanish company due diligence reports</h1>
+        <p>Investigate Spanish companies with registry-based corporate relationship mapping, officer history, sole-shareholder and fully-owned participation checks, BOE sanctions checks, and downloadable PDF reports.</p>
+        ${disclaimerHtmlEn}
+        <h2>What a Spanish company due diligence report covers</h2>
+        <ul>
+          <li>BORME corporate registry data and officer history.</li>
+          <li>Corporate relationship graphs, sole shareholders, and fully-owned participations.</li>
+          <li>BOE sanctions checks and Spanish Congress deputy matches where available.</li>
+          <li>Downloadable PDF reports for compliance, KYB, supplier review, investment screening, and internal files.</li>
+        </ul>
+        <h2>Why registry context matters</h2>
+        <p>Spanish due diligence often requires more than a company lookup. Understanding administrators, appointments, resignations, connected companies, political exposure signals, and changes over time gives better context for counterparty and investment review.</p>
+        <p><a href="/app">Search a Spanish company</a> | <a href="/due-diligence">See report details</a></p>
       </main>`,
   },
   {

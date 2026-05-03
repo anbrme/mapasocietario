@@ -154,6 +154,15 @@ const SPANISH_RESOURCES = [
   { label: 'Mapa de relaciones societarias', href: '/es/mapa-relaciones-societarias' },
 ];
 
+const TOP_LINKS = [
+  { label: 'About', href: '/about.html' },
+  { label: 'Terms', href: '/terms.html' },
+  { label: 'Privacy', href: '/privacy.html' },
+  { label: 'API', href: 'https://github.com/anbrme/borme-public-api', external: true },
+  { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence' },
+  { label: 'Español', href: '/es' },
+];
+
 // Shared section wrapper for consistent vertical rhythm
 const Section = ({ children, sx = {}, ...props }) => (
   <Box
@@ -229,6 +238,40 @@ export default function LandingPage() {
             background: 'radial-gradient(ellipse 70% 50% at 50% 30%, rgba(25,118,210,0.08) 0%, transparent 70%)',
           }}
         >
+          <Box
+            component="nav"
+            aria-label="Site information"
+            sx={{
+              width: '100%',
+              maxWidth: 960,
+              mx: 'auto',
+              px: { xs: 2.5, sm: 4 },
+              pt: { xs: 2, sm: 2.5 },
+              display: 'flex',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: { xs: 1.25, sm: 2.25 },
+            }}
+          >
+            {TOP_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                target={link.external ? '_blank' : undefined}
+                rel={link.external ? 'noopener' : undefined}
+                variant="caption"
+                sx={{
+                  color: link.href === '/spanish-company-due-diligence' ? 'warning.light' : 'text.secondary',
+                  fontWeight: 650,
+                  fontSize: '0.72rem',
+                  textDecoration: 'none',
+                  '&:hover': { color: 'primary.light', textDecoration: 'underline' },
+                }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </Box>
           <Section sx={{ textAlign: 'center', py: { xs: 8, sm: 12 } }}>
             <AccountTreeIcon
               sx={{
@@ -266,6 +309,19 @@ export default function LandingPage() {
               }}
             >
               BORME-based corporate relationship search, officer history, and instant due diligence reports.
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.disabled',
+                display: 'block',
+                maxWidth: 620,
+                mx: 'auto',
+                mb: 3,
+                lineHeight: 1.6,
+              }}
+            >
+              Operated by Nurnberg Consulting SL, Madrid, since 2013. Unofficial service based on public BOE/BORME data.
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Button
@@ -307,6 +363,28 @@ export default function LandingPage() {
                 }}
               >
                 Get a Due Diligence
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                startIcon={<DescriptionIcon />}
+                onClick={() => navigate('/spanish-company-due-diligence')}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '1rem',
+                  borderRadius: 2,
+                  borderColor: 'rgba(255,255,255,0.18)',
+                  color: 'text.secondary',
+                  '&:hover': {
+                    borderColor: 'primary.light',
+                    bgcolor: 'rgba(25,118,210,0.08)',
+                  },
+                }}
+              >
+                Spanish company due diligence
               </Button>
               <Button
                 variant="outlined"
