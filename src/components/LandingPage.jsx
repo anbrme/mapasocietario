@@ -34,6 +34,7 @@ import PreviewIcon from '@mui/icons-material/Preview';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import LegalDisclaimer from './LegalDisclaimer';
 
 const CAPABILITIES = [
   {
@@ -330,6 +331,7 @@ export default function LandingPage() {
                 Open dashboard
               </Button>
             </Box>
+            <LegalDisclaimer dense sx={{ mt: 4, maxWidth: 760, mx: 'auto' }} />
           </Section>
         </Box>
 
@@ -964,6 +966,18 @@ export default function LandingPage() {
             </Link>
             {' '}(Madrid, Spain) &middot; Data sourced from BORME (Registro Mercantil)
           </Typography>
+          <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem', lineHeight: 1.5, maxWidth: 760, px: 2 }}>
+            Based on data from the{' '}
+            <Link
+              href="https://www.boe.es"
+              target="_blank"
+              rel="noopener"
+              sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+            >
+              Agencia Estatal Boletín Oficial del Estado
+            </Link>
+            . This service is unofficial and is not endorsed by the AEBOE.
+          </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
             <Link
               href="/due-diligence"
@@ -1014,6 +1028,15 @@ export default function LandingPage() {
               sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
             >
               Privacy & Cookies
+            </Link>
+            <Link
+              href="/terms.html"
+              target="_blank"
+              rel="noopener"
+              variant="caption"
+              sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+            >
+              Terms
             </Link>
           </Box>
         </Box>

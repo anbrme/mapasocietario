@@ -64,6 +64,7 @@ import {
 import PersonIcon from '@mui/icons-material/Person';
 import DDCheckoutDialog from './DDCheckoutDialog';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
+import LegalDisclaimer from './LegalDisclaimer';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import ForceGraph2D from 'react-force-graph-2d';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
@@ -4612,6 +4613,17 @@ const SpanishCompanyNetworkGraph = ({
           <SettingsIcon />
         </IconButton>
       </Box>
+
+      <LegalDisclaimer
+        dense
+        language="es"
+        sx={{
+          mt: 1,
+          mx: embedded ? 1.5 : 2,
+          py: 0.5,
+          '& .MuiAlert-icon': { py: 0.25 },
+        }}
+      />
 
       {pendingSubsidiaries && (
         <Box

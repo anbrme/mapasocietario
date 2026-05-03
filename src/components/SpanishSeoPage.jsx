@@ -17,6 +17,7 @@ import NewspaperIcon from '@mui/icons-material/Newspaper';
 import SecurityIcon from '@mui/icons-material/Security';
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import LegalDisclaimer from './LegalDisclaimer';
 
 const SITE_URL = 'https://mapasocietario.es';
 
@@ -296,6 +297,7 @@ export default function SpanishSeoPage({ pageKey: explicitPageKey }) {
             Ver informes
           </Button>
         </Box>
+        <LegalDisclaimer dense language="es" sx={{ mt: 4 }} />
       </Box>
 
       <Box component="main" sx={{ display: 'grid', gap: { xs: 3, sm: 4 } }}>

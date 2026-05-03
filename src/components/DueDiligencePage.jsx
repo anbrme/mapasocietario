@@ -26,6 +26,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 const SampleReportViewer = lazy(() => import('./SampleReportViewer'));
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import LegalDisclaimer from './LegalDisclaimer';
 
 const FEATURES = [
   { icon: <AccountTreeIcon />, title: 'Corporate Structure', desc: 'Full mapping of officers, shareholders, and subsidiaries extracted from official BORME filings.' },
@@ -431,6 +432,7 @@ export default function DueDiligencePage() {
 
         {/* Trust signals */}
         <Box component="section" sx={{ width: '100%', textAlign: 'center', py: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <LegalDisclaimer dense sx={{ mb: 2, textAlign: 'left' }} />
           <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6, display: 'block' }}>
             Data sourced from official BORME (Registro Mercantil) filings. Payments securely processed by{' '}
             <Link href="https://stripe.com" target="_blank" rel="noopener" sx={{ color: 'text.secondary' }}>Stripe</Link>.
