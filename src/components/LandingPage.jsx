@@ -28,6 +28,7 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import SecurityIcon from '@mui/icons-material/Security';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import MouseIcon from '@mui/icons-material/Mouse';
 import TouchAppIcon from '@mui/icons-material/TouchApp';
 import PreviewIcon from '@mui/icons-material/Preview';
@@ -161,6 +162,38 @@ const TOP_LINKS = [
   { label: 'API', href: 'https://github.com/anbrme/borme-public-api', external: true },
   { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence' },
   { label: 'Español', href: '/es' },
+];
+
+const PROFESSIONAL_PATHS = [
+  {
+    icon: <DescriptionIcon />,
+    title: 'Instant self-serve reports',
+    desc: 'One-off Spanish company due diligence PDFs for quick KYB, supplier checks, investor screening, and internal files.',
+    action: 'See report details',
+    href: '/spanish-company-due-diligence',
+  },
+  {
+    icon: <NotificationsActiveIcon />,
+    title: 'Monitoring included',
+    desc: 'Every Spanish due diligence purchase can include free BORME and IOSCO alert monitoring for the reviewed company.',
+    action: 'Open due diligence',
+    href: '/due-diligence',
+  },
+  {
+    icon: <HubIcon />,
+    title: 'NC Data API and licensing',
+    desc: 'For platforms, compliance providers, and data resellers that need Spanish registry intelligence through NC Data API access or data feeds.',
+    action: 'Discuss NC Data API access',
+    href: 'mailto:app@ncdata.eu?subject=Spanish%20company%20data%20API',
+  },
+  {
+    icon: <BusinessCenterIcon />,
+    title: 'Human-led investigations',
+    desc: 'For higher-stakes matters, Nurnberg Consulting uses these platforms internally and adds analyst judgment, source retrieval, and bespoke research.',
+    action: 'Visit Nurnberg Consulting',
+    href: 'https://nurnbergconsulting.com',
+    external: true,
+  },
 ];
 
 // Shared section wrapper for consistent vertical rhythm
@@ -725,6 +758,64 @@ export default function LandingPage() {
             </Box>
           </Section>
         </Box>
+
+        {/* ============================================================
+            PROFESSIONAL PATHS
+        ============================================================ */}
+        <Section>
+          <SectionLabel>For professional use</SectionLabel>
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1.5, letterSpacing: 0 }}>
+            From free exploration to API access and human investigations
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4, maxWidth: 680, lineHeight: 1.6 }}>
+            Mapa Societario is the public Spanish workflow. The same data and tooling can support
+            self-serve reports, monitoring, third-party integrations, and analyst-led work by
+            Nurnberg Consulting for higher-stakes cases.
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              gap: 2.5,
+            }}
+          >
+            {PROFESSIONAL_PATHS.map((path) => (
+              <Paper
+                key={path.title}
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  bgcolor: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 2,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                  <Box sx={{ color: 'primary.light', mt: 0.25, '& .MuiSvgIcon-root': { fontSize: 22 } }}>
+                    {path.icon}
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      {path.title}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.6, mb: 1.25 }}>
+                      {path.desc}
+                    </Typography>
+                    <Link
+                      href={path.href}
+                      target={path.external ? '_blank' : undefined}
+                      rel={path.external ? 'noopener' : undefined}
+                      variant="caption"
+                      sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                    >
+                      {path.action}
+                    </Link>
+                  </Box>
+                </Box>
+              </Paper>
+            ))}
+          </Box>
+        </Section>
 
         {/* ============================================================
             SPANISH SEO RESOURCES

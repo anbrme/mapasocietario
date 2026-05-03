@@ -320,6 +320,77 @@ export default function DueDiligencePage() {
           </Box>
         </Paper>
 
+        {/* Product ladder */}
+        <Box component="section" sx={{ width: '100%' }}>
+          <Typography variant="h6" component="h2" sx={{ fontWeight: 600, mb: 1.5 }}>
+            Choose the right level of work
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            {[
+              {
+                title: 'Self-serve report',
+                text: 'Instant Spanish company due diligence PDF with graph context, BORME history, BOE sanctions checks, and monitoring.',
+                icon: <DescriptionIcon />,
+                link: '/app',
+                action: 'Start with search',
+              },
+              {
+                title: 'NC Data API',
+                text: 'Spanish registry intelligence for third-party platforms, compliance products, and data integrations through NC Data.',
+                icon: <HubIcon />,
+                link: 'mailto:app@ncdata.eu?subject=NC%20Data%20Spanish%20API',
+                action: 'Discuss API access',
+              },
+              {
+                title: 'Human-led investigation',
+                text: 'For higher-stakes cases, Nurnberg Consulting adds analyst work, source retrieval, document review, and bespoke conclusions.',
+                icon: <BusinessCenterIcon />,
+                link: 'https://nurnbergconsulting.com',
+                action: 'Visit Nurnberg Consulting',
+                external: true,
+              },
+              {
+                title: 'Multi-country platform',
+                text: 'NC Data supports broader investigations beyond Spain, including other European jurisdictions and advanced document workflows.',
+                icon: <AccountBalanceIcon />,
+                link: 'https://ncdata.eu',
+                action: 'Visit NC Data',
+                external: true,
+              },
+            ].map((item) => (
+              <Paper
+                key={item.title}
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  bgcolor: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 2,
+                }}
+              >
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                  <Box sx={{ color: 'primary.light', mt: 0.25 }}>{item.icon}</Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>{item.title}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.6, mb: 1.25 }}>
+                      {item.text}
+                    </Typography>
+                    <Link
+                      href={item.link}
+                      target={item.external ? '_blank' : undefined}
+                      rel={item.external ? 'noopener' : undefined}
+                      variant="caption"
+                      sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                    >
+                      {item.action}
+                    </Link>
+                  </Box>
+                </Box>
+              </Paper>
+            ))}
+          </Box>
+        </Box>
+
         {/* How it works */}
         <Box component="section" sx={{ width: '100%' }}>
           <Typography variant="h6" component="h2" sx={{ fontWeight: 600, mb: 1.5 }}>

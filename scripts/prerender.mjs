@@ -97,6 +97,9 @@ const routes = [
         </ul>
         <h2>Why registry context matters</h2>
         <p>Spanish due diligence often requires more than a company lookup. Understanding administrators, appointments, resignations, connected companies, political exposure signals, and changes over time gives better context for counterparty and investment review.</p>
+        <h2>API access and higher-touch investigations</h2>
+        <p>The self-serve report is the fast mid-tier option. For third-party data integrations, Spanish registry intelligence is available through NC Data API access and data feeds. For higher-stakes matters, Nurnberg Consulting SL can add human analyst work, source retrieval, document review, and bespoke conclusions.</p>
+        <p><a href="mailto:app@ncdata.eu?subject=NC%20Data%20Spanish%20API">Discuss NC Data API access</a> | <a href="https://nurnbergconsulting.com">Human-led investigations</a></p>
         <p><a href="/app">Search a Spanish company</a> | <a href="/due-diligence">See report details</a></p>
       </main>`,
   },

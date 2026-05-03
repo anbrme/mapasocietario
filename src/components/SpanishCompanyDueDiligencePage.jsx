@@ -139,6 +139,38 @@ export default function SpanishCompanyDueDiligencePage() {
             </Typography>
           </Box>
 
+          <Box component="section" sx={{ borderTop: '1px solid rgba(255,255,255,0.08)', pt: 4 }}>
+            <Typography variant="h6" component="h2" sx={{ fontWeight: 750, mb: 1 }}>
+              Need API access or a higher-touch investigation?
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7, maxWidth: 780, mb: 2 }}>
+              The self-serve report is the fast mid-tier option. For third-party data integrations,
+              Spanish registry intelligence is available through <strong>NC Data</strong>. For
+              higher-stakes matters, <strong>Nurnberg Consulting SL</strong> can add human analyst work,
+              source retrieval, document review, and bespoke conclusions.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap' }}>
+              <Button
+                href="mailto:app@ncdata.eu?subject=NC%20Data%20Spanish%20API"
+                variant="outlined"
+                size="small"
+                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+              >
+                Discuss NC Data API access
+              </Button>
+              <Button
+                href="https://nurnbergconsulting.com"
+                target="_blank"
+                rel="noopener"
+                variant="outlined"
+                size="small"
+                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+              >
+                Human-led investigations
+              </Button>
+            </Box>
+          </Box>
+
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', pb: 2 }}>
             <Button variant="contained" startIcon={<VerifiedIcon />} onClick={() => navigate('/app')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
               Start with a free graph search
@@ -149,4 +181,3 @@ export default function SpanishCompanyDueDiligencePage() {
     </Box>
   );
 }
-
