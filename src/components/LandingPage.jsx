@@ -145,6 +145,14 @@ const PROOF_ITEMS = [
   'Reports from EUR 22.50',
 ];
 
+const SPANISH_RESOURCES = [
+  { label: 'Mapa societario de empresas españolas', href: '/es' },
+  { label: 'Informes due diligence de empresas', href: '/es/informes-due-diligence-empresas' },
+  { label: 'Buscar administradores de empresas', href: '/es/buscar-administradores-empresas' },
+  { label: 'Grafo de empresas BORME', href: '/es/borme-grafo-empresas' },
+  { label: 'Mapa de relaciones societarias', href: '/es/mapa-relaciones-societarias' },
+];
+
 // Shared section wrapper for consistent vertical rhythm
 const Section = ({ children, sx = {}, ...props }) => (
   <Box
@@ -633,6 +641,49 @@ export default function LandingPage() {
                     {d.desc}
                   </Typography>
                 </Box>
+              ))}
+            </Box>
+          </Section>
+        </Box>
+
+        {/* ============================================================
+            SPANISH SEO RESOURCES
+        ============================================================ */}
+        <Box
+          sx={{
+            width: '100%',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            bgcolor: 'rgba(255,255,255,0.015)',
+          }}
+        >
+          <Section>
+            <SectionLabel>Spanish resources</SectionLabel>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1.5, letterSpacing: 0 }}>
+              Research Spanish companies in Spanish
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, maxWidth: 620, lineHeight: 1.6 }}>
+              Spanish-language pages for common corporate registry workflows: finding administrators,
+              mapping company relationships, understanding BORME data, and ordering due diligence reports.
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
+              {SPANISH_RESOURCES.map((resource) => (
+                <Button
+                  key={resource.href}
+                  href={resource.href}
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderRadius: 2,
+                    color: 'primary.light',
+                    borderColor: 'rgba(25,118,210,0.35)',
+                    '&:hover': { borderColor: 'primary.main', bgcolor: 'rgba(25,118,210,0.08)' },
+                  }}
+                >
+                  {resource.label}
+                </Button>
               ))}
             </Box>
           </Section>

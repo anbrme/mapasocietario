@@ -17,44 +17,30 @@ Allow: /
 Sitemap: ${siteUrl}/sitemap.xml
 `;
 
+const sitemapRoutes = [
+  { path: '/', changefreq: 'daily', priority: '1.0' },
+  { path: '/app', changefreq: 'daily', priority: '0.8' },
+  { path: '/due-diligence', changefreq: 'weekly', priority: '0.9' },
+  { path: '/dashboard', changefreq: 'daily', priority: '0.7' },
+  { path: '/es', changefreq: 'weekly', priority: '0.9' },
+  { path: '/es/informes-due-diligence-empresas', changefreq: 'weekly', priority: '0.8' },
+  { path: '/es/buscar-administradores-empresas', changefreq: 'weekly', priority: '0.8' },
+  { path: '/es/borme-grafo-empresas', changefreq: 'weekly', priority: '0.8' },
+  { path: '/es/mapa-relaciones-societarias', changefreq: 'weekly', priority: '0.8' },
+  { path: '/about.html', changefreq: 'monthly', priority: '0.5' },
+  { path: '/privacy.html', changefreq: 'monthly', priority: '0.3' },
+];
+
+const sitemapUrls = sitemapRoutes.map((route) => `  <url>
+    <loc>${siteUrl}${route.path}</loc>
+    <lastmod>${buildDate}</lastmod>
+    <changefreq>${route.changefreq}</changefreq>
+    <priority>${route.priority}</priority>
+  </url>`).join('\n');
+
 const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${siteUrl}/</loc>
-    <lastmod>${buildDate}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/app</loc>
-    <lastmod>${buildDate}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/due-diligence</loc>
-    <lastmod>${buildDate}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/dashboard</loc>
-    <lastmod>${buildDate}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/about.html</loc>
-    <lastmod>${buildDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/privacy.html</loc>
-    <lastmod>${buildDate}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
+${sitemapUrls}
 </urlset>
 `;
 

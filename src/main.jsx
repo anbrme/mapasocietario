@@ -8,6 +8,7 @@ import App from './App';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 const DueDiligencePage = lazy(() => import('./components/DueDiligencePage'));
+const SpanishSeoPage = lazy(() => import('./components/SpanishSeoPage'));
 const OrderStatusPage = lazy(() => import('./components/OrderStatusPage'));
 const AdminPage = lazy(() => import('./components/AdminPage'));
 import { FilterProvider } from './contexts/FilterProvider';
@@ -19,6 +20,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/es" element={<Suspense fallback={null}><SpanishSeoPage pageKey="home" /></Suspense>} />
+      <Route path="/es/:slug" element={<Suspense fallback={null}><SpanishSeoPage /></Suspense>} />
       <Route path="/app" element={<App />} />
       <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
       <Route path="/order/:sessionId" element={<Suspense fallback={null}><OrderStatusPage /></Suspense>} />
