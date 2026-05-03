@@ -28,6 +28,7 @@ const sitemapRoutes = [
   { path: '/es/borme-grafo-empresas', changefreq: 'weekly', priority: '0.8' },
   { path: '/es/mapa-relaciones-societarias', changefreq: 'weekly', priority: '0.8' },
   { path: '/about.html', changefreq: 'monthly', priority: '0.5' },
+  { path: '/terms.html', changefreq: 'monthly', priority: '0.4' },
   { path: '/privacy.html', changefreq: 'monthly', priority: '0.3' },
 ];
 
