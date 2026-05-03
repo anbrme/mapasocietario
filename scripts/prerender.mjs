@@ -16,6 +16,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
 
 const siteUrl = (process.env.SITE_URL || 'https://mapasocietario.es').replace(/\/+$/, '');
+const disclaimerHtmlEs = `
+        <section style="border:1px solid rgba(25,118,210,0.35);background:rgba(25,118,210,0.06);padding:0.9rem 1rem;border-radius:8px;margin:1.5rem 0;color:#a9b8cf">
+          <p style="margin:0"><strong>Información no oficial.</strong> Basado en datos de la <a href="https://www.boe.es">Agencia Estatal Boletín Oficial del Estado</a>, reutilizados conforme a sus <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion">condiciones de reutilización</a>. Mapa Societario transforma, combina y analiza publicaciones del BOE/BORME mediante procesos automatizados; no tiene carácter oficial ni está avalado por la AEBOE. La información se ofrece tal cual y puede contener errores, omisiones o retrasos. Para cualquier decisión relevante, consulta siempre la edición oficial del <a href="https://www.boe.es/diario_borme/">BORME</a> y, cuando proceda, solicita documentación actualizada directamente al Registro Mercantil.</p>
+        </section>`;
+const disclaimerHtmlEn = `
+        <section style="border:1px solid rgba(25,118,210,0.35);background:rgba(25,118,210,0.06);padding:0.9rem 1rem;border-radius:8px;margin:1.5rem 0;color:#a9b8cf">
+          <p style="margin:0"><strong>Unofficial information.</strong> Based on data from the <a href="https://www.boe.es">Agencia Estatal Boletín Oficial del Estado</a>, reused under its <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion">reuse conditions</a>. Mapa Societario transforms, combines, and analyzes BOE/BORME publications through automated processes; it is not official and is not endorsed by the AEBOE. The information is provided as is and may contain errors, omissions, or delays. For any material decision, always verify the official <a href="https://www.boe.es/diario_borme/">BORME</a> edition and, where appropriate, obtain current documents directly from the Registro Mercantil.</p>
+        </section>`;
 
 // Read the built index.html as base template
 const baseHtml = readFileSync(path.join(distDir, 'index.html'), 'utf8');
@@ -36,6 +44,7 @@ const routes = [
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa Societario &mdash; Company &amp; Officer Search</h1>
         <p>Search for any Spanish company or officer and explore their corporate relationships in an interactive network graph.</p>
+        ${disclaimerHtmlEn}
         <ul>
           <li>Search by company name (e.g. Inditex, Repsol)</li>
           <li>Search by officer name (e.g. Amancio Ortega)</li>
@@ -55,6 +64,7 @@ const routes = [
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Due Diligence Reports</h1>
         <p>Comprehensive, AI-powered due diligence reports for any Spanish company. From <strong>EUR&nbsp;22.50</strong> per report.</p>
+        ${disclaimerHtmlEn}
         <h2>What's included</h2>
         <ul>
           <li><strong>Corporate Structure</strong> &mdash; Full mapping of officers, shareholders, and subsidiaries from official BORME filings.</li>
@@ -77,6 +87,7 @@ const routes = [
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Spanish Corporate Activity Dashboard</h1>
         <p>Real-time statistics on company formations, dissolutions, and officer changes across Spain, sourced from BORME (Registro Mercantil).</p>
+        ${disclaimerHtmlEn}
         <ul>
           <li>Company formations and dissolutions over time</li>
           <li>Officer appointment and resignation trends</li>
@@ -97,6 +108,7 @@ const routes = [
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa societario de empresas españolas</h1>
         <p>Explora empresas, administradores, cargos y conexiones societarias en España con un grafo interactivo basado en publicaciones oficiales del BORME.</p>
+        ${disclaimerHtmlEs}
         <h2>Qué puedes investigar</h2>
         <p>Busca una sociedad española y ve sus administradores, cargos, socios únicos y participaciones íntegramente poseídas por otras sociedades. También puedes buscar por persona para descubrir en qué sociedades aparece como administrador, consejero, apoderado u otro cargo mercantil.</p>
         <h2>Por qué es útil</h2>
@@ -115,6 +127,7 @@ const routes = [
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Informes due diligence de empresas españolas</h1>
         <p>Compra un informe due diligence para una sociedad española cuando necesites documentar una revisión de contraparte, proveedor, cliente, inversión o adquisición.</p>
+        ${disclaimerHtmlEs}
         <h2>Qué incluye el informe</h2>
         <ul>
           <li>Estructura societaria, administradores actuales e históricos, socios únicos y participaciones íntegramente poseídas.</li>
@@ -135,6 +148,7 @@ const routes = [
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Buscar administradores de empresas en España</h1>
         <p>Localiza en qué empresas aparece una persona y explora sus cargos, nombramientos, ceses y sociedades relacionadas a partir de datos publicados en el BORME.</p>
+        ${disclaimerHtmlEs}
         <h2>Cómo funciona la búsqueda</h2>
         <p>Cambia el buscador a modo persona y escribe el nombre de un administrador, consejero o apoderado. La herramienta muestra sociedades asociadas, permite expandir la red e identifica con una insignia amarilla a quienes tienen o tuvieron cargo político en el Congreso de los Diputados.</p>
         <p><a href="/app">Buscar administradores</a></p>
@@ -151,6 +165,7 @@ const routes = [
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Grafo de empresas basado en BORME</h1>
         <p>Convierte publicaciones del Registro Mercantil en una red visual para explorar empresas, administradores, socios únicos, participaciones íntegramente poseídas y relaciones societarias con más rapidez que una búsqueda documental tradicional.</p>
+        ${disclaimerHtmlEs}
         <h2>Del boletín al grafo</h2>
         <p>Las sociedades y personas son nodos, y los cargos, socios únicos, participaciones al 100% o relaciones societarias actúan como enlaces que permiten explorar la red.</p>
         <p><a href="/app">Abrir el grafo</a></p>
@@ -165,8 +180,9 @@ const routes = [
     lang: 'es',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Mapa de relaciones societarias en Espana</h1>
+        <h1>Mapa de relaciones societarias en España</h1>
         <p>Investiga relaciones entre sociedades españolas, cargos mercantiles, socios únicos, participaciones íntegramente poseídas y personas vinculadas para entender estructuras corporativas, grupos y posibles conexiones de riesgo.</p>
+        ${disclaimerHtmlEs}
         <h2>Qué revela un mapa societario</h2>
         <p>Ayuda a ver administradores comunes, empresas vinculadas, socios únicos, participaciones al 100%, cambios en órganos de administración, cargos políticos en el Congreso de los Diputados y conexiones relevantes para una revisión de riesgo o investigación corporativa, incluyendo cruces con sanciones BOE cuando se solicita un informe.</p>
         <p><a href="/app">Explorar relaciones societarias</a></p>

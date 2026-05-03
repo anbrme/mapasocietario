@@ -61,6 +61,12 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://mapasocietario.es/terms.html</loc>
+    <lastmod>2026-05-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
     <loc>https://mapasocietario.es/privacy.html</loc>
     <lastmod>2026-05-03</lastmod>
     <changefreq>monthly</changefreq>
