@@ -589,6 +589,7 @@ const SpanishCompanyNetworkGraph = ({
   const [previewData, setPreviewData] = useState(null);
   const [previewNodeName, setPreviewNodeName] = useState('');
   const [previewNodeType, setPreviewNodeType] = useState('company');
+  const [legalDisclaimerOpen, setLegalDisclaimerOpen] = useState(false);
 
   // Deputy (PEP) match cache keyed by officer name. Populated lazily from a
   // `useEffect` further down — declared up here so `nodeCanvasObject` (which
@@ -4609,21 +4610,19 @@ const SpanishCompanyNetworkGraph = ({
             ),
           }}
         />
+        <Tooltip title="Fuente y aviso legal">
+          <IconButton
+            onClick={() => setLegalDisclaimerOpen(true)}
+            size="small"
+            aria-label="Fuente y aviso legal"
+          >
+            <InfoIcon />
+          </IconButton>
+        </Tooltip>
         <IconButton onClick={() => setShowSettings(!showSettings)} title="Configuración del grafo">
           <SettingsIcon />
         </IconButton>
       </Box>
-
-      <LegalDisclaimer
-        dense
-        language="es"
-        sx={{
-          mt: 1,
-          mx: embedded ? 1.5 : 2,
-          py: 0.5,
-          '& .MuiAlert-icon': { py: 0.25 },
-        }}
-      />
 
       {pendingSubsidiaries && (
         <Box
@@ -6239,6 +6238,27 @@ const SpanishCompanyNetworkGraph = ({
           onClose={() => setTimelineDialogOpen(false)}
           container={overlayContainer}
         />
+
+        <Dialog
+          open={legalDisclaimerOpen}
+          onClose={() => setLegalDisclaimerOpen(false)}
+          maxWidth="md"
+          fullWidth
+          container={overlayContainer}
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <InfoIcon color="info" />
+              <Typography variant="h6">Fuente y aviso legal</Typography>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <LegalDisclaimer language="es" sx={{ mt: 1 }} />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setLegalDisclaimerOpen(false)}>Cerrar</Button>
+          </DialogActions>
+        </Dialog>
       </>
     );
   })();
