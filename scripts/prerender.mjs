@@ -100,7 +100,7 @@ const routes = [
         <h2>Qué puedes investigar</h2>
         <p>Busca una sociedad española y ve sus administradores, cargos, socios únicos y participaciones íntegramente poseídas por otras sociedades. También puedes buscar por persona para descubrir en qué sociedades aparece como administrador, consejero, apoderado u otro cargo mercantil.</p>
         <h2>Por qué es útil</h2>
-        <p>El BORME contiene información pública esencial, pero no siempre es cómodo para una investigación rápida. Mapa Societario convierte esas publicaciones en un índice consultable y en un grafo navegable, e incorpora comprobación de sanciones publicadas en el BOE para informes due diligence.</p>
+        <p>El BORME contiene información pública esencial, pero no siempre es cómodo para una investigación rápida. Mapa Societario convierte esas publicaciones en un índice consultable y en un grafo navegable, incorpora comprobación de sanciones publicadas en el BOE para informes due diligence y marca con una insignia amarilla a administradores que tienen o tuvieron cargo político en el Congreso de los Diputados.</p>
         <p><a href="/app">Buscar en el grafo</a> | <a href="/due-diligence">Ver informes due diligence</a></p>
       </main>`,
   },
@@ -118,7 +118,7 @@ const routes = [
         <h2>Qué incluye el informe</h2>
         <ul>
           <li>Estructura societaria, administradores actuales e históricos, socios únicos y participaciones íntegramente poseídas.</li>
-          <li>Eventos publicados en BORME, cambios de capital, comprobación de sanciones BOE y señales de riesgo.</li>
+          <li>Eventos publicados en BORME, cambios de capital, comprobación de sanciones BOE, cruce con diputados del Congreso y señales de riesgo.</li>
           <li>PDF profesional para compliance, KYC, inversion o revision interna.</li>
         </ul>
         <p><a href="/app">Buscar una empresa</a></p>
@@ -136,7 +136,7 @@ const routes = [
         <h1>Buscar administradores de empresas en España</h1>
         <p>Localiza en qué empresas aparece una persona y explora sus cargos, nombramientos, ceses y sociedades relacionadas a partir de datos publicados en el BORME.</p>
         <h2>Cómo funciona la búsqueda</h2>
-        <p>Cambia el buscador a modo persona y escribe el nombre de un administrador, consejero o apoderado. La herramienta muestra sociedades asociadas y permite expandir la red.</p>
+        <p>Cambia el buscador a modo persona y escribe el nombre de un administrador, consejero o apoderado. La herramienta muestra sociedades asociadas, permite expandir la red e identifica con una insignia amarilla a quienes tienen o tuvieron cargo político en el Congreso de los Diputados.</p>
         <p><a href="/app">Buscar administradores</a></p>
       </main>`,
   },
@@ -168,7 +168,7 @@ const routes = [
         <h1>Mapa de relaciones societarias en Espana</h1>
         <p>Investiga relaciones entre sociedades españolas, cargos mercantiles, socios únicos, participaciones íntegramente poseídas y personas vinculadas para entender estructuras corporativas, grupos y posibles conexiones de riesgo.</p>
         <h2>Qué revela un mapa societario</h2>
-        <p>Ayuda a ver administradores comunes, empresas vinculadas, socios únicos, participaciones al 100%, cambios en órganos de administración y conexiones relevantes para una revisión de riesgo o investigación corporativa, incluyendo cruces con sanciones BOE cuando se solicita un informe.</p>
+        <p>Ayuda a ver administradores comunes, empresas vinculadas, socios únicos, participaciones al 100%, cambios en órganos de administración, cargos políticos en el Congreso de los Diputados y conexiones relevantes para una revisión de riesgo o investigación corporativa, incluyendo cruces con sanciones BOE cuando se solicita un informe.</p>
         <p><a href="/app">Explorar relaciones societarias</a></p>
       </main>`,
   },

@@ -45,7 +45,7 @@ const pages = {
     intro:
       'Explora empresas, administradores, cargos y conexiones societarias en España con un grafo interactivo basado en publicaciones oficiales del BORME.',
     icon: <AccountTreeIcon />,
-    chips: ['Grafo gratuito', 'Socios únicos', 'Participaciones 100%', 'Sanciones BOE'],
+    chips: ['Grafo gratuito', 'Socios únicos', 'Sanciones BOE', 'Cargos políticos Congreso'],
     sections: [
       {
         title: 'Qué puedes investigar',
@@ -58,13 +58,13 @@ const pages = {
         title: 'Por qué es útil',
         body: [
           'El BORME contiene información pública esencial, pero no siempre es cómodo para una investigación rápida. Convertimos esas publicaciones en un índice consultable y en un grafo que permite seguir relaciones entre sociedades y personas.',
-          'Puedes usar el grafo gratis y pedir un informe due diligence cuando necesites un PDF con análisis más profundo, historial societario, señales de riesgo, comprobación de sanciones en el BOE y controles adicionales.',
+          'Puedes usar el grafo gratis y pedir un informe due diligence cuando necesites un PDF con análisis más profundo, historial societario, señales de riesgo, comprobación de sanciones en el BOE y controles adicionales. Además, el grafo cruza administradores con diputados que tienen o tuvieron cargo político en el Congreso de los Diputados, marcándolos con una insignia amarilla.',
         ],
       },
     ],
     cards: [
       { icon: <SearchIcon />, title: 'Buscar empresas', text: 'Encuentra sociedades españolas por nombre y abre su red de administradores.' },
-      { icon: <HubIcon />, title: 'Explorar conexiones', text: 'Expande nodos para descubrir sociedades relacionadas, cargos compartidos, socios únicos y participaciones al 100%.' },
+      { icon: <HubIcon />, title: 'Explorar conexiones', text: 'Expande nodos para descubrir sociedades relacionadas, cargos compartidos, socios únicos, participaciones al 100% y coincidencias con diputados.' },
       { icon: <DescriptionIcon />, title: 'Pedir informes', text: 'Genera informes due diligence en PDF para empresas concretas.' },
     ],
   },
@@ -78,13 +78,13 @@ const pages = {
     intro:
       'Compra un informe due diligence para una sociedad española cuando necesites documentar una revisión de contraparte, proveedor, cliente, inversión o adquisición.',
     icon: <DescriptionIcon />,
-    chips: ['PDF profesional', 'Socios únicos', 'Sanciones BOE', 'Monitorización incluida'],
+    chips: ['PDF profesional', 'Socios únicos', 'Sanciones BOE', 'Cargos políticos Congreso'],
     sections: [
       {
         title: 'Qué incluye el informe',
         body: [
           'El informe reúne información mercantil estructurada: administradores actuales e históricos, socios únicos, participaciones íntegramente poseídas, cambios publicados, eventos de capital, relaciones societarias, señales de riesgo y un resumen preparado para revisión interna.',
-          'También puede incorporar análisis apoyado por IA, comprobación de sanciones publicadas en el BOE y controles adicionales, manteniendo siempre la trazabilidad hacia las fuentes públicas disponibles.',
+          'También puede incorporar análisis apoyado por IA, comprobación de sanciones publicadas en el BOE, cruce con diputados que tienen o tuvieron cargo político en el Congreso de los Diputados y controles adicionales, manteniendo siempre la trazabilidad hacia las fuentes públicas disponibles.',
         ],
       },
       {
@@ -96,7 +96,7 @@ const pages = {
       },
     ],
     cards: [
-      { icon: <SecurityIcon />, title: 'Compliance y KYC', text: 'Documenta la revisión de una contraparte con estructura societaria y comprobación de sanciones BOE.' },
+      { icon: <SecurityIcon />, title: 'Compliance y KYC', text: 'Documenta la revisión de una contraparte con estructura societaria, sanciones BOE y posibles cargos políticos en el Congreso.' },
       { icon: <GavelIcon />, title: 'Revisión mercantil', text: 'Consulta cargos, ceses, nombramientos y eventos relevantes.' },
       { icon: <VerifiedIcon />, title: 'Sin suscripción', text: 'Pago único por informe, sin crear una cuenta para explorar el grafo.' },
     ],
@@ -111,26 +111,26 @@ const pages = {
     intro:
       'Localiza en qué empresas aparece una persona y explora sus cargos, nombramientos, ceses y sociedades relacionadas a partir de datos publicados en el BORME.',
     icon: <SearchIcon />,
-    chips: ['Administradores', 'Consejeros', 'Apoderados', 'Sociedades vinculadas'],
+    chips: ['Administradores', 'Consejeros', 'Diputados identificados', 'Sociedades vinculadas'],
     sections: [
       {
         title: 'Cómo funciona la búsqueda',
         body: [
-          'Puedes cambiar el buscador a modo persona y escribir el nombre de un administrador, consejero o apoderado. La herramienta muestra sociedades asociadas y permite expandir la red para seguir conexiones.',
+          'Puedes cambiar el buscador a modo persona y escribir el nombre de un administrador, consejero o apoderado. La herramienta muestra sociedades asociadas, permite expandir la red para seguir conexiones e identifica con una insignia amarilla a quienes tienen o tuvieron un cargo político en el Congreso de los Diputados.',
           'Como el BORME no siempre proporciona identificadores personales únicos, la coincidencia de nombres debe interpretarse con cautela, especialmente en nombres frecuentes.',
         ],
       },
       {
         title: 'Preguntas que ayuda a responder',
         body: [
-          'Qué sociedades administra una persona, dónde ha tenido cargos, si varias empresas comparten administradores o si un directivo aparece conectado con redes empresariales más amplias.',
+          'Qué sociedades administra una persona, dónde ha tenido cargos, si varias empresas comparten administradores, si un directivo aparece conectado con redes empresariales más amplias o si coincide con un diputado o exdiputado del Congreso.',
           'Para investigaciones sensibles, conviene validar la información con fuentes oficiales y documentación mercantil adicional.',
         ],
       },
     ],
     cards: [
       { icon: <AccountTreeIcon />, title: 'Ver red de cargos', text: 'Pasa de una persona a sus sociedades y de cada sociedad a otros administradores.' },
-      { icon: <NewspaperIcon />, title: 'Investigación periodística', text: 'Sigue conexiones públicas entre personas y empresas.' },
+      { icon: <NewspaperIcon />, title: 'Investigación periodística', text: 'Sigue conexiones públicas entre personas, empresas y cargos políticos identificados.' },
       { icon: <VerifiedIcon />, title: 'Datos oficiales', text: 'Información derivada de publicaciones oficiales del BORME.' },
     ],
   },
@@ -177,12 +177,12 @@ const pages = {
     intro:
       'Investiga relaciones entre sociedades españolas, cargos mercantiles y personas vinculadas para entender estructuras corporativas, grupos y posibles conexiones de riesgo.',
     icon: <AccountTreeIcon />,
-    chips: ['Relaciones societarias', 'Socios únicos', 'Participaciones 100%', 'Sanciones BOE'],
+    chips: ['Relaciones societarias', 'Socios únicos', 'Participaciones 100%', 'Diputados Congreso'],
     sections: [
       {
         title: 'Qué revela un mapa societario',
         body: [
-          'Un mapa societario ayuda a ver administradores comunes, empresas vinculadas, socios únicos, participaciones íntegramente poseídas, cambios en órganos de administración y conexiones que pueden ser relevantes para una revisión de riesgo o una investigación corporativa.',
+          'Un mapa societario ayuda a ver administradores comunes, empresas vinculadas, socios únicos, participaciones íntegramente poseídas, cambios en órganos de administración y conexiones que pueden ser relevantes para una revisión de riesgo o una investigación corporativa. También destaca con una insignia amarilla a administradores que tienen o tuvieron cargo político en el Congreso de los Diputados.',
           'La visualización es especialmente útil cuando una estructura contiene varias sociedades o cuando una persona aparece en diferentes compañías a lo largo del tiempo.',
         ],
       },
@@ -195,7 +195,7 @@ const pages = {
       },
     ],
     cards: [
-      { icon: <SecurityIcon />, title: 'Riesgo y cumplimiento', text: 'Detecta conexiones societarias relevantes y cruces con sanciones BOE antes de tomar decisiones.' },
+      { icon: <SecurityIcon />, title: 'Riesgo y cumplimiento', text: 'Detecta conexiones societarias relevantes, sanciones BOE y posibles cargos políticos en el Congreso antes de tomar decisiones.' },
       { icon: <NewspaperIcon />, title: 'Contexto investigador', text: 'Construye hipótesis a partir de relaciones públicas registradas.' },
       { icon: <GavelIcon />, title: 'Apoyo legal', text: 'Orienta revisiones mercantiles con una vista clara de la red.' },
     ],
