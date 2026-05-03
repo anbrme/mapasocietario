@@ -45,12 +45,12 @@ const pages = {
     intro:
       'Explora empresas, administradores, cargos y conexiones societarias en España con un grafo interactivo basado en publicaciones oficiales del BORME.',
     icon: <AccountTreeIcon />,
-    chips: ['Grafo gratuito', 'Sin registro', 'Datos BORME', 'Informes desde EUR 22.50'],
+    chips: ['Grafo gratuito', 'Socios únicos', 'Participaciones 100%', 'Sanciones BOE'],
     sections: [
       {
         title: 'Qué puedes investigar',
         body: [
-          'Mapa Societario permite buscar una sociedad española y ver sus administradores, cargos y relaciones con otras empresas. También puedes buscar por persona para descubrir en qué sociedades aparece como administrador, consejero, apoderado u otro cargo mercantil.',
+          'Mapa Societario permite buscar una sociedad española y ver sus administradores, cargos, socios únicos y participaciones íntegramente poseídas por otras sociedades. También puedes buscar por persona para descubrir en qué sociedades aparece como administrador, consejero, apoderado u otro cargo mercantil.',
           'La herramienta está pensada para compliance, KYC, periodistas, analistas, abogados, inversores y equipos comerciales que necesitan entender rápido quién está detrás de una sociedad o cómo se conecta un grupo empresarial.',
         ],
       },
@@ -58,13 +58,13 @@ const pages = {
         title: 'Por qué es útil',
         body: [
           'El BORME contiene información pública esencial, pero no siempre es cómodo para una investigación rápida. Convertimos esas publicaciones en un índice consultable y en un grafo que permite seguir relaciones entre sociedades y personas.',
-          'Puedes usar el grafo gratis y pedir un informe due diligence cuando necesites un PDF con análisis más profundo, historial societario, señales de riesgo y comprobaciones adicionales.',
+          'Puedes usar el grafo gratis y pedir un informe due diligence cuando necesites un PDF con análisis más profundo, historial societario, señales de riesgo, comprobación de sanciones en el BOE y controles adicionales.',
         ],
       },
     ],
     cards: [
       { icon: <SearchIcon />, title: 'Buscar empresas', text: 'Encuentra sociedades españolas por nombre y abre su red de administradores.' },
-      { icon: <HubIcon />, title: 'Explorar conexiones', text: 'Expande nodos para descubrir sociedades relacionadas y cargos compartidos.' },
+      { icon: <HubIcon />, title: 'Explorar conexiones', text: 'Expande nodos para descubrir sociedades relacionadas, cargos compartidos, socios únicos y participaciones al 100%.' },
       { icon: <DescriptionIcon />, title: 'Pedir informes', text: 'Genera informes due diligence en PDF para empresas concretas.' },
     ],
   },
@@ -78,13 +78,13 @@ const pages = {
     intro:
       'Compra un informe due diligence para una sociedad española cuando necesites documentar una revisión de contraparte, proveedor, cliente, inversión o adquisición.',
     icon: <DescriptionIcon />,
-    chips: ['PDF profesional', 'Estructura societaria', 'Historial BORME', 'Monitorización incluida'],
+    chips: ['PDF profesional', 'Socios únicos', 'Sanciones BOE', 'Monitorización incluida'],
     sections: [
       {
         title: 'Qué incluye el informe',
         body: [
-          'El informe reúne información mercantil estructurada: administradores actuales e históricos, cambios publicados, eventos de capital, relaciones societarias, señales de riesgo y un resumen preparado para revisión interna.',
-          'También puede incorporar análisis apoyado por IA y comprobaciones adicionales, manteniendo siempre la trazabilidad hacia las fuentes mercantiles públicas disponibles.',
+          'El informe reúne información mercantil estructurada: administradores actuales e históricos, socios únicos, participaciones íntegramente poseídas, cambios publicados, eventos de capital, relaciones societarias, señales de riesgo y un resumen preparado para revisión interna.',
+          'También puede incorporar análisis apoyado por IA, comprobación de sanciones publicadas en el BOE y controles adicionales, manteniendo siempre la trazabilidad hacia las fuentes públicas disponibles.',
         ],
       },
       {
@@ -96,7 +96,7 @@ const pages = {
       },
     ],
     cards: [
-      { icon: <SecurityIcon />, title: 'Compliance y KYC', text: 'Documenta la revisión de una contraparte antes de incorporarla.' },
+      { icon: <SecurityIcon />, title: 'Compliance y KYC', text: 'Documenta la revisión de una contraparte con estructura societaria y comprobación de sanciones BOE.' },
       { icon: <GavelIcon />, title: 'Revisión mercantil', text: 'Consulta cargos, ceses, nombramientos y eventos relevantes.' },
       { icon: <VerifiedIcon />, title: 'Sin suscripción', text: 'Pago único por informe, sin crear una cuenta para explorar el grafo.' },
     ],
@@ -144,12 +144,12 @@ const pages = {
     intro:
       'Convierte publicaciones del Registro Mercantil en una red visual para explorar empresas, administradores y relaciones societarias con más rapidez que una búsqueda documental tradicional.',
     icon: <HubIcon />,
-    chips: ['BORME', 'Grafo interactivo', 'Relaciones societarias', 'Exploración gratuita'],
+    chips: ['BORME', 'Grafo interactivo', 'Socios únicos', 'Participaciones 100%'],
     sections: [
       {
         title: 'Del boletín al grafo',
         body: [
-          'El BORME publica actos mercantiles como nombramientos, ceses, cambios de capital, fusiones y modificaciones societarias. Mapa Societario estructura esa información para hacerla navegable.',
+          'El BORME publica actos mercantiles como nombramientos, ceses, cambios de capital, fusiones, declaraciones de socio único y participaciones íntegramente poseídas. Mapa Societario estructura esa información para hacerla navegable.',
           'El resultado es un grafo donde las sociedades y personas son nodos, y los cargos o relaciones societarias actúan como enlaces que permiten explorar la red.',
         ],
       },
@@ -162,7 +162,7 @@ const pages = {
       },
     ],
     cards: [
-      { icon: <AccountTreeIcon />, title: 'Nodos y enlaces', text: 'Empresas, personas y cargos conectados en una red visual.' },
+      { icon: <AccountTreeIcon />, title: 'Nodos y enlaces', text: 'Empresas, personas, cargos, socios únicos y participaciones al 100% en una red visual.' },
       { icon: <SearchIcon />, title: 'Búsqueda rápida', text: 'Autocomplete para encontrar sociedades y oficiales con menos fricción.' },
       { icon: <DescriptionIcon />, title: 'De exploración a informe', text: 'Pasa del grafo gratuito a un informe PDF cuando necesites documentación.' },
     ],
@@ -177,12 +177,12 @@ const pages = {
     intro:
       'Investiga relaciones entre sociedades españolas, cargos mercantiles y personas vinculadas para entender estructuras corporativas, grupos y posibles conexiones de riesgo.',
     icon: <AccountTreeIcon />,
-    chips: ['Relaciones societarias', 'Grupos empresariales', 'Cargos compartidos', 'Investigación mercantil'],
+    chips: ['Relaciones societarias', 'Socios únicos', 'Participaciones 100%', 'Sanciones BOE'],
     sections: [
       {
         title: 'Qué revela un mapa societario',
         body: [
-          'Un mapa societario ayuda a ver administradores comunes, empresas vinculadas, cambios en órganos de administración y conexiones que pueden ser relevantes para una revisión de riesgo o una investigación corporativa.',
+          'Un mapa societario ayuda a ver administradores comunes, empresas vinculadas, socios únicos, participaciones íntegramente poseídas, cambios en órganos de administración y conexiones que pueden ser relevantes para una revisión de riesgo o una investigación corporativa.',
           'La visualización es especialmente útil cuando una estructura contiene varias sociedades o cuando una persona aparece en diferentes compañías a lo largo del tiempo.',
         ],
       },
@@ -195,7 +195,7 @@ const pages = {
       },
     ],
     cards: [
-      { icon: <SecurityIcon />, title: 'Riesgo y cumplimiento', text: 'Detecta conexiones societarias relevantes antes de tomar decisiones.' },
+      { icon: <SecurityIcon />, title: 'Riesgo y cumplimiento', text: 'Detecta conexiones societarias relevantes y cruces con sanciones BOE antes de tomar decisiones.' },
       { icon: <NewspaperIcon />, title: 'Contexto investigador', text: 'Construye hipótesis a partir de relaciones públicas registradas.' },
       { icon: <GavelIcon />, title: 'Apoyo legal', text: 'Orienta revisiones mercantiles con una vista clara de la red.' },
     ],
@@ -348,4 +348,3 @@ export default function SpanishSeoPage({ pageKey: explicitPageKey }) {
     </SpanishPageShell>
   );
 }
-

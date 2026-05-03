@@ -98,9 +98,9 @@ const routes = [
         <h1>Mapa societario de empresas españolas</h1>
         <p>Explora empresas, administradores, cargos y conexiones societarias en España con un grafo interactivo basado en publicaciones oficiales del BORME.</p>
         <h2>Qué puedes investigar</h2>
-        <p>Busca una sociedad española y ve sus administradores, cargos y relaciones con otras empresas. También puedes buscar por persona para descubrir en qué sociedades aparece como administrador, consejero, apoderado u otro cargo mercantil.</p>
+        <p>Busca una sociedad española y ve sus administradores, cargos, socios únicos y participaciones íntegramente poseídas por otras sociedades. También puedes buscar por persona para descubrir en qué sociedades aparece como administrador, consejero, apoderado u otro cargo mercantil.</p>
         <h2>Por qué es útil</h2>
-        <p>El BORME contiene información pública esencial, pero no siempre es cómodo para una investigación rápida. Mapa Societario convierte esas publicaciones en un índice consultable y en un grafo navegable.</p>
+        <p>El BORME contiene información pública esencial, pero no siempre es cómodo para una investigación rápida. Mapa Societario convierte esas publicaciones en un índice consultable y en un grafo navegable, e incorpora comprobación de sanciones publicadas en el BOE para informes due diligence.</p>
         <p><a href="/app">Buscar en el grafo</a> | <a href="/due-diligence">Ver informes due diligence</a></p>
       </main>`,
   },
@@ -117,8 +117,8 @@ const routes = [
         <p>Compra un informe due diligence para una sociedad española cuando necesites documentar una revisión de contraparte, proveedor, cliente, inversión o adquisición.</p>
         <h2>Qué incluye el informe</h2>
         <ul>
-          <li>Estructura societaria y administradores actuales e historicos.</li>
-          <li>Eventos publicados en BORME, cambios de capital y señales de riesgo.</li>
+          <li>Estructura societaria, administradores actuales e históricos, socios únicos y participaciones íntegramente poseídas.</li>
+          <li>Eventos publicados en BORME, cambios de capital, comprobación de sanciones BOE y señales de riesgo.</li>
           <li>PDF profesional para compliance, KYC, inversion o revision interna.</li>
         </ul>
         <p><a href="/app">Buscar una empresa</a></p>
@@ -150,9 +150,9 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Grafo de empresas basado en BORME</h1>
-        <p>Convierte publicaciones del Registro Mercantil en una red visual para explorar empresas, administradores y relaciones societarias con más rapidez que una búsqueda documental tradicional.</p>
+        <p>Convierte publicaciones del Registro Mercantil en una red visual para explorar empresas, administradores, socios únicos, participaciones íntegramente poseídas y relaciones societarias con más rapidez que una búsqueda documental tradicional.</p>
         <h2>Del boletín al grafo</h2>
-        <p>Las sociedades y personas son nodos, y los cargos o relaciones societarias actúan como enlaces que permiten explorar la red.</p>
+        <p>Las sociedades y personas son nodos, y los cargos, socios únicos, participaciones al 100% o relaciones societarias actúan como enlaces que permiten explorar la red.</p>
         <p><a href="/app">Abrir el grafo</a></p>
       </main>`,
   },
@@ -166,9 +166,9 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa de relaciones societarias en Espana</h1>
-        <p>Investiga relaciones entre sociedades españolas, cargos mercantiles y personas vinculadas para entender estructuras corporativas, grupos y posibles conexiones de riesgo.</p>
+        <p>Investiga relaciones entre sociedades españolas, cargos mercantiles, socios únicos, participaciones íntegramente poseídas y personas vinculadas para entender estructuras corporativas, grupos y posibles conexiones de riesgo.</p>
         <h2>Qué revela un mapa societario</h2>
-        <p>Ayuda a ver administradores comunes, empresas vinculadas, cambios en órganos de administración y conexiones relevantes para una revisión de riesgo o investigación corporativa.</p>
+        <p>Ayuda a ver administradores comunes, empresas vinculadas, socios únicos, participaciones al 100%, cambios en órganos de administración y conexiones relevantes para una revisión de riesgo o investigación corporativa, incluyendo cruces con sanciones BOE cuando se solicita un informe.</p>
         <p><a href="/app">Explorar relaciones societarias</a></p>
       </main>`,
   },
