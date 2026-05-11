@@ -3351,8 +3351,20 @@ const SpanishCompanyNetworkGraph = ({
           const firstSeen = company?.first_seen || (sortedEvents.length > 0 ? (sortedEvents[sortedEvents.length - 1].event_date || sortedEvents[sortedEvents.length - 1].indexed_date) : null);
           const lastSeen = company?.last_seen || (sortedEvents.length > 0 ? (sortedEvents[0].event_date || sortedEvents[0].indexed_date) : null);
 
-          // Previous names from the node
-          const previousNames = contextNode.companySummary?.previousNames || contextNode.previousNames || [];
+          // Previous names — merge node-derived names with v3 name_changes
+          const nodePrevNames = contextNode.companySummary?.previousNames || contextNode.previousNames || [];
+          const nameChanges = Array.isArray(company?.name_changes) ? company.name_changes : [];
+          const previousNamesSet = new Set(nodePrevNames);
+          nameChanges.forEach(nc => {
+            const currentName = company?.company_name || name;
+            if (nc?.old_name && nc.old_name !== currentName) previousNamesSet.add(nc.old_name);
+          });
+          const previousNames = Array.from(previousNamesSet);
+
+          // Status flags from v3 company doc
+          const isDissolved = !!company?.is_dissolved;
+          const isInConcurso = !!company?.is_in_concurso;
+          const isUnipersonal = !!company?.is_unipersonal;
 
           // Format capital with thousands separator
           let formattedCapital = null;
@@ -3428,6 +3440,10 @@ const SpanishCompanyNetworkGraph = ({
               firstSeen,
               lastSeen,
               previousNames,
+              nameChanges,
+              isDissolved,
+              isInConcurso,
+              isUnipersonal,
               officers: datedOfficers,
               currentOfficers,
               eventCount: events.length,
@@ -5769,6 +5785,15 @@ const SpanishCompanyNetworkGraph = ({
                 color={previewNodeType === 'officer' ? 'warning' : 'primary'}
                 variant="outlined"
               />
+              {previewData?.type === 'company' && previewData.enriched?.isDissolved && (
+                <Chip label="Disuelta" size="small" color="error" />
+              )}
+              {previewData?.type === 'company' && previewData.enriched?.isInConcurso && (
+                <Chip label="Concurso" size="small" color="warning" />
+              )}
+              {previewData?.type === 'company' && previewData.enriched?.isUnipersonal && (
+                <Chip label="Unipersonal" size="small" color="info" variant="outlined" />
+              )}
             </Box>
             <IconButton onClick={() => setPreviewOpen(false)} size="small">
               <CloseIcon />
@@ -5825,15 +5850,54 @@ const SpanishCompanyNetworkGraph = ({
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
                       <Box sx={{ gridColumn: '1 / -1' }}>
                         <Typography variant="caption" color="text.secondary">Denominación</Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            textDecoration: e?.isDissolved ? 'line-through' : 'none',
+                            color: e?.isDissolved ? 'error.main' : 'inherit',
+                          }}
+                        >
                           {previewData.name}
                         </Typography>
-                        {e?.previousNames?.length > 0 && (
-                          <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
-                            Antes: {e.previousNames.join(', ')}
-                          </Typography>
+                        {e?.nameChanges?.length > 0 ? (
+                          <Box sx={{ mt: 0.25 }}>
+                            {e.nameChanges.map((nc, idx) => (
+                              <Typography
+                                key={idx}
+                                variant="caption"
+                                display="block"
+                                sx={{ color: 'warning.main', fontStyle: 'italic' }}
+                              >
+                                {nc.date ? `${formatDate(nc.date)}: ` : ''}
+                                {nc.old_name} → {nc.new_name}
+                              </Typography>
+                            ))}
+                          </Box>
+                        ) : (
+                          e?.previousNames?.length > 0 && (
+                            <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
+                              Antes: {e.previousNames.join(', ')}
+                            </Typography>
+                          )
                         )}
                       </Box>
+                      {(e?.isDissolved || e?.isInConcurso || e?.isUnipersonal) && (
+                        <Box sx={{ gridColumn: '1 / -1' }}>
+                          <Typography variant="caption" color="text.secondary">Estado</Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
+                            {e.isDissolved && (
+                              <Chip label="Disuelta" size="small" color="error" />
+                            )}
+                            {e.isInConcurso && (
+                              <Chip label="En concurso" size="small" color="warning" />
+                            )}
+                            {e.isUnipersonal && (
+                              <Chip label="Unipersonal" size="small" color="info" variant="outlined" />
+                            )}
+                          </Box>
+                        </Box>
+                      )}
                       {e?.cif && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
