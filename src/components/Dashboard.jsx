@@ -12,6 +12,12 @@ import {
   Tooltip,
   Tabs,
   Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
@@ -25,6 +31,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MapIcon from '@mui/icons-material/Map';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import AltRouteIcon from '@mui/icons-material/AltRoute';
+import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import FilterBar from './FilterBar';
 import SankeyChart from './SankeyChart';
 import { useFilters } from '../contexts/FilterProvider';
@@ -46,6 +53,9 @@ import {
   Cell,
 } from 'recharts';
 import { statsService } from '../services/statsService';
+import { spanishCompaniesService } from '../services/spanishCompaniesService';
+import { detectCoLocations, detectConnectedComponents } from '../utils/networkAnalysis';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
@@ -190,6 +200,162 @@ export default function Dashboard() {
   const [ownership, setOwnership] = useState(null);
   const [ownershipSankey, setOwnershipSankey] = useState(null);
   const [lifecycleSankey, setLifecycleSankey] = useState(null);
+
+  // Corporate Intelligence States (Intel & Networks)
+  const [intelCompanies, setIntelCompanies] = useState([]);
+  const [intelLoading, setIntelLoading] = useState(false);
+  const [intelError, setIntelError] = useState(null);
+
+  useEffect(() => {
+    if (tab !== 7) return;
+
+    let cancelled = false;
+    setIntelLoading(true);
+    setIntelError(null);
+
+    // Build query: use selected provinces or search for active companies in Madrid/Barcelona as fallback
+    let query = '';
+    if (selectedProvinces && selectedProvinces.length > 0) {
+      query = selectedProvinces.join(' OR ');
+    } else {
+      query = 'madrid';
+    }
+
+    spanishCompaniesService.workingSearch(query, { size: 300 })
+      .then(res => {
+        if (cancelled) return;
+        if (res.results) {
+          setIntelCompanies(res.results);
+        } else {
+          setIntelCompanies([]);
+        }
+      })
+      .catch(err => {
+        if (!cancelled) setIntelError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setIntelLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [tab, selectedProvinces, filterKey]);
+
+  // Client-side Corporate Network Analysis (Clustering & Nests)
+  const intelAnalysis = useMemo(() => {
+    if (tab !== 7 || intelCompanies.length === 0) {
+      return { colocatedAddresses: [], clusters: [], totalClustersCount: 0, sizeDistribution: [] };
+    }
+
+    // 1. Co-location detection
+    const nodes = intelCompanies.map(c => ({
+      id: c.id || c.company_name,
+      name: c.company_name,
+      type: 'company',
+      parsed_details: c.parsed_details
+    }));
+    
+    const { colocatedAddresses } = detectCoLocations(nodes);
+
+    // 2. Connected networks clustering
+    const nodesMap = new Map();
+    const links = [];
+    
+    intelCompanies.forEach(company => {
+      const compId = company.id || company.company_name;
+      if (!compId) return;
+      
+      nodesMap.set(compId, {
+        id: compId,
+        name: company.company_name,
+        type: 'company'
+      });
+      
+      const officersList = company.officers || [];
+      officersList.forEach(off => {
+        if (!off.name) return;
+        const offId = `officer-${off.name}`;
+        if (!nodesMap.has(offId)) {
+          nodesMap.set(offId, {
+            id: offId,
+            name: off.name,
+            type: 'officer'
+          });
+        }
+        
+        links.push({
+          source: offId,
+          target: compId,
+          id: `${offId}-${compId}`
+        });
+      });
+    });
+
+    const graphNodes = Array.from(nodesMap.values());
+    const { clusters } = detectConnectedComponents(graphNodes, links);
+
+    // 3. Size distribution chart data
+    const distCounts = {
+      '1': 0,
+      '2': 0,
+      '3-5': 0,
+      '6-10': 0,
+      '11+': 0
+    };
+
+    clusters.forEach(c => {
+      const s = c.size;
+      if (s === 1) distCounts['1']++;
+      else if (s === 2) distCounts['2']++;
+      else if (s >= 3 && s <= 5) distCounts['3-5']++;
+      else if (s >= 6 && s <= 10) distCounts['6-10']++;
+      else if (s >= 11) distCounts['11+']++;
+    });
+
+    const sizeDistribution = Object.entries(distCounts).map(([sizeRange, count]) => ({
+      name: sizeRange === '1' ? 'Aislada (1)' : `${sizeRange} hitos`,
+      'Redes': count
+    }));
+
+    // Find hub nodes inside top clusters
+    const enrichedClusters = clusters.slice(0, 5).map(c => {
+      const nodeDegrees = {};
+      c.nodes.forEach(nid => {
+        nodeDegrees[nid] = 0;
+      });
+
+      links.forEach(l => {
+        const s = typeof l.source === 'object' ? l.source.id : l.source;
+        const t = typeof l.target === 'object' ? l.target.id : l.target;
+        if (nodeDegrees[s] !== undefined) nodeDegrees[s]++;
+        if (nodeDegrees[t] !== undefined) nodeDegrees[t]++;
+      });
+
+      let hubNodeId = null;
+      let maxDegree = -1;
+      Object.entries(nodeDegrees).forEach(([nid, degree]) => {
+        if (degree > maxDegree) {
+          maxDegree = degree;
+          hubNodeId = nid;
+        }
+      });
+
+      const hubNode = graphNodes.find(n => n.id === hubNodeId);
+
+      return {
+        ...c,
+        hubName: hubNode ? hubNode.name : 'Varios administradores',
+        hubType: hubNode ? hubNode.type : 'company',
+        hubConnections: maxDegree
+      };
+    });
+
+    return {
+      colocatedAddresses,
+      clusters: enrichedClusters,
+      totalClustersCount: clusters.length,
+      sizeDistribution
+    };
+  }, [tab, intelCompanies]);
 
   // Load data in two waves to avoid overwhelming the backend / hitting gateway timeouts
   useEffect(() => {
@@ -402,6 +568,7 @@ export default function Dashboard() {
         <Tab label="Propiedad" icon={<SwapHorizIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Directivos" icon={<PeopleIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Flujos" icon={<AltRouteIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
+        <Tab label="Inteligencia y Redes" icon={<AccountTreeIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
       </Tabs>
 
       {/* Scrollable tab content */}
@@ -821,6 +988,186 @@ export default function Dashboard() {
             subtitle="Flujo de empresas desde constitución hasta disolución o concurso"
             height={300}
           />
+        </>
+      )}
+
+      {/* Tab 7: Corporate Intelligence & Network Analytics */}
+      {tab === 7 && (
+        <>
+          {intelLoading ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 8, gap: 2 }}>
+              <CircularProgress size={40} color="secondary" />
+              <Typography variant="body2" color="text.secondary">
+                Ejecutando algoritmos de detección de nidos y clústeres en tiempo real...
+              </Typography>
+            </Box>
+          ) : intelError ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Error al calcular inteligencia societaria: {intelError}
+            </Alert>
+          ) : (
+            <>
+              {/* KPIs Row */}
+              <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
+                <KpiCard
+                  title="Empresas Analizadas"
+                  value={intelCompanies.length}
+                  icon={<BusinessIcon />}
+                  color="#2196f3"
+                />
+                <KpiCard
+                  title="Nidos de Empresas (Sedes Compartidas)"
+                  value={intelAnalysis.colocatedAddresses.length}
+                  icon={<HomeWorkIcon />}
+                  color="#ff5252"
+                />
+                <KpiCard
+                  title="Redes Societarias Independientes"
+                  value={intelAnalysis.totalClustersCount}
+                  icon={<AccountTreeIcon />}
+                  color="#9c27b0"
+                />
+              </Box>
+
+              {/* 2-Column Grid */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+                {/* Column A: Address Nests */}
+                <ChartCard
+                  title="📍 Nidos de Empresas Detectados"
+                  subtitle="Direcciones fiscales o sociales que concentran múltiples sociedades de la muestra (posibles oficinas virtuales o nidos de sociedades)."
+                >
+                  {intelAnalysis.colocatedAddresses.length > 0 ? (
+                    <TableContainer sx={{ maxHeight: 420, overflow: 'auto' }}>
+                      <Table stickyHeader size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 600 }}>Dirección Sede</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 600, width: 90 }}>Sociedades</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Empresas Co-localizadas</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {intelAnalysis.colocatedAddresses.map((addr, idx) => (
+                            <TableRow key={idx} hover>
+                              <TableCell sx={{ fontSize: '0.75rem', maxWidth: 160, whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 500 }}>
+                                {addr.address}
+                              </TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 700, color: '#ff5252' }}>
+                                {addr.count}
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                  {addr.companies.map((comp, cIdx) => (
+                                    <Chip
+                                      key={cIdx}
+                                      label={comp.name}
+                                      size="small"
+                                      variant="outlined"
+                                      sx={{ fontSize: '0.65rem', height: 18 }}
+                                    />
+                                  ))}
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  ) : (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, height: 250 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No se han detectado sedes compartidas en los registros actuales.
+                      </Typography>
+                    </Box>
+                  )}
+                </ChartCard>
+
+                {/* Column B: Connected Networks & Hubs */}
+                <ChartCard
+                  title="🌳 Redes Corporativas y Concentración"
+                  subtitle="Distribución de redes según su tamaño y detalle de los principales clústeres interconectados por directivos."
+                >
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={intelAnalysis.sizeDistribution} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                      <XAxis dataKey="name" tick={{ fontSize: 9 }} />
+                      <YAxis tick={{ fontSize: 9 }} />
+                      <RechartsTooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          return (
+                            <Paper sx={{ p: 1, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
+                                {payload[0].payload.name}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: '#9c27b0', fontWeight: 600 }}>
+                                Redes: {payload[0].value}
+                              </Typography>
+                            </Paper>
+                          );
+                        }}
+                      />
+                      <Bar dataKey="Redes" fill="#9c27b0" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                      Principales Redes Societarias (Top Clústeres)
+                    </Typography>
+                    {intelAnalysis.clusters && intelAnalysis.clusters.length > 0 ? (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {intelAnalysis.clusters.slice(0, 3).map((cluster, idx) => (
+                          <Paper
+                            key={cluster.id}
+                            variant="outlined"
+                            sx={{
+                              p: 1,
+                              borderColor: idx === 0 ? 'secondary.main' : 'divider',
+                              bgcolor: idx === 0 ? 'rgba(156, 39, 176, 0.04)' : 'transparent',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 0.5
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: 'secondary.main', fontSize: '0.8rem' }}>
+                                Red Societaria #{idx + 1}
+                              </Typography>
+                              <Chip
+                                label={`${cluster.size} hitos`}
+                                size="small"
+                                color="secondary"
+                                sx={{ fontWeight: 600, height: 18, fontSize: '0.65rem' }}
+                              />
+                            </Box>
+                            {cluster.hubName && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                <Chip
+                                  icon={cluster.hubType === 'officer' ? <PersonIcon sx={{ fontSize: '0.7rem' }} /> : <BusinessIcon sx={{ fontSize: '0.7rem' }} />}
+                                  label={cluster.hubType === 'officer' ? 'Hub: Administrador' : 'Hub: Empresa'}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.6rem', height: 16 }}
+                                />
+                                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                                  {cluster.hubName} ({cluster.hubConnections} cargos)
+                                </Typography>
+                              </Box>
+                            )}
+                          </Paper>
+                        ))}
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                        No se han detectado redes significativas en la muestra.
+                      </Typography>
+                    )}
+                  </Box>
+                </ChartCard>
+              </Box>
+            </>
+          )}
         </>
       )}
 

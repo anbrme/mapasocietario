@@ -33,6 +33,8 @@ import {
   ListItemText,
   Divider,
   Chip,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -60,6 +62,7 @@ import {
   Description as DescriptionIcon,
   Preview as PreviewIcon,
   Info as InfoIcon,
+  AltRoute as RouteIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import DDCheckoutDialog from './DDCheckoutDialog';
@@ -71,6 +74,12 @@ import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms'
 import { useTerms } from '../hooks/useTerms';
 import { spanishCompaniesService, SpanishCompaniesService } from '../services/spanishCompaniesService';
 import { findDeputyMatch } from '../services/congresoOfficerMatcher';
+import {
+  findShortestPath,
+  detectConnectedComponents,
+  detectCoLocations,
+  normalizeAddress
+} from '../utils/networkAnalysis';
 
 const CATEGORY_LABELS = {
   nombramientos: 'Nombramiento',
@@ -650,6 +659,37 @@ const SpanishCompanyNetworkGraph = ({
   const [showNodeLabels] = useState(true); // Renamed for clarity
   const [zoomLevel, setZoomLevel] = useState(1);
 
+  // Corporate Intelligence States
+  const [showVirtualAddresses, setShowVirtualAddresses] = useState(false);
+  const [colorByCluster, setColorByCluster] = useState(false);
+
+  // Pathfinder States
+  const [pathfinderActive, setPathfinderActive] = useState(false);
+  const [pathfinderStartNode, setPathfinderStartNode] = useState(null);
+  const [pathfinderEndNode, setPathfinderEndNode] = useState(null);
+  const [shortestPathNodes, setShortestPathNodes] = useState(new Set());
+  const [shortestPathLinks, setShortestPathLinks] = useState(new Set());
+  const [shortestPathArray, setShortestPathArray] = useState([]);
+
+  // Connected Components / Clusters analysis
+  const clustersData = React.useMemo(() => {
+    return detectConnectedComponents(graphData.nodes, graphData.links);
+  }, [graphData]);
+
+  // Color generator for stable, aesthetic HSL cluster colors
+  const getClusterColor = useCallback((nodeId) => {
+    const clusterId = clustersData.nodeClusters.get(nodeId);
+    if (!clusterId) return '#607d8b'; // Neutral fallback
+    
+    // Stable hash function
+    let hash = 0;
+    for (let i = 0; i < clusterId.length; i++) {
+      hash = clusterId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const h = Math.abs(hash % 360);
+    return `hsl(${h}, 65%, 45%)`; // curation: premium HSL colors
+  }, [clustersData]);
+
   const MAX_NODE_DRIFT = 5000;
   const MAX_NODE_SPEED = 30;
 
@@ -751,7 +791,51 @@ const SpanishCompanyNetworkGraph = ({
     nodeSize,
     visible,
     embedded,
+    showVirtualAddresses,
   ]);
+
+  // Pathfinder path-calculation logic
+  useEffect(() => {
+    if (!pathfinderActive || !pathfinderStartNode || !pathfinderEndNode) {
+      setShortestPathNodes(new Set());
+      setShortestPathLinks(new Set());
+      setShortestPathArray([]);
+      return;
+    }
+
+    const path = findShortestPath(
+      filteredGraphData.nodes,
+      filteredGraphData.links,
+      pathfinderStartNode.id,
+      pathfinderEndNode.id
+    );
+
+    if (path) {
+      const pathNodes = new Set(path);
+      const pathLinks = new Set();
+      
+      for (let i = 0; i < path.length - 1; i++) {
+        const u = path[i];
+        const v = path[i + 1];
+        
+        filteredGraphData.links.forEach(l => {
+          const sid = normalizeNodeId(getNodeIdFromRef(l.source));
+          const tid = normalizeNodeId(getNodeIdFromRef(l.target));
+          if ((sid === u && tid === v) || (sid === v && tid === u)) {
+            pathLinks.add(l.id);
+          }
+        });
+      }
+      
+      setShortestPathNodes(pathNodes);
+      setShortestPathLinks(pathLinks);
+      setShortestPathArray(path);
+    } else {
+      setShortestPathNodes(new Set());
+      setShortestPathLinks(new Set());
+      setShortestPathArray([]);
+    }
+  }, [pathfinderActive, pathfinderStartNode, pathfinderEndNode, filteredGraphData.nodes, filteredGraphData.links]);
 
   // Clear graph data when dialog closes so it starts fresh each time (only in dialog mode)
   useEffect(() => {
@@ -770,6 +854,16 @@ const SpanishCompanyNetworkGraph = ({
       setIsDeleteNodeDialogOpen(false);
       setMergeTargetOption(null);
       setMergeSearchText('');
+
+      // Clean up intelligence states
+      setShowVirtualAddresses(false);
+      setColorByCluster(false);
+      setPathfinderActive(false);
+      setPathfinderStartNode(null);
+      setPathfinderEndNode(null);
+      setShortestPathNodes(new Set());
+      setShortestPathLinks(new Set());
+      setShortestPathArray([]);
     }
   }, [visible, embedded]);
 
@@ -3783,8 +3877,60 @@ const SpanishCompanyNetworkGraph = ({
       return visibleNodeIds.has(sourceId) && visibleNodeIds.has(targetId);
     });
 
-    return { nodes: filteredNodes, links: filteredLinks };
-  }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds, statusFilters, positionFilters, hasChipFilters, showShareholders]);
+    let finalNodes = filteredNodes;
+    let finalLinks = filteredLinks;
+
+    if (showVirtualAddresses) {
+      const { colocatedAddresses } = detectCoLocations(filteredNodes);
+      
+      const virtualNodes = [];
+      const virtualLinks = [];
+      
+      colocatedAddresses.forEach(item => {
+        const addressNodeId = `address-${item.canonical}`;
+        
+        // Calculate centroid of companies sharing this address to position node close to them
+        let sumX = 0, sumY = 0, count = 0;
+        item.companies.forEach(c => {
+          const matchedNode = filteredNodes.find(n => n.id === c.id);
+          if (matchedNode && matchedNode.x != null && matchedNode.y != null) {
+            sumX += matchedNode.x;
+            sumY += matchedNode.y;
+            count++;
+          }
+        });
+        
+        const addressNode = {
+          id: addressNodeId,
+          name: item.address,
+          type: 'address',
+          x: count > 0 ? sumX / count : undefined,
+          y: count > 0 ? sumY / count : undefined,
+          isVirtual: true,
+          count: item.count
+        };
+        
+        virtualNodes.push(addressNode);
+        
+        item.companies.forEach(c => {
+          virtualLinks.push({
+            id: `link-address-${c.id}-${item.canonical}`,
+            source: c.id,
+            target: addressNodeId,
+            type: 'address-link',
+            category: 'Sede Social',
+            relationship: 'Sede Social',
+            isVirtual: true
+          });
+        });
+      });
+      
+      finalNodes = [...filteredNodes, ...virtualNodes];
+      finalLinks = [...filteredLinks, ...virtualLinks];
+    }
+
+    return { nodes: finalNodes, links: finalLinks };
+  }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds, statusFilters, positionFilters, hasChipFilters, showShareholders, showVirtualAddresses]);
 
   const parallelLinkMeta = React.useMemo(() => {
     const perPair = new Map();
@@ -3820,24 +3966,83 @@ const SpanishCompanyNetworkGraph = ({
     (node, ctx, globalScale) => {
       const label = node.name || node.label || '';
       const fontSize = Math.max(labelSize / globalScale, 4);
-      const nodeRadius = nodeSize;
+      const nodeRadius = node.type === 'address' ? nodeSize + 2 : nodeSize;
 
-      // Determine node color and shape
+      // Pathfinder alpha control
+      const inPath = shortestPathNodes.has(node.id);
+      if (pathfinderActive && shortestPathNodes.size > 0) {
+        ctx.globalAlpha = inPath ? 1.0 : 0.15;
+      } else {
+        ctx.globalAlpha = 1.0;
+      }
+
+      // Handle virtual address node rendering separately
+      if (node.type === 'address') {
+        ctx.fillStyle = '#ff5252'; // Vibrant light red / coral for addresses
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI, false);
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw '📍' map-pin emoji inside the circle
+        ctx.font = `${nodeRadius * 1.3}px Sans-Serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.fillText('📍', node.x, node.y);
+
+        // Draw label in light red below
+        if (showNodeLabels) {
+          const isDense = filteredGraphData.nodes.length > MAX_NODES_FOR_LABELS;
+          let shouldRenderLabel = isDense
+            ? globalScale > NODE_LABEL_VISIBILITY_SCALE_DENSE
+            : globalScale > NODE_LABEL_VISIBILITY_SCALE_NORMAL;
+
+          if (shouldRenderLabel) {
+            ctx.font = `${fontSize}px Sans-Serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const maxLength = Math.max(15, Math.round(30 * globalScale));
+            const truncatedLabel =
+              label.length > maxLength ? label.substring(0, maxLength) + '...' : label;
+            const labelY = node.y + nodeRadius + fontSize * 1.1;
+
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.lineWidth = 3 / globalScale;
+            ctx.lineJoin = 'round';
+            ctx.strokeText(truncatedLabel, node.x, labelY);
+            ctx.fillStyle = '#ff8a80'; // light red
+            ctx.fillText(truncatedLabel, node.x, labelY);
+          }
+        }
+        
+        ctx.globalAlpha = 1.0;
+        return;
+      }
+
+      // Determine node color and shape for normal nodes
       const isOrigin = pinnedNodeIds.has(normalizeNodeId(node.id));
       let color = nodeColors.company;
-      if (node.type === 'officer') {
-        color =
-          node.subtype === 'company' ? nodeColors.officer_company : nodeColors.officer_individual;
-      } else if (node.type === 'spanish-company-group') {
-        color = nodeColors.company;
-      }
+      if (colorByCluster) {
+        color = getClusterColor(node.id);
+      } else {
+        if (node.type === 'officer') {
+          color =
+            node.subtype === 'company' ? nodeColors.officer_company : nodeColors.officer_individual;
+        } else if (node.type === 'spanish-company-group') {
+          color = nodeColors.company;
+        }
 
-      if (node.expanded) {
-        color = nodeColors.expanded;
-      }
+        if (node.expanded) {
+          color = nodeColors.expanded;
+        }
 
-      if (isOrigin) {
-        color = nodeColors.searchOrigin;
+        if (isOrigin) {
+          color = nodeColors.searchOrigin;
+        }
       }
 
       // Draw node based on type and subtype
@@ -3936,8 +4141,10 @@ const SpanishCompanyNetworkGraph = ({
           }
         }
       }
+
+      ctx.globalAlpha = 1.0;
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor]
   );
 
   const linkCanvasObject = useCallback(
@@ -3960,8 +4167,14 @@ const SpanishCompanyNetworkGraph = ({
 
       // Determine link color based on appointment category
       const cat = (link.category || '').toLowerCase();
+      const isLinkInPath = shortestPathLinks.has(link.id);
       let linkColor;
-      if (link.type === 'ownership') {
+
+      if (link.type === 'address-link') {
+        linkColor = '#ff8a80'; // fine coral-red for address links
+      } else if (pathfinderActive && isLinkInPath) {
+        linkColor = '#00e5ff'; // Vibrant electric cyan for shortest path links
+      } else if (link.type === 'ownership') {
         linkColor = cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d'; // Gold — sole shareholder
       } else if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
         linkColor = '#43a047'; // Green — appointments and re-elections
@@ -3974,9 +4187,18 @@ const SpanishCompanyNetworkGraph = ({
         linkColor = '#90a4ae'; // Blue-grey for unknown / company-company
       }
 
-      // Draw link — dashed for officers from a previous company name and for ownership links
+      // Pathfinder alpha control
+      if (pathfinderActive && shortestPathNodes.size > 0) {
+        ctx.globalAlpha = isLinkInPath ? 1.0 : 0.15;
+      } else {
+        ctx.globalAlpha = 1.0;
+      }
+
+      // Draw link — dashed for officers from a previous company name, ownership, and address links
       ctx.beginPath();
-      if (link.fromPreviousName) {
+      if (link.type === 'address-link') {
+        ctx.setLineDash([2, 3]);
+      } else if (link.fromPreviousName) {
         ctx.setLineDash([Math.max(4, 6 / globalScale), Math.max(2, 3 / globalScale)]);
       } else if (link.type === 'ownership') {
         ctx.setLineDash([Math.max(2, 3 / globalScale), Math.max(2, 3 / globalScale)]);
@@ -3984,15 +4206,24 @@ const SpanishCompanyNetworkGraph = ({
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.strokeStyle = link.fromPreviousName ? (linkColor + 'AA') : linkColor; // Slightly transparent for old-name links
-      ctx.lineWidth = link.type === 'ownership'
-        ? Math.max(0.6, 1.6 / globalScale)
-        : Math.max(0.3, 1 / globalScale);
+      
+      let strokeWidth = Math.max(0.3, 1 / globalScale);
+      if (link.type === 'address-link') {
+        strokeWidth = Math.max(0.4, 0.8 / globalScale);
+      } else if (pathfinderActive && isLinkInPath) {
+        strokeWidth = Math.max(1.8, 4.5 / globalScale);
+      } else if (link.type === 'ownership') {
+        strokeWidth = Math.max(0.6, 1.6 / globalScale);
+      }
+      ctx.lineWidth = strokeWidth;
+      
       ctx.stroke();
       ctx.setLineDash([]); // Reset dash
 
       // Arrowhead at the target end. react-force-graph's built-in linkDirectionalArrow is
       // suppressed when a custom linkCanvasObject is in 'replace' mode, so we draw it here.
-      {
+      // Suppress for address links!
+      if (link.type !== 'address-link') {
         const dx = end.x - start.x;
         const dy = end.y - start.y;
         const length = Math.sqrt(dx * dx + dy * dy);
@@ -4003,7 +4234,9 @@ const SpanishCompanyNetworkGraph = ({
           const tipOffset = nodeSize + 1;
           const tipX = end.x - ux * tipOffset;
           const tipY = end.y - uy * tipOffset;
-          const arrowLen = Math.max(4, 6 / globalScale);
+          const arrowLen = (pathfinderActive && isLinkInPath)
+            ? Math.max(6, 9 / globalScale)
+            : Math.max(4, 6 / globalScale);
           const arrowHalfWidth = arrowLen * 0.55;
           const baseX = tipX - ux * arrowLen;
           const baseY = tipY - uy * arrowLen;
@@ -4021,69 +4254,73 @@ const SpanishCompanyNetworkGraph = ({
         }
       }
 
-      // Conditional link label rendering
-      let edgeLabel = normalizeEdgeLabelText(link.relationship, link.category);
-      if (link.fromPreviousName) {
-        edgeLabel = edgeLabel
-          ? `${edgeLabel} (bajo ${link.fromPreviousName})`
-          : `(bajo ${link.fromPreviousName})`;
-      }
-      if (edgeLabel) {
-        const isDense = filteredGraphData.links.length > MAX_LINKS_FOR_LABELS;
-        let shouldRenderLabel = false;
-
-        if (isDense) {
-          shouldRenderLabel = globalScale > LINK_LABEL_VISIBILITY_SCALE_DENSE;
-        } else {
-          shouldRenderLabel = globalScale > LINK_LABEL_VISIBILITY_SCALE_NORMAL;
+      // Conditional link label rendering (only for non-address links)
+      if (link.type !== 'address-link') {
+        let edgeLabel = normalizeEdgeLabelText(link.relationship, link.category);
+        if (link.fromPreviousName) {
+          edgeLabel = edgeLabel
+            ? `${edgeLabel} (bajo ${link.fromPreviousName})`
+            : `(bajo ${link.fromPreviousName})`;
         }
+        if (edgeLabel) {
+          const isDense = filteredGraphData.links.length > MAX_LINKS_FOR_LABELS;
+          let shouldRenderLabel = false;
 
-        if (shouldRenderLabel) {
-          const fontSize = Math.max(labelSize / globalScale, 4);
-          let midX = (start.x + end.x) / 2;
-          let midY = (start.y + end.y) / 2;
-          const dx = end.x - start.x;
-          const dy = end.y - start.y;
-          const length = Math.sqrt(dx * dx + dy * dy);
-
-          // Stack labels on parallel edges to avoid overlap.
-          const linkMeta = parallelLinkMeta.get(normalizeNodeId(link.id));
-          if (linkMeta && linkMeta.count > 1 && length > 0) {
-            const centeredIndex = linkMeta.index - (linkMeta.count - 1) / 2;
-            // Dynamic spacing: keep multi-label edges readable regardless of zoom/font size.
-            const stackSpacingPx = Math.max(BASE_LABEL_STACK_SPACING, fontSize * 2.4);
-            const alongEdgeSpacingPx = Math.max(BASE_LABEL_ALONG_EDGE_SPACING, fontSize * 1.1);
-            const perpOffset = (centeredIndex * stackSpacingPx) / globalScale;
-            const tangentOffset = (centeredIndex * alongEdgeSpacingPx) / globalScale;
-
-            const perpDx = -dy / length;
-            const perpDy = dx / length;
-            const tangentDx = dx / length;
-            const tangentDy = dy / length;
-            midX += perpDx * perpOffset + tangentDx * tangentOffset;
-            midY += perpDy * perpOffset + tangentDy * tangentOffset;
+          if (isDense) {
+            shouldRenderLabel = globalScale > LINK_LABEL_VISIBILITY_SCALE_DENSE;
+          } else {
+            shouldRenderLabel = globalScale > LINK_LABEL_VISIBILITY_SCALE_NORMAL;
           }
 
-          ctx.font = `${fontSize}px Sans-Serif`;
-          const text = edgeLabel;
-          const textWidth = ctx.measureText(text).width;
-          const paddingX = 2;
-          const paddingY = 1;
-          ctx.fillStyle = 'rgba(18, 24, 40, 0.75)';
-          ctx.fillRect(
-            midX - textWidth / 2 - paddingX,
-            midY - fontSize / 2 - paddingY,
-            textWidth + paddingX * 2,
-            fontSize + paddingY * 2
-          );
-          ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(text, midX, midY);
+          if (shouldRenderLabel) {
+            const fontSize = Math.max(labelSize / globalScale, 4);
+            let midX = (start.x + end.x) / 2;
+            let midY = (start.y + end.y) / 2;
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+
+            // Stack labels on parallel edges to avoid overlap.
+            const linkMeta = parallelLinkMeta.get(normalizeNodeId(link.id));
+            if (linkMeta && linkMeta.count > 1 && length > 0) {
+              const centeredIndex = linkMeta.index - (linkMeta.count - 1) / 2;
+              // Dynamic spacing: keep multi-label edges readable regardless of zoom/font size.
+              const stackSpacingPx = Math.max(BASE_LABEL_STACK_SPACING, fontSize * 2.4);
+              const alongEdgeSpacingPx = Math.max(BASE_LABEL_ALONG_EDGE_SPACING, fontSize * 1.1);
+              const perpOffset = (centeredIndex * stackSpacingPx) / globalScale;
+              const tangentOffset = (centeredIndex * alongEdgeSpacingPx) / globalScale;
+
+              const perpDx = -dy / length;
+              const perpDy = dx / length;
+              const tangentDx = dx / length;
+              const tangentDy = dy / length;
+              midX += perpDx * perpOffset + tangentDx * tangentOffset;
+              midY += perpDy * perpOffset + tangentDy * tangentOffset;
+            }
+
+            ctx.font = `${fontSize}px Sans-Serif`;
+            const text = edgeLabel;
+            const textWidth = ctx.measureText(text).width;
+            const paddingX = 2;
+            const paddingY = 1;
+            ctx.fillStyle = 'rgba(18, 24, 40, 0.75)';
+            ctx.fillRect(
+              midX - textWidth / 2 - paddingX,
+              midY - fontSize / 2 - paddingY,
+              textWidth + paddingX * 2,
+              fontSize + paddingY * 2
+            );
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, midX, midY);
+          }
         }
       }
+
+      ctx.globalAlpha = 1.0;
     },
-    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize]
+    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks]
   );
 
   // Graph controls
@@ -4635,10 +4872,179 @@ const SpanishCompanyNetworkGraph = ({
             <InfoIcon />
           </IconButton>
         </Tooltip>
+        <Tooltip title="Buscar camino de conexión (Pathfinder)">
+          <IconButton
+            onClick={() => setPathfinderActive(!pathfinderActive)}
+            color={pathfinderActive ? "primary" : "default"}
+            size="small"
+            aria-label="Buscar camino de conexión (Pathfinder)"
+          >
+            <RouteIcon />
+          </IconButton>
+        </Tooltip>
         <IconButton onClick={() => setShowSettings(!showSettings)} title="Configuración del grafo">
           <SettingsIcon />
         </IconButton>
       </Box>
+
+      {/* Pathfinder Panel */}
+      {pathfinderActive && (
+        <Paper
+          elevation={1}
+          sx={{
+            mt: 1.5,
+            p: 2,
+            bgcolor: 'background.paper',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <RouteIcon color="primary" />
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                Buscador de Caminos de Conexión (Pathfinder)
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => setPathfinderActive(false)}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            <Autocomplete
+              options={filteredGraphData.nodes.filter(n => n.type !== 'address')}
+              getOptionLabel={(option) => option.name || option.label || ''}
+              value={pathfinderStartNode}
+              onChange={(event, newValue) => setPathfinderStartNode(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Hito de Origen"
+                  size="small"
+                  placeholder="Empresa o administrador..."
+                />
+              )}
+              renderOption={(props, option) => {
+                const { key, ...restProps } = props;
+                return (
+                  <Box key={option.id} component="li" {...restProps} sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
+                    <Typography variant="body2">{option.name || option.label}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {option.type === 'officer'
+                        ? `👥 ${option.subtype === 'company' ? 'Administrador Persona Jurídica' : 'Administrador Persona Física'}`
+                        : '🏢 Empresa'}
+                    </Typography>
+                  </Box>
+                );
+              }}
+              sx={{ flexGrow: 1 }}
+            />
+
+            <Autocomplete
+              options={filteredGraphData.nodes.filter(n => n.type !== 'address')}
+              getOptionLabel={(option) => option.name || option.label || ''}
+              value={pathfinderEndNode}
+              onChange={(event, newValue) => setPathfinderEndNode(newValue)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Hito de Destino"
+                  size="small"
+                  placeholder="Empresa o administrador..."
+                />
+              )}
+              renderOption={(props, option) => {
+                const { key, ...restProps } = props;
+                return (
+                  <Box key={option.id} component="li" {...restProps} sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
+                    <Typography variant="body2">{option.name || option.label}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {option.type === 'officer'
+                        ? `👥 ${option.subtype === 'company' ? 'Administrador Persona Jurídica' : 'Administrador Persona Física'}`
+                        : '🏢 Empresa'}
+                    </Typography>
+                  </Box>
+                );
+              }}
+              sx={{ flexGrow: 1 }}
+            />
+
+            {(pathfinderStartNode || pathfinderEndNode) && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                size="small"
+                onClick={() => {
+                  setPathfinderStartNode(null);
+                  setPathfinderEndNode(null);
+                }}
+                sx={{ alignSelf: { sm: 'center' }, height: 40 }}
+              >
+                Limpiar
+              </Button>
+            )}
+          </Box>
+
+          {/* Path Display */}
+          {pathfinderStartNode && pathfinderEndNode && (
+            <Box sx={{ mt: 1, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+              {shortestPathArray.length > 0 ? (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" gutterBottom display="block" sx={{ fontWeight: 600 }}>
+                    CONEXIÓN ENCONTRADA ({shortestPathArray.length - 1} saltos):
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 1,
+                      mt: 1
+                    }}
+                  >
+                    {shortestPathArray.map((nodeId, idx) => {
+                      const matchedNode = filteredGraphData.nodes.find(n => n.id === nodeId);
+                      const isStart = idx === 0;
+                      const isEnd = idx === shortestPathArray.length - 1;
+
+                      return (
+                        <React.Fragment key={nodeId}>
+                          {idx > 0 && (
+                            <Typography variant="body2" color="primary" sx={{ mx: 0.5, fontWeight: 'bold' }}>
+                              ➔
+                            </Typography>
+                          )}
+                          <Chip
+                            label={matchedNode ? (matchedNode.name || matchedNode.label) : nodeId}
+                            size="small"
+                            color={isStart ? "success" : isEnd ? "error" : "primary"}
+                            variant={isStart || isEnd ? "filled" : "outlined"}
+                            icon={matchedNode?.type === 'officer' ? <PersonIcon /> : <BusinessIcon />}
+                            sx={{ fontWeight: isStart || isEnd ? 'bold' : 'normal' }}
+                          />
+                        </React.Fragment>
+                      );
+                    })}
+                  </Box>
+                </Box>
+              ) : (
+                <Typography variant="body2" color="error" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  ⚠️ No se ha encontrado ninguna conexión directa o indirecta entre estos dos hitos en la red cargada.
+                </Typography>
+              )}
+            </Box>
+          )}
+        </Paper>
+      )}
 
       {pendingSubsidiaries && (
         <Box
@@ -4804,6 +5210,40 @@ const SpanishCompanyNetworkGraph = ({
                 max={18}
                 step={1}
                 size="small"
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={showVirtualAddresses}
+                    onChange={(e) => setShowVirtualAddresses(e.target.checked)}
+                    size="small"
+                    color="primary"
+                  />
+                }
+                label={
+                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                    Mostrar Sede Social (📍)
+                  </Typography>
+                }
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={colorByCluster}
+                    onChange={(e) => setColorByCluster(e.target.checked)}
+                    size="small"
+                    color="primary"
+                  />
+                }
+                label={
+                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                    Colorear por Redes
+                  </Typography>
+                }
               />
             </Box>
           </Box>
