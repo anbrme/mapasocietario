@@ -251,6 +251,16 @@ export default function Dashboard() {
       id: c.id || c.company_name,
       name: c.company_name,
       type: 'company',
+      address:
+        c.current_address ||
+        c.address ||
+        c.registered_address ||
+        c.domicilio_actual ||
+        c.domicilio ||
+        c.domicilio_social ||
+        c.sede_social ||
+        c.company_address ||
+        c.address_history?.slice?.().sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0]?.address,
       parsed_details: c.parsed_details
     }));
     

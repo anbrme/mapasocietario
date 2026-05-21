@@ -50,7 +50,8 @@ export function normalizeAddress(address) {
   // Strip floor, door, stair, and building subunit details to get down to building level
   // E.g., removes "3º", "2ª", "4º a", "piso 3", "bajo b", "puerta 4", "escalera izq"
   const subunitRegexes = [
-    /\b\d+\s*[ºªªoºa]\b/g, // numbers with º or ª symbols (e.g. 3º, 2ª)
+    /\d+\s*[ºª]\s*[a-z]?\b/g, // numbers with ordinal symbols (e.g. 3º, 2ª, 4º a)
+    /\b\d+\s*[oa]\b/g, // ASCII ordinal fallbacks (e.g. 3o, 2a)
     /\b(piso|planta|bajo|puerta|atico|entresuelo|local|oficina|of|ofic|nave|escalera|esc|esc\.?|portal|izq|der|dcha|izda|dcho|duplicado|dup)\b.*/g,
     /\b\d+\s*[a-z]\b(?!\d)/g // numbers followed by single letter (e.g. 4a, 4b, but not zip codes like 28001)
   ];
@@ -70,6 +71,63 @@ export function normalizeAddress(address) {
   return tokens.join(' ');
 }
 
+const cleanAddress = value => {
+  if (!value || typeof value !== 'string') return '';
+  return value.replace(/^[:\s\n\r]+/, '').replace(/\s+/g, ' ').trim();
+};
+
+const entryTimestamp = entry => {
+  const raw =
+    entry?.event_date ||
+    entry?.indexed_date ||
+    entry?.last_seen ||
+    entry?.date ||
+    entry?.first_seen;
+  if (!raw) return 0;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : 0;
+};
+
+const extractAddressFromRecord = record => {
+  if (!record) return '';
+  const pd = record.parsed_details || {};
+  const parsed = record.parsed || {};
+  return cleanAddress(
+    record.current_address ||
+      record.address ||
+      record.registered_address ||
+      record.registeredAddress ||
+      record.domicilio_actual ||
+      record.domicilio ||
+      record.domicilio_social ||
+      record.sede_social ||
+      record.company_address ||
+      pd.address ||
+      pd.domicilio ||
+      pd.domicilio_actual ||
+      pd.domicilio_social ||
+      pd.cambio_de_domicilio_social ||
+      parsed.address ||
+      parsed.newAddress ||
+      record.address_history?.slice?.().sort((a, b) => entryTimestamp(b) - entryTimestamp(a))[0]?.address ||
+      ''
+  );
+};
+
+const getLatestCompanyAddress = node => {
+  const nodeAddress = extractAddressFromRecord(node);
+  if (nodeAddress) return nodeAddress;
+
+  const entries = Array.isArray(node.companySummary?.entries)
+    ? node.companySummary.entries
+    : [];
+
+  return entries
+    .map(entry => ({ address: extractAddressFromRecord(entry), timestamp: entryTimestamp(entry) }))
+    .filter(candidate => candidate.address && candidate.address.length >= 5)
+    .sort((a, b) => b.timestamp - a.timestamp)[0]?.address || '';
+};
+
 /**
  * Group company nodes by their registered address to detect co-locations.
  *
@@ -80,10 +138,10 @@ export function detectCoLocations(nodes) {
   const grouped = {};
 
   nodes.forEach(node => {
-    // Only check company nodes that have address metadata in parsed_details
+    // Only check company nodes that have address metadata
     if (node.type !== 'company' && node.type !== 'spanish-company' && node.type !== 'spanish-company-group') return;
 
-    const rawAddress = node.parsed_details?.domicilio || node.address || '';
+    const rawAddress = getLatestCompanyAddress(node);
     if (!rawAddress || rawAddress.length < 5) return;
 
     const canonicalAddress = normalizeAddress(rawAddress);
@@ -129,15 +187,18 @@ export function detectCoLocations(nodes) {
 export function findShortestPath(nodes, links, startId, endId) {
   if (!startId || !endId || startId === endId) return null;
 
+  const startIdStr = String(startId);
+  const endIdStr = String(endId);
+
   // Build adjacency list for fast graph traversal
   const adjacency = {};
   nodes.forEach(node => {
-    adjacency[node.id] = [];
+    adjacency[String(node.id)] = [];
   });
 
   links.forEach(link => {
-    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    const sourceId = String(typeof link.source === 'object' ? link.source.id : link.source);
+    const targetId = String(typeof link.target === 'object' ? link.target.id : link.target);
 
     // Ensure nodes exist in our active graph set before mapping connection
     if (adjacency[sourceId] && adjacency[targetId]) {
@@ -147,16 +208,16 @@ export function findShortestPath(nodes, links, startId, endId) {
   });
 
   // Verify start and end exist in graph
-  if (!adjacency[startId] || !adjacency[endId]) return null;
+  if (!adjacency[startIdStr] || !adjacency[endIdStr]) return null;
 
   // Queue stores [currentNodeId, pathTaken]
-  const queue = [[startId, [startId]]];
-  const visited = new Set([startId]);
+  const queue = [[startIdStr, [startIdStr]]];
+  const visited = new Set([startIdStr]);
 
   while (queue.length > 0) {
     const [currId, path] = queue.shift();
 
-    if (currId === endId) {
+    if (currId === endIdStr) {
       return path;
     }
 
@@ -183,12 +244,12 @@ export function findShortestPath(nodes, links, startId, endId) {
 export function detectConnectedComponents(nodes, links) {
   const adjacency = {};
   nodes.forEach(node => {
-    adjacency[node.id] = [];
+    adjacency[String(node.id)] = [];
   });
 
   links.forEach(link => {
-    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    const sourceId = String(typeof link.source === 'object' ? link.source.id : link.source);
+    const targetId = String(typeof link.target === 'object' ? link.target.id : link.target);
 
     if (adjacency[sourceId] && adjacency[targetId]) {
       adjacency[sourceId].push(targetId);
@@ -202,13 +263,14 @@ export function detectConnectedComponents(nodes, links) {
   let clusterCounter = 0;
 
   nodes.forEach(node => {
-    if (visited.has(node.id)) return;
+    const nodeIdStr = String(node.id);
+    if (visited.has(nodeIdStr)) return;
 
     // Start a new BFS/DFS component traversal
     const clusterId = `cluster-${clusterCounter++}`;
     const componentNodes = [];
-    const queue = [node.id];
-    visited.add(node.id);
+    const queue = [nodeIdStr];
+    visited.add(nodeIdStr);
 
     while (queue.length > 0) {
       const currId = queue.shift();

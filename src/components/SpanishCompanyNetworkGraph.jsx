@@ -77,8 +77,6 @@ import { findDeputyMatch } from '../services/congresoOfficerMatcher';
 import {
   findShortestPath,
   detectConnectedComponents,
-  detectCoLocations,
-  normalizeAddress
 } from '../utils/networkAnalysis';
 
 const CATEGORY_LABELS = {
@@ -660,7 +658,6 @@ const SpanishCompanyNetworkGraph = ({
   const [zoomLevel, setZoomLevel] = useState(1);
 
   // Corporate Intelligence States
-  const [showVirtualAddresses, setShowVirtualAddresses] = useState(false);
   const [colorByCluster, setColorByCluster] = useState(false);
 
   // Pathfinder States
@@ -670,25 +667,6 @@ const SpanishCompanyNetworkGraph = ({
   const [shortestPathNodes, setShortestPathNodes] = useState(new Set());
   const [shortestPathLinks, setShortestPathLinks] = useState(new Set());
   const [shortestPathArray, setShortestPathArray] = useState([]);
-
-  // Connected Components / Clusters analysis
-  const clustersData = React.useMemo(() => {
-    return detectConnectedComponents(graphData.nodes, graphData.links);
-  }, [graphData]);
-
-  // Color generator for stable, aesthetic HSL cluster colors
-  const getClusterColor = useCallback((nodeId) => {
-    const clusterId = clustersData.nodeClusters.get(nodeId);
-    if (!clusterId) return '#607d8b'; // Neutral fallback
-    
-    // Stable hash function
-    let hash = 0;
-    for (let i = 0; i < clusterId.length; i++) {
-      hash = clusterId.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const h = Math.abs(hash % 360);
-    return `hsl(${h}, 65%, 45%)`; // curation: premium HSL colors
-  }, [clustersData]);
 
   const MAX_NODE_DRIFT = 5000;
   const MAX_NODE_SPEED = 30;
@@ -791,51 +769,9 @@ const SpanishCompanyNetworkGraph = ({
     nodeSize,
     visible,
     embedded,
-    showVirtualAddresses,
   ]);
 
-  // Pathfinder path-calculation logic
-  useEffect(() => {
-    if (!pathfinderActive || !pathfinderStartNode || !pathfinderEndNode) {
-      setShortestPathNodes(new Set());
-      setShortestPathLinks(new Set());
-      setShortestPathArray([]);
-      return;
-    }
 
-    const path = findShortestPath(
-      filteredGraphData.nodes,
-      filteredGraphData.links,
-      pathfinderStartNode.id,
-      pathfinderEndNode.id
-    );
-
-    if (path) {
-      const pathNodes = new Set(path);
-      const pathLinks = new Set();
-      
-      for (let i = 0; i < path.length - 1; i++) {
-        const u = path[i];
-        const v = path[i + 1];
-        
-        filteredGraphData.links.forEach(l => {
-          const sid = normalizeNodeId(getNodeIdFromRef(l.source));
-          const tid = normalizeNodeId(getNodeIdFromRef(l.target));
-          if ((sid === u && tid === v) || (sid === v && tid === u)) {
-            pathLinks.add(l.id);
-          }
-        });
-      }
-      
-      setShortestPathNodes(pathNodes);
-      setShortestPathLinks(pathLinks);
-      setShortestPathArray(path);
-    } else {
-      setShortestPathNodes(new Set());
-      setShortestPathLinks(new Set());
-      setShortestPathArray([]);
-    }
-  }, [pathfinderActive, pathfinderStartNode, pathfinderEndNode, filteredGraphData.nodes, filteredGraphData.links]);
 
   // Clear graph data when dialog closes so it starts fresh each time (only in dialog mode)
   useEffect(() => {
@@ -856,7 +792,6 @@ const SpanishCompanyNetworkGraph = ({
       setMergeSearchText('');
 
       // Clean up intelligence states
-      setShowVirtualAddresses(false);
       setColorByCluster(false);
       setPathfinderActive(false);
       setPathfinderStartNode(null);
@@ -3843,94 +3778,68 @@ const SpanishCompanyNetworkGraph = ({
       });
     }
 
-    if (filterTerms.length === 0) return { nodes: activeNodes, links: activeLinks };
+    let filteredNodes = activeNodes;
+    let filteredLinks = activeLinks;
 
-    // Find nodes matching filter terms (NOT pinned — pinned are added separately)
-    const filterMatchIds = new Set();
-    activeNodes.forEach(node => {
-      const name = (node.name || '').toLowerCase();
-      if (filterTerms.some(term => name.includes(term))) {
-        filterMatchIds.add(normalizeNodeId(node.id));
-      }
-    });
-
-    // Build visible set: filter matches + pinned + neighbors of filter matches only
-    const visibleNodeIds = new Set(filterMatchIds);
-    pinnedNodeIds.forEach(id => {
-      const nodeId = normalizeNodeId(id);
-      if (!hiddenNodeIds.has(nodeId)) visibleNodeIds.add(nodeId);
-    });
-
-    // Expand neighbors only for filter-matched nodes (not pinned),
-    // so pinned nodes don't drag all their connections into view
-    activeLinks.forEach(link => {
-      const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
-      const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
-      if (filterMatchIds.has(sourceId)) visibleNodeIds.add(targetId);
-      if (filterMatchIds.has(targetId)) visibleNodeIds.add(sourceId);
-    });
-
-    const filteredNodes = activeNodes.filter(n => visibleNodeIds.has(normalizeNodeId(n.id)));
-    const filteredLinks = activeLinks.filter(l => {
-      const sourceId = normalizeNodeId(getNodeIdFromRef(l.source));
-      const targetId = normalizeNodeId(getNodeIdFromRef(l.target));
-      return visibleNodeIds.has(sourceId) && visibleNodeIds.has(targetId);
-    });
-
-    let finalNodes = filteredNodes;
-    let finalLinks = filteredLinks;
-
-    if (showVirtualAddresses) {
-      const { colocatedAddresses } = detectCoLocations(filteredNodes);
-      
-      const virtualNodes = [];
-      const virtualLinks = [];
-      
-      colocatedAddresses.forEach(item => {
-        const addressNodeId = `address-${item.canonical}`;
-        
-        // Calculate centroid of companies sharing this address to position node close to them
-        let sumX = 0, sumY = 0, count = 0;
-        item.companies.forEach(c => {
-          const matchedNode = filteredNodes.find(n => n.id === c.id);
-          if (matchedNode && matchedNode.x != null && matchedNode.y != null) {
-            sumX += matchedNode.x;
-            sumY += matchedNode.y;
-            count++;
-          }
-        });
-        
-        const addressNode = {
-          id: addressNodeId,
-          name: item.address,
-          type: 'address',
-          x: count > 0 ? sumX / count : undefined,
-          y: count > 0 ? sumY / count : undefined,
-          isVirtual: true,
-          count: item.count
-        };
-        
-        virtualNodes.push(addressNode);
-        
-        item.companies.forEach(c => {
-          virtualLinks.push({
-            id: `link-address-${c.id}-${item.canonical}`,
-            source: c.id,
-            target: addressNodeId,
-            type: 'address-link',
-            category: 'Sede Social',
-            relationship: 'Sede Social',
-            isVirtual: true
-          });
-        });
+    if (filterTerms.length > 0) {
+      // Find nodes matching filter terms (NOT pinned — pinned are added separately)
+      const filterMatchIds = new Set();
+      activeNodes.forEach(node => {
+        const name = (node.name || '').toLowerCase();
+        if (filterTerms.some(term => name.includes(term))) {
+          filterMatchIds.add(normalizeNodeId(node.id));
+        }
       });
-      
-      finalNodes = [...filteredNodes, ...virtualNodes];
-      finalLinks = [...filteredLinks, ...virtualLinks];
+
+      // Build visible set: filter matches + pinned + neighbors of filter matches only
+      const visibleNodeIds = new Set(filterMatchIds);
+      pinnedNodeIds.forEach(id => {
+        const nodeId = normalizeNodeId(id);
+        if (!hiddenNodeIds.has(nodeId)) visibleNodeIds.add(nodeId);
+      });
+
+      // Expand neighbors only for filter-matched nodes (not pinned),
+      // so pinned nodes don't drag all their connections into view
+      activeLinks.forEach(link => {
+        const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
+        const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
+        if (filterMatchIds.has(sourceId)) visibleNodeIds.add(targetId);
+        if (filterMatchIds.has(targetId)) visibleNodeIds.add(sourceId);
+      });
+
+      filteredNodes = activeNodes.filter(n => visibleNodeIds.has(normalizeNodeId(n.id)));
+      filteredLinks = activeLinks.filter(l => {
+        const sourceId = normalizeNodeId(getNodeIdFromRef(l.source));
+        const targetId = normalizeNodeId(getNodeIdFromRef(l.target));
+        return visibleNodeIds.has(sourceId) && visibleNodeIds.has(targetId);
+      });
     }
 
-    return { nodes: finalNodes, links: finalLinks };
-  }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds, statusFilters, positionFilters, hasChipFilters, showShareholders, showVirtualAddresses]);
+    return { nodes: filteredNodes, links: filteredLinks };
+  }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds, statusFilters, positionFilters, hasChipFilters, showShareholders]);
+
+  // Connected Components / Clusters analysis for the active rendered graph.
+  // This lets virtual shared-address links participate in network coloring.
+  const clustersData = React.useMemo(() => {
+    return detectConnectedComponents(filteredGraphData.nodes, filteredGraphData.links);
+  }, [filteredGraphData.nodes, filteredGraphData.links]);
+
+  const clusterColorById = React.useMemo(() => {
+    const colors = new Map();
+    clustersData.clusters.forEach((cluster, index) => {
+      const hue = Math.round((210 + index * 137.508) % 360);
+      const saturation = index % 3 === 0 ? 68 : index % 3 === 1 ? 62 : 72;
+      const lightness = index % 2 === 0 ? 45 : 38;
+      colors.set(cluster.id, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    });
+    return colors;
+  }, [clustersData]);
+
+  const getClusterColor = useCallback((nodeId) => {
+    const clusterId = clustersData.nodeClusters.get(normalizeNodeId(nodeId));
+    if (!clusterId) return '#607d8b';
+    return clusterColorById.get(clusterId) || '#607d8b';
+  }, [clustersData, clusterColorById]);
 
   const parallelLinkMeta = React.useMemo(() => {
     const perPair = new Map();
@@ -3961,66 +3870,62 @@ const SpanishCompanyNetworkGraph = ({
     return byLinkId;
   }, [filteredGraphData.links]);
 
+  // Pathfinder path-calculation logic (placed here to avoid TDZ reference errors on filteredGraphData)
+  useEffect(() => {
+    if (!pathfinderActive || !pathfinderStartNode || !pathfinderEndNode) {
+      setShortestPathNodes(new Set());
+      setShortestPathLinks(new Set());
+      setShortestPathArray([]);
+      return;
+    }
+
+    const path = findShortestPath(
+      filteredGraphData.nodes,
+      filteredGraphData.links,
+      pathfinderStartNode.id,
+      pathfinderEndNode.id
+    );
+
+    if (path) {
+      const pathNodes = new Set(path);
+      const pathLinks = new Set();
+      
+      for (let i = 0; i < path.length - 1; i++) {
+        const u = path[i];
+        const v = path[i + 1];
+        
+        filteredGraphData.links.forEach(l => {
+          const sid = normalizeNodeId(getNodeIdFromRef(l.source));
+          const tid = normalizeNodeId(getNodeIdFromRef(l.target));
+          if ((sid === u && tid === v) || (sid === v && tid === u)) {
+            pathLinks.add(l.id);
+          }
+        });
+      }
+      
+      setShortestPathNodes(pathNodes);
+      setShortestPathLinks(pathLinks);
+      setShortestPathArray(path);
+    } else {
+      setShortestPathNodes(new Set());
+      setShortestPathLinks(new Set());
+      setShortestPathArray([]);
+    }
+  }, [pathfinderActive, pathfinderStartNode, pathfinderEndNode, filteredGraphData.nodes, filteredGraphData.links]);
+
   // Graph rendering functions
   const nodeCanvasObject = useCallback(
     (node, ctx, globalScale) => {
       const label = node.name || node.label || '';
       const fontSize = Math.max(labelSize / globalScale, 4);
-      const nodeRadius = node.type === 'address' ? nodeSize + 2 : nodeSize;
+      const nodeRadius = nodeSize;
 
       // Pathfinder alpha control
-      const inPath = shortestPathNodes.has(node.id);
+      const inPath = shortestPathNodes.has(normalizeNodeId(node.id));
       if (pathfinderActive && shortestPathNodes.size > 0) {
         ctx.globalAlpha = inPath ? 1.0 : 0.15;
       } else {
         ctx.globalAlpha = 1.0;
-      }
-
-      // Handle virtual address node rendering separately
-      if (node.type === 'address') {
-        ctx.fillStyle = '#ff5252'; // Vibrant light red / coral for addresses
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI, false);
-        ctx.fill();
-        ctx.stroke();
-
-        // Draw '📍' map-pin emoji inside the circle
-        ctx.font = `${nodeRadius * 1.3}px Sans-Serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#fff';
-        ctx.fillText('📍', node.x, node.y);
-
-        // Draw label in light red below
-        if (showNodeLabels) {
-          const isDense = filteredGraphData.nodes.length > MAX_NODES_FOR_LABELS;
-          let shouldRenderLabel = isDense
-            ? globalScale > NODE_LABEL_VISIBILITY_SCALE_DENSE
-            : globalScale > NODE_LABEL_VISIBILITY_SCALE_NORMAL;
-
-          if (shouldRenderLabel) {
-            ctx.font = `${fontSize}px Sans-Serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            const maxLength = Math.max(15, Math.round(30 * globalScale));
-            const truncatedLabel =
-              label.length > maxLength ? label.substring(0, maxLength) + '...' : label;
-            const labelY = node.y + nodeRadius + fontSize * 1.1;
-
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.lineWidth = 3 / globalScale;
-            ctx.lineJoin = 'round';
-            ctx.strokeText(truncatedLabel, node.x, labelY);
-            ctx.fillStyle = '#ff8a80'; // light red
-            ctx.fillText(truncatedLabel, node.x, labelY);
-          }
-        }
-        
-        ctx.globalAlpha = 1.0;
-        return;
       }
 
       // Determine node color and shape for normal nodes
@@ -4167,7 +4072,7 @@ const SpanishCompanyNetworkGraph = ({
 
       // Determine link color based on appointment category
       const cat = (link.category || '').toLowerCase();
-      const isLinkInPath = shortestPathLinks.has(link.id);
+      const isLinkInPath = shortestPathLinks.has(normalizeNodeId(link.id));
       let linkColor;
 
       if (link.type === 'address-link') {
