@@ -12,12 +12,6 @@ import {
   Tooltip,
   Tabs,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
@@ -31,7 +25,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MapIcon from '@mui/icons-material/Map';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import AltRouteIcon from '@mui/icons-material/AltRoute';
-import HomeWorkIcon from '@mui/icons-material/HomeWork';
 import FilterBar from './FilterBar';
 import SankeyChart from './SankeyChart';
 import { useFilters } from '../contexts/FilterProvider';
@@ -54,7 +47,7 @@ import {
 } from 'recharts';
 import { statsService } from '../services/statsService';
 import { spanishCompaniesService } from '../services/spanishCompaniesService';
-import { detectCoLocations, detectConnectedComponents } from '../utils/networkAnalysis';
+import { detectConnectedComponents } from '../utils/networkAnalysis';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -240,33 +233,13 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, [tab, selectedProvinces, filterKey]);
 
-  // Client-side Corporate Network Analysis (Clustering & Nests)
+  // Client-side Corporate Network Analysis (Clustering)
   const intelAnalysis = useMemo(() => {
     if (tab !== 7 || intelCompanies.length === 0) {
-      return { colocatedAddresses: [], clusters: [], totalClustersCount: 0, sizeDistribution: [] };
+      return { clusters: [], totalClustersCount: 0, sizeDistribution: [] };
     }
 
-    // 1. Co-location detection
-    const nodes = intelCompanies.map(c => ({
-      id: c.id || c.company_name,
-      name: c.company_name,
-      type: 'company',
-      address:
-        c.current_address ||
-        c.address ||
-        c.registered_address ||
-        c.domicilio_actual ||
-        c.domicilio ||
-        c.domicilio_social ||
-        c.sede_social ||
-        c.company_address ||
-        c.address_history?.slice?.().sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0]?.address,
-      parsed_details: c.parsed_details
-    }));
-    
-    const { colocatedAddresses } = detectCoLocations(nodes);
-
-    // 2. Connected networks clustering
+    // Connected networks clustering
     const nodesMap = new Map();
     const links = [];
     
@@ -303,7 +276,7 @@ export default function Dashboard() {
     const graphNodes = Array.from(nodesMap.values());
     const { clusters } = detectConnectedComponents(graphNodes, links);
 
-    // 3. Size distribution chart data
+    // Size distribution chart data
     const distCounts = {
       '1': 0,
       '2': 0,
@@ -360,7 +333,6 @@ export default function Dashboard() {
     });
 
     return {
-      colocatedAddresses,
       clusters: enrichedClusters,
       totalClustersCount: clusters.length,
       sizeDistribution
@@ -1008,7 +980,7 @@ export default function Dashboard() {
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 8, gap: 2 }}>
               <CircularProgress size={40} color="secondary" />
               <Typography variant="body2" color="text.secondary">
-                Ejecutando algoritmos de detección de nidos y clústeres en tiempo real...
+                Ejecutando algoritmos de detección de clústeres en tiempo real...
               </Typography>
             </Box>
           ) : intelError ? (
@@ -1026,12 +998,6 @@ export default function Dashboard() {
                   color="#2196f3"
                 />
                 <KpiCard
-                  title="Nidos de Empresas (Sedes Compartidas)"
-                  value={intelAnalysis.colocatedAddresses.length}
-                  icon={<HomeWorkIcon />}
-                  color="#ff5252"
-                />
-                <KpiCard
                   title="Redes Societarias Independientes"
                   value={intelAnalysis.totalClustersCount}
                   icon={<AccountTreeIcon />}
@@ -1039,60 +1005,7 @@ export default function Dashboard() {
                 />
               </Box>
 
-              {/* 2-Column Grid */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-                {/* Column A: Address Nests */}
-                <ChartCard
-                  title="📍 Nidos de Empresas Detectados"
-                  subtitle="Direcciones fiscales o sociales que concentran múltiples sociedades de la muestra (posibles oficinas virtuales o nidos de sociedades)."
-                >
-                  {intelAnalysis.colocatedAddresses.length > 0 ? (
-                    <TableContainer sx={{ maxHeight: 420, overflow: 'auto' }}>
-                      <Table stickyHeader size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ fontWeight: 600 }}>Dirección Sede</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 600, width: 90 }}>Sociedades</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Empresas Co-localizadas</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {intelAnalysis.colocatedAddresses.map((addr, idx) => (
-                            <TableRow key={idx} hover>
-                              <TableCell sx={{ fontSize: '0.75rem', maxWidth: 160, whiteSpace: 'normal', wordBreak: 'break-word', fontWeight: 500 }}>
-                                {addr.address}
-                              </TableCell>
-                              <TableCell align="center" sx={{ fontWeight: 700, color: '#ff5252' }}>
-                                {addr.count}
-                              </TableCell>
-                              <TableCell>
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                  {addr.companies.map((comp, cIdx) => (
-                                    <Chip
-                                      key={cIdx}
-                                      label={comp.name}
-                                      size="small"
-                                      variant="outlined"
-                                      sx={{ fontSize: '0.65rem', height: 18 }}
-                                    />
-                                  ))}
-                                </Box>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 4, height: 250 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        No se han detectado sedes compartidas en los registros actuales.
-                      </Typography>
-                    </Box>
-                  )}
-                </ChartCard>
-
-                {/* Column B: Connected Networks & Hubs */}
+              <Box>
                 <ChartCard
                   title="🌳 Redes Corporativas y Concentración"
                   subtitle="Distribución de redes según su tamaño y detalle de los principales clústeres interconectados por directivos."

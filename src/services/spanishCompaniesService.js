@@ -458,18 +458,6 @@ class SpanishCompaniesService {
   static v3CompanyToEntries(company, options = {}) {
     const { maxOfficers } = options;
     const name = company.company_name || company.company_name_normalized || '';
-    const address =
-      company.current_address ||
-      company.address ||
-      company.registered_address ||
-      company.registeredAddress ||
-      company.domicilio_actual ||
-      company.domicilio ||
-      company.domicilio_social ||
-      company.sede_social ||
-      company.company_address ||
-      company.address_history?.slice?.().sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0]?.address ||
-      null;
     let activeList = company.officers_active || [];
     let resignedList = company.officers_resigned || [];
 
@@ -489,8 +477,6 @@ class SpanishCompaniesService {
       indexed_date: company.last_seen,
       date: company.first_seen,
       identifier: (company.identifiers || [])[0] || '',
-      address,
-      domicilio: address,
       // Pre-populated parsed officers so addCompanyWithOfficersToGraph uses the
       // primary parser path and never falls back to text parsing.
       parsed: {
@@ -509,7 +495,7 @@ class SpanishCompaniesService {
       },
       // Provide empty arrays so fallback paths don't trigger
       officers: [],
-      parsed_details: address ? { address, domicilio: address } : {},
+      parsed_details: {},
       entry_type: [],
     }];
   }

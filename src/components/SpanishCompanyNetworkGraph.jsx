@@ -84,6 +84,13 @@ const CATEGORY_LABELS = {
   reelecciones: 'Reelección',
   ceses_dimisiones: 'Cese/Dimisión',
   revocaciones: 'Revocación',
+  socio_unico: 'Socio único',
+  socio_perdido: 'Pérdida socio único',
+};
+
+const getCategoryLabel = category => {
+  if (!category) return 'Relación';
+  return CATEGORY_LABELS[category] || category;
 };
 
 const CATEGORY_LAYOUT_ANGLE = {
@@ -390,6 +397,62 @@ const normalizeEdgeLabelText = (relationship, _category) => {
   return text;
 };
 
+const getPathNodeKindLabel = node => {
+  if (!node) return 'Hito';
+  if (node.type === 'officer') {
+    return node.subtype === 'company' ? 'Administrador persona jurídica' : 'Administrador';
+  }
+  return 'Empresa';
+};
+
+const getPathNodeName = node => node?.name || node?.label || node?.id || 'Hito desconocido';
+
+const getPathLinkLabel = link => {
+  const relationship = normalizeEdgeLabelText(link?.relationship, link?.category);
+  return relationship || getCategoryLabel(link?.category);
+};
+
+const getPathLinkDateLabel = link => {
+  const dates = [];
+  if (Array.isArray(link?.events)) {
+    link.events.forEach(event => {
+      if (event?.date) dates.push(event.date);
+    });
+  }
+  if (link?.date) dates.push(link.date);
+
+  const sorted = Array.from(new Set(dates))
+    .map(date => ({ date, ts: entryTimestamp(date) }))
+    .filter(item => item.ts > 0)
+    .sort((a, b) => b.ts - a.ts);
+
+  if (sorted.length === 0) return '';
+  const latest = formatDate(sorted[0].date);
+  return sorted.length > 1 ? `${latest} (+${sorted.length - 1})` : latest;
+};
+
+const summarizePathLinks = links => {
+  if (!links || links.length === 0) {
+    return {
+      relationship: 'Relación cargada',
+      category: 'Relación',
+      date: '',
+      extraCount: 0,
+    };
+  }
+
+  const labels = Array.from(new Set(links.map(getPathLinkLabel).filter(Boolean)));
+  const categories = Array.from(new Set(links.map(link => getCategoryLabel(link.category)).filter(Boolean)));
+  const dateLabels = Array.from(new Set(links.map(getPathLinkDateLabel).filter(Boolean)));
+
+  return {
+    relationship: labels.slice(0, 2).join(' / ') || 'Relación cargada',
+    category: categories.slice(0, 2).join(' / ') || 'Relación',
+    date: dateLabels[0] || '',
+    extraCount: Math.max(0, labels.length - 2),
+  };
+};
+
 // Map a raw position string (as stored on link.relationship, e.g. "APO.SOL",
 // "CONS.EJECUTIVO", "MIE.COM.PER.", "APODERAD.SOL") to one of ~10 canonical
 // category labels used for filter chips. Keeps the chip row from growing to 50+
@@ -667,6 +730,7 @@ const SpanishCompanyNetworkGraph = ({
   const [shortestPathNodes, setShortestPathNodes] = useState(new Set());
   const [shortestPathLinks, setShortestPathLinks] = useState(new Set());
   const [shortestPathArray, setShortestPathArray] = useState([]);
+  const [pathDetailsExpanded, setPathDetailsExpanded] = useState(false);
 
   const MAX_NODE_DRIFT = 5000;
   const MAX_NODE_SPEED = 30;
@@ -691,6 +755,8 @@ const SpanishCompanyNetworkGraph = ({
   const NODE_LABEL_VISIBILITY_SCALE_DENSE = 1.1; // Requires extra zoom only when very dense
   const LINK_LABEL_VISIBILITY_SCALE_NORMAL = 0.75;
   const LINK_LABEL_VISIBILITY_SCALE_DENSE = 1.2; // Requires extra zoom only when very dense
+  const PATH_HIGHLIGHT_COLOR = '#4dd0e1';
+  const PATH_DIM_ALPHA = 0.28;
 
   // Configure forces and reheat — combined into one effect so reheat always
   // happens AFTER forces are updated (previously separate effects ran in wrong order).
@@ -3819,7 +3885,6 @@ const SpanishCompanyNetworkGraph = ({
   }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds, statusFilters, positionFilters, hasChipFilters, showShareholders]);
 
   // Connected Components / Clusters analysis for the active rendered graph.
-  // This lets virtual shared-address links participate in network coloring.
   const clustersData = React.useMemo(() => {
     return detectConnectedComponents(filteredGraphData.nodes, filteredGraphData.links);
   }, [filteredGraphData.nodes, filteredGraphData.links]);
@@ -3913,6 +3978,40 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [pathfinderActive, pathfinderStartNode, pathfinderEndNode, filteredGraphData.nodes, filteredGraphData.links]);
 
+  useEffect(() => {
+    setPathDetailsExpanded(false);
+  }, [pathfinderStartNode?.id, pathfinderEndNode?.id]);
+
+  const pathSegments = React.useMemo(() => {
+    if (shortestPathArray.length < 2) return [];
+
+    const nodeById = new Map(
+      filteredGraphData.nodes.map(node => [normalizeNodeId(node.id), node])
+    );
+
+    return shortestPathArray.slice(0, -1).map((sourceId, index) => {
+      const targetId = shortestPathArray[index + 1];
+      const sourceNode = nodeById.get(normalizeNodeId(sourceId));
+      const targetNode = nodeById.get(normalizeNodeId(targetId));
+      const links = filteredGraphData.links.filter(link => {
+        const sid = normalizeNodeId(getNodeIdFromRef(link.source));
+        const tid = normalizeNodeId(getNodeIdFromRef(link.target));
+        return (
+          (sid === normalizeNodeId(sourceId) && tid === normalizeNodeId(targetId)) ||
+          (sid === normalizeNodeId(targetId) && tid === normalizeNodeId(sourceId))
+        );
+      });
+
+      return {
+        id: `${sourceId}-${targetId}-${index}`,
+        sourceNode,
+        targetNode,
+        links,
+        summary: summarizePathLinks(links),
+      };
+    });
+  }, [shortestPathArray, filteredGraphData.nodes, filteredGraphData.links]);
+
   // Graph rendering functions
   const nodeCanvasObject = useCallback(
     (node, ctx, globalScale) => {
@@ -3923,7 +4022,7 @@ const SpanishCompanyNetworkGraph = ({
       // Pathfinder alpha control
       const inPath = shortestPathNodes.has(normalizeNodeId(node.id));
       if (pathfinderActive && shortestPathNodes.size > 0) {
-        ctx.globalAlpha = inPath ? 1.0 : 0.15;
+        ctx.globalAlpha = inPath ? 1.0 : PATH_DIM_ALPHA;
       } else {
         ctx.globalAlpha = 1.0;
       }
@@ -3959,6 +4058,12 @@ const SpanishCompanyNetworkGraph = ({
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeRadius + 3, 0, 2 * Math.PI, false);
+        ctx.stroke();
+      } else if (pathfinderActive && inPath) {
+        ctx.strokeStyle = PATH_HIGHLIGHT_COLOR;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius + 4, 0, 2 * Math.PI, false);
         ctx.stroke();
       }
 
@@ -4049,7 +4154,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR]
   );
 
   const linkCanvasObject = useCallback(
@@ -4075,10 +4180,8 @@ const SpanishCompanyNetworkGraph = ({
       const isLinkInPath = shortestPathLinks.has(normalizeNodeId(link.id));
       let linkColor;
 
-      if (link.type === 'address-link') {
-        linkColor = '#ff8a80'; // fine coral-red for address links
-      } else if (pathfinderActive && isLinkInPath) {
-        linkColor = '#00e5ff'; // Vibrant electric cyan for shortest path links
+      if (pathfinderActive && isLinkInPath) {
+        linkColor = PATH_HIGHLIGHT_COLOR;
       } else if (link.type === 'ownership') {
         linkColor = cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d'; // Gold — sole shareholder
       } else if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
@@ -4094,16 +4197,14 @@ const SpanishCompanyNetworkGraph = ({
 
       // Pathfinder alpha control
       if (pathfinderActive && shortestPathNodes.size > 0) {
-        ctx.globalAlpha = isLinkInPath ? 1.0 : 0.15;
+        ctx.globalAlpha = isLinkInPath ? 0.95 : PATH_DIM_ALPHA;
       } else {
         ctx.globalAlpha = 1.0;
       }
 
-      // Draw link — dashed for officers from a previous company name, ownership, and address links
+      // Draw link — dashed for officers from a previous company name and ownership links
       ctx.beginPath();
-      if (link.type === 'address-link') {
-        ctx.setLineDash([2, 3]);
-      } else if (link.fromPreviousName) {
+      if (link.fromPreviousName) {
         ctx.setLineDash([Math.max(4, 6 / globalScale), Math.max(2, 3 / globalScale)]);
       } else if (link.type === 'ownership') {
         ctx.setLineDash([Math.max(2, 3 / globalScale), Math.max(2, 3 / globalScale)]);
@@ -4113,10 +4214,8 @@ const SpanishCompanyNetworkGraph = ({
       ctx.strokeStyle = link.fromPreviousName ? (linkColor + 'AA') : linkColor; // Slightly transparent for old-name links
       
       let strokeWidth = Math.max(0.3, 1 / globalScale);
-      if (link.type === 'address-link') {
-        strokeWidth = Math.max(0.4, 0.8 / globalScale);
-      } else if (pathfinderActive && isLinkInPath) {
-        strokeWidth = Math.max(1.8, 4.5 / globalScale);
+      if (pathfinderActive && isLinkInPath) {
+        strokeWidth = Math.max(1.3, 3 / globalScale);
       } else if (link.type === 'ownership') {
         strokeWidth = Math.max(0.6, 1.6 / globalScale);
       }
@@ -4127,63 +4226,59 @@ const SpanishCompanyNetworkGraph = ({
 
       // Arrowhead at the target end. react-force-graph's built-in linkDirectionalArrow is
       // suppressed when a custom linkCanvasObject is in 'replace' mode, so we draw it here.
-      // Suppress for address links!
-      if (link.type !== 'address-link') {
-        const dx = end.x - start.x;
-        const dy = end.y - start.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        if (length > 0) {
-          const ux = dx / length;
-          const uy = dy / length;
-          // Back the arrow off from the target node's edge so the tip is visible.
-          const tipOffset = nodeSize + 1;
-          const tipX = end.x - ux * tipOffset;
-          const tipY = end.y - uy * tipOffset;
-          const arrowLen = (pathfinderActive && isLinkInPath)
-            ? Math.max(6, 9 / globalScale)
-            : Math.max(4, 6 / globalScale);
-          const arrowHalfWidth = arrowLen * 0.55;
-          const baseX = tipX - ux * arrowLen;
-          const baseY = tipY - uy * arrowLen;
-          const leftX = baseX + -uy * arrowHalfWidth;
-          const leftY = baseY + ux * arrowHalfWidth;
-          const rightX = baseX - -uy * arrowHalfWidth;
-          const rightY = baseY - ux * arrowHalfWidth;
-          ctx.beginPath();
-          ctx.moveTo(tipX, tipY);
-          ctx.lineTo(leftX, leftY);
-          ctx.lineTo(rightX, rightY);
-          ctx.closePath();
-          ctx.fillStyle = linkColor;
-          ctx.fill();
-        }
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      if (length > 0) {
+        const ux = dx / length;
+        const uy = dy / length;
+        // Back the arrow off from the target node's edge so the tip is visible.
+        const tipOffset = nodeSize + 1;
+        const tipX = end.x - ux * tipOffset;
+        const tipY = end.y - uy * tipOffset;
+        const arrowLen = (pathfinderActive && isLinkInPath)
+          ? Math.max(6, 9 / globalScale)
+          : Math.max(4, 6 / globalScale);
+        const arrowHalfWidth = arrowLen * 0.55;
+        const baseX = tipX - ux * arrowLen;
+        const baseY = tipY - uy * arrowLen;
+        const leftX = baseX + -uy * arrowHalfWidth;
+        const leftY = baseY + ux * arrowHalfWidth;
+        const rightX = baseX - -uy * arrowHalfWidth;
+        const rightY = baseY - ux * arrowHalfWidth;
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(leftX, leftY);
+        ctx.lineTo(rightX, rightY);
+        ctx.closePath();
+        ctx.fillStyle = linkColor;
+        ctx.fill();
       }
 
-      // Conditional link label rendering (only for non-address links)
-      if (link.type !== 'address-link') {
-        let edgeLabel = normalizeEdgeLabelText(link.relationship, link.category);
-        if (link.fromPreviousName) {
-          edgeLabel = edgeLabel
-            ? `${edgeLabel} (bajo ${link.fromPreviousName})`
-            : `(bajo ${link.fromPreviousName})`;
+      // Conditional link label rendering
+      let edgeLabel = normalizeEdgeLabelText(link.relationship, link.category);
+      if (link.fromPreviousName) {
+        edgeLabel = edgeLabel
+          ? `${edgeLabel} (bajo ${link.fromPreviousName})`
+          : `(bajo ${link.fromPreviousName})`;
+      }
+      if (edgeLabel) {
+        const isDense = filteredGraphData.links.length > MAX_LINKS_FOR_LABELS;
+        let shouldRenderLabel = false;
+
+        if (isDense) {
+          shouldRenderLabel = globalScale > LINK_LABEL_VISIBILITY_SCALE_DENSE;
+        } else {
+          shouldRenderLabel = globalScale > LINK_LABEL_VISIBILITY_SCALE_NORMAL;
         }
-        if (edgeLabel) {
-          const isDense = filteredGraphData.links.length > MAX_LINKS_FOR_LABELS;
-          let shouldRenderLabel = false;
 
-          if (isDense) {
-            shouldRenderLabel = globalScale > LINK_LABEL_VISIBILITY_SCALE_DENSE;
-          } else {
-            shouldRenderLabel = globalScale > LINK_LABEL_VISIBILITY_SCALE_NORMAL;
-          }
-
-          if (shouldRenderLabel) {
-            const fontSize = Math.max(labelSize / globalScale, 4);
-            let midX = (start.x + end.x) / 2;
-            let midY = (start.y + end.y) / 2;
-            const dx = end.x - start.x;
-            const dy = end.y - start.y;
-            const length = Math.sqrt(dx * dx + dy * dy);
+        if (shouldRenderLabel) {
+          const fontSize = Math.max(labelSize / globalScale, 4);
+          let midX = (start.x + end.x) / 2;
+          let midY = (start.y + end.y) / 2;
+          const dx = end.x - start.x;
+          const dy = end.y - start.y;
+          const length = Math.sqrt(dx * dx + dy * dy);
 
             // Stack labels on parallel edges to avoid overlap.
             const linkMeta = parallelLinkMeta.get(normalizeNodeId(link.id));
@@ -4219,13 +4314,12 @@ const SpanishCompanyNetworkGraph = ({
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(text, midX, midY);
-          }
         }
       }
 
       ctx.globalAlpha = 1.0;
     },
-    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks]
+    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR]
   );
 
   // Graph controls
@@ -4402,7 +4496,7 @@ const SpanishCompanyNetworkGraph = ({
           row.company,
           row.officer,
           row.position,
-          CATEGORY_LABELS[row.category] || row.category,
+          getCategoryLabel(row.category),
           row.date,
         ].join('\t')
       ),
@@ -4826,7 +4920,7 @@ const SpanishCompanyNetworkGraph = ({
             }}
           >
             <Autocomplete
-              options={filteredGraphData.nodes.filter(n => n.type !== 'address')}
+              options={filteredGraphData.nodes}
               getOptionLabel={(option) => option.name || option.label || ''}
               value={pathfinderStartNode}
               onChange={(event, newValue) => setPathfinderStartNode(newValue)}
@@ -4855,7 +4949,7 @@ const SpanishCompanyNetworkGraph = ({
             />
 
             <Autocomplete
-              options={filteredGraphData.nodes.filter(n => n.type !== 'address')}
+              options={filteredGraphData.nodes}
               getOptionLabel={(option) => option.name || option.label || ''}
               value={pathfinderEndNode}
               onChange={(event, newValue) => setPathfinderEndNode(newValue)}
@@ -4891,6 +4985,7 @@ const SpanishCompanyNetworkGraph = ({
                 onClick={() => {
                   setPathfinderStartNode(null);
                   setPathfinderEndNode(null);
+                  setPathDetailsExpanded(false);
                 }}
                 sx={{ alignSelf: { sm: 'center' }, height: 40 }}
               >
@@ -4904,16 +4999,29 @@ const SpanishCompanyNetworkGraph = ({
             <Box sx={{ mt: 1, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
               {shortestPathArray.length > 0 ? (
                 <Box>
-                  <Typography variant="caption" color="text.secondary" gutterBottom display="block" sx={{ fontWeight: 600 }}>
-                    CONEXIÓN ENCONTRADA ({shortestPathArray.length - 1} saltos):
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      CONEXIÓN ENCONTRADA ({shortestPathArray.length - 1} saltos)
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => setPathDetailsExpanded(prev => !prev)}
+                      endIcon={pathDetailsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      sx={{ minHeight: 26, py: 0, textTransform: 'none' }}
+                    >
+                      {pathDetailsExpanded ? 'Ocultar detalle' : 'Ver detalle'}
+                    </Button>
+                  </Box>
                   <Box
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
-                      flexWrap: 'wrap',
+                      flexWrap: 'nowrap',
                       gap: 1,
-                      mt: 1
+                      mt: 1,
+                      overflowX: 'auto',
+                      pb: 0.5,
                     }}
                   >
                     {shortestPathArray.map((nodeId, idx) => {
@@ -4934,12 +5042,86 @@ const SpanishCompanyNetworkGraph = ({
                             color={isStart ? "success" : isEnd ? "error" : "primary"}
                             variant={isStart || isEnd ? "filled" : "outlined"}
                             icon={matchedNode?.type === 'officer' ? <PersonIcon /> : <BusinessIcon />}
-                            sx={{ fontWeight: isStart || isEnd ? 'bold' : 'normal' }}
+                            sx={{
+                              fontWeight: isStart || isEnd ? 'bold' : 'normal',
+                              maxWidth: 280,
+                              flexShrink: 0,
+                            }}
                           />
                         </React.Fragment>
                       );
                     })}
                   </Box>
+                  {pathDetailsExpanded && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1,
+                      maxHeight: 220,
+                      overflowY: 'auto',
+                      pr: 0.5,
+                    }}
+                  >
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      DETALLE DEL CAMINO
+                    </Typography>
+                    {pathSegments.map((segment, idx) => (
+                      <Paper
+                        key={segment.id}
+                        variant="outlined"
+                        sx={{
+                          p: 1,
+                          bgcolor: 'background.paper',
+                          borderColor: 'divider',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.75,
+                            flexWrap: 'wrap',
+                            mb: 0.5,
+                          }}
+                        >
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                            Salto {idx + 1}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            icon={segment.sourceNode?.type === 'officer' ? <PersonIcon /> : <BusinessIcon />}
+                            label={getPathNodeName(segment.sourceNode)}
+                            sx={{ maxWidth: 260 }}
+                          />
+                          <Typography variant="caption" color="primary" sx={{ fontWeight: 700 }}>
+                            →
+                          </Typography>
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            icon={segment.targetNode?.type === 'officer' ? <PersonIcon /> : <BusinessIcon />}
+                            label={getPathNodeName(segment.targetNode)}
+                            sx={{ maxWidth: 260 }}
+                          />
+                        </Box>
+                        <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>
+                          <strong>{segment.summary.relationship}</strong>
+                          {' · '}
+                          {segment.summary.category}
+                          {segment.summary.date ? ` · Último registro: ${segment.summary.date}` : ''}
+                          {segment.summary.extraCount > 0 ? ` · +${segment.summary.extraCount} relaciones más` : ''}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {getPathNodeKindLabel(segment.sourceNode)} conectado con {getPathNodeKindLabel(segment.targetNode)}
+                          {segment.links.length > 1 ? ` mediante ${segment.links.length} enlaces cargados.` : '.'}
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Box>
+                  )}
                 </Box>
               ) : (
                 <Typography variant="body2" color="error" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -5115,23 +5297,6 @@ const SpanishCompanyNetworkGraph = ({
                 max={18}
                 step={1}
                 size="small"
-              />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={showVirtualAddresses}
-                    onChange={(e) => setShowVirtualAddresses(e.target.checked)}
-                    size="small"
-                    color="primary"
-                  />
-                }
-                label={
-                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                    Mostrar Sede Social (📍)
-                  </Typography>
-                }
               />
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -5413,7 +5578,7 @@ const SpanishCompanyNetworkGraph = ({
                     ? 'error'
                     : 'success'
                 }
-                label={`${CATEGORY_LABELS[dateFilter.category] || dateFilter.category} · ${dateFilter.date}`}
+                label={`${getCategoryLabel(dateFilter.category)} · ${dateFilter.date}`}
                 onDelete={() => setDateFilter(null)}
                 sx={{ fontSize: '0.65rem', height: 22 }}
               />
@@ -5622,7 +5787,7 @@ const SpanishCompanyNetworkGraph = ({
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            {CATEGORY_LABELS[row.category] || row.category}
+                            {getCategoryLabel(row.category)}
                           </Box>
                         </TableCell>
                         <TableCell
