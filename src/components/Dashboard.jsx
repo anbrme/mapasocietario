@@ -550,7 +550,7 @@ export default function Dashboard() {
         <Tab label="Propiedad" icon={<SwapHorizIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Directivos" icon={<PeopleIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
         <Tab label="Flujos" icon={<AltRouteIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
-        <Tab label="Inteligencia y Redes" icon={<AccountTreeIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} />
+        {/* <Tab label="Inteligencia y Redes" icon={<AccountTreeIcon />} iconPosition="start" sx={{ textTransform: 'none', minHeight: 48 }} /> */}
       </Tabs>
 
       {/* Scrollable tab content */}
