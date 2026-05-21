@@ -485,6 +485,8 @@ const positionCategoryFor = pos => {
   return 'Otros';
 };
 
+const COLLAPSIBLE_POSITION_CATEGORIES = new Set(['Apoderado', 'Auditor', 'Otros']);
+
 // Convert v3 company docs to graph-ready entries with per-company officer caps.
 // Board roles (Presidente, Vicepresidente, Consejero, Administrador, Secretario,
 // Liquidador, Vocal, comisión members) are always kept. Non-board officers
@@ -719,6 +721,7 @@ const SpanishCompanyNetworkGraph = ({
   const [chargeStrength, setChargeStrength] = useState(-350);
   const [showNodeLabels] = useState(true); // Renamed for clarity
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [simplifyGraph, setSimplifyGraph] = useState(false);
 
   // Corporate Intelligence States
   const [colorByCluster, setColorByCluster] = useState(false);
@@ -835,6 +838,7 @@ const SpanishCompanyNetworkGraph = ({
     nodeSize,
     visible,
     embedded,
+    simplifyGraph,
   ]);
 
 
@@ -3881,8 +3885,76 @@ const SpanishCompanyNetworkGraph = ({
       });
     }
 
-    return { nodes: filteredNodes, links: filteredLinks };
-  }, [graphData, filterTerms, pinnedNodeIds, hiddenNodeIds, statusFilters, positionFilters, hasChipFilters, showShareholders]);
+    if (simplifyGraph && filterTerms.length === 0) {
+      const linksByNodeId = new Map();
+      filteredLinks.forEach(link => {
+        const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
+        const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
+        if (!linksByNodeId.has(sourceId)) linksByNodeId.set(sourceId, []);
+        if (!linksByNodeId.has(targetId)) linksByNodeId.set(targetId, []);
+        linksByNodeId.get(sourceId).push(link);
+        linksByNodeId.get(targetId).push(link);
+      });
+
+      const lowValueNodeIds = new Set();
+      filteredNodes.forEach(node => {
+        if (node.type !== 'officer') return;
+        const nodeId = normalizeNodeId(node.id);
+        if (pinnedNodeIds.has(nodeId)) return;
+        if (isSameNodeId(pathfinderStartNode?.id, nodeId) || isSameNodeId(pathfinderEndNode?.id, nodeId)) return;
+
+        const nodeLinks = linksByNodeId.get(nodeId) || [];
+        if (nodeLinks.length !== 1) return;
+
+        const link = nodeLinks[0];
+        if (link.type && link.type !== 'officer-company') return;
+
+        const positionCategory = positionCategoryFor(link.relationship);
+        const shouldCollapse =
+          COLLAPSIBLE_POSITION_CATEGORIES.has(positionCategory) ||
+          !isActiveLinkCategory(link.category);
+        if (!shouldCollapse) return;
+
+        const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
+        const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
+        const companyId = sourceId === nodeId ? targetId : sourceId;
+        const companyNode = filteredNodes.find(n => isSameNodeId(n.id, companyId));
+        if (!companyNode || companyNode.type === 'officer') return;
+        lowValueNodeIds.add(nodeId);
+      });
+
+      if (lowValueNodeIds.size > 0) {
+        filteredNodes = filteredNodes.filter(node => !lowValueNodeIds.has(normalizeNodeId(node.id)));
+        filteredLinks = filteredLinks.filter(link => {
+          const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
+          const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
+          return !lowValueNodeIds.has(sourceId) && !lowValueNodeIds.has(targetId);
+        });
+
+        return {
+          nodes: filteredNodes,
+          links: filteredLinks,
+          simplifiedCount: lowValueNodeIds.size,
+        };
+      }
+    }
+
+    return { nodes: filteredNodes, links: filteredLinks, simplifiedCount: 0 };
+  }, [
+    graphData,
+    filterTerms,
+    pinnedNodeIds,
+    hiddenNodeIds,
+    statusFilters,
+    positionFilters,
+    hasChipFilters,
+    showShareholders,
+    simplifyGraph,
+    pathfinderStartNode,
+    pathfinderEndNode,
+  ]);
+
+  const simplifiedLowValueCount = filteredGraphData.simplifiedCount || 0;
 
   // Connected Components / Clusters analysis for the active rendered graph.
   const clustersData = React.useMemo(() => {
@@ -4348,6 +4420,7 @@ const SpanishCompanyNetworkGraph = ({
     setError(null);
     setLastSearchContext(null);
     setLoadingMore(false);
+    setSimplifyGraph(false);
   };
 
   // Compute table data from graph links
@@ -5233,6 +5306,17 @@ const SpanishCompanyNetworkGraph = ({
                 : { borderColor: '#fbc02d', color: '#9e7b10' }
             }
             onClick={() => setShowShareholders(prev => !prev)}
+          />
+          <Chip
+            label={
+              simplifyGraph && simplifiedLowValueCount > 0
+                ? `Simplificar (${simplifiedLowValueCount} ocultos)`
+                : 'Simplificar'
+            }
+            size="small"
+            variant={simplifyGraph ? 'filled' : 'outlined'}
+            color={simplifyGraph ? 'info' : 'default'}
+            onClick={() => setSimplifyGraph(prev => !prev)}
           />
           {availablePositions.length > 0 && (
             <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
