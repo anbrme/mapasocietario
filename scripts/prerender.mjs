@@ -16,6 +16,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
 
 const siteUrl = (process.env.SITE_URL || 'https://mapasocietario.es').replace(/\/+$/, '');
+const canonicalPath = (routePath) => {
+  if (routePath === '/') return '/';
+  if (path.extname(routePath)) return routePath;
+  return `${routePath.replace(/\/+$/, '')}/`;
+};
 const disclaimerHtmlEs = `
         <section style="border:1px solid rgba(25,118,210,0.35);background:rgba(25,118,210,0.06);padding:0.9rem 1rem;border-radius:8px;margin:1.5rem 0;color:#a9b8cf">
           <p style="margin:0"><strong>Información no oficial.</strong> Basado en datos de la <a href="https://www.boe.es">Agencia Estatal Boletín Oficial del Estado</a>, reutilizados conforme a sus <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion">condiciones de reutilización</a>. Mapa Societario transforma, combina y analiza publicaciones del BOE/BORME mediante procesos automatizados; no tiene carácter oficial ni está avalado por la AEBOE. La información se ofrece tal cual y puede contener errores, omisiones o retrasos. Para cualquier decisión relevante, consulta siempre la edición oficial del <a href="https://www.boe.es/diario_borme/">BORME</a> y, cuando proceda, solicita documentación actualizada directamente al Registro Mercantil.</p>
@@ -252,7 +257,8 @@ function removeNoscriptFallback(html) {
 for (const route of routes) {
   let html = removeNoscriptFallback(baseHtml);
 
-  const pageUrl = `${siteUrl}${route.path}`;
+  const routeCanonicalPath = canonicalPath(route.path);
+  const pageUrl = `${siteUrl}${routeCanonicalPath}`;
 
   // <title>
   html = replaceTag(html, 'title', route.title);

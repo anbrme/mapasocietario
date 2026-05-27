@@ -19,18 +19,18 @@ Sitemap: ${siteUrl}/sitemap.xml
 
 const sitemapRoutes = [
   { path: '/', changefreq: 'daily', priority: '1.0' },
-  { path: '/app', changefreq: 'daily', priority: '0.8' },
-  { path: '/due-diligence', changefreq: 'weekly', priority: '0.9' },
-  { path: '/spanish-company-due-diligence', changefreq: 'weekly', priority: '0.9' },
-  { path: '/dashboard', changefreq: 'daily', priority: '0.7' },
-  { path: '/es', changefreq: 'weekly', priority: '0.9' },
-  { path: '/es/informes-due-diligence-empresas', changefreq: 'weekly', priority: '0.8' },
-  { path: '/es/buscar-administradores-empresas', changefreq: 'weekly', priority: '0.8' },
-  { path: '/es/borme-grafo-empresas', changefreq: 'weekly', priority: '0.8' },
-  { path: '/es/mapa-relaciones-societarias', changefreq: 'weekly', priority: '0.8' },
-  { path: '/about.html', changefreq: 'monthly', priority: '0.5' },
-  { path: '/terms.html', changefreq: 'monthly', priority: '0.4' },
-  { path: '/privacy.html', changefreq: 'monthly', priority: '0.3' },
+  { path: '/app/', changefreq: 'daily', priority: '0.8' },
+  { path: '/due-diligence/', changefreq: 'weekly', priority: '0.9' },
+  { path: '/spanish-company-due-diligence/', changefreq: 'weekly', priority: '0.9' },
+  { path: '/dashboard/', changefreq: 'daily', priority: '0.7' },
+  { path: '/es/', changefreq: 'weekly', priority: '0.9' },
+  { path: '/es/informes-due-diligence-empresas/', changefreq: 'weekly', priority: '0.8' },
+  { path: '/es/buscar-administradores-empresas/', changefreq: 'weekly', priority: '0.8' },
+  { path: '/es/borme-grafo-empresas/', changefreq: 'weekly', priority: '0.8' },
+  { path: '/es/mapa-relaciones-societarias/', changefreq: 'weekly', priority: '0.8' },
+  { path: '/about', changefreq: 'monthly', priority: '0.5' },
+  { path: '/terms', changefreq: 'monthly', priority: '0.4' },
+  { path: '/privacy', changefreq: 'monthly', priority: '0.3' },
 ];
 
 const sitemapUrls = sitemapRoutes.map((route) => `  <url>
