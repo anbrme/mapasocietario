@@ -25,6 +25,8 @@ const API_URL = 'https://api.ncdata.eu';
 const DD_PRICE = 22.50;
 const FS_PRICE = 17.50;
 const VAT_RATE = 0.21;
+// Product Hunt launch promo. Set to null after the launch to hide the banner.
+const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
 
 export default function DDCheckoutDialog({ open, onClose, companyName, country = 'es' }) {
   const [includeFS, setIncludeFS] = useState(false);
@@ -189,6 +191,29 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1 }}>
+        {LAUNCH_PROMO_CODE && (
+          <Box
+            sx={{
+              p: 1.5,
+              mb: 2,
+              borderRadius: 1.5,
+              bgcolor: 'rgba(255,167,38,0.12)',
+              border: '1px solid rgba(255,167,38,0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            <Typography component="span" sx={{ fontSize: 18, lineHeight: 1 }}>🚀</Typography>
+            <Typography variant="caption" sx={{ color: 'warning.light', fontSize: '0.78rem', lineHeight: 1.45 }}>
+              <strong>Product Hunt launch:</strong> enter code{' '}
+              <Box component="span" sx={{ fontWeight: 700, color: 'warning.main', letterSpacing: '0.04em' }}>
+                {LAUNCH_PROMO_CODE}
+              </Box>{' '}
+              at checkout for <strong>50% off the Due Diligence report</strong>.
+            </Typography>
+          </Box>
+        )}
         {/* Base product */}
         <Box
           sx={{
