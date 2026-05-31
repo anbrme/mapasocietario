@@ -245,7 +245,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 </Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25, ml: 3 }}>
                   Official PDF from Registro Mercantil + AI-powered financial analysis (OCR + LLM).
-                  Delivered within 1-2 business days.
+                  Delivered within 30-45 minutes.
                 </Typography>
                 <Typography variant="caption" sx={{ color: includeFS ? 'primary.light' : 'text.secondary', display: 'block', mt: 0.25, ml: 3, fontWeight: 600 }}>
                   + EUR {FS_PRICE.toFixed(2)}
