@@ -10,6 +10,8 @@ import {
   TextField,
   Checkbox,
   FormControlLabel,
+  Radio,
+  RadioGroup,
   CircularProgress,
   Alert,
   ToggleButton,
@@ -457,33 +459,25 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.75 }}>
               If the requested accounts are not available, choose how we should handle the order.
             </Typography>
-            <ToggleButtonGroup
+            <RadioGroup
               value={financialStatementsFallback}
-              exclusive
-              onChange={(_, value) => value && setFinancialStatementsFallback(value)}
-              size="small"
-              fullWidth
+              onChange={(e) => setFinancialStatementsFallback(e.target.value)}
               sx={{
-                '& .MuiToggleButton-root': {
-                  py: 0.75,
-                  px: 1,
-                  fontSize: '0.72rem',
-                  lineHeight: 1.25,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  color: 'text.secondary',
-                  borderColor: 'rgba(255,255,255,0.14)',
-                  '&.Mui-selected': {
-                    bgcolor: 'rgba(25,118,210,0.2)',
-                    color: 'primary.light',
-                    '&:hover': { bgcolor: 'rgba(25,118,210,0.28)' },
-                  },
-                },
+                gap: 0.75,
+                '& .MuiFormControlLabel-root': { m: 0 },
               }}
             >
-              <ToggleButton value={FS_FALLBACK_KEEP_DD}>Keep DD, refund accounts</ToggleButton>
-              <ToggleButton value={FS_FALLBACK_FULL_REFUND}>Full refund</ToggleButton>
-            </ToggleButtonGroup>
+              <FallbackRadioOption
+                value={FS_FALLBACK_KEEP_DD}
+                label="Keep the Due Diligence report"
+                description="Refund only the financial statements part and keep the DD report."
+              />
+              <FallbackRadioOption
+                value={FS_FALLBACK_FULL_REFUND}
+                label="Cancel the whole order"
+                description="Issue a full refund if the requested accounts cannot be retrieved."
+              />
+            </RadioGroup>
             <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.75, lineHeight: 1.45 }}>
               We will handle the refund and tax adjustment for the unavailable part, or for the full order if you choose full refund.
             </Typography>
@@ -612,5 +606,43 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         </Button>
       </DialogActions>
     </Dialog>
+  );
+}
+
+function FallbackRadioOption({ value, label, description }) {
+  return (
+    <FormControlLabel
+      value={value}
+      control={
+        <Radio
+          size="small"
+          sx={{
+            color: 'text.disabled',
+            '&.Mui-checked': { color: 'primary.light' },
+          }}
+        />
+      }
+      label={
+        <Box sx={{ py: 0.75 }}>
+          <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 700 }}>
+            {label}
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.35 }}>
+            {description}
+          </Typography>
+        </Box>
+      }
+      sx={{
+        px: 1,
+        borderRadius: 1,
+        border: '1px solid rgba(255,255,255,0.12)',
+        bgcolor: 'rgba(255,255,255,0.03)',
+        alignItems: 'flex-start',
+        '&:has(.Mui-checked)': {
+          borderColor: 'rgba(144,202,249,0.5)',
+          bgcolor: 'rgba(25,118,210,0.12)',
+        },
+      }}
+    />
   );
 }
