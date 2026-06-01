@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -19,6 +19,12 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import EmailIcon from '@mui/icons-material/Email';
 import TranslateIcon from '@mui/icons-material/Translate';
+import {
+  ANDROID_DD_PRODUCT_IDS,
+  isAndroidNativeApp,
+  purchaseAndroidReport,
+  queryAndroidBillingProducts,
+} from '../services/playBillingService';
 
 const PAYMENTS_API = 'https://payments.ncdata.eu';
 const API_URL = 'https://api.ncdata.eu';
@@ -27,6 +33,7 @@ const FS_PRICE = 17.50;
 const VAT_RATE = 0.21;
 // Product Hunt launch promo. Set to null after the launch to hide the banner.
 const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
+const ANDROID_PLAY_BILLING_ENABLED = false;
 
 export default function DDCheckoutDialog({ open, onClose, companyName, country = 'es' }) {
   const [includeFS, setIncludeFS] = useState(false);
@@ -34,10 +41,75 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   const [lang, setLang] = useState('es');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [androidProducts, setAndroidProducts] = useState([]);
+  const [androidProductsLoading, setAndroidProductsLoading] = useState(false);
 
   const subtotal = DD_PRICE + (includeFS ? FS_PRICE : 0);
   const vatAmount = subtotal * VAT_RATE;
   const totalPrice = subtotal + vatAmount;
+  const isAndroidApp = isAndroidNativeApp();
+  const selectedAndroidProductId = includeFS
+    ? ANDROID_DD_PRODUCT_IDS.financialStatements
+    : ANDROID_DD_PRODUCT_IDS.basic;
+  const selectedAndroidProduct = androidProducts.find(
+    product => product.productId === selectedAndroidProductId
+  );
+  const androidDisplayPrice = selectedAndroidProduct?.formattedPrice || `EUR ${totalPrice.toFixed(2)}`;
+
+  useEffect(() => {
+    if (!open || !isAndroidApp || !ANDROID_PLAY_BILLING_ENABLED) return;
+    let cancelled = false;
+    setAndroidProductsLoading(true);
+    queryAndroidBillingProducts()
+      .then(products => {
+        if (!cancelled) setAndroidProducts(products);
+      })
+      .catch(err => {
+        console.warn('Google Play product query failed:', err);
+        if (!cancelled) setError('Google Play products are not available yet. Check Play Console product setup.');
+      })
+      .finally(() => {
+        if (!cancelled) setAndroidProductsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isAndroidApp]);
+
+  const ensureReportCanBeGenerated = async () => {
+    // Pre-flight: confirm the Spanish company has a v3 profile before
+    // starting a checkout. Foreign entities that appear only as
+    // bare-string sole_shareholders in another company have no profile
+    // to build a DD report from, and we don't want to charge for a
+    // report we can't deliver. The endpoint fails open on backend
+    // errors (returns exists: true with unverified: true), so transient
+    // ES issues don't block valid sales — only a confirmed miss does.
+    if (country !== 'es' || !companyName) return true;
+
+    try {
+      const checkRes = await fetch(`${API_URL}/bormes/dd-report/check-company`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_name: companyName }),
+      });
+      if (!checkRes.ok) return true;
+
+      const checkData = await checkRes.json();
+      if (checkData && checkData.exists === false) {
+        setError(
+          `We could not find "${companyName}" in our Spanish corporate registry. ` +
+          `This usually means it is a foreign entity that appears only as a ` +
+          `shareholder of Spanish companies — we do not hold a corporate profile ` +
+          `for it, so a Due Diligence report cannot be generated. ` +
+          `If you believe this is wrong, please email app@ncdata.eu.`
+        );
+        return false;
+      }
+    } catch (preErr) {
+      console.warn('DD pre-check failed (proceeding anyway):', preErr);
+    }
+    return true;
+  };
 
   const handleCheckout = async () => {
     if (!email.trim()) {
@@ -47,38 +119,32 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     setError('');
     setLoading(true);
     try {
-      // Pre-flight: confirm the Spanish company has a v3 profile before
-      // sending the buyer to Stripe. Foreign entities that appear only as
-      // bare-string sole_shareholders in another company have no profile
-      // to build a DD report from, and we don't want to charge for a
-      // report we can't deliver. The endpoint fails open on backend
-      // errors (returns exists: true with unverified: true), so transient
-      // ES issues don't block valid sales — only a confirmed miss does.
-      if (country === 'es' && companyName) {
-        try {
-          const checkRes = await fetch(`${API_URL}/bormes/dd-report/check-company`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ company_name: companyName }),
-          });
-          if (checkRes.ok) {
-            const checkData = await checkRes.json();
-            if (checkData && checkData.exists === false) {
-              setError(
-                `We could not find "${companyName}" in our Spanish corporate registry. ` +
-                `This usually means it is a foreign entity that appears only as a ` +
-                `shareholder of Spanish companies — we do not hold a corporate profile ` +
-                `for it, so a Due Diligence report cannot be generated. ` +
-                `If you believe this is wrong, please email app@ncdata.eu.`
-              );
-              setLoading(false);
-              return;
-            }
-          }
-          // Non-OK responses fall through to the Stripe call (fail-open).
-        } catch (preErr) {
-          console.warn('DD pre-check failed (proceeding anyway):', preErr);
+      const canGenerate = await ensureReportCanBeGenerated();
+      if (!canGenerate) {
+        setLoading(false);
+        return;
+      }
+
+      if (isAndroidApp) {
+        if (!ANDROID_PLAY_BILLING_ENABLED) {
+          setError('Google Play checkout is being connected for Android. Stripe checkout is disabled in the Android app.');
+          return;
         }
+
+        const { productId, purchase } = await purchaseAndroidReport({
+          includeFinancialStatements: includeFS,
+        });
+
+        console.info('Google Play purchase completed; backend fulfillment required', {
+          productId,
+          purchase,
+          companyName,
+          country,
+          lang,
+          email: email.trim(),
+        });
+        setError('Google Play purchase completed, but backend fulfillment is not enabled yet. Please contact app@ncdata.eu.');
+        return;
       }
 
       const options = {
@@ -191,7 +257,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1 }}>
-        {LAUNCH_PROMO_CODE && (
+        {!isAndroidApp && LAUNCH_PROMO_CODE && (
           <Box
             sx={{
               p: 1.5,
@@ -232,7 +298,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               </Typography>
             </Box>
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>
-              EUR {DD_PRICE.toFixed(2)}
+              {isAndroidApp && selectedAndroidProduct?.productId === ANDROID_DD_PRODUCT_IDS.basic
+                ? selectedAndroidProduct.formattedPrice
+                : `EUR ${DD_PRICE.toFixed(2)}`}
             </Typography>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
@@ -309,6 +377,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             {error}
           </Alert>
         )}
+        {isAndroidApp && !error && (
+          <Alert severity="info" sx={{ mt: 2, fontSize: '0.75rem' }}>
+            Stripe checkout is disabled in the Android app. Google Play Billing products are being prepared for this release.
+          </Alert>
+        )}
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, flexDirection: 'column', gap: 1 }}>
@@ -324,7 +397,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1, mt: 0.5, pt: 0.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>Total</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>EUR {totalPrice.toFixed(2)}</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>
+              {isAndroidApp ? androidDisplayPrice : `EUR ${totalPrice.toFixed(2)}`}
+            </Typography>
           </Box>
           <Typography
             variant="caption"
@@ -338,7 +413,10 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             }}
           >
             Invoiced by <strong>Nurnberg Consulting SL</strong> &middot; NIF B86829538 &middot; Madrid, Spain.
-            Payments securely processed by Stripe. By continuing you accept our{' '}
+            {isAndroidApp
+              ? 'Android payments will be processed by Google Play. '
+              : 'Payments securely processed by Stripe. '}
+            By continuing you accept our{' '}
             <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>terms</a>{' '}
             and{' '}
             <a href="/privacy.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>privacy policy</a>.
@@ -363,7 +441,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           variant="contained"
           fullWidth
           onClick={handleCheckout}
-          disabled={loading}
+          disabled={loading || androidProductsLoading || (isAndroidApp && !ANDROID_PLAY_BILLING_ENABLED)}
           startIcon={loading ? <CircularProgress size={16} /> : null}
           sx={{
             textTransform: 'none',
@@ -376,7 +454,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             '&:hover': { bgcolor: 'warning.dark' },
           }}
         >
-          {loading ? 'Redirecting to Stripe...' : `Pay EUR ${totalPrice.toFixed(2)}`}
+          {loading
+            ? (isAndroidApp ? 'Opening Google Play...' : 'Redirecting to Stripe...')
+            : isAndroidApp
+              ? (ANDROID_PLAY_BILLING_ENABLED ? `Pay with Google Play · ${androidDisplayPrice}` : 'Google Play checkout coming soon')
+              : `Pay EUR ${totalPrice.toFixed(2)}`}
         </Button>
         <Button
           variant="text"
