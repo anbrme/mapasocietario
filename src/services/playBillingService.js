@@ -36,7 +36,10 @@ export async function purchaseAndroidReport({ includeFinancialStatements }) {
     throw new Error('Google Play did not return a purchase token.');
   }
 
-  return { productId, purchase };
+  const products = await queryAndroidBillingProducts();
+  const product = products.find(item => item.productId === productId) || null;
+
+  return { productId, purchase, product };
 }
 
 export async function consumeAndroidPurchase(purchaseToken) {

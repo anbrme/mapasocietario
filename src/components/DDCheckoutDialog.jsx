@@ -130,6 +130,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     pendingIncludeFS = includeFS,
     pendingFinancialStatementsYear = financialStatementsYear,
     pendingFinancialStatementsFallback = financialStatementsFallback,
+    pendingAndroidProduct = selectedAndroidProduct,
   }) => {
     const fulfillRes = await fetch(`${PAYMENTS_API}/api/google-play/fulfill-dd-report`, {
       method: 'POST',
@@ -141,6 +142,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         companyName: pendingCompanyName,
         country: pendingCountry,
         email: pendingEmail,
+        googlePlayPrice: pendingAndroidProduct ? {
+          formattedPrice: pendingAndroidProduct.formattedPrice,
+          priceAmountMicros: pendingAndroidProduct.priceAmountMicros,
+          priceCurrencyCode: pendingAndroidProduct.priceCurrencyCode,
+        } : undefined,
         options: {
           language: pendingLang,
           financialStatements: pendingIncludeFS,
@@ -194,7 +200,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           }
         }
 
-        const { productId, purchase } = await purchaseAndroidReport({
+        const { productId, purchase, product } = await purchaseAndroidReport({
           includeFinancialStatements: includeFS,
         });
 
@@ -208,6 +214,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           pendingIncludeFS: includeFS,
           pendingFinancialStatementsYear: financialStatementsYear,
           pendingFinancialStatementsFallback: financialStatementsFallback,
+          pendingAndroidProduct: product || selectedAndroidProduct,
         };
         localStorage.setItem('dd_google_play_pending_purchase', JSON.stringify(pendingPurchase));
         await fulfillAndroidPurchase(pendingPurchase);
