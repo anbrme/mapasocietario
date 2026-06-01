@@ -32,6 +32,11 @@ const PAYMENTS_API = 'https://payments.ncdata.eu';
 const API_URL = 'https://api.ncdata.eu';
 const DD_PRICE = 22.50;
 const FS_PRICE = 17.50;
+// On Android, Google Play is the merchant of record: it adds the buyer's
+// country VAT to this base price and may round the final amount, so the
+// charged total can differ from EUR 22.50.
+const ANDROID_VAT_NOTE =
+  'Final price is set by Google Play and includes VAT calculated for your country, so it may differ from EUR 22.50.';
 // Product Hunt launch promo. Set to null after the launch to hide the banner.
 const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
 const ANDROID_PLAY_BILLING_ENABLED = true;
@@ -385,6 +390,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
             Corporate structure, officer history, sanctions screening, risk analysis
           </Typography>
+          {isAndroidApp && (
+            <Typography variant="caption" sx={{ color: 'text.disabled', mt: 0.5, display: 'block', fontStyle: 'italic' }}>
+              {ANDROID_VAT_NOTE}
+            </Typography>
+          )}
         </Box>
 
         {/* Financial statements add-on */}
@@ -534,12 +544,12 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               {isAndroidApp ? androidDisplayPrice : `EUR ${subtotal.toFixed(2)}`}
             </Typography>
           </Box>
-          {!isAndroidApp && (
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>Tax / VAT</Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>Calculated by Stripe</Typography>
-            </Box>
-          )}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>Tax / VAT</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {isAndroidApp ? 'Included — set by Google Play per country' : 'Calculated by Stripe'}
+            </Typography>
+          </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1, mt: 0.5, pt: 0.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>Total</Typography>
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>
@@ -559,7 +569,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           >
             Invoiced by <strong>Nurnberg Consulting SL</strong> &middot; NIF B86829538 &middot; Madrid, Spain.
             {isAndroidApp
-              ? 'Android payments will be processed by Google Play. '
+              ? 'Android payments are processed by Google Play, which calculates and remits VAT per country. The final price may differ from EUR 22.50. '
               : 'Payments securely processed by Stripe. Stripe calculates taxes and validates supported business VAT IDs at checkout. '}
             By continuing you accept our{' '}
             <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>terms</a>{' '}

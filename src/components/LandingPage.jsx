@@ -117,7 +117,7 @@ const HOW_TO_STEPS = [
 const DIFFERENTIATORS = [
   { icon: <VerifiedIcon />, title: 'Spanish registry focus', desc: 'Purpose-built for BORME data — not a generic international database.' },
   { icon: <HubIcon />, title: 'Relationship graph', desc: 'Visual network exploration, not just record lookup. See connections at a glance.' },
-  { icon: <PaymentsIcon />, title: 'Cheap one-off reports', desc: 'EUR 22.50 per Due Diligence report. No subscription, no account required.' },
+  { icon: <PaymentsIcon />, title: 'Cheap one-off reports', desc: 'EUR 22.50 per Due Diligence report (plus VAT — on Android, Google Play adds it per country). No subscription, no account required.' },
   { icon: <SpeedIcon />, title: 'Fast exploratory workflow', desc: 'From search to insight in seconds. Type a name, explore the graph, buy a report.' },
 ];
 
@@ -128,7 +128,7 @@ const FAQ_ITEMS = [
   },
   { 
     question: 'Do I need to pay or create an account?',
-    answer: 'The network graph as well as all options available by right-clicking on a node are completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company (EUR 22.50). Spanish financial statements (Cuentas Anuales) are an optional add-on for an additional EUR 17.50 per company. There are no subscriptions or recurring fees — just pay for the reports you need, when you need them.',
+    answer: 'The network graph as well as all options available by right-clicking on a node are completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company (EUR 22.50). Spanish financial statements (Cuentas Anuales) are an optional add-on for an additional EUR 17.50 per company. There are no subscriptions or recurring fees — just pay for the reports you need, when you need them. On the web, taxes are calculated by Stripe at checkout; in the Android app, Google Play is the merchant of record and adds VAT per country, so the final price shown there may differ from EUR 22.50.',
   }, 
   {
     question: 'What is a Due Diligence report?',
