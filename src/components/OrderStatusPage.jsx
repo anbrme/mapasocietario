@@ -19,6 +19,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { Helmet } from 'react-helmet-async';
+import { isAndroidNativeApp } from '../services/playBillingService';
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 const PAYMENTS_API = 'https://payments.ncdata.eu';
@@ -223,23 +224,42 @@ export default function OrderStatusPage() {
   }, [status, sessionId]);
 
   const downloadFile = useCallback(async (type) => {
-    const url = type === 'financial-statements'
+    const baseUrl = type === 'financial-statements'
       ? `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}&type=financial-statements`
       : `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}`;
 
+    const safeName = (orderData?.companyName || orderData?.companyIdentifier || 'report')
+      .replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
+    const date = new Date().toISOString().slice(0, 10);
+    const langPrefix = (orderData?.options?.language || orderData?.country || 'ES').toUpperCase();
+    const fileName = type === 'financial-statements'
+      ? `Financial_Statements_${safeName}_${date}.pdf`
+      : `${langPrefix}_DD_Report_${safeName}_${date}.pdf`;
+
+    // Android WebView can't download blob: URLs or honour the <a download>
+    // attribute, so the blob path below silently does nothing in the app.
+    // Instead hand the real HTTPS URL to the WebView's DownloadListener
+    // (MainActivity -> Android DownloadManager). The Worker echoes the
+    // ?filename param into Content-Disposition so the saved file is named
+    // correctly (DownloadManager has no JS context to read fileName).
+    if (isAndroidNativeApp()) {
+      const dlUrl = `${baseUrl}&filename=${encodeURIComponent(fileName)}`;
+      const a = document.createElement('a');
+      a.href = dlUrl;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
     try {
-      const res = await fetch(url);
+      const res = await fetch(baseUrl);
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
       const a = document.createElement('a');
-      const safeName = (orderData?.companyName || orderData?.companyIdentifier || 'report')
-        .replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
-      const date = new Date().toISOString().slice(0, 10);
       a.href = URL.createObjectURL(blob);
-      const langPrefix = (orderData?.options?.language || orderData?.country || 'ES').toUpperCase();
-      a.download = type === 'financial-statements'
-        ? `Financial_Statements_${safeName}_${date}.pdf`
-        : `${langPrefix}_DD_Report_${safeName}_${date}.pdf`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

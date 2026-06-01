@@ -1,5 +1,8 @@
 {
   "appId": "es.mapasocietario.app",
   "appName": "Mapa Societario",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "allowNavigation": ["payments.ncdata.eu"]
+  }
 }
