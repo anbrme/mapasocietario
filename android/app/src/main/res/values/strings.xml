@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mapa Societario</string>
+    <string name="title_activity_main">Mapa Societario</string>
+    <string name="package_name">es.mapasocietario.app</string>
+    <string name="custom_url_scheme">es.mapasocietario.app</string>
+</resources>
