@@ -403,6 +403,7 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
   const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   }) : '—';
+  const fsDetails = getFinancialStatementOrderDetails(order);
 
   return (
     <Paper
@@ -437,6 +438,23 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
         <Typography variant="caption" sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.65rem' }}>
           {order.sessionId}
         </Typography>
+        {order.type !== 'dd_only' && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
+            <Chip
+              label={`Year: ${fsDetails.yearLabel}`}
+              size="small"
+              variant="outlined"
+              sx={{ fontSize: '0.65rem', height: 22 }}
+            />
+            <Chip
+              label={fsDetails.fallbackLabel}
+              size="small"
+              color={fsDetails.fallback === 'full_refund' ? 'error' : 'default'}
+              variant={fsDetails.fallback === 'full_refund' ? 'filled' : 'outlined'}
+              sx={{ fontSize: '0.65rem', height: 22 }}
+            />
+          </Box>
+        )}
       </Box>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
         {confirmingDelete ? (
@@ -497,6 +515,7 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
   const date = order.completedAt ? new Date(order.completedAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   }) : '—';
+  const fsDetails = getFinancialStatementOrderDetails(order);
 
   return (
     <Paper
@@ -528,6 +547,23 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
           <Typography variant="caption" sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.65rem' }}>
             {order.sessionId}
           </Typography>
+          {order.type !== 'dd_only' && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
+              <Chip
+                label={`Year: ${fsDetails.yearLabel}`}
+                size="small"
+                variant="outlined"
+                sx={{ fontSize: '0.65rem', height: 22 }}
+              />
+              <Chip
+                label={fsDetails.fallbackLabel}
+                size="small"
+                color={fsDetails.fallback === 'full_refund' ? 'error' : 'default'}
+                variant={fsDetails.fallback === 'full_refund' ? 'filled' : 'outlined'}
+                sx={{ fontSize: '0.65rem', height: 22 }}
+              />
+            </Box>
+          )}
         </Box>
         {order.hasAnalysis && (
           <Button
@@ -579,4 +615,27 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
       </Collapse>
     </Paper>
   );
+}
+
+function getFinancialStatementOrderDetails(order) {
+  let options = {};
+  if (order?.options && typeof order.options === 'object') {
+    options = order.options;
+  } else if (typeof order?.options === 'string') {
+    try {
+      options = JSON.parse(order.options);
+    } catch {
+      options = {};
+    }
+  }
+
+  const year = order?.financialStatementsYear || options.financialStatementsYear || 'latest';
+  const fallback = order?.financialStatementsFallback || options.financialStatementsFallback || 'keep_dd_refund_fs';
+
+  return {
+    year,
+    yearLabel: !year || year === 'latest' ? 'Latest available' : String(year),
+    fallback,
+    fallbackLabel: fallback === 'full_refund' ? 'Full refund if unavailable' : 'Keep DD, refund accounts',
+  };
 }

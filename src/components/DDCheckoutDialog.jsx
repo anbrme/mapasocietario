@@ -33,10 +33,19 @@ const FS_PRICE = 17.50;
 const VAT_RATE = 0.21;
 // Product Hunt launch promo. Set to null after the launch to hide the banner.
 const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
-const ANDROID_PLAY_BILLING_ENABLED = false;
+const ANDROID_PLAY_BILLING_ENABLED = true;
+const FS_FALLBACK_KEEP_DD = 'keep_dd_refund_fs';
+const FS_FALLBACK_FULL_REFUND = 'full_refund';
+
+function buildFinancialStatementYearOptions() {
+  const latestClosedYear = new Date().getFullYear() - 1;
+  return Array.from({ length: 6 }, (_, index) => String(latestClosedYear - index));
+}
 
 export default function DDCheckoutDialog({ open, onClose, companyName, country = 'es' }) {
   const [includeFS, setIncludeFS] = useState(false);
+  const [financialStatementsYear, setFinancialStatementsYear] = useState('latest');
+  const [financialStatementsFallback, setFinancialStatementsFallback] = useState(FS_FALLBACK_KEEP_DD);
   const [email, setEmail] = useState('');
   const [lang, setLang] = useState('es');
   const [loading, setLoading] = useState(false);
@@ -55,6 +64,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     product => product.productId === selectedAndroidProductId
   );
   const androidDisplayPrice = selectedAndroidProduct?.formattedPrice || `EUR ${totalPrice.toFixed(2)}`;
+  const financialStatementYearOptions = buildFinancialStatementYearOptions();
 
   useEffect(() => {
     if (!open || !isAndroidApp || !ANDROID_PLAY_BILLING_ENABLED) return;
@@ -111,6 +121,50 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     return true;
   };
 
+  const fulfillAndroidPurchase = async ({
+    productId,
+    purchase,
+    pendingCompanyName = companyName,
+    pendingCountry = country,
+    pendingEmail = email.trim(),
+    pendingLang = lang,
+    pendingIncludeFS = includeFS,
+    pendingFinancialStatementsYear = financialStatementsYear,
+    pendingFinancialStatementsFallback = financialStatementsFallback,
+  }) => {
+    const fulfillRes = await fetch(`${PAYMENTS_API}/api/google-play/fulfill-dd-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        packageName: 'es.mapasocietario.app',
+        productId,
+        purchaseToken: purchase.purchaseToken,
+        companyName: pendingCompanyName,
+        country: pendingCountry,
+        email: pendingEmail,
+        options: {
+          language: pendingLang,
+          financialStatements: pendingIncludeFS,
+          ...(pendingIncludeFS ? {
+            financialStatementsYear: pendingFinancialStatementsYear || 'latest',
+            financialStatementsFallback: pendingFinancialStatementsFallback || FS_FALLBACK_KEEP_DD,
+          } : {}),
+        },
+      }),
+    });
+
+    const fulfillData = await fulfillRes.json().catch(() => ({}));
+    if (!fulfillRes.ok || !fulfillData.sessionId) {
+      throw new Error(fulfillData.error || 'Google Play purchase was paid, but report fulfillment failed. Please contact app@ncdata.eu.');
+    }
+
+    localStorage.removeItem('dd_google_play_pending_purchase');
+    if (pendingIncludeFS) {
+      localStorage.setItem('dd_include_fs', 'true');
+    }
+    window.location.href = `/order/${fulfillData.sessionId}`;
+  };
+
   const handleCheckout = async () => {
     if (!email.trim()) {
       setError('Email is required to receive your report.');
@@ -131,25 +185,44 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           return;
         }
 
+        const pendingPurchaseRaw = localStorage.getItem('dd_google_play_pending_purchase');
+        if (pendingPurchaseRaw) {
+          try {
+            await fulfillAndroidPurchase(JSON.parse(pendingPurchaseRaw));
+            return;
+          } catch (pendingErr) {
+            console.warn('Pending Google Play fulfillment retry failed:', pendingErr);
+          }
+        }
+
         const { productId, purchase } = await purchaseAndroidReport({
           includeFinancialStatements: includeFS,
         });
 
-        console.info('Google Play purchase completed; backend fulfillment required', {
+        const pendingPurchase = {
           productId,
           purchase,
-          companyName,
-          country,
-          lang,
-          email: email.trim(),
-        });
-        setError('Google Play purchase completed, but backend fulfillment is not enabled yet. Please contact app@ncdata.eu.');
+          pendingCompanyName: companyName,
+          pendingCountry: country,
+          pendingEmail: email.trim(),
+          pendingLang: lang,
+          pendingIncludeFS: includeFS,
+          pendingFinancialStatementsYear: financialStatementsYear,
+          pendingFinancialStatementsFallback: financialStatementsFallback,
+        };
+        localStorage.setItem('dd_google_play_pending_purchase', JSON.stringify(pendingPurchase));
+        await fulfillAndroidPurchase(pendingPurchase);
         return;
       }
 
       const options = {
         language: lang,
-        ...(includeFS ? { financialStatements: true, email: email.trim() } : {}),
+        ...(includeFS ? {
+          financialStatements: true,
+          financialStatementsYear,
+          financialStatementsFallback,
+          email: email.trim(),
+        } : {}),
       };
       const res = await fetch(`${PAYMENTS_API}/api/stripe/create-dd-checkout`, {
         method: 'POST',
@@ -175,7 +248,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       }
     } catch (err) {
       console.error('DD checkout error:', err);
-      setError('Connection error. Please try again.');
+      setError(err.message || 'Connection error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -349,6 +422,74 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           />
         </Box>
 
+        {includeFS && (
+          <Box
+            sx={{
+              mt: 1.5,
+              p: 1.5,
+              borderRadius: 1.5,
+              bgcolor: 'rgba(25,118,210,0.04)',
+              border: '1px solid rgba(25,118,210,0.16)',
+            }}
+          >
+            <TextField
+              fullWidth
+              select
+              size="small"
+              label="Financial statements year"
+              value={financialStatementsYear}
+              onChange={(e) => setFinancialStatementsYear(e.target.value)}
+              SelectProps={{ native: true }}
+              sx={{
+                mb: 1.5,
+                '& .MuiOutlinedInput-root': {
+                  fontSize: '0.85rem',
+                  bgcolor: 'rgba(255,255,255,0.03)',
+                },
+              }}
+            >
+              <option value="latest">Latest available</option>
+              {financialStatementYearOptions.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </TextField>
+
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.75 }}>
+              If the requested accounts are not available, choose how we should handle the order.
+            </Typography>
+            <ToggleButtonGroup
+              value={financialStatementsFallback}
+              exclusive
+              onChange={(_, value) => value && setFinancialStatementsFallback(value)}
+              size="small"
+              fullWidth
+              sx={{
+                '& .MuiToggleButton-root': {
+                  py: 0.75,
+                  px: 1,
+                  fontSize: '0.72rem',
+                  lineHeight: 1.25,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  color: 'text.secondary',
+                  borderColor: 'rgba(255,255,255,0.14)',
+                  '&.Mui-selected': {
+                    bgcolor: 'rgba(25,118,210,0.2)',
+                    color: 'primary.light',
+                    '&:hover': { bgcolor: 'rgba(25,118,210,0.28)' },
+                  },
+                },
+              }}
+            >
+              <ToggleButton value={FS_FALLBACK_KEEP_DD}>Keep DD, refund accounts</ToggleButton>
+              <ToggleButton value={FS_FALLBACK_FULL_REFUND}>Full refund</ToggleButton>
+            </ToggleButtonGroup>
+            <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.75, lineHeight: 1.45 }}>
+              We will handle the refund and tax adjustment for the unavailable part, or for the full order if you choose full refund.
+            </Typography>
+          </Box>
+        )}
+
         {/* Email field */}
         <TextField
           fullWidth
@@ -379,7 +520,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         )}
         {isAndroidApp && !error && (
           <Alert severity="info" sx={{ mt: 2, fontSize: '0.75rem' }}>
-            Stripe checkout is disabled in the Android app. Google Play Billing products are being prepared for this release.
+            Stripe checkout is disabled in the Android app. Payments are processed by Google Play.
           </Alert>
         )}
       </DialogContent>

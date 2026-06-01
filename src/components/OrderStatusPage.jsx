@@ -57,6 +57,12 @@ export default function OrderStatusPage() {
   const [monitorAlert, setMonitorAlert] = useState(null);
 
   const hasFinancialStatements = orderData?.options?.financialStatements === true;
+  const financialStatementsYearLabel = formatFinancialStatementsYear(
+    orderData?.options?.financialStatementsYear
+  );
+  const financialStatementsFallbackLabel = formatFinancialStatementsFallback(
+    orderData?.options?.financialStatementsFallback
+  );
 
   // Generate DD report, store in R2, then mark ready
   const generateReport = React.useCallback(async (data) => {
@@ -401,7 +407,7 @@ export default function OrderStatusPage() {
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {hasFinancialStatements
-                      ? 'We are manually retrieving the financial statements from the Registro Mercantil. This usually takes 30-45 minutes. We will notify you by email when your report is ready.'
+                      ? `We are manually retrieving the ${financialStatementsYearLabel} financial statements from the Registro Mercantil. This usually takes 30-45 minutes. If they are unavailable, your preference is: ${financialStatementsFallbackLabel}.`
                       : 'Your report is being generated. This page will update automatically.'}
                   </Typography>
                 </Box>
@@ -422,14 +428,14 @@ export default function OrderStatusPage() {
                     label="Financial Statements (Cuentas Anuales)"
                     icon={<AccountBalanceIcon sx={{ fontSize: 18 }} />}
                     ready={financialStatementsReady}
-                    description="Official document from Registro Mercantil"
+                    description={`Official document from Registro Mercantil · ${financialStatementsYearLabel}`}
                   />
                 )}
               </Box>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
                 <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
-                  We will send you an email when your report is ready. You can also save this page link to check back later.
+                  We will send you an email when your report is ready. If the requested accounts are not available, we will contact you and handle the refund and tax adjustment according to your preference.
                 </Alert>
                 <Button
                   size="small"
@@ -504,7 +510,7 @@ export default function OrderStatusPage() {
                       },
                     }}
                   >
-                    Download Financial Statements (PDF)
+                    Download Financial Statements ({financialStatementsYearLabel})
                   </Button>
                 )}
 
@@ -674,6 +680,18 @@ export default function OrderStatusPage() {
       </Box>
     </>
   );
+}
+
+function formatFinancialStatementsYear(year) {
+  if (!year || year === 'latest') return 'latest available';
+  return String(year);
+}
+
+function formatFinancialStatementsFallback(fallback) {
+  if (fallback === 'full_refund') {
+    return 'full refund if the accounts are unavailable';
+  }
+  return 'keep the Due Diligence report and refund the financial statements part';
 }
 
 function StatusItem({ label, icon, ready, description }) {
