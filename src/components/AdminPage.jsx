@@ -434,6 +434,7 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
             color={order.type === 'dd_only' ? 'default' : 'warning'}
             sx={{ fontSize: '0.6rem', height: 18, ml: 0.5 }}
           />
+          <ProviderBadge order={order} />
         </Box>
         <Typography variant="caption" sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.65rem' }}>
           {order.sessionId}
@@ -453,6 +454,7 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
               variant={fsDetails.fallback === 'full_refund' ? 'filled' : 'outlined'}
               sx={{ fontSize: '0.65rem', height: 22 }}
             />
+            <RefundRailHint order={order} />
           </Box>
         )}
       </Box>
@@ -543,6 +545,7 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
               color={order.type === 'dd_only' ? 'default' : 'warning'}
               sx={{ fontSize: '0.6rem', height: 18, ml: 0.5 }}
             />
+            <ProviderBadge order={order} />
           </Box>
           <Typography variant="caption" sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.65rem' }}>
             {order.sessionId}
@@ -614,6 +617,64 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
         )}
       </Collapse>
     </Paper>
+  );
+}
+
+// Which payment rail took the money. Android (Google Play) orders carry
+// provider: 'google_play'; the synthetic cs_free_gp_ sessionId prefix is a
+// backstop in case an older record lacks the field.
+function getProviderInfo(order) {
+  const isGooglePlay =
+    order?.provider === 'google_play' ||
+    (order?.sessionId || '').startsWith('cs_free_gp_');
+  return { isGooglePlay, label: isGooglePlay ? 'Google Play' : 'Stripe' };
+}
+
+function ProviderBadge({ order }) {
+  const { isGooglePlay, label } = getProviderInfo(order);
+  return (
+    <Chip
+      label={label}
+      size="small"
+      variant="outlined"
+      color={isGooglePlay ? 'success' : 'info'}
+      sx={{ fontSize: '0.6rem', height: 18, ml: 0.5 }}
+    />
+  );
+}
+
+// Tells the operator where (and how) to refund if the accounts are
+// unavailable. The two rails never cross: a Google Play order can only be
+// refunded in Play Console — and partial refunds there are Console-only,
+// because the Android Publisher API does full-order refunds only. A Stripe
+// order is refunded in the Stripe Dashboard, where the FS line can be
+// refunded on its own for the partial case.
+function RefundRailHint({ order }) {
+  const { isGooglePlay } = getProviderInfo(order);
+  const { fallback } = getFinancialStatementOrderDetails(order);
+  const isPartial = fallback !== 'full_refund'; // keep_dd_refund_fs => partial
+
+  const text = isGooglePlay
+    ? (isPartial
+        ? 'Refund rail — Google Play Console → Orders. PARTIAL only: enter the FS-portion amount by hand (the Android Publisher API can’t do partial refunds). Not refundable in Stripe.'
+        : 'Refund rail — Google Play Console → Orders (full refund). Not refundable in Stripe.')
+    : (isPartial
+        ? 'Refund rail — Stripe Dashboard → refund the Financial Statements line item only (partial).'
+        : 'Refund rail — Stripe Dashboard → full refund.');
+
+  return (
+    <Typography
+      variant="caption"
+      sx={{
+        width: '100%',
+        mt: 0.25,
+        color: isGooglePlay ? 'success.light' : 'info.light',
+        fontSize: '0.65rem',
+        lineHeight: 1.4,
+      }}
+    >
+      ↪ {text}
+    </Typography>
   );
 }
 
