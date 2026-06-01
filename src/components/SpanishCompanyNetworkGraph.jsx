@@ -721,7 +721,8 @@ const SpanishCompanyNetworkGraph = ({
   const [chargeStrength, setChargeStrength] = useState(-350);
   const [showNodeLabels] = useState(true); // Renamed for clarity
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [simplifyGraph, setSimplifyGraph] = useState(false);
+  const [simplifyGraph, setSimplifyGraph] = useState(true);
+  const [positionFiltersExpanded, setPositionFiltersExpanded] = useState(false);
 
   // Corporate Intelligence States
   const [colorByCluster, setColorByCluster] = useState(false);
@@ -3790,6 +3791,8 @@ const SpanishCompanyNetworkGraph = ({
   }, [graphData.links, linkPassesPosition]);
 
   const hasChipFilters = statusFilters.size > 0 || positionFilters.size > 0;
+  const selectedPositionFilterCount = positionFilters.size;
+  const availablePositionCount = availablePositions.length;
 
   const filteredGraphData = React.useMemo(() => {
     // Start by excluding manually hidden nodes
@@ -5272,78 +5275,104 @@ const SpanishCompanyNetworkGraph = ({
 
       {/* Status & position filter chips */}
       {graphData.links.length > 0 && (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1, alignItems: 'center' }}>
-          <Chip
-            label={`Vigentes (${statusCounts.active})`}
-            size="small"
-            variant={statusFilters.has('active') ? 'filled' : 'outlined'}
-            color="success"
-            onClick={() => setStatusFilters(prev => {
-              const next = new Set(prev);
-              next.has('active') ? next.delete('active') : next.add('active');
-              return next;
-            })}
-          />
-          <Chip
-            label={`Cesados (${statusCounts.ceased})`}
-            size="small"
-            variant={statusFilters.has('ceased') ? 'filled' : 'outlined'}
-            color="error"
-            onClick={() => setStatusFilters(prev => {
-              const next = new Set(prev);
-              next.has('ceased') ? next.delete('ceased') : next.add('ceased');
-              return next;
-            })}
-          />
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-          <Chip
-            label="Socio único"
-            size="small"
-            variant={showShareholders ? 'filled' : 'outlined'}
-            sx={
-              showShareholders
-                ? { bgcolor: '#fbc02d', color: '#212121', '&:hover': { bgcolor: '#f9a825' } }
-                : { borderColor: '#fbc02d', color: '#9e7b10' }
-            }
-            onClick={() => setShowShareholders(prev => !prev)}
-          />
-          <Chip
-            label={
-              simplifyGraph && simplifiedLowValueCount > 0
-                ? `Simplificar (${simplifiedLowValueCount} ocultos)`
-                : 'Simplificar'
-            }
-            size="small"
-            variant={simplifyGraph ? 'filled' : 'outlined'}
-            color={simplifyGraph ? 'info' : 'default'}
-            onClick={() => setSimplifyGraph(prev => !prev)}
-          />
-          {availablePositions.length > 0 && (
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-          )}
-          {availablePositions.map(({ category, count }) => (
+        <Box sx={{ mt: 1 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
             <Chip
-              key={category}
-              label={`${category} (${count})`}
+              label={`Vigentes (${statusCounts.active})`}
               size="small"
-              variant={positionFilters.has(category) ? 'filled' : 'outlined'}
-              onClick={() => setPositionFilters(prev => {
+              variant={statusFilters.has('active') ? 'filled' : 'outlined'}
+              color="success"
+              onClick={() => setStatusFilters(prev => {
                 const next = new Set(prev);
-                next.has(category) ? next.delete(category) : next.add(category);
+                next.has('active') ? next.delete('active') : next.add('active');
                 return next;
               })}
             />
-          ))}
-          {hasChipFilters && (
             <Chip
-              label="Limpiar filtros"
+              label={`Cesados (${statusCounts.ceased})`}
               size="small"
-              variant="outlined"
-              onDelete={() => {
-                setStatusFilters(new Set());
-                setPositionFilters(new Set());
-              }}
+              variant={statusFilters.has('ceased') ? 'filled' : 'outlined'}
+              color="error"
+              onClick={() => setStatusFilters(prev => {
+                const next = new Set(prev);
+                next.has('ceased') ? next.delete('ceased') : next.add('ceased');
+                return next;
+              })}
             />
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+            <Chip
+              label="Socio único"
+              size="small"
+              variant={showShareholders ? 'filled' : 'outlined'}
+              sx={
+                showShareholders
+                  ? { bgcolor: '#fbc02d', color: '#212121', '&:hover': { bgcolor: '#f9a825' } }
+                  : { borderColor: '#fbc02d', color: '#9e7b10' }
+              }
+              onClick={() => setShowShareholders(prev => !prev)}
+            />
+            <Chip
+              label={
+                simplifyGraph && simplifiedLowValueCount > 0
+                  ? `Simplificar (${simplifiedLowValueCount} ocultos)`
+                  : 'Simplificar'
+              }
+              size="small"
+              variant={simplifyGraph ? 'filled' : 'outlined'}
+              color={simplifyGraph ? 'info' : 'default'}
+              onClick={() => setSimplifyGraph(prev => !prev)}
+            />
+            {availablePositionCount > 0 && (
+              <Button
+                size="small"
+                variant={selectedPositionFilterCount > 0 ? 'contained' : 'outlined'}
+                endIcon={positionFiltersExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                onClick={() => setPositionFiltersExpanded(prev => !prev)}
+                sx={{ minHeight: 24, py: 0, px: 1, textTransform: 'none', borderRadius: 4 }}
+              >
+                {selectedPositionFilterCount > 0
+                  ? `Cargos (${selectedPositionFilterCount}/${availablePositionCount})`
+                  : `Cargos (${availablePositionCount})`}
+              </Button>
+            )}
+            {hasChipFilters && (
+              <Chip
+                label="Limpiar filtros"
+                size="small"
+                variant="outlined"
+                onDelete={() => {
+                  setStatusFilters(new Set());
+                  setPositionFilters(new Set());
+                }}
+              />
+            )}
+          </Box>
+          {positionFiltersExpanded && availablePositionCount > 0 && (
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 0.5,
+                mt: 0.75,
+                maxHeight: { xs: 96, sm: 120 },
+                overflowY: 'auto',
+                pr: 0.5,
+              }}
+            >
+              {availablePositions.map(({ category, count }) => (
+                <Chip
+                  key={category}
+                  label={`${category} (${count})`}
+                  size="small"
+                  variant={positionFilters.has(category) ? 'filled' : 'outlined'}
+                  onClick={() => setPositionFilters(prev => {
+                    const next = new Set(prev);
+                    next.has(category) ? next.delete(category) : next.add(category);
+                    return next;
+                  })}
+                />
+              ))}
+            </Box>
           )}
         </Box>
       )}
