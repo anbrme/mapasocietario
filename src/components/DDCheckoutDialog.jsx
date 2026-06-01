@@ -32,7 +32,6 @@ const PAYMENTS_API = 'https://payments.ncdata.eu';
 const API_URL = 'https://api.ncdata.eu';
 const DD_PRICE = 22.50;
 const FS_PRICE = 17.50;
-const VAT_RATE = 0.21;
 // Product Hunt launch promo. Set to null after the launch to hide the banner.
 const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
 const ANDROID_PLAY_BILLING_ENABLED = true;
@@ -56,8 +55,6 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   const [androidProductsLoading, setAndroidProductsLoading] = useState(false);
 
   const subtotal = DD_PRICE + (includeFS ? FS_PRICE : 0);
-  const vatAmount = subtotal * VAT_RATE;
-  const totalPrice = subtotal + vatAmount;
   const isAndroidApp = isAndroidNativeApp();
   const selectedAndroidProductId = includeFS
     ? ANDROID_DD_PRODUCT_IDS.financialStatements
@@ -65,7 +62,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   const selectedAndroidProduct = androidProducts.find(
     product => product.productId === selectedAndroidProductId
   );
-  const androidDisplayPrice = selectedAndroidProduct?.formattedPrice || `EUR ${totalPrice.toFixed(2)}`;
+  const androidDisplayPrice = selectedAndroidProduct?.formattedPrice || `EUR ${subtotal.toFixed(2)}`;
   const financialStatementYearOptions = buildFinancialStatementYearOptions();
 
   useEffect(() => {
@@ -523,17 +520,23 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         {/* Price breakdown */}
         <Box sx={{ width: '100%', mb: 0.5 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>Subtotal</Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>EUR {subtotal.toFixed(2)}</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {isAndroidApp ? 'Google Play price' : 'Base price'}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {isAndroidApp ? androidDisplayPrice : `EUR ${subtotal.toFixed(2)}`}
+            </Typography>
           </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>IVA (21%)</Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>EUR {vatAmount.toFixed(2)}</Typography>
-          </Box>
+          {!isAndroidApp && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>Tax / VAT</Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>Calculated by Stripe</Typography>
+            </Box>
+          )}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1, mt: 0.5, pt: 0.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>Total</Typography>
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>
-              {isAndroidApp ? androidDisplayPrice : `EUR ${totalPrice.toFixed(2)}`}
+              {isAndroidApp ? androidDisplayPrice : 'Shown at Stripe Checkout'}
             </Typography>
           </Box>
           <Typography
@@ -550,7 +553,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             Invoiced by <strong>Nurnberg Consulting SL</strong> &middot; NIF B86829538 &middot; Madrid, Spain.
             {isAndroidApp
               ? 'Android payments will be processed by Google Play. '
-              : 'Payments securely processed by Stripe. '}
+              : 'Payments securely processed by Stripe. Stripe calculates taxes and validates supported business VAT IDs at checkout. '}
             By continuing you accept our{' '}
             <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>terms</a>{' '}
             and{' '}
@@ -593,7 +596,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             ? (isAndroidApp ? 'Opening Google Play...' : 'Redirecting to Stripe...')
             : isAndroidApp
               ? (ANDROID_PLAY_BILLING_ENABLED ? `Pay with Google Play · ${androidDisplayPrice}` : 'Google Play checkout coming soon')
-              : `Pay EUR ${totalPrice.toFixed(2)}`}
+              : `Continue to Stripe · from EUR ${subtotal.toFixed(2)}`}
         </Button>
         <Button
           variant="text"
