@@ -456,6 +456,8 @@ const STYLE = `<style>
   .cat-sancion{background:#fee2e2;color:#991b1b}
   .cat-subvencion{background:#dcfce7;color:#166534}
   .cat-contrato{background:#dbeafe;color:#1e40af}
+  details summary{cursor:pointer;color:var(--brand);font-size:13px}
+  .ids{font-size:13px;color:var(--mut);margin-top:6px;word-break:break-word}
   .chart svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
   .cotizada h2{border-top-color:#bfdbfe}
   .cotizada table{border-color:#bfdbfe}
@@ -492,18 +494,27 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
     company.is_unipersonal ? `<span class="badge">${t.badgeUni}</span>` : '',
   ].join('');
 
+  // BORME identifiers can be hundreds of numbers — collapse them by default.
+  const ids = company.identifiers || [];
+  const idsLabel = lang === 'en' ? 'identifiers' : 'identificadores';
+  const idsCell =
+    ids.length > 8
+      ? `<details><summary>${ids.length} ${idsLabel}</summary><div class="ids">${esc(ids.join(', '))}</div></details>`
+      : esc(ids.join(', '));
+
+  // Values are pre-escaped here so the identifiers cell can carry HTML.
   const facts = [
-    [t.factLegalForm, company.company_type],
-    [t.factProvince, company.province],
-    [t.factAddress, company.current_address],
-    [t.factCapital, fmtEur(company.current_capital, lang)],
-    [t.factFirstSeen, fmtDate(company.first_seen, lang)],
-    [t.factLastSeen, fmtDate(company.last_seen, lang)],
-    [t.factBormeIds, (company.identifiers || []).join(', ')],
-    [t.factFilings, company.total_publications],
+    [t.factLegalForm, esc(company.company_type)],
+    [t.factProvince, esc(company.province)],
+    [t.factAddress, esc(company.current_address)],
+    [t.factCapital, esc(fmtEur(company.current_capital, lang))],
+    [t.factFirstSeen, esc(fmtDate(company.first_seen, lang))],
+    [t.factLastSeen, esc(fmtDate(company.last_seen, lang))],
+    [t.factBormeIds, idsCell],
+    [t.factFilings, esc(company.total_publications)],
   ]
-    .filter(([, v]) => v !== undefined && v !== null && v !== '')
-    .map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`)
+    .filter(([, v]) => v !== '')
+    .map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`)
     .join('');
 
   const nameKey = (s) => (s || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
