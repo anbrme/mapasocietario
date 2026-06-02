@@ -181,6 +181,14 @@ const T = {
     hubThSector: 'Sector',
     hubThTicker: 'Ticker',
     hubView: 'Ver ficha →',
+    cnmvTitle: 'Participaciones significativas (CNMV)',
+    cnmvHolder: 'Titular',
+    cnmvPctTotal: '% total',
+    cnmvPctDirect: '% directo',
+    cnmvPctIndirect: '% indirecto',
+    cnmvPctInstr: '% instrumentos',
+    cnmvDate: 'F. registro',
+    cnmvSource: (d) => `Fuente: CNMV — participaciones significativas${d ? `, última modificación ${d}` : ''}. Disponible gratuitamente en `,
     positions: {
       'ADM. UNICO': 'Administrador único',
       'ADM. SOLIDARIO': 'Administrador solidario',
@@ -262,6 +270,14 @@ const T = {
     hubThSector: 'Sector',
     hubThTicker: 'Ticker',
     hubView: 'View profile →',
+    cnmvTitle: 'Significant shareholders (CNMV)',
+    cnmvHolder: 'Shareholder',
+    cnmvPctTotal: '% total',
+    cnmvPctDirect: '% direct',
+    cnmvPctIndirect: '% indirect',
+    cnmvPctInstr: '% instruments',
+    cnmvDate: 'Filed',
+    cnmvSource: (d) => `Source: CNMV — significant holdings${d ? `, last updated ${d}` : ''}. Available free at `,
     positions: {
       'ADM. UNICO': 'Sole director',
       'ADM. SOLIDARIO': 'Joint and several director',
@@ -413,7 +429,7 @@ function hreflangTags(slug) {
   ].join('\n');
 }
 
-export function renderCompanyPage(company, events, slug, seed, lang = 'es') {
+export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null) {
   const t = T[lang] || T.es;
   const name = company.company_name || company.company_name_normalized || '';
   const canonicalSlug = seed ? slug : nameToSlug(name);
@@ -477,6 +493,28 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es') {
 
   const active = officersRows(company.officers_active, 'appointed_date', t.thAppointed, t, lang, { noBoardNote: true });
   const resigned = officersRows(company.officers_resigned, 'resigned_date', t.thResigned, t, lang);
+
+  // Significant shareholders from CNMV (listed companies only). Reproduced
+  // faithfully with CNMV attribution per their reuse terms.
+  const cnmvList = (cnmv && cnmv.shareholders) || [];
+  const fmtPct = (n) =>
+    typeof n === 'number'
+      ? `${n.toLocaleString(lang === 'en' ? 'en-IE' : 'es-ES', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} %`
+      : '';
+  const cnmvBlock = cnmvList.length
+    ? `<section class="cnmv">
+        <h2>${t.cnmvTitle}</h2>
+        <table class="t">
+          <thead><tr><th>${t.cnmvHolder}</th><th>${t.cnmvPctTotal}</th><th>${t.cnmvPctDirect}</th><th>${t.cnmvPctIndirect}</th><th>${t.cnmvPctInstr}</th><th>${t.cnmvDate}</th></tr></thead>
+          <tbody>${cnmvList
+            .map(
+              (s) => `<tr><td>${esc(s.holder)}</td><td>${esc(fmtPct(s.pct_total))}</td><td>${esc(fmtPct(s.pct_directo))}</td><td>${esc(fmtPct(s.pct_indirecto))}</td><td>${esc(fmtPct(s.pct_instrumentos))}</td><td>${esc(fmtDate(s.registry_date, lang))}</td></tr>`,
+            )
+            .join('')}</tbody>
+        </table>
+        <p class="more">${t.cnmvSource(fmtDate(cnmv.last_modified, lang))}<a href="https://www.cnmv.es/" rel="nofollow noopener" target="_blank">cnmv.es</a>.</p>
+      </section>`
+    : '';
   const altPath = lang === 'en' ? companyPath('es', canonicalSlug) : companyPath('en', canonicalSlug);
   const altLabel = lang === 'en' ? 'Español' : 'English';
 
@@ -515,6 +553,8 @@ ${STYLE}
 
   <h2>${t.registryData}</h2>
   <table class="facts"><tbody>${facts}</tbody></table>
+
+  ${cnmvBlock}
 
   ${active ? `<h2>${t.currentOfficers}</h2>${active}` : ''}
   ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
@@ -600,9 +640,11 @@ export async function handleCompany({ params }, lang = 'es') {
       }
     }
 
-    const [profile, eventsResp] = await Promise.all([
+    const [profile, eventsResp, cnmvResp] = await Promise.all([
       jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`, controller.signal),
       jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=8`, controller.signal),
+      // Significant shareholders: only listed (curated) companies have CNMV data.
+      seed ? jsonOrNull(`${API_BASE}/bormes/cnmv/shareholders?company=${encodeURIComponent(slug)}`, controller.signal) : Promise.resolve(null),
     ]);
 
     const company = profile && profile.company ? profile.company : null;
@@ -613,7 +655,7 @@ export async function handleCompany({ params }, lang = 'es') {
       });
     }
 
-    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang);
+    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang, cnmvResp);
     return new Response(html, {
       status: 200,
       headers: {
