@@ -240,7 +240,7 @@ export function renderCompanyPage(company, events, slug, seed) {
     ['Provincia', company.province],
     ['Domicilio', company.current_address],
     ['Capital social', fmtEur(company.current_capital)],
-    ['Primera inscripción', fmtDate(company.first_seen)],
+    ['Primera inscripción (desde el 1/1/2009)', fmtDate(company.first_seen)],
     ['Última actualización', fmtDate(company.last_seen)],
     ['Identificadores BORME', (company.identifiers || []).join(', ')],
     ['Publicaciones', company.total_publications],
