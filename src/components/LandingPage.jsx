@@ -375,6 +375,31 @@ export default function LandingPage() {
               >
                 Search companies and officers
               </Button>
+              {/* Real anchor (full page load) so the Cloudflare Pages Function
+                  serves /empresas-cotizadas rather than the SPA fallback. */}
+              <Button
+                variant="outlined"
+                size="large"
+                component="a"
+                href="/empresas-cotizadas"
+                startIcon={<TrendingUpIcon />}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '1rem',
+                  borderRadius: 2,
+                  borderColor: 'rgba(255,255,255,0.18)',
+                  color: 'text.secondary',
+                  '&:hover': {
+                    borderColor: 'primary.light',
+                    bgcolor: 'rgba(25,118,210,0.08)',
+                  },
+                }}
+              >
+                Empresas cotizadas (IBEX 35)
+              </Button>
               <Button
                 variant="outlined"
                 size="large"

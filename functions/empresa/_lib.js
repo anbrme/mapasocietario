@@ -1,0 +1,738 @@
+/**
+ * Shared, language-parameterized rendering for the public company SEO pages.
+ *
+ * Routes that use it:
+ *   /empresa/:slug        → onRequestGet via handleCompany(ctx, 'es')
+ *   /en/company/:slug     → onRequestGet via handleCompany(ctx, 'en')
+ *
+ * Both languages render from the same live v3 index; only UI chrome is
+ * translated (company data stays in its source form). Each page emits hreflang
+ * alternates so Google serves the right language. The `_` filename prefix means
+ * Cloudflare Pages does not route this file directly.
+ */
+
+import { SEED } from './_ibex35.js';
+
+const API_BASE = 'https://api.ncdata.eu';
+const SITE = 'https://mapasocietario.es';
+
+// Per-language canonical URL for a company slug.
+export function companyUrl(lang, slug) {
+  return lang === 'en' ? `${SITE}/en/company/${slug}` : `${SITE}/empresa/${slug}`;
+}
+function companyPath(lang, slug) {
+  return lang === 'en' ? `/en/company/${slug}` : `/empresa/${slug}`;
+}
+
+function hubUrl(lang) {
+  return lang === 'en' ? `${SITE}/en/listed-companies` : `${SITE}/empresas-cotizadas`;
+}
+function hubPath(lang) {
+  return lang === 'en' ? '/en/listed-companies' : '/empresas-cotizadas';
+}
+
+// ---------------------------------------------------------------------------
+// slug helpers
+// ---------------------------------------------------------------------------
+
+export function nameToSlug(name) {
+  return (name || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/ñ/gi, 'n')
+    .toLowerCase()
+    .replace(/&/g, ' y ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+function slugToQuery(slug) {
+  return (slug || '').replace(/-+/g, ' ').trim();
+}
+
+// ---------------------------------------------------------------------------
+// data access
+// ---------------------------------------------------------------------------
+
+async function jsonOrNull(url, signal) {
+  try {
+    const r = await fetch(url, { signal, headers: { accept: 'application/json' } });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+async function resolveCompanyName(slug, signal) {
+  const data = await jsonOrNull(
+    `${API_BASE}/bormes/companies/directory/autocomplete?q=${encodeURIComponent(slugToQuery(slug))}&limit=10`,
+    signal,
+  );
+  const suggestions = (data && data.suggestions) || [];
+  if (!suggestions.length) return null;
+  const exact = suggestions.find((s) => nameToSlug(s.company_name) === slug);
+  return exact || suggestions[0];
+}
+
+// ---------------------------------------------------------------------------
+// formatting
+// ---------------------------------------------------------------------------
+
+const esc = (s) =>
+  String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtDate(d, lang) {
+  if (!d) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  if (!m) return d;
+  const [, y, mo, day] = m;
+  if (lang === 'en') return `${day} ${EN_MONTHS[parseInt(mo, 10) - 1]} ${y}`;
+  return `${day}/${mo}/${y}`;
+}
+
+function fmtEur(n, lang) {
+  if (typeof n !== 'number') return '';
+  const locale = lang === 'en' ? 'en-IE' : 'es-ES';
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+// ---------------------------------------------------------------------------
+// i18n
+// ---------------------------------------------------------------------------
+
+const T = {
+  es: {
+    htmlLang: 'es',
+    ogLocale: 'es_ES',
+    title: (name) => `${name} — Administradores, socios y estructura societaria | Mapa Societario`,
+    ogTitle: (name) => `${name} — Estructura societaria`,
+    desc: (name, cap, prov) =>
+      `Ficha societaria de ${name}: administradores actuales y cesados, socios, capital social (${cap || 'n/d'})${prov ? `, domicilio en ${prov}` : ''} e historial mercantil oficial (BORME).`,
+    jsonLdDesc: (name) =>
+      `Estructura societaria de ${name}: administradores, socios, capital social e historial mercantil oficial (BORME).`,
+    home: 'Mapa Societario',
+    crumbCompanies: 'Empresas',
+    lead: 'Ficha societaria oficial extraída del BORME: administradores, socios, capital e historial mercantil.',
+    badgeDissolved: 'Disuelta',
+    badgeConcurso: 'Concurso',
+    badgeUni: 'Unipersonal',
+    factLegalForm: 'Forma jurídica',
+    factProvince: 'Provincia',
+    factAddress: 'Domicilio',
+    factCapital: 'Capital social',
+    factFirstSeen: 'Primera inscripción (desde el 1/1/2009)',
+    factLastSeen: 'Última actualización',
+    factBormeIds: 'Identificadores BORME',
+    factFilings: 'Publicaciones',
+    registryData: 'Datos registrales',
+    listedCompany: 'Sociedad cotizada',
+    cSector: 'Sector',
+    cNif: 'NIF / CIF',
+    cIsin: 'ISIN',
+    cHoja: 'Hoja registral',
+    cWeb: 'Web',
+    currentOfficers: 'Administradores y cargos vigentes',
+    formerOfficers: 'Cargos cesados o revocados',
+    thName: 'Nombre',
+    thRole: 'Cargo',
+    thAppointed: 'Nombramiento',
+    thResigned: 'Cese',
+    noBoard: (n) =>
+      `No constan administradores ni consejeros vigentes en esta denominación (${n} apoderado(s) u otros cargos registrados).`,
+    hiddenOther: (n) => `${n} apoderado(s) y otros cargos no incluidos`,
+    hiddenMore: (n) => `${n} más`,
+    shareholders: 'Estructura de socios',
+    soleCompanies: 'Socio único (sociedades)',
+    soleIndividuals: 'Socio único (personas físicas)',
+    capitalHistory: 'Evolución del capital social',
+    thDate: 'Fecha',
+    thCapital: 'Capital',
+    recentHistory: 'Historial reciente (BORME)',
+    registryAct: 'Acto registral',
+    ctaTitle: 'Ver el mapa societario interactivo',
+    ctaText: (name) =>
+      `Explora la red de participaciones, administradores compartidos y filiales de ${name}.`,
+    ctaBtn: 'Abrir mapa interactivo →',
+    footer: (d) =>
+      `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial.`,
+    renamedTo: (href, name) =>
+      `Esta sociedad pasó a denominarse <a href="${href}">${name}</a>. Consulta la ficha actualizada.`,
+    priorNames: (names) => `Denominaciones anteriores: ${names}.`,
+    notFoundTitle: 'Empresa no encontrada | Mapa Societario',
+    notFoundH1: 'No hemos encontrado esa empresa',
+    notFoundP: (q) => `No existe una ficha para «${q}» en nuestro índice del BORME.`,
+    searchLink: 'Buscar empresas →',
+    hubTitle: 'Empresas cotizadas del IBEX 35 — estructura societaria | Mapa Societario',
+    hubDesc: 'Estructura societaria, administradores, socios e historial mercantil oficial (BORME) de las 35 empresas del IBEX 35.',
+    hubH1: 'Empresas cotizadas (IBEX 35)',
+    hubLead: 'Administradores, socios y estructura societaria de las empresas del IBEX 35, a partir de datos oficiales del Registro Mercantil (BORME).',
+    hubThCompany: 'Empresa',
+    hubThSector: 'Sector',
+    hubThTicker: 'Ticker',
+    hubView: 'Ver ficha →',
+    positions: {
+      'ADM. UNICO': 'Administrador único',
+      'ADM. SOLIDARIO': 'Administrador solidario',
+      'ADM. MANCOMUNADO': 'Administrador mancomunado',
+      'CON.DELEGADO': 'Consejero delegado',
+      'CONS.EJECUTI': 'Consejero ejecutivo',
+      'CONS.EXTERNO': 'Consejero externo',
+      'CONS.EXT.IND': 'Consejero externo independiente',
+      'SECRENOCONSJ': 'Secretario no consejero',
+      'VICESECR': 'Vicesecretario',
+    },
+  },
+  en: {
+    htmlLang: 'en',
+    ogLocale: 'en_GB',
+    title: (name) => `${name} — Directors, shareholders & ownership structure | Mapa Societario`,
+    ogTitle: (name) => `${name} — Ownership structure`,
+    desc: (name, cap, prov) =>
+      `Company profile for ${name}: current and former directors, shareholders, share capital (${cap || 'n/a'})${prov ? `, registered in ${prov}` : ''} and official Spanish commercial-registry (BORME) history.`,
+    jsonLdDesc: (name) =>
+      `Ownership structure of ${name}: directors, shareholders, share capital and official Spanish commercial-registry (BORME) history.`,
+    home: 'Mapa Societario',
+    crumbCompanies: 'Companies',
+    lead: 'Official company profile from the Spanish commercial registry (BORME): directors, shareholders, capital and filing history.',
+    badgeDissolved: 'Dissolved',
+    badgeConcurso: 'Insolvency',
+    badgeUni: 'Sole shareholder',
+    factLegalForm: 'Legal form',
+    factProvince: 'Province',
+    factAddress: 'Registered address',
+    factCapital: 'Share capital',
+    factFirstSeen: 'First filing (since 1 Jan 2009)',
+    factLastSeen: 'Last updated',
+    factBormeIds: 'BORME IDs',
+    factFilings: 'Filings',
+    registryData: 'Registry data',
+    listedCompany: 'Listed company',
+    cSector: 'Sector',
+    cNif: 'Tax ID (NIF/CIF)',
+    cIsin: 'ISIN',
+    cHoja: 'Registry sheet',
+    cWeb: 'Website',
+    currentOfficers: 'Current directors & officers',
+    formerOfficers: 'Former / revoked officers',
+    thName: 'Name',
+    thRole: 'Role',
+    thAppointed: 'Appointed',
+    thResigned: 'Resigned',
+    noBoard: (n) =>
+      `No current directors on record for this denomination (${n} power(s) of attorney or other roles registered).`,
+    hiddenOther: (n) => `${n} power(s) of attorney and other roles not shown`,
+    hiddenMore: (n) => `${n} more`,
+    shareholders: 'Shareholder structure',
+    soleCompanies: 'Sole shareholder (companies)',
+    soleIndividuals: 'Sole shareholder (individuals)',
+    capitalHistory: 'Share capital history',
+    thDate: 'Date',
+    thCapital: 'Capital',
+    recentHistory: 'Recent history (BORME)',
+    registryAct: 'Registry act',
+    ctaTitle: 'View the interactive ownership map',
+    ctaText: (name) =>
+      `Explore the ownership network, shared directors and subsidiaries of ${name}.`,
+    ctaBtn: 'Open interactive map →',
+    footer: (d) =>
+      `Data sourced from the Spanish Official Commercial Registry Gazette (BORME). Registry last updated: ${d}. Mapa Societario is not an official registry.`,
+    renamedTo: (href, name) =>
+      `This company was renamed to <a href="${href}">${name}</a>. See the updated profile.`,
+    priorNames: (names) => `Former names: ${names}.`,
+    notFoundTitle: 'Company not found | Mapa Societario',
+    notFoundH1: "We couldn't find that company",
+    notFoundP: (q) => `There is no profile for “${q}” in our BORME index.`,
+    searchLink: 'Search companies →',
+    hubTitle: 'IBEX 35 listed companies — ownership structure | Mapa Societario',
+    hubDesc: 'Directors, shareholders, ownership structure and official Spanish registry (BORME) history of the 35 IBEX 35 companies.',
+    hubH1: 'Listed companies (IBEX 35)',
+    hubLead: 'Directors, shareholders and ownership structure of the IBEX 35 companies, from official Spanish commercial-registry (BORME) data.',
+    hubThCompany: 'Company',
+    hubThSector: 'Sector',
+    hubThTicker: 'Ticker',
+    hubView: 'View profile →',
+    positions: {
+      'ADM. UNICO': 'Sole director',
+      'ADM. SOLIDARIO': 'Joint and several director',
+      'ADM. MANCOMUNADO': 'Joint director',
+      'CON.DELEGADO': 'Managing director (CEO)',
+      'CONS.EJECUTI': 'Executive director',
+      'CONS.EXTERNO': 'Non-executive director',
+      'CONS.EXT.IND': 'Independent non-executive director',
+      'SECRENOCONSJ': 'Secretary (non-director)',
+      'VICESECR': 'Deputy secretary',
+    },
+  },
+};
+
+// ---------------------------------------------------------------------------
+// officers
+// ---------------------------------------------------------------------------
+
+const MAX_OFFICERS = 40;
+
+function isBoardRole(o) {
+  const p = (o.position_normalized || o.position || '').toUpperCase();
+  if (!p) return false;
+  if (/(APO\.|APODER)/.test(p)) return false;
+  if (/(COM\.|CTE\.|COMIS|COMITE|VOCCOM|MIEMCOM|MMBR|MBRO|M\.COM)/.test(p)) return false;
+  if (/(AUDITOR|AUD\.)/.test(p)) return false;
+  return /(PRESIDENT|VICEPRESID|CONSEJ|CONS\.|CON\.IND|CON\.DEL|ADMINISTR|ADM\.|SECRE|LIQUIDAD)/.test(p);
+}
+
+function prettyPosition(pos, t) {
+  const p = (pos || '').toUpperCase();
+  return t.positions[p] || pos || '';
+}
+
+function selectOfficers(list) {
+  const all = list || [];
+  const board = all.filter(isBoardRole);
+  const shown = board.slice(0, MAX_OFFICERS);
+  return { shown, hiddenOther: all.length - board.length, hiddenOverflow: Math.max(0, board.length - MAX_OFFICERS) };
+}
+
+function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = false } = {}) {
+  const { shown: list, hiddenOther, hiddenOverflow } = selectOfficers(rawList);
+  if (!list.length) {
+    if (noBoardNote && hiddenOther) return `<p class="more">${t.noBoard(hiddenOther)}</p>`;
+    return '';
+  }
+  const rows = list
+    .map(
+      (o) => `<tr>
+        <td>${esc(o.name || o.name_normalized)}</td>
+        <td>${esc(prettyPosition(o.position_normalized || o.position, t))}</td>
+        <td>${esc(fmtDate(o[dateKey], lang))}</td>
+      </tr>`,
+    )
+    .join('');
+  const notes = [];
+  if (hiddenOther) notes.push(t.hiddenOther(hiddenOther));
+  if (hiddenOverflow) notes.push(t.hiddenMore(hiddenOverflow));
+  const more = notes.length ? `<p class="more">${notes.join('; ')}.</p>` : '';
+  return `<table class="t">
+    <thead><tr><th>${t.thName}</th><th>${t.thRole}</th><th>${dateLabel}</th></tr></thead>
+    <tbody>${rows}</tbody></table>${more}`;
+}
+
+function listBlock(title, arr) {
+  if (!arr || !arr.length) return '';
+  return `<h3>${esc(title)}</h3><ul class="pill">${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+}
+
+function eventsBlock(events, t, lang) {
+  if (!events || !events.length) return '';
+  const rows = events
+    .slice(0, 8)
+    .map((e) => {
+      const types = (e.event_types || []).map((x) => x.type).join(', ');
+      const summary = (e.full_entry || '').slice(0, 180);
+      return `<li><span class="date">${esc(fmtDate(e.event_date, lang))}</span>
+        <strong>${esc(types || t.registryAct)}</strong>
+        <p>${esc(summary)}${(e.full_entry || '').length > 180 ? '…' : ''}</p></li>`;
+    })
+    .join('');
+  return `<section><h2>${t.recentHistory}</h2><ol class="timeline">${rows}</ol></section>`;
+}
+
+function jsonLd(company, slug, lang, t) {
+  const officers = (company.officers_active || []).map((o) => o.name || o.name_normalized).filter(Boolean);
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: company.company_name,
+    url: companyUrl(lang, slug),
+    ...(company.current_address ? { address: company.current_address } : {}),
+    ...(company.first_seen ? { foundingDate: company.first_seen } : {}),
+    ...(company.province ? { areaServed: company.province } : {}),
+    ...(officers.length ? { employee: officers.slice(0, 10).map((n) => ({ '@type': 'Person', name: n })) } : {}),
+    identifier: (company.identifiers || []).join(', '),
+    description: t.jsonLdDesc(company.company_name),
+  };
+  const safe = JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/-->/g, '--\\u003e')
+    .replace(/[\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+  return `<script type="application/ld+json">${safe}</script>`;
+}
+
+const STYLE = `<style>
+  :root{--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--bg:#f8fafc;--brand:#2563eb}
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  .wrap{max-width:880px;margin:0 auto;padding:32px 20px 80px}
+  a{color:var(--brand)}
+  nav.crumbs{font-size:13px;color:var(--mut);margin-bottom:18px}
+  .langs{float:right;font-size:13px}
+  h1{font-size:30px;line-height:1.15;margin:0 0 10px}
+  h2{font-size:20px;margin:34px 0 12px;padding-top:18px;border-top:1px solid var(--line)}
+  h3{font-size:15px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px}
+  .lead{color:var(--mut);margin:0 0 16px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+  .badge{font-size:12px;font-weight:600;background:#e0e7ff;color:#3730a3;border-radius:999px;padding:3px 10px}
+  .badge.danger{background:#fee2e2;color:#991b1b}
+  table{border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+  table.t th{background:#f1f5f9;text-align:left}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  .facts th{width:200px;color:var(--mut);font-weight:600}
+  ul.pill{list-style:none;padding:0;display:flex;gap:8px;flex-wrap:wrap;margin:0}
+  ul.pill li{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:14px}
+  .timeline{list-style:none;padding:0;margin:0}
+  .timeline li{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:10px}
+  .timeline .date{display:inline-block;font-size:12px;color:var(--mut);margin-right:8px}
+  .timeline p{margin:6px 0 0;font-size:13px;color:#334155}
+  .more{font-size:13px;color:var(--mut);margin:8px 2px 0}
+  .cotizada h2{border-top-color:#bfdbfe}
+  .cotizada table{border-color:#bfdbfe}
+  .notice{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:12px 16px;margin:0 0 18px;font-size:14px}
+  .cta{margin:36px 0 0;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border-radius:16px;padding:28px;text-align:center}
+  .cta h2{border:0;color:#fff;margin:0 0 8px;padding:0}
+  .cta p{margin:0 0 18px;opacity:.9}
+  .cta a{display:inline-block;background:#fff;color:#1e3a8a;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:10px}
+  footer{margin-top:48px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
+</style>`;
+
+function hreflangTags(slug) {
+  return [
+    `<link rel="alternate" hreflang="es" href="${companyUrl('es', slug)}">`,
+    `<link rel="alternate" hreflang="en" href="${companyUrl('en', slug)}">`,
+    `<link rel="alternate" hreflang="x-default" href="${companyUrl('es', slug)}">`,
+  ].join('\n');
+}
+
+export function renderCompanyPage(company, events, slug, seed, lang = 'es') {
+  const t = T[lang] || T.es;
+  const name = company.company_name || company.company_name_normalized || '';
+  const canonicalSlug = seed ? slug : nameToSlug(name);
+  const renamedTo = !seed && company.has_new_name ? company.new_company_name : null;
+  const canonicalUrl = renamedTo ? companyUrl(lang, nameToSlug(renamedTo)) : companyUrl(lang, canonicalSlug);
+
+  const title = t.title(name);
+  const desc = t.desc(name, fmtEur(company.current_capital, lang), company.province);
+
+  const badges = [
+    company.company_type ? `<span class="badge">${esc(company.company_type)}</span>` : '',
+    company.is_dissolved ? `<span class="badge danger">${t.badgeDissolved}</span>` : '',
+    company.is_in_concurso ? `<span class="badge danger">${t.badgeConcurso}</span>` : '',
+    company.is_unipersonal ? `<span class="badge">${t.badgeUni}</span>` : '',
+  ].join('');
+
+  const facts = [
+    [t.factLegalForm, company.company_type],
+    [t.factProvince, company.province],
+    [t.factAddress, company.current_address],
+    [t.factCapital, fmtEur(company.current_capital, lang)],
+    [t.factFirstSeen, fmtDate(company.first_seen, lang)],
+    [t.factLastSeen, fmtDate(company.last_seen, lang)],
+    [t.factBormeIds, (company.identifiers || []).join(', ')],
+    [t.factFilings, company.total_publications],
+  ]
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`)
+    .join('');
+
+  const nameKey = (s) => (s || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+  const currentKey = nameKey(name);
+  const priorNames = [
+    ...new Set(
+      (company.name_changes || [])
+        .map((c) => (typeof c === 'string' ? c : c.old_name || c.previous_name || ''))
+        .filter(Boolean)
+        .filter((n) => nameKey(n) !== currentKey),
+    ),
+  ];
+
+  const renameNotice = renamedTo
+    ? `<div class="notice">${t.renamedTo(companyPath(lang, nameToSlug(renamedTo)), esc(renamedTo))}</div>`
+    : priorNames.length
+    ? `<div class="notice">${t.priorNames(priorNames.map(esc).join(', '))}</div>`
+    : '';
+
+  const cotizadaBlock = seed
+    ? `<section class="cotizada">
+        <h2>${t.listedCompany}${seed.ticker ? ` · ${esc(seed.ticker)}` : ''}</h2>
+        <table class="facts"><tbody>
+          ${seed.sector ? `<tr><th>${t.cSector}</th><td>${esc(seed.sector)}</td></tr>` : ''}
+          ${seed.nif ? `<tr><th>${t.cNif}</th><td>${esc(seed.nif)}</td></tr>` : ''}
+          ${seed.isin ? `<tr><th>${t.cIsin}</th><td>${esc(seed.isin)}</td></tr>` : ''}
+          ${seed.hoja ? `<tr><th>${t.cHoja}</th><td>${esc(seed.hoja)}</td></tr>` : ''}
+          ${seed.website ? `<tr><th>${t.cWeb}</th><td><a href="${esc(seed.website)}" rel="nofollow noopener" target="_blank">${esc(seed.website)}</a></td></tr>` : ''}
+        </tbody></table>
+        ${seed.note ? `<p class="more">${esc(seed.note)}</p>` : ''}
+      </section>`
+    : '';
+
+  const active = officersRows(company.officers_active, 'appointed_date', t.thAppointed, t, lang, { noBoardNote: true });
+  const resigned = officersRows(company.officers_resigned, 'resigned_date', t.thResigned, t, lang);
+  const altPath = lang === 'en' ? companyPath('es', canonicalSlug) : companyPath('en', canonicalSlug);
+  const altLabel = lang === 'en' ? 'Español' : 'English';
+
+  return `<!doctype html>
+<html lang="${t.htmlLang}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(desc)}">
+<link rel="canonical" href="${esc(canonicalUrl)}">
+<meta name="robots" content="index, follow">
+${hreflangTags(canonicalSlug)}
+<meta property="og:type" content="profile">
+<meta property="og:title" content="${esc(t.ogTitle(name))}">
+<meta property="og:description" content="${esc(desc)}">
+<meta property="og:url" content="${esc(canonicalUrl)}">
+<meta property="og:locale" content="${t.ogLocale}">
+<meta property="og:image" content="${SITE}/og-image.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(t.ogTitle(name))}">
+<meta name="twitter:description" content="${esc(desc)}">
+${jsonLd(company, canonicalSlug, lang, t)}
+${STYLE}
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs"><span class="langs"><a href="${altPath}">${altLabel}</a></span><a href="/">${t.home}</a> › ${t.crumbCompanies} › ${esc(name)}</nav>
+
+  <h1>${esc(name)}</h1>
+  <div class="badges">${badges}</div>
+  <p class="lead">${t.lead}</p>
+
+  ${renameNotice}
+  ${cotizadaBlock}
+
+  <h2>${t.registryData}</h2>
+  <table class="facts"><tbody>${facts}</tbody></table>
+
+  ${active ? `<h2>${t.currentOfficers}</h2>${active}` : ''}
+  ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
+
+  ${
+    (company.sole_shareholders && company.sole_shareholders.length) ||
+    (company.sole_shareholder_individuals && company.sole_shareholder_individuals.length)
+      ? `<h2>${t.shareholders}</h2>
+         ${listBlock(t.soleCompanies, company.sole_shareholders)}
+         ${listBlock(t.soleIndividuals, company.sole_shareholder_individuals)}`
+      : ''
+  }
+
+  ${
+    company.capital_history && company.capital_history.length
+      ? `<h2>${t.capitalHistory}</h2>
+         <table class="t"><thead><tr><th>${t.thDate}</th><th>${t.thCapital}</th></tr></thead><tbody>${company.capital_history
+           .slice(-6)
+           .reverse()
+           .map((c) => `<tr><td>${esc(fmtDate(c.date, lang))}</td><td>${esc(fmtEur(c.amount, lang))}</td></tr>`)
+           .join('')}</tbody></table>`
+      : ''
+  }
+
+  ${eventsBlock(events, t, lang)}
+
+  <div class="cta">
+    <h2>${t.ctaTitle}</h2>
+    <p>${esc(t.ctaText(name))}</p>
+    <a href="/app?search=${encodeURIComponent(name)}">${t.ctaBtn}</a>
+  </div>
+
+  <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}</footer>
+</div>
+</body>
+</html>`;
+}
+
+function notFoundPage(slug, lang = 'es') {
+  const t = T[lang] || T.es;
+  return `<!doctype html><html lang="${t.htmlLang}"><head><meta charset="utf-8">
+<title>${t.notFoundTitle}</title>
+<meta name="robots" content="noindex, follow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{font-family:-apple-system,system-ui,sans-serif;max-width:640px;margin:80px auto;padding:0 20px;color:#0f172a}</style>
+</head><body>
+<h1>${t.notFoundH1}</h1>
+<p>${t.notFoundP(esc(slugToQuery(slug)))}</p>
+<p><a href="/app">${t.searchLink}</a></p>
+</body></html>`;
+}
+
+// ---------------------------------------------------------------------------
+// Pages Function entrypoint (shared by both languages)
+// ---------------------------------------------------------------------------
+
+export async function handleCompany({ params }, lang = 'es') {
+  const slug = String(params.slug || '').toLowerCase();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const seed = SEED[slug] || null;
+    let name;
+
+    if (seed) {
+      name = seed.v3Name;
+    } else {
+      const match = await resolveCompanyName(slug, controller.signal);
+      if (!match) {
+        return new Response(notFoundPage(slug, lang), {
+          status: 404,
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        });
+      }
+      name = match.company_name;
+      const canonical = nameToSlug(name);
+      if (canonical && canonical !== slug) {
+        return new Response(null, {
+          status: 301,
+          headers: { location: companyPath(lang, canonical), 'cache-control': 'public, max-age=3600' },
+        });
+      }
+    }
+
+    const [profile, eventsResp] = await Promise.all([
+      jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`, controller.signal),
+      jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=8`, controller.signal),
+    ]);
+
+    const company = profile && profile.company ? profile.company : null;
+    if (!company) {
+      return new Response(notFoundPage(slug, lang), {
+        status: 404,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      });
+    }
+
+    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang);
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800',
+      },
+    });
+  } catch {
+    return new Response(notFoundPage(slug, lang), {
+      status: 503,
+      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// IBEX 35 hub page (/empresas-cotizadas, /en/listed-companies)
+// ---------------------------------------------------------------------------
+
+const HUB_STYLE = `<style>
+  :root{--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--bg:#f8fafc;--brand:#2563eb}
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 20px 80px}
+  a{color:var(--brand)}
+  nav.crumbs{font-size:13px;color:var(--mut);margin-bottom:18px}
+  .langs{float:right;font-size:13px}
+  h1{font-size:30px;line-height:1.15;margin:0 0 10px}
+  .lead{color:var(--mut);margin:0 0 24px;max-width:680px}
+  table{border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:15px}
+  th{background:#f1f5f9;text-align:left;font-size:13px;color:var(--mut)}
+  th,td{padding:11px 14px;border-bottom:1px solid var(--line);text-align:left}
+  tr:last-child td{border-bottom:0}
+  td.name a{font-weight:600;text-decoration:none}
+  td.sector{color:var(--mut);font-size:14px}
+  td.tk{color:var(--mut);font-size:13px;font-variant-numeric:tabular-nums}
+  footer{margin-top:40px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
+</style>`;
+
+export function renderHub(lang = 'es') {
+  const t = T[lang] || T.es;
+  const canonical = hubUrl(lang);
+  const rows = Object.entries(SEED)
+    .map(([slug, v]) => ({ slug, ...v }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    .map(
+      (c) => `<tr>
+        <td class="name"><a href="${companyPath(lang, c.slug)}">${esc(c.name)}</a></td>
+        <td class="sector">${esc(c.sector || '')}</td>
+        <td class="tk">${esc(c.ticker || '')}</td>
+      </tr>`,
+    )
+    .join('');
+
+  const itemList = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: t.hubH1,
+    url: canonical,
+    numberOfItems: Object.keys(SEED).length,
+    itemListElement: Object.entries(SEED).map(([slug, v], i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: v.name,
+      url: companyUrl(lang, slug),
+    })),
+  };
+  const ld = JSON.stringify(itemList)
+    .replace(/</g, '\\u003c')
+    .replace(/-->/g, '--\\u003e')
+    .replace(/[\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+
+  const altPath = lang === 'en' ? hubPath('es') : hubPath('en');
+  const altLabel = lang === 'en' ? 'Español' : 'English';
+
+  return `<!doctype html>
+<html lang="${t.htmlLang}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(t.hubTitle)}</title>
+<meta name="description" content="${esc(t.hubDesc)}">
+<link rel="canonical" href="${canonical}">
+<meta name="robots" content="index, follow">
+<link rel="alternate" hreflang="es" href="${hubUrl('es')}">
+<link rel="alternate" hreflang="en" href="${hubUrl('en')}">
+<link rel="alternate" hreflang="x-default" href="${hubUrl('es')}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${esc(t.hubH1)}">
+<meta property="og:description" content="${esc(t.hubDesc)}">
+<meta property="og:url" content="${canonical}">
+<meta property="og:locale" content="${t.ogLocale}">
+<meta property="og:image" content="${SITE}/og-image.svg">
+<script type="application/ld+json">${ld}</script>
+${HUB_STYLE}
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs"><span class="langs"><a href="${altPath}">${altLabel}</a></span><a href="/">${t.home}</a> › ${t.hubH1}</nav>
+  <h1>${esc(t.hubH1)}</h1>
+  <p class="lead">${esc(t.hubLead)}</p>
+  <table>
+    <thead><tr><th>${t.hubThCompany}</th><th>${t.hubThSector}</th><th>${t.hubThTicker}</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <footer>${t.footer('—')}</footer>
+</div>
+</body>
+</html>`;
+}
+
+export async function handleHub(_ctx, lang = 'es') {
+  return new Response(renderHub(lang), {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800',
+    },
+  });
+}

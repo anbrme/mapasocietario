@@ -1,211 +1,649 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://mapasocietario.es/empresas-cotizadas</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresas-cotizadas"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/listed-companies"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresas-cotizadas"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/listed-companies</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresas-cotizadas"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/listed-companies"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresas-cotizadas"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
   <url>
     <loc>https://mapasocietario.es/empresa/acciona</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/acciona"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/acciona"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/acciona"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/acciona</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/acciona"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/acciona"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/acciona"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/acciona-energia</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/acciona-energia"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/acciona-energia"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/acciona-energia"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/acciona-energia</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/acciona-energia"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/acciona-energia"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/acciona-energia"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/acerinox</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/acerinox"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/acerinox"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/acerinox"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/acerinox</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/acerinox"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/acerinox"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/acerinox"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/acs</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/acs"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/acs"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/acs"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/acs</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/acs"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/acs"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/acs"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/aena</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/aena"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/aena"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/aena"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/aena</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/aena"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/aena"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/aena"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/amadeus-it-group</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/amadeus-it-group"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/amadeus-it-group"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/amadeus-it-group"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/amadeus-it-group</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/amadeus-it-group"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/amadeus-it-group"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/amadeus-it-group"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/arcelormittal</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/arcelormittal"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/arcelormittal"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/arcelormittal"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/arcelormittal</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/arcelormittal"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/arcelormittal"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/arcelormittal"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/banco-sabadell</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/banco-sabadell"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/banco-sabadell"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/banco-sabadell"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/banco-sabadell</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/banco-sabadell"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/banco-sabadell"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/banco-sabadell"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/banco-santander</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/banco-santander"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/banco-santander"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/banco-santander"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/banco-santander</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/banco-santander"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/banco-santander"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/banco-santander"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/bankinter</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/bankinter"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/bankinter"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/bankinter"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/bankinter</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/bankinter"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/bankinter"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/bankinter"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/bbva</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/bbva"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/bbva"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/bbva"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/bbva</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/bbva"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/bbva"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/bbva"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/caixabank</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/caixabank"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/caixabank"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/caixabank"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/caixabank</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/caixabank"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/caixabank"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/caixabank"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/cellnex</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/cellnex"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/cellnex"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/cellnex"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/cellnex</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/cellnex"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/cellnex"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/cellnex"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/enagas</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/enagas"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/enagas"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/enagas"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/enagas</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/enagas"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/enagas"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/enagas"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/endesa</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/endesa"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/endesa"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/endesa"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/endesa</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/endesa"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/endesa"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/endesa"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/ferrovial</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/ferrovial"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/ferrovial"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/ferrovial"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/ferrovial</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/ferrovial"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/ferrovial"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/ferrovial"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/fluidra</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/fluidra"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/fluidra"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/fluidra"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/fluidra</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/fluidra"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/fluidra"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/fluidra"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/grifols</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/grifols"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/grifols"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/grifols"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/grifols</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/grifols"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/grifols"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/grifols"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/iberdrola</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/iberdrola"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/iberdrola"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/iberdrola"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/iberdrola</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/iberdrola"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/iberdrola"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/iberdrola"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/inditex</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/inditex"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/inditex"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/inditex"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/inditex</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/inditex"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/inditex"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/inditex"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/indra</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/indra"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/indra"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/indra"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/indra</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/indra"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/indra"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/indra"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/inmobiliaria-colonial</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/inmobiliaria-colonial"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/inmobiliaria-colonial"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/inmobiliaria-colonial"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/inmobiliaria-colonial</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/inmobiliaria-colonial"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/inmobiliaria-colonial"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/inmobiliaria-colonial"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/international-airlines-group</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/international-airlines-group"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/international-airlines-group"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/international-airlines-group"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/international-airlines-group</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/international-airlines-group"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/international-airlines-group"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/international-airlines-group"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/laboratorios-rovi</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/laboratorios-rovi"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/laboratorios-rovi"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/laboratorios-rovi"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/laboratorios-rovi</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/laboratorios-rovi"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/laboratorios-rovi"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/laboratorios-rovi"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/logista</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/logista"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/logista"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/logista"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/logista</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/logista"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/logista"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/logista"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/mapfre</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/mapfre"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/mapfre"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/mapfre"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/mapfre</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/mapfre"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/mapfre"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/mapfre"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/merlin-properties</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/merlin-properties"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/merlin-properties"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/merlin-properties"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/merlin-properties</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/merlin-properties"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/merlin-properties"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/merlin-properties"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/naturgy</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/naturgy"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/naturgy"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/naturgy"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/naturgy</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/naturgy"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/naturgy"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/naturgy"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/puig</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/puig"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/puig"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/puig"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/puig</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/puig"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/puig"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/puig"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/redeia</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/redeia"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/redeia"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/redeia"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/redeia</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/redeia"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/redeia"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/redeia"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/repsol</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/repsol"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/repsol"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/repsol"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/repsol</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/repsol"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/repsol"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/repsol"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/sacyr</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/sacyr"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/sacyr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/sacyr"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/sacyr</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/sacyr"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/sacyr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/sacyr"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/solaria</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/solaria"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/solaria"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/solaria"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/solaria</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/solaria"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/solaria"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/solaria"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/telefonica</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/telefonica"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/telefonica"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/telefonica"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/telefonica</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/telefonica"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/telefonica"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/telefonica"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://mapasocietario.es/empresa/unicaja</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/unicaja"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/unicaja"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/unicaja"/>
+    <lastmod>2026-06-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/company/unicaja</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="https://mapasocietario.es/empresa/unicaja"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://mapasocietario.es/en/company/unicaja"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/empresa/unicaja"/>
     <lastmod>2026-06-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

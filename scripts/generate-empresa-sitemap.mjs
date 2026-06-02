@@ -1,10 +1,10 @@
 /**
  * Generates public/sitemap-empresas.xml from the curated IBEX 35 seed.
  *
+ * Bilingual: each company and the hub get an ES URL and an EN URL, with
+ * xhtml:link hreflang alternates so Google serves the right language.
+ *
  * Run:  node scripts/generate-empresa-sitemap.mjs
- * Add the new file to robots.txt / Search Console, or reference it from a
- * sitemap index. As the launch expands beyond the IBEX 35, extend the source
- * list here (or generate from the API).
  */
 import { SEED } from '../functions/empresa/_ibex35.js';
 import { writeFileSync } from 'node:fs';
@@ -14,16 +14,40 @@ import { dirname, join } from 'node:path';
 const SITE = 'https://mapasocietario.es';
 const today = new Date().toISOString().slice(0, 10);
 
-const urls = Object.keys(SEED)
-  .sort()
-  .map(
-    (slug) =>
-      `  <url>\n    <loc>${SITE}/empresa/${slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`,
-  )
-  .join('\n');
+const esCompany = (slug) => `${SITE}/empresa/${slug}`;
+const enCompany = (slug) => `${SITE}/en/company/${slug}`;
 
-const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+// One <url> block with hreflang alternates pointing at both language versions.
+function urlBlock(loc, esHref, enHref, priority, changefreq) {
+  return `  <url>
+    <loc>${loc}</loc>
+    <xhtml:link rel="alternate" hreflang="es" href="${esHref}"/>
+    <xhtml:link rel="alternate" hreflang="en" href="${enHref}"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="${esHref}"/>
+    <lastmod>${today}</lastmod>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`;
+}
+
+const blocks = [];
+
+// Hub (ES + EN)
+blocks.push(urlBlock(`${SITE}/empresas-cotizadas`, `${SITE}/empresas-cotizadas`, `${SITE}/en/listed-companies`, '0.8', 'weekly'));
+blocks.push(urlBlock(`${SITE}/en/listed-companies`, `${SITE}/empresas-cotizadas`, `${SITE}/en/listed-companies`, '0.8', 'weekly'));
+
+// Companies (ES + EN)
+for (const slug of Object.keys(SEED).sort()) {
+  blocks.push(urlBlock(esCompany(slug), esCompany(slug), enCompany(slug), '0.7', 'weekly'));
+  blocks.push(urlBlock(enCompany(slug), esCompany(slug), enCompany(slug), '0.7', 'weekly'));
+}
+
+const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${blocks.join('\n')}
+</urlset>
+`;
 
 const out = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'sitemap-empresas.xml');
 writeFileSync(out, xml);
-console.log(`Wrote ${Object.keys(SEED).length} company URLs to ${out}`);
+console.log(`Wrote ${blocks.length} URLs (${Object.keys(SEED).length} companies × 2 langs + 2 hubs) to ${out}`);

@@ -775,7 +775,6 @@ class SpanishCompanyTermsParser {
     // For partial matches, be more intelligent about it
     // Check if the section CONTAINS any of the top-level categories
     match = this.terms.alwaysTopLevel.find(category => {
-      const categoryLower = category.toLowerCase();
       const sectionLower = cleanSection.toLowerCase();
 
       // Match the category only at a section boundary — not when it merely
