@@ -778,8 +778,9 @@ class SpanishCompanyTermsParser {
       const categoryLower = category.toLowerCase();
       const sectionLower = cleanSection.toLowerCase();
 
-      // Check if section contains the category
-      if (sectionLower.includes(categoryLower)) {        return true;
+      // Match the category only at a section boundary — not when it merely
+      // appears inside a quoted bylaw-article title (caused false "Constitución").
+      if (this._termAtSectionBoundary(cleanSection, category)) {        return true;
       }
 
       // For "Modificaciones estatutarias", also check for variations
@@ -1893,6 +1894,32 @@ class SpanishCompanyTermsParser {
    * Extract corporate events from BORME entry
    * Returns array of categorized events for timeline display
    */
+  /**
+   * True only if `term` appears in `text` as a section/act boundary — at the
+   * start, right after a '.'/':' , or after a CLOSING quote. An opening quote
+   * (odd number of quotes before the term) means the term sits inside a quoted
+   * title — e.g. an article named "Constitución e inicio de la sesión" — and must
+   * NOT start a section. Mirrors the backend _split_into_sections boundary rule
+   * and prevents false lifecycle events from quoted bylaw-article titles.
+   */
+  _termAtSectionBoundary(text, term) {
+    if (!text || !term) return false;
+    const lower = text.toLowerCase();
+    const t = term.toLowerCase();
+    let idx = lower.indexOf(t);
+    while (idx !== -1) {
+      const before = text.slice(0, idx);
+      const pre = before.replace(/\s+$/, '');
+      const preNoQuote = pre.replace(/["']+$/, '');
+      const quoteCloses = pre.endsWith('"') && (before.match(/"/g) || []).length % 2 === 0;
+      if (idx === 0 || preNoQuote.endsWith('.') || preNoQuote.endsWith(':') || quoteCloses) {
+        return true;
+      }
+      idx = lower.indexOf(t, idx + 1);
+    }
+    return false;
+  }
+
   extractCorporateEvents(fullEntry, entryDate = null) {
     const events = [];
     // FIXED: Add null checks for eventToCategoryMap and validate inputs
@@ -1923,10 +1950,10 @@ class SpanishCompanyTermsParser {
         continue;
       }
 
-      // Check if this event type appears in the entry
-      const eventPattern = new RegExp(eventType.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-
-      if (eventPattern.test(fullEntry)) {
+      // Only treat the term as an act when it appears at a section boundary —
+      // not inside a quoted bylaw-article title (which previously created false
+      // lifecycle events like a phantom "Constitución").
+      if (this._termAtSectionBoundary(fullEntry, eventType)) {
         // Get category info
         const categoryInfo = this.eventToCategoryMap[eventType.toLowerCase()] || {
           category: 'other',
