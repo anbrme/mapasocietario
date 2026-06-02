@@ -181,7 +181,7 @@ const T = {
     hubThSector: 'Sector',
     hubThTicker: 'Ticker',
     hubView: 'Ver ficha →',
-    cnmvTitle: 'Participaciones significativas (CNMV)',
+    cnmvTitle: 'Accionistas significativos (CNMV)',
     cnmvHolder: 'Titular',
     cnmvPctTotal: '% total',
     cnmvPctDirect: '% directo',
