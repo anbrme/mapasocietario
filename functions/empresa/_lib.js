@@ -214,8 +214,12 @@ const T = {
     cnmvPctInstr: '% instrumentos',
     cnmvDate: 'F. registro',
     cnmvSource: (d) => `Fuente: CNMV — participaciones significativas${d ? `, última modificación ${d}` : ''}. Disponible gratuitamente en `,
-    chartTitle: 'Evolución de las participaciones significativas',
+    chartTitle: 'Evolución de los accionistas significativos',
     chartNote: '% de derechos de voto por titular a lo largo del tiempo (CNMV).',
+    boeTitle: 'Menciones del grupo en el BOE',
+    boeSub: 'Contratos públicos, subvenciones y sanciones publicados en el Boletín Oficial del Estado (puede incluir sociedades del grupo).',
+    boeCat: { sancion: 'Sanción', subvencion: 'Subvención', contrato: 'Contrato público' },
+    boeSource: 'Fuente: BOE — reutilización conforme a las condiciones de la AEBOE. ',
     positions: {
       'ADM. UNICO': 'Administrador único',
       'ADM. SOLIDARIO': 'Administrador solidario',
@@ -307,6 +311,10 @@ const T = {
     cnmvSource: (d) => `Source: CNMV — significant holdings${d ? `, last updated ${d}` : ''}. Available free at `,
     chartTitle: 'Significant holdings over time',
     chartNote: 'Voting-rights % by shareholder over time (CNMV).',
+    boeTitle: 'Group mentions in the State Gazette (BOE)',
+    boeSub: 'Public contracts, subsidies and sanctions published in the BOE (may include group companies).',
+    boeCat: { sancion: 'Sanction', subvencion: 'Subsidy', contrato: 'Public contract' },
+    boeSource: 'Source: BOE — reused under the AEBOE reuse conditions. ',
     positions: {
       'ADM. UNICO': 'Sole director',
       'ADM. SOLIDARIO': 'Joint and several director',
@@ -440,6 +448,14 @@ const STYLE = `<style>
   .timeline .date{display:inline-block;font-size:12px;color:var(--mut);margin-right:8px}
   .timeline p{margin:6px 0 0;font-size:13px;color:#334155}
   .more{font-size:13px;color:var(--mut);margin:8px 2px 0}
+  .boe-list{list-style:none;padding:0;margin:0}
+  .boe-list li{padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .boe-list li:last-child{border-bottom:0}
+  .boe-list .date{color:var(--mut);font-size:12px;margin:0 8px}
+  .cat{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:2px 7px}
+  .cat-sancion{background:#fee2e2;color:#991b1b}
+  .cat-subvencion{background:#dcfce7;color:#166534}
+  .cat-contrato{background:#dbeafe;color:#1e40af}
   .chart svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
   .cotizada h2{border-top-color:#bfdbfe}
   .cotizada table{border-color:#bfdbfe}
@@ -459,7 +475,7 @@ function hreflangTags(slug) {
   ].join('\n');
 }
 
-export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null) {
+export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null) {
   const t = T[lang] || T.es;
   const name = company.company_name || company.company_name_normalized || '';
   const canonicalSlug = seed ? slug : nameToSlug(name);
@@ -549,6 +565,23 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
   const chartBlock = chartSvg
     ? `<section class="chart"><h2>${t.chartTitle}</h2>${chartSvg}<p class="more">${t.chartNote}</p></section>`
     : '';
+
+  // BOE mentions (public contracts, subsidies, sanctions). Group-wide name match.
+  const boeList = (boe && boe.mentions) || [];
+  const boeBlock = boeList.length
+    ? `<section class="boe">
+        <h2>${t.boeTitle}</h2>
+        <p class="more">${t.boeSub}</p>
+        <ul class="boe-list">${boeList
+          .map(
+            (m) => `<li><span class="cat cat-${esc(m.category)}">${esc(t.boeCat[m.category] || m.category)}</span>
+              <span class="date">${esc(fmtDate(m.date, lang))}</span>
+              ${m.url ? `<a href="${esc(m.url)}" rel="nofollow noopener" target="_blank">${esc(m.title)}</a>` : esc(m.title)}</li>`,
+          )
+          .join('')}</ul>
+        <p class="more">${t.boeSource}<a href="https://www.boe.es/" rel="nofollow noopener" target="_blank">boe.es</a>.</p>
+      </section>`
+    : '';
   const altPath = lang === 'en' ? companyPath('es', canonicalSlug) : companyPath('en', canonicalSlug);
   const altLabel = lang === 'en' ? 'Español' : 'English';
 
@@ -590,6 +623,7 @@ ${STYLE}
 
   ${cnmvBlock}
   ${chartBlock}
+  ${boeBlock}
 
   ${active ? `<h2>${t.currentOfficers}</h2>${active}` : ''}
   ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
@@ -675,12 +709,17 @@ export async function handleCompany({ params }, lang = 'es') {
       }
     }
 
-    const [profile, eventsResp, cnmvResp, chartSvg] = await Promise.all([
+    // BOE mentions match by company name + NIF (listed cos have both in the seed).
+    const boeUrl = seed
+      ? `${API_BASE}/bormes/boe/company-mentions?name=${encodeURIComponent(seed.name || '')}&nif=${encodeURIComponent(seed.nif || '')}&categories=sancion,subvencion,contrato&size=8`
+      : null;
+    const [profile, eventsResp, cnmvResp, chartSvg, boeResp] = await Promise.all([
       jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`, controller.signal),
       jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=8`, controller.signal),
       // Significant shareholders + history chart: only listed (curated) companies have CNMV data.
       seed ? jsonOrNull(`${API_BASE}/bormes/cnmv/shareholders?company=${encodeURIComponent(slug)}`, controller.signal) : Promise.resolve(null),
       seed ? textOrNull(`${API_BASE}/bormes/cnmv/history-chart?company=${encodeURIComponent(slug)}&lang=${lang}`, controller.signal) : Promise.resolve(null),
+      boeUrl ? jsonOrNull(boeUrl, controller.signal) : Promise.resolve(null),
     ]);
 
     const company = profile && profile.company ? profile.company : null;
@@ -691,7 +730,7 @@ export async function handleCompany({ params }, lang = 'es') {
       });
     }
 
-    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg));
+    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp);
     return new Response(html, {
       status: 200,
       headers: {
