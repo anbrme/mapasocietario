@@ -92,39 +92,73 @@ const fmtEur = (n) =>
     ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
     : '';
 
-// Board/governance roles rank above powers-of-attorney (apoderados), which can
-// number in the hundreds for large listed firms and aren't interesting for SEO.
-const ROLE_RANK = [
-  'ADM. UNICO', 'ADMINISTRADOR UNICO', 'ADMINISTRADOR', 'PRESIDENTE',
-  'VICEPRESIDENTE', 'CONSEJERO DELEGADO', 'CONSEJERO', 'SECRETARIO',
-  'VICESECRETARIO', 'LIQUIDADOR', 'ADM. MANCOMUNADO', 'ADM. SOLIDARIO',
-];
-const MAX_OFFICERS = 30;
+// Public pages show only board/governance roles. Apoderados (powers of
+// attorney), committee members and auditors are hidden — for large listed firms
+// they number in the hundreds and add no signal. BORME stores positions as
+// cryptic abbreviations, so we exclude non-board patterns first, then include.
+const MAX_OFFICERS = 40;
 
-function rankOfficer(o) {
-  const pos = (o.position_normalized || o.position || '').toUpperCase();
-  const i = ROLE_RANK.findIndex((r) => pos.includes(r));
-  return i === -1 ? 99 : i;
+function isBoardRole(o) {
+  const p = (o.position_normalized || o.position || '').toUpperCase();
+  if (!p) return false;
+  // Exclusions first (order matters): apoderados, committee members, auditors.
+  if (/(APO\.|APODER)/.test(p)) return false;
+  if (/(COM\.|CTE\.|COMIS|COMITE|VOCCOM|MIEMCOM|MMBR|MBRO|M\.COM)/.test(p)) return false;
+  if (/(AUDITOR|AUD\.)/.test(p)) return false;
+  // Inclusions: administradores, consejeros (incl. CON.IND./CON.DEL. forms),
+  // presidencia, secretaría, liquidador.
+  return /(PRESIDENT|VICEPRESID|CONSEJ|CONS\.|CON\.IND|CON\.DEL|ADMINISTR|ADM\.|SECRE|LIQUIDAD)/.test(p);
 }
 
-function prioritize(list) {
-  const sorted = [...(list || [])].sort((a, b) => rankOfficer(a) - rankOfficer(b));
-  return { shown: sorted.slice(0, MAX_OFFICERS), hidden: Math.max(0, sorted.length - MAX_OFFICERS) };
+// Expand the most common BORME abbreviations for readability (SEO + humans).
+const POSITION_LABELS = {
+  'ADM. UNICO': 'Administrador único',
+  'ADM. SOLIDARIO': 'Administrador solidario',
+  'ADM. MANCOMUNADO': 'Administrador mancomunado',
+  'CON.DELEGADO': 'Consejero delegado',
+  'CONS.EJECUTI': 'Consejero ejecutivo',
+  'CONS.EXTERNO': 'Consejero externo',
+  'CONS.EXT.IND': 'Consejero externo independiente',
+  'SECRENOCONSJ': 'Secretario no consejero',
+  'VICESECR': 'Vicesecretario',
+};
+function prettyPosition(pos) {
+  const p = (pos || '').toUpperCase();
+  return POSITION_LABELS[p] || pos || '';
 }
 
-function officersRows(rawList, dateKey, dateLabel) {
-  const { shown: list, hidden } = prioritize(rawList);
-  if (!list.length) return '';
+function selectOfficers(list) {
+  const all = list || [];
+  const board = all.filter(isBoardRole);
+  const shown = board.slice(0, MAX_OFFICERS);
+  const hiddenOther = all.length - board.length; // apoderados/committees/auditors
+  const hiddenOverflow = Math.max(0, board.length - MAX_OFFICERS);
+  return { shown, hiddenOther, hiddenOverflow };
+}
+
+// noBoardNote: when there are no board roles (only apoderados etc.), emit a note
+// instead of listing them — used for the "vigentes" table, not the resigned one.
+function officersRows(rawList, dateKey, dateLabel, { noBoardNote = false } = {}) {
+  const { shown: list, hiddenOther, hiddenOverflow } = selectOfficers(rawList);
+  if (!list.length) {
+    if (noBoardNote && hiddenOther) {
+      return `<p class="more">No constan administradores ni consejeros vigentes en esta denominación (${hiddenOther} apoderado(s) u otros cargos registrados).</p>`;
+    }
+    return '';
+  }
   const rows = list
     .map(
       (o) => `<tr>
         <td>${esc(o.name || o.name_normalized)}</td>
-        <td>${esc(o.position_normalized || o.position || '')}</td>
+        <td>${esc(prettyPosition(o.position_normalized || o.position))}</td>
         <td>${esc(fmtDate(o[dateKey]))}</td>
       </tr>`,
     )
     .join('');
-  const more = hidden ? `<p class="more">y ${hidden} cargo(s) más (apoderados y otros).</p>` : '';
+  const notes = [];
+  if (hiddenOther) notes.push(`${hiddenOther} apoderado(s) y otros cargos no incluidos`);
+  if (hiddenOverflow) notes.push(`${hiddenOverflow} más`);
+  const more = notes.length ? `<p class="more">${notes.join('; ')}.</p>` : '';
   return `<table class="t">
     <thead><tr><th>Nombre</th><th>Cargo</th><th>${dateLabel}</th></tr></thead>
     <tbody>${rows}</tbody></table>${more}`;
@@ -215,14 +249,25 @@ export function renderCompanyPage(company, events, slug, seed) {
     .map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`)
     .join('');
 
+  // Prior denominations, excluding self-references (BORME logs no-op
+  // redenominaciones where old_name == new_name, and punctuation-only variants).
+  const nameKey = (s) => (s || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+  const currentKey = nameKey(name);
+  const priorNames = [
+    ...new Set(
+      (company.name_changes || [])
+        .map((c) => (typeof c === 'string' ? c : c.old_name || c.previous_name || ''))
+        .filter(Boolean)
+        .filter((n) => nameKey(n) !== currentKey),
+    ),
+  ];
+
   const renameNotice = renamedTo
     ? `<div class="notice">Esta sociedad pasó a denominarse <a href="/empresa/${nameToSlug(
         renamedTo,
       )}">${esc(renamedTo)}</a>. Consulta la ficha actualizada.</div>`
-    : company.name_changes && company.name_changes.length
-    ? `<div class="notice">Denominaciones anteriores: ${company.name_changes
-        .map((c) => esc(c.old_name || c.previous_name || c))
-        .join(', ')}.</div>`
+    : priorNames.length
+    ? `<div class="notice">Denominaciones anteriores: ${priorNames.map(esc).join(', ')}.</div>`
     : '';
 
   // Curated listed-company card (NIF/ISIN/ticker/hoja from the IBEX seed).
@@ -240,7 +285,7 @@ export function renderCompanyPage(company, events, slug, seed) {
       </section>`
     : '';
 
-  const active = officersRows(company.officers_active, 'appointed_date', 'Nombramiento');
+  const active = officersRows(company.officers_active, 'appointed_date', 'Nombramiento', { noBoardNote: true });
   const resigned = officersRows(company.officers_resigned, 'resigned_date', 'Cese');
 
   return `<!doctype html>
