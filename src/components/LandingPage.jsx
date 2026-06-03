@@ -36,6 +36,7 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
+import { isNativeApp, openListedCompanies } from '../services/listedCompaniesNav';
 
 const CAPABILITIES = [
   {
@@ -376,12 +377,20 @@ export default function LandingPage() {
                 Search companies and officers
               </Button>
               {/* Real anchor (full page load) so the Cloudflare Pages Function
-                  serves /empresas-cotizadas rather than the SPA fallback. */}
+                  serves /empresas-cotizadas rather than the SPA fallback. In the
+                  native app there is no server for that route, so we intercept
+                  and open the live page in an in-app Custom Tab instead. */}
               <Button
                 variant="outlined"
                 size="large"
                 component="a"
                 href="/empresas-cotizadas"
+                onClick={(e) => {
+                  if (isNativeApp()) {
+                    e.preventDefault();
+                    openListedCompanies();
+                  }
+                }}
                 startIcon={<TrendingUpIcon />}
                 sx={{
                   textTransform: 'none',

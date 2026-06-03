@@ -40,12 +40,31 @@ const sitemapUrls = sitemapRoutes.map((route) => `  <url>
     <priority>${route.priority}</priority>
   </url>`).join('\n');
 
-const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+// Static pages live in sitemap-pages.xml. sitemap.xml is a sitemap INDEX that
+// references both this and the (separately generated) sitemap-empresas.xml, so
+// Google discovers everything from the single sitemap.xml — robots.txt only
+// needs one line, which matters because Cloudflare's managed robots.txt
+// overrides our deployed one and lists just sitemap.xml.
+const sitemapPagesXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${sitemapUrls}
 </urlset>
 `;
 
+const sitemapIndexXml = `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>${siteUrl}/sitemap-pages.xml</loc>
+    <lastmod>${buildDate}</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>${siteUrl}/sitemap-empresas.xml</loc>
+    <lastmod>${buildDate}</lastmod>
+  </sitemap>
+</sitemapindex>
+`;
+
 mkdirSync(publicDir, { recursive: true });
 writeFileSync(path.join(publicDir, 'robots.txt'), robotsTxt, 'utf8');
-writeFileSync(path.join(publicDir, 'sitemap.xml'), sitemapXml, 'utf8');
+writeFileSync(path.join(publicDir, 'sitemap-pages.xml'), sitemapPagesXml, 'utf8');
+writeFileSync(path.join(publicDir, 'sitemap.xml'), sitemapIndexXml, 'utf8');

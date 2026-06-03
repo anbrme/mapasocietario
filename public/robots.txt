@@ -2,4 +2,3 @@ User-agent: *
 Allow: /
 
 Sitemap: https://mapasocietario.es/sitemap.xml
-Sitemap: https://mapasocietario.es/sitemap-empresas.xml
