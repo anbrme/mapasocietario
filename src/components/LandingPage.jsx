@@ -476,6 +476,26 @@ export default function LandingPage() {
                 Open dashboard
               </Button>
             </Box>
+            {!isNativeApp() && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                {/* Official Google Play badge (per brand guidelines — unaltered). */}
+                <Box
+                  component="a"
+                  href="https://play.google.com/store/apps/details?id=es.mapasocietario.app"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Get it on Google Play"
+                  sx={{ display: 'inline-block', transition: 'opacity .15s', '&:hover': { opacity: 0.85 } }}
+                >
+                  <Box
+                    component="img"
+                    src="/google-play-badge.svg"
+                    alt="Get it on Google Play"
+                    sx={{ height: 56, width: 'auto', display: 'block' }}
+                  />
+                </Box>
+              </Box>
+            )}
             <LegalDisclaimer dense sx={{ mt: 4, maxWidth: 760, mx: 'auto' }} />
           </Section>
         </Box>
