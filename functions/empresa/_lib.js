@@ -169,6 +169,7 @@ const T = {
     cWeb: 'Web',
     currentOfficers: 'Administradores y cargos vigentes',
     formerOfficers: 'Cargos cesados o revocados',
+    officerRoleNote: 'Cada cargo se sigue por su denominación exacta en el BORME. Cuando una persona cambia de tipo de cargo a lo largo del tiempo (p. ej. Consejero → Consejero Independiente → Consejero Externo), cada denominación se registra por separado, por lo que una misma persona puede figurar a la vez como cargo vigente bajo una denominación y como cargo cesado bajo otra.',
     thName: 'Nombre',
     thRole: 'Cargo',
     thAppointed: 'Nombramiento',
@@ -264,6 +265,7 @@ const T = {
     cWeb: 'Website',
     currentOfficers: 'Current directors & officers',
     formerOfficers: 'Former / revoked officers',
+    officerRoleNote: 'Each role is tracked by its exact BORME title. When a person’s role type changes over time (e.g. Director → Independent Director → External Director), each title is recorded separately, so the same person may appear both as a current officer under one title and as a former officer under another.',
     thName: 'Name',
     thRole: 'Role',
     thAppointed: 'Appointed',
@@ -638,6 +640,7 @@ ${STYLE}
 
   ${active ? `<h2>${t.currentOfficers}</h2>${active}` : ''}
   ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
+  ${active || resigned ? `<p class="more">${t.officerRoleNote}</p>` : ''}
 
   ${
     (company.sole_shareholders && company.sole_shareholders.length) ||
