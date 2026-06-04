@@ -688,7 +688,10 @@ const SpanishCompanyNetworkGraph = ({
 
   // Floating table panel state
   const [tablePosition, setTablePosition] = useState({ x: null, y: null }); // null = default position
-  const [isTableCollapsed, setIsTableCollapsed] = useState(false);
+  // Default collapsed on phones so the Datos panel doesn't cover half the screen; open on desktop.
+  const [isTableCollapsed, setIsTableCollapsed] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 768,
+  );
   // Date filter: click on a date cell filters the table to rows sharing same date + company + category
   // Shape: { date, companyNodeId, category } or null
   const [dateFilter, setDateFilter] = useState(null);
