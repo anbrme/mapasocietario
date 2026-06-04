@@ -112,16 +112,17 @@ existing `<section>` convention:
 
 ## Piece 3 — Section order
 
-Move `boeBlock` to render **after** the directors (officers) sections. New order in
-`renderCompanyPage`:
+Reorder the sections in `renderCompanyPage` so that: shareholders come before
+current officers, the GLEIF group sits right after shareholders, and BOE mentions
+move down to just before capital history / events. New order:
 
 1. cotizada / registry facts
 2. cnmv + chart
-3. **GLEIF corporate group** (new)
-4. current officers (directors)
-5. former officers + role note
-6. **BOE mentions** (moved here)
-7. shareholders
+3. **shareholders** (moved up)
+4. **GLEIF corporate group** (new — after shareholders)
+5. current officers (directors)
+6. former officers + role note
+7. **BOE mentions** (moved here — before events)
 8. capital history
 9. events
 10. CTA / footer
@@ -184,7 +185,7 @@ the screen. No other behavior changes.
 - A seed company with children (e.g. ACS) renders the section + lists; the graph
   hydrates; double-click expands a child and merges nodes without duplicates.
 - A company with no `lei` / no data renders no GLEIF section and no errors.
-- BOE block appears after directors; page order matches the spec.
+- Page order matches the spec: shareholders → GLEIF → directors → BOE → events.
 - Hub: clicking a company shows the overlay immediately.
 - Search app: on a narrow viewport the Datos panel starts collapsed; on desktop it
   starts open.
