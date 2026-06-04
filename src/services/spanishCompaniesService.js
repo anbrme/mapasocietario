@@ -471,33 +471,78 @@ class SpanishCompaniesService {
       resignedList = filtered.resigned;
     }
 
-    return [{
-      name,
-      company_name: name,
-      indexed_date: company.last_seen,
-      date: company.first_seen,
-      identifier: (company.identifiers || [])[0] || '',
-      // Pre-populated parsed officers so addCompanyWithOfficersToGraph uses the
-      // primary parser path and never falls back to text parsing.
-      parsed: {
-        officers: {
-          nombramientos: activeList.map(o => ({
-            name: o.name || o.name_normalized,
-            position: o.position_normalized || '',
-          })),
-          reelecciones: [],
-          ceses_dimisiones: resignedList.map(o => ({
-            name: o.name || o.name_normalized,
-            position: o.position_normalized || '',
-          })),
-          revocaciones: [],
+    const baseId = (company.identifiers || [])[0] || '';
+
+    // Group officers into synthetic entries keyed by their REAL event date
+    // (appointed_date for active, resigned_date for resigned) so each
+    // officer-company link carries its true appointment/cessation date. The old
+    // code emitted a single entry stamped with company.last_seen, which made the
+    // graph show the latest BORME bulletin date (e.g. a 2026 re-index) as every
+    // officer's Cese/Nombramiento date. The per-officer dates live on the v3
+    // officer objects — use them.
+    const byDate = new Map(); // dateKey -> { nombramientos: [], ceses_dimisiones: [] }
+    const bucket = (d) => {
+      const key = d || '';
+      if (!byDate.has(key)) byDate.set(key, { nombramientos: [], ceses_dimisiones: [] });
+      return byDate.get(key);
+    };
+    for (const o of activeList) {
+      bucket(o.appointed_date || company.first_seen).nombramientos.push({
+        name: o.name || o.name_normalized,
+        position: o.position_normalized || '',
+      });
+    }
+    for (const o of resignedList) {
+      bucket(o.resigned_date || company.last_seen).ceses_dimisiones.push({
+        name: o.name || o.name_normalized,
+        position: o.position_normalized || '',
+      });
+    }
+
+    const entries = [];
+    for (const [dateKey, groups] of byDate) {
+      entries.push({
+        name,
+        company_name: name,
+        indexed_date: dateKey || company.last_seen,
+        date: dateKey || company.first_seen,
+        identifier: baseId,
+        // Pre-populated parsed officers so addCompanyWithOfficersToGraph uses the
+        // primary parser path and never falls back to text parsing.
+        parsed: {
+          officers: {
+            nombramientos: groups.nombramientos,
+            reelecciones: [],
+            ceses_dimisiones: groups.ceses_dimisiones,
+            revocaciones: [],
+          },
         },
-      },
-      // Provide empty arrays so fallback paths don't trigger
-      officers: [],
-      parsed_details: {},
-      entry_type: [],
-    }];
+        // Provide empty arrays so fallback paths don't trigger
+        officers: [],
+        parsed_details: {},
+        entry_type: [],
+      });
+    }
+
+    // Always return at least one entry (so the company node still appears even
+    // with no officers).
+    if (entries.length === 0) {
+      entries.push({
+        name,
+        company_name: name,
+        indexed_date: company.last_seen,
+        date: company.first_seen,
+        identifier: baseId,
+        parsed: {
+          officers: { nombramientos: [], reelecciones: [], ceses_dimisiones: [], revocaciones: [] },
+        },
+        officers: [],
+        parsed_details: {},
+        entry_type: [],
+      });
+    }
+
+    return entries;
   }
 
   /**
