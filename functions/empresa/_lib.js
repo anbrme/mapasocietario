@@ -65,6 +65,21 @@ async function jsonOrNull(url, signal) {
   }
 }
 
+async function postJsonOrNull(url, body, signal) {
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      signal,
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
 async function textOrNull(url, signal) {
   try {
     const r = await fetch(url, { signal });
@@ -221,6 +236,20 @@ const T = {
     boeSub: 'Contratos públicos, subvenciones y sanciones publicados en el Boletín Oficial del Estado (puede incluir sociedades del grupo).',
     boeCat: { sancion: 'Sanción', subvencion: 'Subvención', contrato: 'Contrato público' },
     boeSource: 'Fuente: BOE — reutilización conforme a las condiciones de la AEBOE. ',
+    gleifTitle: 'Grupo societario (GLEIF)',
+    gleifSub: 'Estructura de matrices y filiales según el identificador LEI global (GLEIF). Haz doble clic en un nodo del gráfico para expandir su grupo.',
+    gleifParents: 'Matrices',
+    gleifDirectParent: 'Matriz directa',
+    gleifUltimateParent: 'Matriz última',
+    gleifNoParent: 'Sin matriz registrada — es cabecera de grupo.',
+    gleifSubsidiaries: 'Filiales directas',
+    gleifUltimateSubs: 'Filiales últimas',
+    gleifSummary: (nDirect, nUlt, nCountries) =>
+      `${nDirect} filiales directas, ${nUlt} filiales últimas en ${nCountries} ${nCountries === 1 ? 'país' : 'países'}.`,
+    gleifThEntity: 'Entidad',
+    gleifThCountry: 'País',
+    gleifInactive: 'inactiva',
+    gleifSource: (lei) => `Fuente: GLEIF — Global Legal Entity Identifier Foundation (LEI ${lei}). Datos abiertos disponibles en `,
     positions: {
       'ADM. UNICO': 'Administrador único',
       'ADM. SOLIDARIO': 'Administrador solidario',
@@ -317,6 +346,20 @@ const T = {
     boeSub: 'Public contracts, subsidies and sanctions published in the BOE (may include group companies).',
     boeCat: { sancion: 'Sanction', subvencion: 'Subsidy', contrato: 'Public contract' },
     boeSource: 'Source: BOE — reused under the AEBOE reuse conditions. ',
+    gleifTitle: 'Corporate group (GLEIF)',
+    gleifSub: 'Parent and subsidiary structure from the global LEI identifier (GLEIF). Double-click a node in the graph to expand its group.',
+    gleifParents: 'Parents',
+    gleifDirectParent: 'Direct parent',
+    gleifUltimateParent: 'Ultimate parent',
+    gleifNoParent: 'No registered parent — this is a group head.',
+    gleifSubsidiaries: 'Direct subsidiaries',
+    gleifUltimateSubs: 'Ultimate subsidiaries',
+    gleifSummary: (nDirect, nUlt, nCountries) =>
+      `${nDirect} direct subsidiaries, ${nUlt} ultimate subsidiaries across ${nCountries} ${nCountries === 1 ? 'country' : 'countries'}.`,
+    gleifThEntity: 'Entity',
+    gleifThCountry: 'Country',
+    gleifInactive: 'inactive',
+    gleifSource: (lei) => `Source: GLEIF — Global Legal Entity Identifier Foundation (LEI ${lei}). Open data available at `,
     positions: {
       'ADM. UNICO': 'Sole director',
       'ADM. SOLIDARIO': 'Joint and several director',
@@ -469,6 +512,12 @@ const STYLE = `<style>
   .cta p{margin:0 0 18px;opacity:.9}
   .cta a{display:inline-block;background:#fff;color:#1e3a8a;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:10px}
   footer{margin-top:48px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
+  section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:18px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  section h2{margin-top:0;border-top:0;padding-top:0}
+  .chip{display:inline-block;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;border:1px solid var(--line);border-radius:6px;padding:1px 7px;letter-spacing:.02em}
+  .muted{color:var(--mut);font-size:12px}
+  .gleif-graph{width:100%;min-height:320px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:8px 0 14px;overflow:hidden}
+  .gleif h3{margin-top:18px}
 </style>`;
 
 function hreflangTags(slug) {
@@ -479,7 +528,7 @@ function hreflangTags(slug) {
   ].join('\n');
 }
 
-export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null) {
+export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null) {
   const t = T[lang] || T.es;
   const name = company.company_name || company.company_name_normalized || '';
   const canonicalSlug = seed ? slug : nameToSlug(name);
@@ -595,6 +644,75 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
         <p class="more">${t.boeSource}<a href="https://www.boe.es/" rel="nofollow noopener" target="_blank">boe.es</a>.</p>
       </section>`
     : '';
+  // GLEIF corporate group (curated/listed companies with a verified LEI only).
+  const flag = (cc) => (cc && cc !== 'N/A' ? `<span class="chip">${esc(cc)}</span>` : '');
+  const gleifEntityRow = (e) =>
+    `<tr><td>${e.lei
+        ? `<a href="/app?search=${encodeURIComponent(e.legalName)}">${esc(e.legalName)}</a>`
+        : esc(e.legalName)}${
+        e.entityStatus && e.entityStatus !== 'ACTIVE' && e.entityStatus !== 'N/A'
+          ? ` <span class="muted">(${t.gleifInactive})</span>`
+          : ''
+      }</td><td>${flag(e.country)}</td></tr>`;
+
+  let gleifBlock = '';
+  if (gleif && (gleif.directParent || gleif.ultimateParent || (gleif.directChildren || []).length || (gleif.ultimateChildren || []).length)) {
+    const directChildren = gleif.directChildren || [];
+    const ultimateChildren = gleif.ultimateChildren || [];
+    const countries = new Set(
+      [...directChildren, ...ultimateChildren].map((c) => c.country).filter((c) => c && c !== 'N/A'),
+    );
+
+    const parentsTable =
+      gleif.directParent || gleif.ultimateParent
+        ? `<table class="t"><tbody>
+            ${gleif.directParent ? `<tr><th>${t.gleifDirectParent}</th><td><a href="/app?search=${encodeURIComponent(gleif.directParent.legalName)}">${esc(gleif.directParent.legalName)}</a></td></tr>` : ''}
+            ${gleif.ultimateParent ? `<tr><th>${t.gleifUltimateParent}</th><td><a href="/app?search=${encodeURIComponent(gleif.ultimateParent.legalName)}">${esc(gleif.ultimateParent.legalName)}</a></td></tr>` : ''}
+          </tbody></table>`
+        : `<p class="more">${t.gleifNoParent}</p>`;
+
+    const directTable = directChildren.length
+      ? `<h3>${t.gleifSubsidiaries} (${directChildren.length})</h3>
+         <table class="t"><thead><tr><th>${t.gleifThEntity}</th><th>${t.gleifThCountry}</th></tr></thead>
+         <tbody>${directChildren.map(gleifEntityRow).join('')}</tbody></table>`
+      : '';
+
+    const ultimateTable = ultimateChildren.length
+      ? `<details><summary>${t.gleifUltimateSubs} (${ultimateChildren.length})</summary>
+         <table class="t"><thead><tr><th>${t.gleifThEntity}</th><th>${t.gleifThCountry}</th></tr></thead>
+         <tbody>${ultimateChildren.map(gleifEntityRow).join('')}</tbody></table></details>`
+      : '';
+
+    // Graph seed data (consumed by /vendor/gleif-graph.js). Self node is the seed LEI.
+    const graphData = {
+      self: { lei: seed.lei, name, country: 'ES' },
+      directParent: gleif.directParent || null,
+      ultimateParent: gleif.ultimateParent || null,
+      directChildren,
+      ultimateChildren,
+    };
+    const graphJson = JSON.stringify(graphData)
+      .replace(/</g, '\\u003c')
+      .replace(/[\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+
+    gleifBlock = `<section class="gleif">
+        <h2>${t.gleifTitle}</h2>
+        <p class="more">${t.gleifSub}</p>
+        ${(directChildren.length || ultimateChildren.length)
+          ? `<p class="more">${t.gleifSummary(directChildren.length, ultimateChildren.length, countries.size)}</p>`
+          : ''}
+        <div id="gleif-graph" class="gleif-graph" data-self-lei="${esc(seed.lei)}"></div>
+        <script type="application/json" id="gleif-graph-data">${graphJson}</script>
+        <h3>${t.gleifParents}</h3>
+        ${parentsTable}
+        ${directTable}
+        ${ultimateTable}
+        <p class="more">${t.gleifSource(esc(seed.lei))}<a href="https://www.gleif.org/" rel="nofollow noopener" target="_blank">gleif.org</a>.</p>
+        <script src="/vendor/force-graph.min.js" defer></script>
+        <script src="/vendor/gleif-graph.js" defer></script>
+      </section>`;
+  }
+
   const altPath = lang === 'en' ? companyPath('es', canonicalSlug) : companyPath('en', canonicalSlug);
   const altLabel = lang === 'en' ? 'Español' : 'English';
 
@@ -636,11 +754,6 @@ ${STYLE}
 
   ${cnmvBlock}
   ${chartBlock}
-  ${boeBlock}
-
-  ${active ? `<h2>${t.currentOfficers}</h2>${active}` : ''}
-  ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
-  ${active || resigned ? `<p class="more">${t.officerRoleNote}</p>` : ''}
 
   ${
     (company.sole_shareholders && company.sole_shareholders.length) ||
@@ -650,6 +763,14 @@ ${STYLE}
          ${listBlock(t.soleIndividuals, company.sole_shareholder_individuals)}`
       : ''
   }
+
+  ${gleifBlock}
+
+  ${active ? `<h2>${t.currentOfficers}</h2>${active}` : ''}
+  ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
+  ${active || resigned ? `<p class="more">${t.officerRoleNote}</p>` : ''}
+
+  ${boeBlock}
 
   ${
     company.capital_history && company.capital_history.length
@@ -697,7 +818,7 @@ function notFoundPage(slug, lang = 'es') {
 export async function handleCompany({ params }, lang = 'es') {
   const slug = String(params.slug || '').toLowerCase();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
     const seed = SEED[slug] || null;
@@ -727,13 +848,17 @@ export async function handleCompany({ params }, lang = 'es') {
     const boeUrl = seed
       ? `${API_BASE}/bormes/boe/company-mentions?name=${encodeURIComponent(seed.name || '')}&nif=${encodeURIComponent(seed.nif || '')}&categories=sancion,subvencion,contrato&size=8`
       : null;
-    const [profile, eventsResp, cnmvResp, chartSvg, boeResp] = await Promise.all([
+    const [profile, eventsResp, cnmvResp, chartSvg, boeResp, gleifResp] = await Promise.all([
       jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`, controller.signal),
       jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=8`, controller.signal),
       // Significant shareholders + history chart: only listed (curated) companies have CNMV data.
       seed ? jsonOrNull(`${API_BASE}/bormes/cnmv/shareholders?company=${encodeURIComponent(slug)}`, controller.signal) : Promise.resolve(null),
       seed ? textOrNull(`${API_BASE}/bormes/cnmv/history-chart?company=${encodeURIComponent(slug)}&lang=${lang}`, controller.signal) : Promise.resolve(null),
       boeUrl ? jsonOrNull(boeUrl, controller.signal) : Promise.resolve(null),
+      // GLEIF corporate group: only curated (seed) companies carry a verified LEI.
+      seed && seed.lei
+        ? postJsonOrNull(`${API_BASE}/lei-relationships`, { lei: seed.lei, isPublic: true }, controller.signal)
+        : Promise.resolve(null),
     ]);
 
     const company = profile && profile.company ? profile.company : null;
@@ -744,7 +869,8 @@ export async function handleCompany({ params }, lang = 'es') {
       });
     }
 
-    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp);
+    const gleif = gleifResp && gleifResp.success ? gleifResp.data : null;
+    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif);
     return new Response(html, {
       status: 200,
       headers: {
@@ -781,9 +907,21 @@ const HUB_STYLE = `<style>
   th,td{padding:11px 14px;border-bottom:1px solid var(--line);text-align:left}
   tr:last-child td{border-bottom:0}
   td.name a{font-weight:600;text-decoration:none}
+  tbody tr{transition:background .12s ease}
+  tbody tr:hover{background:#f8fafc;cursor:pointer}
+  td.name a:hover{text-decoration:underline}
   td.sector{color:var(--mut);font-size:14px}
   td.tk{color:var(--mut);font-size:13px;font-variant-numeric:tabular-nums}
   footer{margin-top:40px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
+  .nav-overlay{position:fixed;inset:0;background:rgba(248,250,252,.92);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:9999}
+  .nav-overlay.on{display:flex}
+  .nav-overlay .spin{width:38px;height:38px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:nv-rot .8s linear infinite}
+  .nav-overlay .lbl{font-size:14px;color:var(--mut)}
+  .nav-overlay .bar{width:180px;height:3px;border-radius:3px;background:var(--line);overflow:hidden}
+  .nav-overlay .bar::after{content:"";display:block;height:100%;width:40%;background:var(--brand);animation:nv-slide 1.1s ease-in-out infinite}
+  @keyframes nv-rot{to{transform:rotate(360deg)}}
+  @keyframes nv-slide{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+  @media (prefers-reduced-motion: reduce){.nav-overlay .spin,.nav-overlay .bar::after{animation:none}}
 </style>`;
 
 export function renderHub(lang = 'es') {
@@ -854,6 +992,24 @@ ${HUB_STYLE}
   </table>
   <footer>${t.footer('—')}</footer>
 </div>
+<div class="nav-overlay" id="navOverlay" role="status" aria-live="polite">
+  <div class="spin"></div>
+  <div class="lbl" id="navOverlayLbl"></div>
+  <div class="bar"></div>
+</div>
+<script>
+(function(){
+  var ov=document.getElementById('navOverlay'), lbl=document.getElementById('navOverlayLbl');
+  document.querySelectorAll('td.name a').forEach(function(a){
+    a.addEventListener('click', function(){
+      if (a.target==='_blank') return;
+      lbl.textContent='${lang === 'en' ? 'Loading' : 'Cargando'} ' + (a.textContent||'').trim() + '…';
+      ov.classList.add('on');
+    });
+  });
+  window.addEventListener('pageshow', function(e){ if(e.persisted) ov.classList.remove('on'); });
+})();
+</script>
 </body>
 </html>`;
 }

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/generate-seo-files.mjs",
+    "check": "node scripts/check-gleif-render.mjs",
+    "prebuild": "node scripts/check-gleif-render.mjs && node scripts/generate-seo-files.mjs",
     "build": "vite build",
     "postbuild": "node scripts/prerender.mjs",
     "preview": "vite preview"
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
+    "force-graph": "^1.49.5",
     "vite": "^5.0.0"
   }
 }
