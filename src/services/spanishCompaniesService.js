@@ -225,7 +225,16 @@ class SpanishCompaniesService {
       const deduplicatedSuggestions = [];
 
       for (const suggestion of suggestions) {
-        const normalizedName = (suggestion.name || '').toUpperCase().trim();
+        // Punctuation/accent-insensitive key so v3 duplicate docs that differ only
+        // in punctuation or spacing collapse to one (e.g. "AENA S.M.E. SA" vs
+        // "AENA S.M.E.SA."). Genuinely different names stay distinct because runs
+        // of non-alphanumerics collapse to a single space ("S M E" ≠ "SME").
+        const normalizedName = (suggestion.name || '')
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, ' ')
+          .trim();
         const existing = seenNames.get(normalizedName);
 
         if (!existing) {
