@@ -55,24 +55,26 @@ on the upstream bormes backend, not reachable from these repos — leave BOE as-
 
 ## Part A — graph fixes (`public/vendor/gleif-graph.js`)
 
-### A1. Show all children, linked
+### A1. Show all children, linked — HYBRID rule
 
-In initial hydration, after adding direct children (linked to self with role
-`child`), also add ultimate children. Build a `Set` of direct-child LEIs first.
-For each ultimate child whose LEI is NOT already present, add a node with role
-`descendant` and a link from self marked indirect:
+GLEIF's ultimate-children call returns a flat descendant list with **no
+per-entity parentage**, so ultimate-only descendants can only be flat-linked to
+the focal node, not to their true parent. To avoid a misleading flat star for
+large groups while still fixing sparse ones, use a **hybrid** rule via a single
+helper `addChildrenOf(parentLei, directChildren, ultimateChildren)`:
 
-- `addNode(c.lei, c.legalName, 'descendant', c.country)`
-- push a link `{ source: self.lei, target: c.lei, indirect: true }`
+- If `directChildren` is non-empty → add them as role `child`, solid link to the
+  parent (true edges). Do NOT pre-load ultimate descendants (deeper levels appear
+  via double-click expansion).
+- If `directChildren` is empty → add `ultimateChildren` as role `descendant`,
+  flat-linked to the parent and marked `indirect: true` (dashed/muted). This is
+  what makes ArcelorMittal (0 direct, 1 ultimate) show its subsidiary instead of
+  a lone node.
 
-(`addNode` already dedupes by LEI, so a direct child that also appears in
-`ultimateChildren` keeps its `child` role and solid link.)
-
-The `expand()` path keeps adding the clicked node's direct parent/children
-(linked to the node) as today; on expansion, also re-add ultimate children of the
-expanded node as `descendant` with indirect links (mirror A1 so expansion is
-consistent). Chain `ultimateParent` through `directParent` when both exist (as in
-the current code).
+Apply the same helper for the focal node's seed children AND inside `expand()`
+for a double-clicked node, so behavior is uniform. `addNode` dedupes by LEI.
+`expand()` also adds the clicked node's direct/ultimate parent (chaining
+`ultimateParent` through `directParent` when both exist).
 
 ### A2. Visual roles and link styles
 
@@ -177,14 +179,15 @@ vendored. Record the exact version.
 
 ## Risks / edge cases
 
-- **Dense graphs**: with ultimate descendants linked, Acciona shows ~88 connected
-  nodes. The label-on-zoom rule and the muted/dashed descendant styling keep it
-  legible; users zoom/pan for detail.
-- **Flat indirect linking is approximate**: ultimate-only descendants are linked
-  to the focal node, not to their true parent (GLEIF's ultimate-children call
-  doesn't return per-entity parentage). The dashed/muted style signals
-  "indirect," the tables give exact hierarchy, and double-click reveals true
-  direct relationships. Accepted.
+- **Dense graphs**: the hybrid rule means a company WITH direct children (e.g.
+  Acciona) shows only those direct children initially (≤ a few dozen), not all
+  ~88 ultimate descendants — deeper levels come via double-click. The label-on-zoom
+  rule and muted/dashed descendant styling keep it legible.
+- **Flat indirect linking is approximate**: when used (focal/expanded node has no
+  direct children), ultimate-only descendants are linked to that node, not to
+  their true parent (GLEIF's ultimate-children call doesn't return per-entity
+  parentage). The dashed/muted style signals "indirect," the tables give exact
+  hierarchy, and double-click reveals true direct relationships. Accepted.
 - **jsVectorMap region ids**: world map uses lowercase alpha-2; GLEIF gives
   uppercase — lowercase before building the series. Unknown/oddball codes (e.g.
   territories) simply won't match a region and are ignored (counted in totals but
