@@ -692,14 +692,16 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
     gleifBlock = `<section class="gleif">
         <h2>${t.gleifTitle}</h2>
         <p class="more">${t.gleifSub}</p>
-        <p class="more">${t.gleifSummary(directChildren.length, ultimateChildren.length, countries.size)}</p>
+        ${(directChildren.length || ultimateChildren.length)
+          ? `<p class="more">${t.gleifSummary(directChildren.length, ultimateChildren.length, countries.size)}</p>`
+          : ''}
         <div id="gleif-graph" class="gleif-graph" data-self-lei="${esc(seed.lei)}"></div>
         <script type="application/json" id="gleif-graph-data">${graphJson}</script>
         <h3>${t.gleifParents}</h3>
         ${parentsTable}
         ${directTable}
         ${ultimateTable}
-        <p class="more">${t.gleifSource(seed.lei)}<a href="https://www.gleif.org/" rel="nofollow noopener" target="_blank">gleif.org</a>.</p>
+        <p class="more">${t.gleifSource(esc(seed.lei))}<a href="https://www.gleif.org/" rel="nofollow noopener" target="_blank">gleif.org</a>.</p>
         <script src="/vendor/force-graph.min.js" defer></script>
         <script src="/vendor/gleif-graph.js" defer></script>
       </section>`;

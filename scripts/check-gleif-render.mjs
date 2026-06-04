@@ -40,4 +40,14 @@ assert(iGleif < iBoe, 'GLEIF must come before BOE (BOE moved below directors)');
 const html2 = renderCompanyPage(company, [], 'acs', { name: 'ACS', isin: 'ES0167050915' }, 'es', null, null, null, null);
 assert(!html2.includes('Grupo societario (GLEIF)'), 'GLEIF section should be absent without data');
 
+// Parent-only group: summary line must be suppressed (no "0 filiales") and parent links shown.
+const html3 = renderCompanyPage(company, [], 'acs', seed, 'es', null, null, null, {
+  directParent: { lei: 'Z'.repeat(20), legalName: 'PARENT HOLDING, S.A.' },
+  ultimateParent: null, directChildren: [], ultimateChildren: [],
+});
+assert(html3.includes('Grupo societario (GLEIF)'), 'parent-only: section should render');
+assert(html3.includes('PARENT HOLDING, S.A.'), 'parent-only: parent name should render');
+assert(!html3.includes('0 filiales'), 'parent-only: zero-subsidiary summary must be suppressed');
+assert(!html3.includes('cabecera de grupo'), 'parent-only: should not claim group-head when a parent exists');
+
 console.log('check-gleif-render: OK');
