@@ -102,6 +102,19 @@
     .onNodeClick(handleNodeActivate)
     .graphData({ nodes: nodes, links: links });
 
+  // Spread nodes out and fill the panel (the default cluster is too tight to read).
+  if (Graph.d3Force('charge')) Graph.d3Force('charge').strength(-160);
+  var _linkForce = Graph.d3Force('link');
+  if (_linkForce && _linkForce.distance) _linkForce.distance(48);
+
+  // Zoom to fit once the layout settles, and again after each expansion adds nodes.
+  var fitQueued = true;
+  Graph.onEngineStop(function () {
+    if (!fitQueued) return;
+    fitQueued = false;
+    Graph.zoomToFit(400, 40);
+  });
+
   // Desktop double-click detection layered over onNodeClick.
   var lastClick = { id: null, t: 0 };
   function handleNodeActivate(node) {
@@ -127,6 +140,7 @@
         if (d.ultimateParent) { addNode(d.ultimateParent.lei, d.ultimateParent.legalName, 'parent'); addLink(d.ultimateParent.lei, d.directParent ? d.directParent.lei : node.id, false); }
         addChildrenOf(node.id, d.directChildren, d.ultimateChildren);
         expanded[node.id] = true;
+        fitQueued = true;
         Graph.graphData({ nodes: nodes, links: links });
       })
       .catch(function () {})
