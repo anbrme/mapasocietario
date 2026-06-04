@@ -50,4 +50,12 @@ assert(html3.includes('PARENT HOLDING, S.A.'), 'parent-only: parent name should 
 assert(!html3.includes('0 filiales'), 'parent-only: zero-subsidiary summary must be suppressed');
 assert(!html3.includes('cabecera de grupo'), 'parent-only: should not claim group-head when a parent exists');
 
+// Tab UI + map panel present, with the map script referenced.
+assert(html.includes('class="gleif-tabs"'), 'gleif tabs missing');
+assert(html.includes('data-panel="map"'), 'map tab button missing');
+assert(html.includes('id="gleif-map"'), 'map panel missing');
+assert(html.includes('data-word-entities="entidades"'), 'map tooltip word missing (es)');
+assert(html.includes('/vendor/gleif-map.js'), 'gleif-map.js script missing');
+assert(html.includes('>Gráfico<'), 'graph tab label missing');
+
 console.log('check-gleif-render: OK');
