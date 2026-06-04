@@ -14,10 +14,12 @@ const OrderStatusPage = lazy(() => import('./components/OrderStatusPage'));
 const AdminPage = lazy(() => import('./components/AdminPage'));
 import { FilterProvider } from './contexts/FilterProvider';
 import usePageTracking from './hooks/usePageTracking';
+import useAndroidBackButton from './hooks/useAndroidBackButton';
 import './index.css';
 
 function AppRoutes() {
   usePageTracking();
+  useAndroidBackButton();
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
