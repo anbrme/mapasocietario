@@ -65,6 +65,21 @@ async function jsonOrNull(url, signal) {
   }
 }
 
+async function postJsonOrNull(url, body, signal) {
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      signal,
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
 async function textOrNull(url, signal) {
   try {
     const r = await fetch(url, { signal });
@@ -479,7 +494,7 @@ function hreflangTags(slug) {
   ].join('\n');
 }
 
-export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null) {
+export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null) {
   const t = T[lang] || T.es;
   const name = company.company_name || company.company_name_normalized || '';
   const canonicalSlug = seed ? slug : nameToSlug(name);
@@ -697,7 +712,7 @@ function notFoundPage(slug, lang = 'es') {
 export async function handleCompany({ params }, lang = 'es') {
   const slug = String(params.slug || '').toLowerCase();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
     const seed = SEED[slug] || null;
@@ -727,13 +742,17 @@ export async function handleCompany({ params }, lang = 'es') {
     const boeUrl = seed
       ? `${API_BASE}/bormes/boe/company-mentions?name=${encodeURIComponent(seed.name || '')}&nif=${encodeURIComponent(seed.nif || '')}&categories=sancion,subvencion,contrato&size=8`
       : null;
-    const [profile, eventsResp, cnmvResp, chartSvg, boeResp] = await Promise.all([
+    const [profile, eventsResp, cnmvResp, chartSvg, boeResp, gleifResp] = await Promise.all([
       jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`, controller.signal),
       jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=8`, controller.signal),
       // Significant shareholders + history chart: only listed (curated) companies have CNMV data.
       seed ? jsonOrNull(`${API_BASE}/bormes/cnmv/shareholders?company=${encodeURIComponent(slug)}`, controller.signal) : Promise.resolve(null),
       seed ? textOrNull(`${API_BASE}/bormes/cnmv/history-chart?company=${encodeURIComponent(slug)}&lang=${lang}`, controller.signal) : Promise.resolve(null),
       boeUrl ? jsonOrNull(boeUrl, controller.signal) : Promise.resolve(null),
+      // GLEIF corporate group: only curated (seed) companies carry a verified LEI.
+      seed && seed.lei
+        ? postJsonOrNull(`${API_BASE}/lei-relationships`, { lei: seed.lei, isPublic: true }, controller.signal)
+        : Promise.resolve(null),
     ]);
 
     const company = profile && profile.company ? profile.company : null;
@@ -744,7 +763,8 @@ export async function handleCompany({ params }, lang = 'es') {
       });
     }
 
-    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp);
+    const gleif = gleifResp && gleifResp.success ? gleifResp.data : null;
+    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif);
     return new Response(html, {
       status: 200,
       headers: {
