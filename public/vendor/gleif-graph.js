@@ -140,8 +140,8 @@
         if (d.ultimateParent) { addNode(d.ultimateParent.lei, d.ultimateParent.legalName, 'parent'); addLink(d.ultimateParent.lei, d.directParent ? d.directParent.lei : node.id, false); }
         addChildrenOf(node.id, d.directChildren, d.ultimateChildren);
         expanded[node.id] = true;
-        fitQueued = true;
         Graph.graphData({ nodes: nodes, links: links });
+        fitQueued = true; // set AFTER graphData so a synchronous engine-stop can't consume it
       })
       .catch(function () {})
       .then(function () { inflight[node.id] = false; el.style.cursor = ''; });
