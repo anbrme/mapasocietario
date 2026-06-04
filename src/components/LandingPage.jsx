@@ -407,7 +407,7 @@ export default function LandingPage() {
                   },
                 }}
               >
-                Empresas cotizadas (IBEX 35)
+                Publicly-traded companies (IBEX 35)
               </Button>
               <Button
                 variant="outlined"
