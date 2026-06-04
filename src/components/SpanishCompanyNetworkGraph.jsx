@@ -5299,6 +5299,12 @@ const SpanishCompanyNetworkGraph = ({
                 return next;
               })}
             />
+            <Tooltip
+              arrow
+              title={'Cada cargo se sigue por su denominación exacta en el BORME. Si una persona cambia de tipo de cargo con el tiempo (p. ej. Consejero → Consejero Independiente → Consejero Externo), cada denominación se registra por separado, por lo que una misma persona puede aparecer a la vez como vigente bajo una denominación y como cesada bajo otra.'}
+            >
+              <InfoIcon sx={{ fontSize: 16, color: 'text.disabled', cursor: 'help' }} />
+            </Tooltip>
             <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
             <Chip
               label="Socio único"
