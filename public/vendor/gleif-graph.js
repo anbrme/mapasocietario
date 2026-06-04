@@ -39,8 +39,12 @@
     addNode(seed.ultimateParent.lei, seed.ultimateParent.legalName, 'parent');
     addLink(seed.ultimateParent.lei, (seed.directParent || seed.self).lei);
   }
+  // The graph grows by DIRECT relationships only (a clean, readable tree): direct
+  // subsidiaries here, deeper descendants via double-click expansion. The full
+  // ultimate-subsidiary list lives in the server-rendered table below, so nothing
+  // is hidden — flat-linking all ultimate descendants to the focal node would be a
+  // misleading hairball.
   (seed.directChildren || []).forEach(function (c) { addNode(c.lei, c.legalName, 'child', c.country); addLink(seed.self.lei, c.lei); });
-  (seed.ultimateChildren || []).forEach(function (c) { addNode(c.lei, c.legalName, 'child', c.country); });
   expanded[seed.self.lei] = true;
 
   var Graph = ForceGraph()(el)
@@ -75,10 +79,12 @@
       .then(function (resp) {
         var d = resp && resp.success ? resp.data : null;
         if (!d) return;
+        // Grow by direct relationships only, consistent with the initial seed.
+        // Chain the ultimate parent through the direct parent when both exist so
+        // the hierarchy reads correctly (ultimate -> direct -> node).
         if (d.directParent) { addNode(d.directParent.lei, d.directParent.legalName, 'parent'); addLink(d.directParent.lei, node.id); }
-        if (d.ultimateParent) { addNode(d.ultimateParent.lei, d.ultimateParent.legalName, 'parent'); addLink(d.ultimateParent.lei, node.id); }
+        if (d.ultimateParent) { addNode(d.ultimateParent.lei, d.ultimateParent.legalName, 'parent'); addLink(d.ultimateParent.lei, d.directParent ? d.directParent.lei : node.id); }
         (d.directChildren || []).forEach(function (c) { addNode(c.lei, c.legalName, 'child', c.country); addLink(node.id, c.lei); });
-        (d.ultimateChildren || []).forEach(function (c) { addNode(c.lei, c.legalName, 'child', c.country); addLink(node.id, c.lei); });
         expanded[node.id] = true;
         Graph.graphData({ nodes: nodes, links: links });
       })
