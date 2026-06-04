@@ -904,6 +904,15 @@ const HUB_STYLE = `<style>
   td.sector{color:var(--mut);font-size:14px}
   td.tk{color:var(--mut);font-size:13px;font-variant-numeric:tabular-nums}
   footer{margin-top:40px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
+  .nav-overlay{position:fixed;inset:0;background:rgba(248,250,252,.92);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:9999}
+  .nav-overlay.on{display:flex}
+  .nav-overlay .spin{width:38px;height:38px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:nv-rot .8s linear infinite}
+  .nav-overlay .lbl{font-size:14px;color:var(--mut)}
+  .nav-overlay .bar{width:180px;height:3px;border-radius:3px;background:var(--line);overflow:hidden}
+  .nav-overlay .bar::after{content:"";display:block;height:100%;width:40%;background:var(--brand);animation:nv-slide 1.1s ease-in-out infinite}
+  @keyframes nv-rot{to{transform:rotate(360deg)}}
+  @keyframes nv-slide{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+  @media (prefers-reduced-motion: reduce){.nav-overlay .spin,.nav-overlay .bar::after{animation:none}}
 </style>`;
 
 export function renderHub(lang = 'es') {
@@ -974,6 +983,24 @@ ${HUB_STYLE}
   </table>
   <footer>${t.footer('—')}</footer>
 </div>
+<div class="nav-overlay" id="navOverlay" role="status" aria-live="polite">
+  <div class="spin"></div>
+  <div class="lbl" id="navOverlayLbl"></div>
+  <div class="bar"></div>
+</div>
+<script>
+(function(){
+  var ov=document.getElementById('navOverlay'), lbl=document.getElementById('navOverlayLbl');
+  document.querySelectorAll('td.name a').forEach(function(a){
+    a.addEventListener('click', function(){
+      if (a.target==='_blank') return;
+      lbl.textContent='${lang === 'en' ? 'Loading' : 'Cargando'} ' + (a.textContent||'').trim() + '…';
+      ov.classList.add('on');
+    });
+  });
+  window.addEventListener('pageshow', function(e){ if(e.persisted) ov.classList.remove('on'); });
+})();
+</script>
 </body>
 </html>`;
 }
