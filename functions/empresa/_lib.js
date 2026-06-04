@@ -236,6 +236,20 @@ const T = {
     boeSub: 'Contratos públicos, subvenciones y sanciones publicados en el Boletín Oficial del Estado (puede incluir sociedades del grupo).',
     boeCat: { sancion: 'Sanción', subvencion: 'Subvención', contrato: 'Contrato público' },
     boeSource: 'Fuente: BOE — reutilización conforme a las condiciones de la AEBOE. ',
+    gleifTitle: 'Grupo societario (GLEIF)',
+    gleifSub: 'Estructura de matrices y filiales según el identificador LEI global (GLEIF). Haz doble clic en un nodo del gráfico para expandir su grupo.',
+    gleifParents: 'Matrices',
+    gleifDirectParent: 'Matriz directa',
+    gleifUltimateParent: 'Matriz última',
+    gleifNoParent: 'Sin matriz registrada — es cabecera de grupo.',
+    gleifSubsidiaries: 'Filiales directas',
+    gleifUltimateSubs: 'Filiales últimas',
+    gleifSummary: (nDirect, nUlt, nCountries) =>
+      `${nDirect} filiales directas, ${nUlt} filiales últimas en ${nCountries} ${nCountries === 1 ? 'país' : 'países'}.`,
+    gleifThEntity: 'Entidad',
+    gleifThCountry: 'País',
+    gleifInactive: 'inactiva',
+    gleifSource: (lei) => `Fuente: GLEIF — Global Legal Entity Identifier Foundation (LEI ${lei}). Datos abiertos disponibles en `,
     positions: {
       'ADM. UNICO': 'Administrador único',
       'ADM. SOLIDARIO': 'Administrador solidario',
@@ -332,6 +346,20 @@ const T = {
     boeSub: 'Public contracts, subsidies and sanctions published in the BOE (may include group companies).',
     boeCat: { sancion: 'Sanction', subvencion: 'Subsidy', contrato: 'Public contract' },
     boeSource: 'Source: BOE — reused under the AEBOE reuse conditions. ',
+    gleifTitle: 'Corporate group (GLEIF)',
+    gleifSub: 'Parent and subsidiary structure from the global LEI identifier (GLEIF). Double-click a node in the graph to expand its group.',
+    gleifParents: 'Parents',
+    gleifDirectParent: 'Direct parent',
+    gleifUltimateParent: 'Ultimate parent',
+    gleifNoParent: 'No registered parent — this is a group head.',
+    gleifSubsidiaries: 'Direct subsidiaries',
+    gleifUltimateSubs: 'Ultimate subsidiaries',
+    gleifSummary: (nDirect, nUlt, nCountries) =>
+      `${nDirect} direct subsidiaries, ${nUlt} ultimate subsidiaries across ${nCountries} ${nCountries === 1 ? 'country' : 'countries'}.`,
+    gleifThEntity: 'Entity',
+    gleifThCountry: 'Country',
+    gleifInactive: 'inactive',
+    gleifSource: (lei) => `Source: GLEIF — Global Legal Entity Identifier Foundation (LEI ${lei}). Open data available at `,
     positions: {
       'ADM. UNICO': 'Sole director',
       'ADM. SOLIDARIO': 'Joint and several director',
@@ -610,6 +638,73 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
         <p class="more">${t.boeSource}<a href="https://www.boe.es/" rel="nofollow noopener" target="_blank">boe.es</a>.</p>
       </section>`
     : '';
+  // GLEIF corporate group (curated/listed companies with a verified LEI only).
+  const flag = (cc) => (cc && cc !== 'N/A' ? `<span class="chip">${esc(cc)}</span>` : '');
+  const gleifEntityRow = (e) =>
+    `<tr><td>${e.lei
+        ? `<a href="/app?search=${encodeURIComponent(e.legalName)}">${esc(e.legalName)}</a>`
+        : esc(e.legalName)}${
+        e.entityStatus && e.entityStatus !== 'ACTIVE' && e.entityStatus !== 'N/A'
+          ? ` <span class="muted">(${t.gleifInactive})</span>`
+          : ''
+      }</td><td>${flag(e.country)}</td></tr>`;
+
+  let gleifBlock = '';
+  if (gleif && (gleif.directParent || gleif.ultimateParent || (gleif.directChildren || []).length || (gleif.ultimateChildren || []).length)) {
+    const directChildren = gleif.directChildren || [];
+    const ultimateChildren = gleif.ultimateChildren || [];
+    const countries = new Set(
+      [...directChildren, ...ultimateChildren].map((c) => c.country).filter((c) => c && c !== 'N/A'),
+    );
+
+    const parentsTable =
+      gleif.directParent || gleif.ultimateParent
+        ? `<table class="t"><tbody>
+            ${gleif.directParent ? `<tr><th>${t.gleifDirectParent}</th><td><a href="/app?search=${encodeURIComponent(gleif.directParent.legalName)}">${esc(gleif.directParent.legalName)}</a></td></tr>` : ''}
+            ${gleif.ultimateParent ? `<tr><th>${t.gleifUltimateParent}</th><td><a href="/app?search=${encodeURIComponent(gleif.ultimateParent.legalName)}">${esc(gleif.ultimateParent.legalName)}</a></td></tr>` : ''}
+          </tbody></table>`
+        : `<p class="more">${t.gleifNoParent}</p>`;
+
+    const directTable = directChildren.length
+      ? `<h3>${t.gleifSubsidiaries} (${directChildren.length})</h3>
+         <table class="t"><thead><tr><th>${t.gleifThEntity}</th><th>${t.gleifThCountry}</th></tr></thead>
+         <tbody>${directChildren.map(gleifEntityRow).join('')}</tbody></table>`
+      : '';
+
+    const ultimateTable = ultimateChildren.length
+      ? `<details><summary>${t.gleifUltimateSubs} (${ultimateChildren.length})</summary>
+         <table class="t"><thead><tr><th>${t.gleifThEntity}</th><th>${t.gleifThCountry}</th></tr></thead>
+         <tbody>${ultimateChildren.map(gleifEntityRow).join('')}</tbody></table></details>`
+      : '';
+
+    // Graph seed data (consumed by /vendor/gleif-graph.js). Self node is the seed LEI.
+    const graphData = {
+      self: { lei: seed.lei, name, country: 'ES' },
+      directParent: gleif.directParent || null,
+      ultimateParent: gleif.ultimateParent || null,
+      directChildren,
+      ultimateChildren,
+    };
+    const graphJson = JSON.stringify(graphData)
+      .replace(/</g, '\\u003c')
+      .replace(/[\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+
+    gleifBlock = `<section class="gleif">
+        <h2>${t.gleifTitle}</h2>
+        <p class="more">${t.gleifSub}</p>
+        <p class="more">${t.gleifSummary(directChildren.length, ultimateChildren.length, countries.size)}</p>
+        <div id="gleif-graph" class="gleif-graph" data-self-lei="${esc(seed.lei)}"></div>
+        <script type="application/json" id="gleif-graph-data">${graphJson}</script>
+        <h3>${t.gleifParents}</h3>
+        ${parentsTable}
+        ${directTable}
+        ${ultimateTable}
+        <p class="more">${t.gleifSource(seed.lei)}<a href="https://www.gleif.org/" rel="nofollow noopener" target="_blank">gleif.org</a>.</p>
+        <script src="/vendor/force-graph.min.js" defer></script>
+        <script src="/vendor/gleif-graph.js" defer></script>
+      </section>`;
+  }
+
   const altPath = lang === 'en' ? companyPath('es', canonicalSlug) : companyPath('en', canonicalSlug);
   const altLabel = lang === 'en' ? 'Español' : 'English';
 
@@ -651,11 +746,6 @@ ${STYLE}
 
   ${cnmvBlock}
   ${chartBlock}
-  ${boeBlock}
-
-  ${active ? `<h2>${t.currentOfficers}</h2>${active}` : ''}
-  ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
-  ${active || resigned ? `<p class="more">${t.officerRoleNote}</p>` : ''}
 
   ${
     (company.sole_shareholders && company.sole_shareholders.length) ||
@@ -665,6 +755,14 @@ ${STYLE}
          ${listBlock(t.soleIndividuals, company.sole_shareholder_individuals)}`
       : ''
   }
+
+  ${gleifBlock}
+
+  ${active ? `<h2>${t.currentOfficers}</h2>${active}` : ''}
+  ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
+  ${active || resigned ? `<p class="more">${t.officerRoleNote}</p>` : ''}
+
+  ${boeBlock}
 
   ${
     company.capital_history && company.capital_history.length
