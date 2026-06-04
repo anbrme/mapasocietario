@@ -9,12 +9,15 @@
   var seed;
   try { seed = JSON.parse(dataEl.textContent); } catch (e) { return; }
 
-  var COLORS = { self: '#2563eb', parent: '#7c3aed', child: '#0ea5e9', other: '#64748b' };
+  var COLORS = { self: '#2563eb', parent: '#7c3aed', child: '#0ea5e9', descendant: '#94a3b8', other: '#64748b' };
+  var RADIUS = { self: 7, parent: 6, child: 6, descendant: 4, other: 5 };
   var API = 'https://api.ncdata.eu/lei-relationships';
+  var LABEL_ZOOM = 1.4; // descendant labels appear at/after this zoom level
 
   var nodes = [];
   var links = [];
   var byId = {};
+  var linkSeen = {};
   var expanded = {};
   var inflight = {};
 
@@ -24,39 +27,93 @@
     var n = { id: lei, name: name || lei, role: role, country: country };
     byId[lei] = n; nodes.push(n); return n;
   }
-  function addLink(parentLei, childLei) {
-    if (!parentLei || !childLei) return;
-    var key = parentLei + '>' + childLei;
-    if (addLink._seen && addLink._seen[key]) return;
-    (addLink._seen = addLink._seen || {})[key] = 1;
-    links.push({ source: parentLei, target: childLei });
+  function addLink(src, tgt, indirect) {
+    if (!src || !tgt) return;
+    var key = src + '>' + tgt;
+    if (linkSeen[key]) return;
+    linkSeen[key] = 1;
+    links.push({ source: src, target: tgt, indirect: !!indirect });
   }
 
-  // Seed graph from server data.
+  // Hybrid: prefer DIRECT children (true edges); if none, fall back to ultimate
+  // descendants flat-linked to the node and marked indirect (dashed/muted).
+  function addChildrenOf(parentLei, directChildren, ultimateChildren) {
+    var direct = directChildren || [];
+    if (direct.length) {
+      direct.forEach(function (c) { addNode(c.lei, c.legalName, 'child', c.country); addLink(parentLei, c.lei, false); });
+    } else {
+      (ultimateChildren || []).forEach(function (c) { addNode(c.lei, c.legalName, 'descendant', c.country); addLink(parentLei, c.lei, true); });
+    }
+  }
+
+  // Seed graph.
   addNode(seed.self.lei, seed.self.name, 'self', seed.self.country);
-  if (seed.directParent) { addNode(seed.directParent.lei, seed.directParent.legalName, 'parent'); addLink(seed.directParent.lei, seed.self.lei); }
+  if (seed.directParent) { addNode(seed.directParent.lei, seed.directParent.legalName, 'parent'); addLink(seed.directParent.lei, seed.self.lei, false); }
   if (seed.ultimateParent && (!seed.directParent || seed.ultimateParent.lei !== seed.directParent.lei)) {
     addNode(seed.ultimateParent.lei, seed.ultimateParent.legalName, 'parent');
-    addLink(seed.ultimateParent.lei, (seed.directParent || seed.self).lei);
+    addLink(seed.ultimateParent.lei, (seed.directParent || seed.self).lei, false);
   }
-  // The graph grows by DIRECT relationships only (a clean, readable tree): direct
-  // subsidiaries here, deeper descendants via double-click expansion. The full
-  // ultimate-subsidiary list lives in the server-rendered table below, so nothing
-  // is hidden — flat-linking all ultimate descendants to the focal node would be a
-  // misleading hairball.
-  (seed.directChildren || []).forEach(function (c) { addNode(c.lei, c.legalName, 'child', c.country); addLink(seed.self.lei, c.lei); });
+  addChildrenOf(seed.self.lei, seed.directChildren, seed.ultimateChildren);
   expanded[seed.self.lei] = true;
 
+  function nodeRadius(n) { return RADIUS[n.role] || RADIUS.other; }
+
+  function drawNode(node, ctx, globalScale) {
+    var r = nodeRadius(node);
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
+    ctx.fillStyle = COLORS[node.role] || COLORS.other;
+    ctx.fill();
+
+    var showLabel = node.role === 'self' || node.role === 'parent' || node.role === 'child' || globalScale >= LABEL_ZOOM;
+    if (!showLabel) return;
+    var label = node.name.length > 28 ? node.name.slice(0, 27) + '…' : node.name;
+    var fontSize = Math.max(10, 12 / globalScale);
+    ctx.font = fontSize + 'px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    var y = node.y + r + 1.5;
+    ctx.lineWidth = 3 / globalScale;
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.strokeText(label, node.x, y);
+    ctx.fillStyle = '#334155';
+    ctx.fillText(label, node.x, y);
+  }
+
+  function paintPointerArea(node, color, ctx) {
+    var r = nodeRadius(node);
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, r + 2, 0, 2 * Math.PI, false);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function graphHeight() { return Math.min(480, Math.max(320, Math.round(window.innerWidth * 0.5))); }
+
   var Graph = ForceGraph()(el)
-    .height(Math.min(480, Math.max(320, Math.round(window.innerWidth * 0.5))))
+    .height(graphHeight())
     .backgroundColor('#ffffff')
     .nodeLabel(function (n) { return n.name + (n.country ? ' (' + n.country + ')' : ''); })
-    .nodeColor(function (n) { return COLORS[n.role] || COLORS.other; })
-    .nodeRelSize(5)
-    .linkColor(function () { return '#cbd5e1'; })
+    .nodeCanvasObject(drawNode)
+    .nodePointerAreaPaint(paintPointerArea)
+    .linkColor(function (l) { return l.indirect ? '#e2e8f0' : '#cbd5e1'; })
+    .linkLineDash(function (l) { return l.indirect ? [3, 3] : null; })
     .linkDirectionalArrowLength(4)
-    .onNodeClick(handleNodeActivate) // touch/single fallback
+    .onNodeClick(handleNodeActivate)
     .graphData({ nodes: nodes, links: links });
+
+  // Spread nodes out and fill the panel (the default cluster is too tight to read).
+  if (Graph.d3Force('charge')) Graph.d3Force('charge').strength(-160);
+  var _linkForce = Graph.d3Force('link');
+  if (_linkForce && _linkForce.distance) _linkForce.distance(48);
+
+  // Zoom to fit once the layout settles, and again after each expansion adds nodes.
+  var fitQueued = true;
+  Graph.onEngineStop(function () {
+    if (!fitQueued) return;
+    fitQueued = false;
+    Graph.zoomToFit(400, 40);
+  });
 
   // Desktop double-click detection layered over onNodeClick.
   var lastClick = { id: null, t: 0 };
@@ -79,21 +136,19 @@
       .then(function (resp) {
         var d = resp && resp.success ? resp.data : null;
         if (!d) return;
-        // Grow by direct relationships only, consistent with the initial seed.
-        // Chain the ultimate parent through the direct parent when both exist so
-        // the hierarchy reads correctly (ultimate -> direct -> node).
-        if (d.directParent) { addNode(d.directParent.lei, d.directParent.legalName, 'parent'); addLink(d.directParent.lei, node.id); }
-        if (d.ultimateParent) { addNode(d.ultimateParent.lei, d.ultimateParent.legalName, 'parent'); addLink(d.ultimateParent.lei, d.directParent ? d.directParent.lei : node.id); }
-        (d.directChildren || []).forEach(function (c) { addNode(c.lei, c.legalName, 'child', c.country); addLink(node.id, c.lei); });
+        if (d.directParent) { addNode(d.directParent.lei, d.directParent.legalName, 'parent'); addLink(d.directParent.lei, node.id, false); }
+        if (d.ultimateParent) { addNode(d.ultimateParent.lei, d.ultimateParent.legalName, 'parent'); addLink(d.ultimateParent.lei, d.directParent ? d.directParent.lei : node.id, false); }
+        addChildrenOf(node.id, d.directChildren, d.ultimateChildren);
         expanded[node.id] = true;
         Graph.graphData({ nodes: nodes, links: links });
+        fitQueued = true; // set AFTER graphData so a synchronous engine-stop can't consume it
       })
       .catch(function () {})
       .then(function () { inflight[node.id] = false; el.style.cursor = ''; });
   }
 
   window.addEventListener('resize', function () {
-    Graph.width(el.clientWidth).height(Math.min(480, Math.max(320, Math.round(window.innerWidth * 0.5))));
+    Graph.width(el.clientWidth).height(graphHeight());
   });
   Graph.width(el.clientWidth);
 })();

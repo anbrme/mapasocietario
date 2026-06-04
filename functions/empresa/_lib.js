@@ -250,6 +250,9 @@ const T = {
     gleifThCountry: 'País',
     gleifInactive: 'inactiva',
     gleifSource: (lei) => `Fuente: GLEIF — Global Legal Entity Identifier Foundation (LEI ${lei}). Datos abiertos disponibles en `,
+    gleifTabGraph: 'Gráfico',
+    gleifTabMap: 'Mapa',
+    gleifMapEntities: 'entidades',
     positions: {
       'ADM. UNICO': 'Administrador único',
       'ADM. SOLIDARIO': 'Administrador solidario',
@@ -360,6 +363,9 @@ const T = {
     gleifThCountry: 'Country',
     gleifInactive: 'inactive',
     gleifSource: (lei) => `Source: GLEIF — Global Legal Entity Identifier Foundation (LEI ${lei}). Open data available at `,
+    gleifTabGraph: 'Graph',
+    gleifTabMap: 'Map',
+    gleifMapEntities: 'entities',
     positions: {
       'ADM. UNICO': 'Sole director',
       'ADM. SOLIDARIO': 'Joint and several director',
@@ -517,6 +523,11 @@ const STYLE = `<style>
   .chip{display:inline-block;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;border:1px solid var(--line);border-radius:6px;padding:1px 7px;letter-spacing:.02em}
   .muted{color:var(--mut);font-size:12px}
   .gleif-graph{width:100%;min-height:320px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:8px 0 14px;overflow:hidden}
+  .gleif-tabs{display:flex;gap:6px;margin:0 0 10px}
+  .gleif-tab{font-size:13px;font-weight:600;border:1px solid var(--line);border-radius:8px;padding:5px 12px;background:#fff;color:var(--mut);cursor:pointer}
+  .gleif-tab.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .gleif-panel[hidden]{display:none}
+  .gleif-map{width:100%;min-height:360px;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden}
   .gleif h3{margin-top:18px}
 </style>`;
 
@@ -701,7 +712,12 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
         ${(directChildren.length || ultimateChildren.length)
           ? `<p class="more">${t.gleifSummary(directChildren.length, ultimateChildren.length, countries.size)}</p>`
           : ''}
-        <div id="gleif-graph" class="gleif-graph" data-self-lei="${esc(seed.lei)}"></div>
+        <div class="gleif-tabs" role="tablist">
+          <button type="button" class="gleif-tab on" data-panel="graph">${t.gleifTabGraph}</button>
+          <button type="button" class="gleif-tab" data-panel="map">${t.gleifTabMap}</button>
+        </div>
+        <div id="gleif-graph" class="gleif-graph gleif-panel on" data-self-lei="${esc(seed.lei)}"></div>
+        <div id="gleif-map" class="gleif-map gleif-panel" data-word-entities="${esc(t.gleifMapEntities)}" hidden></div>
         <script type="application/json" id="gleif-graph-data">${graphJson}</script>
         <h3>${t.gleifParents}</h3>
         ${parentsTable}
@@ -710,6 +726,7 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
         <p class="more">${t.gleifSource(esc(seed.lei))}<a href="https://www.gleif.org/" rel="nofollow noopener" target="_blank">gleif.org</a>.</p>
         <script src="/vendor/force-graph.min.js" defer></script>
         <script src="/vendor/gleif-graph.js" defer></script>
+        <script src="/vendor/gleif-map.js" defer></script>
       </section>`;
   }
 
