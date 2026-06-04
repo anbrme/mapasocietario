@@ -512,6 +512,12 @@ const STYLE = `<style>
   .cta p{margin:0 0 18px;opacity:.9}
   .cta a{display:inline-block;background:#fff;color:#1e3a8a;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:10px}
   footer{margin-top:48px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
+  section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:18px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  section h2{margin-top:0;border-top:0;padding-top:0}
+  .chip{display:inline-block;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;border:1px solid var(--line);border-radius:6px;padding:1px 7px;letter-spacing:.02em}
+  .muted{color:var(--mut);font-size:12px}
+  .gleif-graph{width:100%;min-height:320px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:8px 0 14px;overflow:hidden}
+  .gleif h3{margin-top:18px}
 </style>`;
 
 function hreflangTags(slug) {
@@ -901,6 +907,9 @@ const HUB_STYLE = `<style>
   th,td{padding:11px 14px;border-bottom:1px solid var(--line);text-align:left}
   tr:last-child td{border-bottom:0}
   td.name a{font-weight:600;text-decoration:none}
+  tbody tr{transition:background .12s ease}
+  tbody tr:hover{background:#f8fafc;cursor:pointer}
+  td.name a:hover{text-decoration:underline}
   td.sector{color:var(--mut);font-size:14px}
   td.tk{color:var(--mut);font-size:13px;font-variant-numeric:tabular-nums}
   footer{margin-top:40px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
