@@ -19,7 +19,6 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import SpeedIcon from '@mui/icons-material/Speed';
 import HubIcon from '@mui/icons-material/Hub';
-import AndroidIcon from '@mui/icons-material/Android';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import PublicIcon from '@mui/icons-material/Public';
@@ -479,31 +478,22 @@ export default function LandingPage() {
             </Box>
             {!isNativeApp() && (
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                <Button
-                  variant="outlined"
-                  size="large"
+                {/* Official Google Play badge (per brand guidelines — unaltered). */}
+                <Box
                   component="a"
                   href="https://play.google.com/store/apps/details?id=es.mapasocietario.app"
                   target="_blank"
                   rel="noopener"
-                  startIcon={<AndroidIcon />}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    px: 3,
-                    py: 1.25,
-                    fontSize: '1rem',
-                    borderRadius: 2,
-                    borderColor: 'rgba(255,255,255,0.18)',
-                    color: 'text.secondary',
-                    '&:hover': {
-                      borderColor: '#3ddc84',
-                      bgcolor: 'rgba(61,220,132,0.08)',
-                    },
-                  }}
+                  aria-label="Get it on Google Play"
+                  sx={{ display: 'inline-block', transition: 'opacity .15s', '&:hover': { opacity: 0.85 } }}
                 >
-                  Get it on Google Play
-                </Button>
+                  <Box
+                    component="img"
+                    src="/google-play-badge.svg"
+                    alt="Get it on Google Play"
+                    sx={{ height: 56, width: 'auto', display: 'block' }}
+                  />
+                </Box>
               </Box>
             )}
             <LegalDisclaimer dense sx={{ mt: 4, maxWidth: 760, mx: 'auto' }} />
