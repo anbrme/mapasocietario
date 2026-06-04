@@ -50,6 +50,12 @@ assert(html3.includes('PARENT HOLDING, S.A.'), 'parent-only: parent name should 
 assert(!html3.includes('0 filiales'), 'parent-only: zero-subsidiary summary must be suppressed');
 assert(!html3.includes('cabecera de grupo'), 'parent-only: should not claim group-head when a parent exists');
 
+// LEI shown in the cotizada facts; GLEIF list entities are plain text (not linked);
+// the "Empresas" breadcrumb links to /app.
+assert(html.includes('<th>LEI</th>') && html.includes('95980020140005558665'), 'cotizada LEI row missing');
+assert(!html.includes('search=NEXPLORE'), 'GLEIF subsidiary must not be a search link');
+assert(html.includes('<a href="/app">Empresas</a>'), 'Empresas breadcrumb should link to /app');
+
 // Tab UI + map panel present, with the map script referenced.
 assert(html.includes('class="gleif-tabs"'), 'gleif tabs missing');
 assert(html.includes('data-panel="map"'), 'map tab button missing');

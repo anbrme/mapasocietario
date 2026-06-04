@@ -181,6 +181,7 @@ const T = {
     cNif: 'NIF / CIF',
     cIsin: 'ISIN',
     cHoja: 'Hoja registral',
+    cLei: 'LEI',
     cWeb: 'Web',
     currentOfficers: 'Administradores y cargos vigentes',
     formerOfficers: 'Cargos cesados o revocados',
@@ -294,6 +295,7 @@ const T = {
     cNif: 'Tax ID (NIF/CIF)',
     cIsin: 'ISIN',
     cHoja: 'Registry sheet',
+    cLei: 'LEI',
     cWeb: 'Website',
     currentOfficers: 'Current directors & officers',
     formerOfficers: 'Former / revoked officers',
@@ -604,6 +606,7 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
           ${seed.nif ? `<tr><th>${t.cNif}</th><td>${esc(seed.nif)}</td></tr>` : ''}
           ${seed.isin ? `<tr><th>${t.cIsin}</th><td>${esc(seed.isin)}</td></tr>` : ''}
           ${seed.hoja ? `<tr><th>${t.cHoja}</th><td>${esc(seed.hoja)}</td></tr>` : ''}
+          ${seed.lei ? `<tr><th>${t.cLei}</th><td>${esc(seed.lei)}</td></tr>` : ''}
           ${seed.website ? `<tr><th>${t.cWeb}</th><td><a href="${esc(seed.website)}" rel="nofollow noopener" target="_blank">${esc(seed.website)}</a></td></tr>` : ''}
         </tbody></table>
         ${seed.note ? `<p class="more">${esc(seed.note)}</p>` : ''}
@@ -658,9 +661,7 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
   // GLEIF corporate group (curated/listed companies with a verified LEI only).
   const flag = (cc) => (cc && cc !== 'N/A' ? `<span class="chip">${esc(cc)}</span>` : '');
   const gleifEntityRow = (e) =>
-    `<tr><td>${e.lei
-        ? `<a href="/app?search=${encodeURIComponent(e.legalName)}">${esc(e.legalName)}</a>`
-        : esc(e.legalName)}${
+    `<tr><td>${esc(e.legalName)}${
         e.entityStatus && e.entityStatus !== 'ACTIVE' && e.entityStatus !== 'N/A'
           ? ` <span class="muted">(${t.gleifInactive})</span>`
           : ''
@@ -677,8 +678,8 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
     const parentsTable =
       gleif.directParent || gleif.ultimateParent
         ? `<table class="t"><tbody>
-            ${gleif.directParent ? `<tr><th>${t.gleifDirectParent}</th><td><a href="/app?search=${encodeURIComponent(gleif.directParent.legalName)}">${esc(gleif.directParent.legalName)}</a></td></tr>` : ''}
-            ${gleif.ultimateParent ? `<tr><th>${t.gleifUltimateParent}</th><td><a href="/app?search=${encodeURIComponent(gleif.ultimateParent.legalName)}">${esc(gleif.ultimateParent.legalName)}</a></td></tr>` : ''}
+            ${gleif.directParent ? `<tr><th>${t.gleifDirectParent}</th><td>${esc(gleif.directParent.legalName)}</td></tr>` : ''}
+            ${gleif.ultimateParent ? `<tr><th>${t.gleifUltimateParent}</th><td>${esc(gleif.ultimateParent.legalName)}</td></tr>` : ''}
           </tbody></table>`
         : `<p class="more">${t.gleifNoParent}</p>`;
 
@@ -757,7 +758,7 @@ ${STYLE}
 </head>
 <body>
 <div class="wrap">
-  <nav class="crumbs"><span class="langs"><a href="${altPath}">${altLabel}</a></span><a href="/">${t.home}</a> › ${t.crumbCompanies} › ${esc(name)}</nav>
+  <nav class="crumbs"><span class="langs"><a href="${altPath}">${altLabel}</a></span><a href="/">${t.home}</a> › <a href="/app">${t.crumbCompanies}</a> › ${esc(name)}</nav>
 
   <h1>${esc(name)}</h1>
   <div class="badges">${badges}</div>
