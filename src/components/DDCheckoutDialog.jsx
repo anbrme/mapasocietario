@@ -570,7 +570,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             Invoiced by <strong>Nurnberg Consulting SL</strong> &middot; NIF B86829538 &middot; Madrid, Spain.
             {isAndroidApp
               ? 'Android payments are processed by Google Play, which calculates and remits VAT per country. The final price may differ from EUR 22.50. '
-              : 'Payments securely processed by Stripe. Stripe calculates taxes and validates supported business VAT IDs at checkout. '}
+              : 'Payments securely processed by Stripe or Google Pay (for Android). Stripe calculates taxes and validates supported business VAT IDs at checkout. '}
             By continuing you accept our{' '}
             <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>terms</a>{' '}
             and{' '}
