@@ -10,6 +10,8 @@ import {
   Chip,
   IconButton,
   Collapse,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -21,6 +23,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { Helmet } from 'react-helmet-async';
+import CnmvReviewTab from './CnmvReviewTab';
 
 const PAYMENTS_API = 'https://payments.ncdata.eu';
 
@@ -43,6 +46,7 @@ export default function AdminPage() {
   const [completedCollapsed, setCompletedCollapsed] = useState(false);
   const [pendingVisible, setPendingVisible] = useState(5);
   const [completedVisible, setCompletedVisible] = useState(5);
+  const [tab, setTab] = useState(0);
   const fileInputRef = useRef(null);
 
   const fetchOrders = useCallback(async (key) => {
@@ -264,6 +268,11 @@ export default function AdminPage() {
           </IconButton>
         </Box>
 
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
+          <Tab label="Orders" sx={{ textTransform: 'none' }} />
+          <Tab label="CNMV Review" sx={{ textTransform: 'none' }} />
+        </Tabs>
+
         {error && <Alert severity="error" sx={{ mb: 2, fontSize: '0.8rem' }}>{error}</Alert>}
         {uploadProgress && (
           <Alert severity="info" sx={{ mb: 2, fontSize: '0.8rem' }}>
@@ -277,6 +286,7 @@ export default function AdminPage() {
           </Box>
         )}
 
+        {tab === 0 && (<>
         {/* Pending Orders */}
         <Box
           onClick={() => setPendingCollapsed(!pendingCollapsed)}
@@ -366,6 +376,8 @@ export default function AdminPage() {
             )}
           </Box>
         </Collapse>
+        </>)}
+        {tab === 1 && <CnmvReviewTab adminKey={adminKey} />}
       </Box>
     </>
   );
