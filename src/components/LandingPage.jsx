@@ -399,59 +399,18 @@ export default function LandingPage() {
                   py: 1.5,
                   fontSize: '1rem',
                   borderRadius: 2,
-                  borderColor: 'rgba(255,255,255,0.18)',
-                  color: 'text.secondary',
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(102,187,106,0.6)',
+                  color: '#81c784',
+                  bgcolor: 'rgba(102,187,106,0.08)',
                   '&:hover': {
-                    borderColor: 'primary.light',
-                    bgcolor: 'rgba(25,118,210,0.08)',
+                    borderWidth: 1.5,
+                    borderColor: '#66bb6a',
+                    bgcolor: 'rgba(102,187,106,0.16)',
                   },
                 }}
               >
                 Publicly-traded companies (IBEX 35)
-              </Button>
-              <Button
-                variant="outlined"
-                size="large"
-                startIcon={<DescriptionIcon />}
-                onClick={() => navigate('/due-diligence')}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: '1rem',
-                  borderRadius: 2,
-                  borderColor: 'rgba(255,167,38,0.5)',
-                  color: 'warning.light',
-                  '&:hover': {
-                    borderColor: '#f57c00',
-                    bgcolor: 'rgba(255,167,38,0.08)',
-                  },
-                }}
-              >
-                Get a Due Diligence
-              </Button>
-              <Button
-                variant="outlined"
-                size="large"
-                startIcon={<DescriptionIcon />}
-                onClick={() => navigate('/spanish-company-due-diligence')}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: '1rem',
-                  borderRadius: 2,
-                  borderColor: 'rgba(255,255,255,0.18)',
-                  color: 'text.secondary',
-                  '&:hover': {
-                    borderColor: 'primary.light',
-                    bgcolor: 'rgba(25,118,210,0.08)',
-                  },
-                }}
-              >
-                Spanish company due diligence
               </Button>
               <Button
                 variant="outlined"
@@ -473,8 +432,54 @@ export default function LandingPage() {
                   },
                 }}
               >
-                Open dashboard
+                Spain company statistics
               </Button>
+            </Box>
+            {/* Trust row — the two signals that most reduce buyer hesitation
+                (see what you get + money-back), moved up to first impression
+                instead of being buried on the /due-diligence page. */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: { xs: 1.5, sm: 3 },
+                mt: 3,
+              }}
+            >
+              <Box
+                component="a"
+                href="/sample-dd-report.pdf"
+                target="_blank"
+                rel="noopener"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  color: 'warning.light',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                <DescriptionIcon sx={{ fontSize: 17 }} />
+                See a sample report
+              </Box>
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  color: 'text.secondary',
+                  fontSize: '0.82rem',
+                  fontWeight: 500,
+                }}
+              >
+                <VerifiedIcon sx={{ fontSize: 17, color: 'success.light' }} />
+                Money-back if the data is wrong or inaccurate
+              </Box>
             </Box>
             {!isNativeApp() && (
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
@@ -698,8 +703,11 @@ export default function LandingPage() {
               <Button
                 size="small"
                 variant="outlined"
+                component="a"
+                href="/sample-dd-report.pdf"
+                target="_blank"
+                rel="noopener"
                 startIcon={<DescriptionIcon />}
-                onClick={() => navigate('/due-diligence')}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 600,

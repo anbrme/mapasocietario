@@ -40,7 +40,7 @@ const FS_PRICE = 17.50;
 const ANDROID_VAT_NOTE =
   'Final price is set by Google Play and includes VAT calculated for your country, so it may differ from EUR 22.50.';
 // Product Hunt launch promo. Set to null after the launch to hide the banner.
-const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
+//const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
 const ANDROID_PLAY_BILLING_ENABLED = true;
 const FS_FALLBACK_KEEP_DD = 'keep_dd_refund_fs';
 const FS_FALLBACK_FULL_REFUND = 'full_refund';
@@ -343,6 +343,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1 }}>
+        {/*
         {!isAndroidApp && LAUNCH_PROMO_CODE && (
           <Box
             sx={{
@@ -366,6 +367,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             </Typography>
           </Box>
         )}
+        */}
         {/* Base product */}
         <Box
           sx={{
@@ -593,7 +595,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             Invoiced by <strong>Nurnberg Consulting SL</strong> &middot; NIF B86829538 &middot; Madrid, Spain.
             {isAndroidApp
               ? 'Android payments are processed by Google Play, which calculates and remits VAT per country. The final price may differ from EUR 22.50. '
-              : 'Payments securely processed by Stripe or Google Pay (for Android). Stripe calculates taxes and validates supported business VAT IDs at checkout. '}
+              : ' Payments securely processed by Stripe or Google Pay (for Android). Stripe calculates taxes and validates supported business VAT IDs at checkout. '}
             By continuing you accept our{' '}
             <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>terms</a>{' '}
             and{' '}
