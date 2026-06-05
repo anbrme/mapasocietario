@@ -3469,15 +3469,33 @@ const SpanishCompanyNetworkGraph = ({
           const isInConcurso = !!company?.is_in_concurso;
           const isUnipersonal = !!company?.is_unipersonal;
 
-          // Format capital with thousands separator
+          // Format capital with thousands separator. BORME (event-sourced)
+          // capital wins; if there is none (e.g. set before 2009 and never
+          // amended), fall back to the LLM-enriched value persisted on the v3
+          // company doc, flagged as external so the UI can caveat it.
+          let capitalRaw = latestCapital;
+          let capitalExternal = false;
+          if (!capitalRaw && company?.enriched_capital != null) {
+            capitalRaw = company.enriched_capital;
+            capitalExternal = true;
+          }
           let formattedCapital = null;
-          if (latestCapital) {
-            const num = typeof latestCapital === 'number' ? latestCapital : parseFloat(String(latestCapital).replace(/[^\d.,]/g, '').replace(',', '.'));
+          if (capitalRaw) {
+            const num = typeof capitalRaw === 'number' ? capitalRaw : parseFloat(String(capitalRaw).replace(/[^\d.,]/g, '').replace(',', '.'));
             if (!isNaN(num)) {
               formattedCapital = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 2 }).format(num) + ' \u20AC';
             } else {
-              formattedCapital = String(latestCapital);
+              formattedCapital = String(capitalRaw);
             }
+          }
+
+          // Address: prefer event-derived, then the BORME current_address on the
+          // v3 doc, then the LLM-enriched fallback (flagged external for caveat).
+          let addressValue = latestAddress || company?.current_address || null;
+          let addressExternal = false;
+          if (!addressValue && company?.enriched_address) {
+            addressValue = company.enriched_address;
+            addressExternal = true;
           }
 
           // Compute current officers grouped by person with all their positions
@@ -3537,9 +3555,13 @@ const SpanishCompanyNetworkGraph = ({
             company,
             enriched: {
               capital: formattedCapital,
-              address: latestAddress,
+              capitalExternal,
+              address: addressValue,
+              addressExternal,
               activity: latestActivity,
-              cif: latestCif,
+              // BORME events carry no NIF; fall back to the LLM-enriched NIF
+              // persisted on the v3 company doc (checksum-validated, shown plain).
+              cif: latestCif || company?.enriched_nif || null,
               firstSeen,
               lastSeen,
               previousNames,
@@ -6539,7 +6561,14 @@ const SpanishCompanyNetworkGraph = ({
                       {e?.address && (
                         <Box sx={{ gridColumn: e?.cif ? 'auto' : '1 / -1' }}>
                           <Typography variant="caption" color="text.secondary">Domicilio</Typography>
-                          <Typography variant="body2">{e.address}</Typography>
+                          <Typography variant="body2">
+                            {e.address}
+                            {e.addressExternal && (
+                              <Typography component="span" variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', ml: 0.5 }}>
+                                (estimación de fuente externa — verificar)
+                              </Typography>
+                            )}
+                          </Typography>
                         </Box>
                       )}
                       {e?.activity && (
@@ -6551,7 +6580,14 @@ const SpanishCompanyNetworkGraph = ({
                       {e?.capital && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">Capital social</Typography>
-                          <Typography variant="body2">{e.capital}</Typography>
+                          <Typography variant="body2">
+                            {e.capital}
+                            {e.capitalExternal && (
+                              <Typography component="span" variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', ml: 0.5 }}>
+                                (estimación de fuente externa — verificar)
+                              </Typography>
+                            )}
+                          </Typography>
                         </Box>
                       )}
                       {(e?.firstSeen || e?.lastSeen) && (
