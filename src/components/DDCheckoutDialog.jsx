@@ -21,6 +21,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import EmailIcon from '@mui/icons-material/Email';
 import TranslateIcon from '@mui/icons-material/Translate';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import {
   ANDROID_DD_PRODUCT_IDS,
   isAndroidNativeApp,
@@ -390,6 +392,27 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
             Corporate structure, officer history, sanctions screening, risk analysis
           </Typography>
+          {/* Let hesitating buyers see exactly what they're paying for, right here at the decision point. */}
+          <Box
+            component="a"
+            href="/sample-dd-report.pdf"
+            target="_blank"
+            rel="noopener"
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.5,
+              mt: 1,
+              color: 'warning.light',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              textDecoration: 'none',
+              '&:hover': { textDecoration: 'underline' },
+            }}
+          >
+            <PictureAsPdfIcon sx={{ fontSize: 15 }} />
+            See a sample report before you buy
+          </Box>
           {isAndroidApp && (
             <Typography variant="caption" sx={{ color: 'text.disabled', mt: 0.5, display: 'block', fontStyle: 'italic' }}>
               {ANDROID_VAT_NOTE}
@@ -590,6 +613,24 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             Questions before paying? Email{' '}
             <a href="mailto:app@ncdata.eu" style={{ color: '#8bc5ff', textDecoration: 'none' }}>app@ncdata.eu</a>
             {' '}— we usually reply within a few hours on business days.
+          </Typography>
+        </Box>
+        {/* Data-quality guarantee — the real refund promise, surfaced at the moment of maximum doubt. */}
+        <Box
+          sx={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 1,
+            p: 1.25,
+            borderRadius: 1.5,
+            bgcolor: 'rgba(102,187,106,0.08)',
+            border: '1px solid rgba(102,187,106,0.25)',
+          }}
+        >
+          <VerifiedUserIcon sx={{ fontSize: 18, color: 'success.light', mt: '1px', flexShrink: 0 }} />
+          <Typography variant="caption" sx={{ color: 'success.light', fontSize: '0.74rem', lineHeight: 1.45 }}>
+            <strong>Data-quality guarantee.</strong> If your report has data-quality issues, email us within 7 days and we&apos;ll re-issue it free or refund you in full.
           </Typography>
         </Box>
         <Button
