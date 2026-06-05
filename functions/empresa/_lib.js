@@ -231,6 +231,7 @@ const T = {
     cnmvPctInstr: '% instrumentos',
     cnmvDate: 'F. registro',
     cnmvSource: (d) => `Fuente: CNMV — participaciones significativas${d ? `, última modificación ${d}` : ''}. © Comisión Nacional del Mercado de Valores. Reproducción fiel sin alterar el contenido. Disponible gratuitamente en `,
+    cnmvVerify: 'Posible cambio no verificado — el valor mostrado podría no reflejar la última comunicación a la CNMV. Consulte cnmv.es.',
     chartTitle: 'Evolución de los accionistas significativos',
     chartNote: '% de derechos de voto por titular a lo largo del tiempo (CNMV).',
     boeTitle: 'Menciones del grupo en el BOE',
@@ -345,6 +346,7 @@ const T = {
     cnmvPctInstr: '% instruments',
     cnmvDate: 'Filed',
     cnmvSource: (d) => `Source: CNMV — significant holdings${d ? `, last updated ${d}` : ''}. © Comisión Nacional del Mercado de Valores (CNMV). Reproduced faithfully without altering the content. Available free at `,
+    cnmvVerify: 'Possible unverified change — the value shown may not reflect the latest CNMV filing. Check cnmv.es.',
     chartTitle: 'Significant holdings over time',
     chartNote: 'Voting-rights % by shareholder over time (CNMV).',
     boeTitle: 'Group mentions in the State Gazette (BOE)',
@@ -630,10 +632,11 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
           <thead><tr><th>${t.cnmvHolder}</th><th>${t.cnmvPctTotal}</th><th>${t.cnmvPctDirect}</th><th>${t.cnmvPctIndirect}</th><th>${t.cnmvPctInstr}</th><th>${t.cnmvDate}</th></tr></thead>
           <tbody>${cnmvList
             .map(
-              (s) => `<tr><td>${esc(s.holder)}</td><td>${esc(fmtPct(s.pct_total))}</td><td>${esc(fmtPct(s.pct_directo))}</td><td>${esc(fmtPct(s.pct_indirecto))}</td><td>${esc(fmtPct(s.pct_instrumentos))}</td><td>${esc(fmtDate(s.registry_date, lang))}</td></tr>`,
+              (s) => `<tr><td>${esc(s.holder)}${s.verify_flag ? ` <span class="verify" title="${esc(t.cnmvVerify)}">⚠</span>` : ''}</td><td>${esc(fmtPct(s.pct_total))}</td><td>${esc(fmtPct(s.pct_directo))}</td><td>${esc(fmtPct(s.pct_indirecto))}</td><td>${esc(fmtPct(s.pct_instrumentos))}</td><td>${esc(fmtDate(s.registry_date, lang))}</td></tr>`,
             )
             .join('')}</tbody>
         </table>
+        ${cnmv && cnmv.has_unverified ? `<p class="more verify-note">⚠ ${esc(t.cnmvVerify)}</p>` : ''}
         <p class="more">${t.cnmvSource(fmtDate(cnmv.last_modified, lang))}<a href="https://www.cnmv.es/" rel="nofollow noopener" target="_blank">cnmv.es</a>.</p>
       </section>`
     : '';
