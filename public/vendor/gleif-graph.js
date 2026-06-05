@@ -67,8 +67,8 @@
 
     var showLabel = node.role === 'self' || node.role === 'parent' || node.role === 'child' || globalScale >= LABEL_ZOOM;
     if (!showLabel) return;
-    var label = node.name.length > 28 ? node.name.slice(0, 27) + '…' : node.name;
-    var fontSize = Math.max(10, 12 / globalScale);
+    var label = node.name.length > 22 ? node.name.slice(0, 21) + '…' : node.name;
+    var fontSize = Math.max(7, 9 / globalScale);
     ctx.font = fontSize + 'px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
