@@ -12,6 +12,7 @@
  */
 
 import { SEED } from './_ibex35.js';
+import { resolveSlug } from './_resolve.js';
 
 const API_BASE = 'https://api.ncdata.eu';
 const SITE = 'https://mapasocietario.es';
@@ -103,17 +104,6 @@ function sanitizeSvg(svg) {
     .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
     .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
     .replace(/(?:xlink:href|href)\s*=\s*(["'])\s*javascript:[^"']*\1/gi, '');
-}
-
-async function resolveCompanyName(slug, signal) {
-  const data = await jsonOrNull(
-    `${API_BASE}/bormes/companies/directory/autocomplete?q=${encodeURIComponent(slugToQuery(slug))}&limit=10`,
-    signal,
-  );
-  const suggestions = (data && data.suggestions) || [];
-  if (!suggestions.length) return null;
-  const exact = suggestions.find((s) => nameToSlug(s.company_name) === slug);
-  return exact || suggestions[0];
 }
 
 // ---------------------------------------------------------------------------
@@ -546,7 +536,7 @@ function hreflangTags(slug) {
 export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null) {
   const t = T[lang] || T.es;
   const name = company.company_name || company.company_name_normalized || '';
-  const canonicalSlug = seed ? slug : nameToSlug(name);
+  const canonicalSlug = slug;
   const renamedTo = !seed && company.has_new_name ? company.new_company_name : null;
   const canonicalUrl = renamedTo ? companyUrl(lang, nameToSlug(renamedTo)) : companyUrl(lang, canonicalSlug);
 
@@ -661,7 +651,7 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
         <p class="more">${t.boeSource}<a href="https://www.boe.es/" rel="nofollow noopener" target="_blank">boe.es</a>.</p>
       </section>`
     : '';
-  // GLEIF corporate group (curated/listed companies with a verified LEI only).
+  // GLEIF corporate group (IBEX seed companies with a verified LEI only).
   const flag = (cc) => (cc && cc !== 'N/A' ? `<span class="chip">${esc(cc)}</span>` : '');
   const gleifEntityRow = (e) =>
     `<tr><td>${esc(e.legalName)}${
@@ -838,33 +828,20 @@ function notFoundPage(slug, lang = 'es') {
 
 export async function handleCompany({ params }, lang = 'es') {
   const slug = String(params.slug || '').toLowerCase();
+  const resolved = resolveSlug(slug);
+  if (resolved.kind === 'notfound') {
+    return new Response(notFoundPage(slug, lang), {
+      status: 404,
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+    });
+  }
+  const seed = resolved.kind === 'seed' ? resolved.entry : null;
+  const name = resolved.entry.v3Name;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
-    const seed = SEED[slug] || null;
-    let name;
-
-    if (seed) {
-      name = seed.v3Name;
-    } else {
-      const match = await resolveCompanyName(slug, controller.signal);
-      if (!match) {
-        return new Response(notFoundPage(slug, lang), {
-          status: 404,
-          headers: { 'content-type': 'text/html; charset=utf-8' },
-        });
-      }
-      name = match.company_name;
-      const canonical = nameToSlug(name);
-      if (canonical && canonical !== slug) {
-        return new Response(null, {
-          status: 301,
-          headers: { location: companyPath(lang, canonical), 'cache-control': 'public, max-age=3600' },
-        });
-      }
-    }
-
     // BOE mentions match by company name + NIF (listed cos have both in the seed).
     const boeUrl = seed
       ? `${API_BASE}/bormes/boe/company-mentions?name=${encodeURIComponent(seed.name || '')}&nif=${encodeURIComponent(seed.nif || '')}&categories=sancion,subvencion,contrato&size=8`
@@ -872,11 +849,11 @@ export async function handleCompany({ params }, lang = 'es') {
     const [profile, eventsResp, cnmvResp, chartSvg, boeResp, gleifResp] = await Promise.all([
       jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`, controller.signal),
       jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=8`, controller.signal),
-      // Significant shareholders + history chart: only listed (curated) companies have CNMV data.
+      // Significant shareholders + history chart: only IBEX seed companies have CNMV data.
       seed ? jsonOrNull(`${API_BASE}/bormes/cnmv/shareholders?company=${encodeURIComponent(slug)}`, controller.signal) : Promise.resolve(null),
       seed ? textOrNull(`${API_BASE}/bormes/cnmv/history-chart?company=${encodeURIComponent(slug)}&lang=${lang}`, controller.signal) : Promise.resolve(null),
       boeUrl ? jsonOrNull(boeUrl, controller.signal) : Promise.resolve(null),
-      // GLEIF corporate group: only curated (seed) companies carry a verified LEI.
+      // GLEIF corporate group: only IBEX seed companies carry a verified LEI.
       seed && seed.lei
         ? postJsonOrNull(`${API_BASE}/lei-relationships`, { lei: seed.lei, isPublic: true }, controller.signal)
         : Promise.resolve(null),
