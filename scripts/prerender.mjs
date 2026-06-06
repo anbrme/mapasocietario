@@ -40,6 +40,32 @@ const baseHtml = readFileSync(path.join(distDir, 'index.html'), 'utf8');
 
 const routes = [
   {
+    // Homepage: the SPA shell ships an empty #root, so crawlers (and the rare
+    // homepage crawl — see GSC crawl stats) get no link into the company SEO
+    // content. Prerender real content + crawlable links into #root; React
+    // replaces it on hydration. Writes dist/index.html (path.join collapses '/').
+    path: '/',
+    title: 'Mapa Societario | Spanish Company Search & Corporate Relationship Graph',
+    description:
+      'Search Spanish companies and directors and explore their corporate relationships in an interactive graph built from official BORME (Registro Mercantil) data. Due diligence reports from EUR 22.50.',
+    ogType: 'website',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Mapa Societario &mdash; Spanish Company &amp; Director Search</h1>
+        <p>Explore corporate relationships between Spanish companies and their directors using official BORME (Registro Mercantil) data, and generate due-diligence reports.</p>
+        ${disclaimerHtmlEn}
+        <h2>Explore</h2>
+        <ul>
+          <li><a href="/app">Search companies &amp; directors (interactive graph)</a></li>
+          <li><a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a> &middot; <a href="/en/listed-companies">IBEX 35 listed companies</a></li>
+          <li><a href="/es/">Mapa societario de empresas espa&ntilde;olas</a></li>
+          <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
+          <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
+          <li><a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></li>
+        </ul>
+      </main>`,
+  },
+  {
     path: '/app',
     title: 'Search | Mapa Societario',
     description:
