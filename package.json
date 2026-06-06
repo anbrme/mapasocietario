@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "check": "node scripts/check-gleif-render.mjs",
-    "prebuild": "node scripts/check-gleif-render.mjs && node scripts/generate-seo-files.mjs",
+    "prebuild": "node scripts/check-gleif-render.mjs && node scripts/check-curated.mjs && node scripts/generate-empresa-sitemap.mjs && node scripts/generate-seo-files.mjs",
     "build": "vite build",
     "postbuild": "node scripts/prerender.mjs",
     "preview": "vite preview"
