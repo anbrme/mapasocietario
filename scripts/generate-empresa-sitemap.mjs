@@ -1,5 +1,5 @@
 /**
- * Generates public/sitemap-empresas.xml from the curated IBEX 35 seed.
+ * Generates public/sitemap-empresas.xml from the IBEX 35 seed and the curated non-listed companies.
  *
  * Bilingual: each company and the hub get an ES URL and an EN URL, with
  * xhtml:link hreflang alternates so Google serves the right language.
@@ -7,6 +7,7 @@
  * Run:  node scripts/generate-empresa-sitemap.mjs
  */
 import { SEED } from '../functions/empresa/_ibex35.js';
+import { CURATED } from '../functions/empresa/_curated.js';
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -42,6 +43,12 @@ for (const slug of Object.keys(SEED).sort()) {
   blocks.push(urlBlock(enCompany(slug), esCompany(slug), enCompany(slug), '0.7', 'weekly'));
 }
 
+// Curated non-listed companies (ES + EN), lower priority than the IBEX seed.
+for (const slug of Object.keys(CURATED).sort()) {
+  blocks.push(urlBlock(esCompany(slug), esCompany(slug), enCompany(slug), '0.6', 'monthly'));
+  blocks.push(urlBlock(enCompany(slug), esCompany(slug), enCompany(slug), '0.6', 'monthly'));
+}
+
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${blocks.join('\n')}
@@ -53,4 +60,4 @@ ${blocks.join('\n')}
 // at build time (prebuild) — single ownership avoids drift.
 const out = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'sitemap-empresas.xml');
 writeFileSync(out, xml);
-console.log(`Wrote ${blocks.length} URLs (${Object.keys(SEED).length} companies × 2 langs + 2 hubs) to ${out}`);
+console.log(`Wrote ${blocks.length} URLs (${Object.keys(SEED).length + Object.keys(CURATED).length} companies × 2 langs + 2 hubs) to ${out}`);
