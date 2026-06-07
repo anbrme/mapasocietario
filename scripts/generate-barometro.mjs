@@ -77,6 +77,11 @@ async function main() {
     `    <link rel="alternate" hreflang="es" href="${SITE}/es/barometro-empresarial/" />\n` +
     `    <link rel="alternate" hreflang="x-default" href="${SITE}/" />\n  </head>`);
   html = html.replace('<div id="root"></div>', `<div id="root">${renderArticleHtml(data)}</div>`);
+  // Standalone static content page: strip the SPA entry script. Otherwise React mounts,
+  // matches the /es/:slug route (SpanishSeoPage), doesn't know this slug, and redirects
+  // to /es — wiping the prerendered article. No SPA = the static article just renders.
+  html = html.replace(/<script[^>]*\btype="module"[^>]*>[\s\S]*?<\/script>/g, '');
+  html = html.replace(/<link[^>]*\brel="modulepreload"[^>]*>/g, '');
 
   const outDir = path.join(distDir, 'es', 'barometro-empresarial');
   mkdirSync(outDir, { recursive: true });
