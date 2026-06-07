@@ -1,8 +1,35 @@
-# Barómetro Empresarial — Data Story (v1) — Design
+# Barómetro Empresarial — Data Story — Design
 
 **Date:** 2026-06-07
-**Status:** Draft for review
-**Repo:** `mapasocietario` (frontend) — no backend changes (reads existing `api.ncdata.eu` stats endpoints at build time)
+**Status:** v2 — re-sourced to official Registradores data (v1 built on our BORME stats; shipped, then found materially inaccurate)
+**Repo:** `mapasocietario` (frontend) — no backend changes (reads a committed official CSV at build time)
+
+> ## v2 — re-sourced to the official Registradores suite + NET CREATION lead
+>
+> **Why:** v1 sourced from `api.ncdata.eu/bormes/stats/*` (BORME-derived), which proved **materially wrong** vs official — national constituciones 2025 ours 155,399 vs official **128,871** (+20%), driven by a **Barcelona ~2× over-count** (pipeline bug filed at `ncdata_infra/bormes/BUG_barcelona_stats_overcount.md`; [[project_official_stats_discrepancy]]). Publishing wrong numbers would cost the credibility the story is built to earn.
+>
+> **New source:** the full official **Colegio de Registradores** dataset (provided as XLSX, 2011–2026, all `cod-ca;ca;cod-prov;prov;ano;mes;form-soc;…`):
+> - `RM_Const` — constituciones (`num-con` + subscribed/paid capital)
+> - `RM_Extin` — **extinciones (dissolutions)** (`num-ext`)
+> - `RM_Ampli` / `RM_Reduc` — capital increases / reductions (count + capital)
+>
+> **Lead metric is now NET CREATION** (`constituciones − extinciones`), the user's original first choice — **deferred in v1 only because the BORME dissolution data was broken; now available and accurate** from official `RM_Extin`. Verified 2025: national net **94,612** (128,871 − 34,259); Madrid 20,558, Barcelona 14,428, … Ceuta 58. Const/extin ratio 3.76 (sane). No Barcelona anomaly.
+>
+> **Page (supersedes the v1 "gross formations" framing):**
+> 1. **Hero:** national net creation `year` (and constituciones / extinciones), % vs prior year; top province.
+> 2. **Province table** (52): `Constituciones | Extinciones | Neto | Neto vs año anterior`. Sorted by net. Net bar chart (top-15).
+> 3. **By legal form** (SL dominance) — constituciones by form.
+> 4. **Trend** (2011→`year`): yearly constituciones vs extinciones (or net) line chart.
+> 5. **Capital (bonus):** total subscribed capital in new companies + capital injected via ampliaciones (`RM_Ampli`) — "capital movilizado".
+> 6. **Methodology:** cite "datos del Colegio de Registradores"; definitions; not seasonally adjusted; link the CSV.
+>
+> **Data prep:** convert the relevant XLSX → CSV once (no xlsx dep at build) and commit to **`data/registradores/{const,extin,ampli,reduc}.csv`**. To publish a new edition: drop in fresh Registradores exports, re-convert, rebuild.
+>
+> **Implementation:** add a Registradores CSV parser + aggregators to the lib; the render/table grows to net columns; **reuse** the existing primitives (`intEs`, `pctEs`/`shareEs`, `barChartSvg`, `trendChartSvg`, `injectHead`, `esc`, the SPA-strip + self-`<style>` standalone-page handling). Swap `generate-barometro.mjs` to read the CSVs.
+>
+> **Still deferred:** transfers (`RM_Trasl` — which provinces gain/lose companies via relocation) and accounts-deposited (`RM_Depst`) as future angles; deeper capital cuts.
+>
+> The v1 sections below are retained for the page mechanics (build approach, charts, SEO, URL, recurrence); ignore their `api.ncdata.eu` and gross-formations specifics — superseded here.
 
 ## Goal
 
