@@ -445,25 +445,59 @@ function eventsBlock(events, t, lang) {
   return `<section><h2>${t.recentHistory}</h2><ol class="timeline">${rows}</ol></section>`;
 }
 
-function jsonLd(company, slug, lang, t) {
+function jsonLd(company, slug, lang, t, seed) {
   const officers = (company.officers_active || []).map((o) => o.name || o.name_normalized).filter(Boolean);
-  const data = {
+
+  // Identifiers: for curated IBEX companies use the verified NIF/LEI/ISIN from the
+  // seed \u2014 stable, globally-unique business identifiers \u2014 as schema.org PropertyValue.
+  // The old `(company.identifiers || []).join(', ')` was a comma-joined blob of ~400
+  // BORME entry IDs, which reset yearly and aren't a real identifier; it's dropped.
+  const identifier = [];
+  if (seed) {
+    if (seed.nif) identifier.push({ '@type': 'PropertyValue', propertyID: 'NIF', value: seed.nif });
+    if (seed.lei) identifier.push({ '@type': 'PropertyValue', propertyID: 'LEI', value: seed.lei });
+    if (seed.isin) identifier.push({ '@type': 'PropertyValue', propertyID: 'ISIN', value: seed.isin });
+  }
+
+  // sameAs binds this page to the real-world entity (official site) for the Knowledge Graph.
+  const sameAs = seed && seed.website ? [seed.website] : [];
+
+  const org = {
     '@context': 'https://schema.org',
-    '@type': 'Organization',
+    // Corporation (an Organization subtype) supports tickerSymbol for listed companies.
+    '@type': seed ? 'Corporation' : 'Organization',
     name: company.company_name,
     url: companyUrl(lang, slug),
+    ...(seed && seed.ticker ? { tickerSymbol: seed.ticker } : {}),
     ...(company.current_address ? { address: company.current_address } : {}),
-    ...(company.first_seen ? { foundingDate: company.first_seen } : {}),
     ...(company.province ? { areaServed: company.province } : {}),
     ...(officers.length ? { employee: officers.slice(0, 10).map((n) => ({ '@type': 'Person', name: n })) } : {}),
-    identifier: (company.identifiers || []).join(', '),
+    ...(identifier.length ? { identifier } : {}),
+    ...(sameAs.length ? { sameAs } : {}),
     description: t.jsonLdDesc(company.company_name),
   };
-  const safe = JSON.stringify(data)
+  // foundingDate dropped: the only date available is company.first_seen (first BORME
+  // appearance), which is not the incorporation date \u2014 wrong data is worse than none.
+
+  // BreadcrumbList mirrors the visible breadcrumb (Home \u203a Empresas \u203a Name) at the
+  // bottom of the page; Google requires the structured trail to match the on-page one.
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: t.home, item: `${SITE}/` },
+      { '@type': 'ListItem', position: 2, name: t.crumbCompanies, item: `${SITE}/app` },
+      { '@type': 'ListItem', position: 3, name: company.company_name },
+    ],
+  };
+
+  const serialize = (obj) => JSON.stringify(obj)
     .replace(/</g, '\\u003c')
     .replace(/-->/g, '--\\u003e')
     .replace(/[\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
-  return `<script type="application/ld+json">${safe}</script>`;
+  return [org, breadcrumb]
+    .map((obj) => `<script type="application/ld+json">${serialize(obj)}</script>`)
+    .join('');
 }
 
 const STYLE = `<style>
@@ -746,7 +780,7 @@ ${hreflangTags(canonicalSlug)}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(t.ogTitle(name))}">
 <meta name="twitter:description" content="${esc(desc)}">
-${jsonLd(company, canonicalSlug, lang, t)}
+${jsonLd(company, canonicalSlug, lang, t, seed)}
 ${STYLE}
 </head>
 <body>
