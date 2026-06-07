@@ -153,7 +153,7 @@ const T = {
       `Estructura societaria de ${name}: administradores, socios, capital social e historial mercantil oficial (BORME).`,
     home: 'Mapa Societario',
     crumbCompanies: 'Empresas',
-    lead: 'Ficha societaria oficial extraída del BORME: administradores, socios, capital e historial mercantil.',
+    lead: 'Ficha societaria elaborada a partir de datos extraídos del BORME: administradores, socios, capital e historial mercantil.',
     badgeDissolved: 'Disuelta',
     badgeConcurso: 'Concurso',
     badgeUni: 'Unipersonal',
