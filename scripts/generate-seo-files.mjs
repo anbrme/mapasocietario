@@ -27,6 +27,7 @@ const sitemapRoutes = [
   { path: '/es/informes-due-diligence-empresas/', changefreq: 'weekly', priority: '0.8' },
   { path: '/es/buscar-administradores-empresas/', changefreq: 'weekly', priority: '0.8' },
   { path: '/es/borme-grafo-empresas/', changefreq: 'weekly', priority: '0.8' },
+  { path: '/es/barometro-empresarial/', changefreq: 'monthly', priority: '0.8' },
   { path: '/es/mapa-relaciones-societarias/', changefreq: 'weekly', priority: '0.8' },
   { path: '/about', changefreq: 'monthly', priority: '0.5' },
   { path: '/terms', changefreq: 'monthly', priority: '0.4' },

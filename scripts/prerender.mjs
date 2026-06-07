@@ -61,6 +61,7 @@ const routes = [
           <li><a href="/es/">Mapa societario de empresas espa&ntilde;olas</a></li>
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
+          <li><a href="/es/barometro-empresarial/">Bar&oacute;metro empresarial: empresas creadas en Espa&ntilde;a</a></li>
           <li><a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></li>
         </ul>
       </main>`,
@@ -170,7 +171,7 @@ const routes = [
         <p>Busca una sociedad española y ve sus administradores, cargos, socios únicos y participaciones íntegramente poseídas por otras sociedades. También puedes buscar por persona para descubrir en qué sociedades aparece como administrador, consejero, apoderado u otro cargo mercantil.</p>
         <h2>Por qué es útil</h2>
         <p>El BORME contiene información pública esencial, pero no siempre es cómodo para una investigación rápida. Mapa Societario convierte esas publicaciones en un índice consultable y en un grafo navegable, incorpora comprobación de sanciones publicadas en el BOE para informes due diligence y marca con una insignia amarilla a administradores que tienen o tuvieron cargo político en el Congreso de los Diputados.</p>
-        <p><a href="/app">Buscar en el grafo</a> | <a href="/due-diligence">Ver informes due diligence</a></p>
+        <p><a href="/app">Buscar en el grafo</a> | <a href="/es/barometro-empresarial/">Bar&oacute;metro empresarial</a> | <a href="/due-diligence">Ver informes due diligence</a></p>
       </main>`,
   },
   {
