@@ -43,12 +43,15 @@ async function main() {
   const nationalCur = sumFormations(curProv);
   const nationalPrev = sumFormations(prevProv);
 
-  const typeCounts = [];
-  for (const t of TYPES) {
-    const rows = provincesData(await getJson(`${API}/bormes/stats/provinces?${range(year)}&company_type=${t}`));
-    const count = sumFormations(rows);
-    if (count > 0) typeCounts.push({ type: t, count });
-  }
+  const typeCounts = (
+    await Promise.all(
+      TYPES.map(async (t) => {
+        const rows = provincesData(await getJson(`${API}/bormes/stats/provinces?${range(year)}&company_type=${t}`));
+        const count = sumFormations(rows);
+        return count > 0 ? { type: t, count } : null;
+      }),
+    )
+  ).filter(Boolean);
   const typeRows = buildTypeRows(typeCounts, nationalCur);
 
   const barSvg = barChartSvg(provinceRows.slice(0, 15).map((r) => ({ label: r.province, value: r.cur })));
@@ -67,7 +70,7 @@ async function main() {
     description: `Constituciones de empresas en España en ${year} por provincia y forma jurídica (${intEs(nationalCur)} nuevas sociedades), con datos oficiales del BORME.`,
     canonical: `${SITE}/es/barometro-empresarial/`,
   });
-  html = html.replace(/<div id="root">[\s\S]*?<\/div>/, `<div id="root">${renderArticleHtml(data)}</div>`);
+  html = html.replace('<div id="root"></div>', `<div id="root">${renderArticleHtml(data)}</div>`);
 
   const outDir = path.join(distDir, 'es', 'barometro-empresarial');
   mkdirSync(outDir, { recursive: true });

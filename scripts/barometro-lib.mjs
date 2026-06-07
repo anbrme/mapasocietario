@@ -149,9 +149,16 @@ export function renderArticleHtml(d) {
     </main>`;
 }
 
-export function injectHead(template, { title, description, canonical }) {
+export function injectHead(template, { title, description, canonical, ogType = 'article' }) {
   let html = template.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
   html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/, `$1${esc(description)}$2`);
   html = html.replace(/(<link\s+rel="canonical"[^>]*href=")[^"]*(")/, `$1${esc(canonical)}$2`);
+  // Open Graph / Twitter — only replaced if the tag exists in the template. `[^>]*` keeps each match within its own tag.
+  html = html.replace(/(property="og:title"[^>]*content=")[^"]*(")/, `$1${esc(title)}$2`);
+  html = html.replace(/(property="og:description"[^>]*content=")[^"]*(")/, `$1${esc(description)}$2`);
+  html = html.replace(/(property="og:url"[^>]*content=")[^"]*(")/, `$1${esc(canonical)}$2`);
+  html = html.replace(/(property="og:type"[^>]*content=")[^"]*(")/, `$1${esc(ogType)}$2`);
+  html = html.replace(/(name="twitter:title"[^>]*content=")[^"]*(")/, `$1${esc(title)}$2`);
+  html = html.replace(/(name="twitter:description"[^>]*content=")[^"]*(")/, `$1${esc(description)}$2`);
   return html;
 }
