@@ -55,12 +55,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mapasocietario.es/es/barometro-empresarial/</loc>
-    <lastmod>2026-06-07</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://mapasocietario.es/es/mapa-relaciones-societarias/</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>weekly</changefreq>

@@ -17,6 +17,10 @@ Allow: /
 Sitemap: ${siteUrl}/sitemap.xml
 `;
 
+// Keep the barómetro out of the sitemap while it is unpublished (data-reuse licence
+// pending). Same flag as generate-barometro.mjs; set BAROMETRO_PUBLISHED=1 to restore.
+const BAROMETRO_PUBLISHED = process.env.BAROMETRO_PUBLISHED === '1' || process.env.BAROMETRO_PUBLISHED === 'true';
+
 const sitemapRoutes = [
   { path: '/', changefreq: 'daily', priority: '1.0' },
   { path: '/app/', changefreq: 'daily', priority: '0.8' },
@@ -32,7 +36,7 @@ const sitemapRoutes = [
   { path: '/about', changefreq: 'monthly', priority: '0.5' },
   { path: '/terms', changefreq: 'monthly', priority: '0.4' },
   { path: '/privacy', changefreq: 'monthly', priority: '0.3' },
-];
+].filter((r) => BAROMETRO_PUBLISHED || r.path !== '/es/barometro-empresarial/');
 
 const sitemapUrls = sitemapRoutes.map((route) => `  <url>
     <loc>${siteUrl}${route.path}</loc>

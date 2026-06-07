@@ -19,7 +19,43 @@ const distDir = path.resolve(__dirname, '..', 'dist');
 const dataDir = path.resolve(__dirname, '..', 'data', 'registradores');
 const load = (f) => parseCsv(readFileSync(path.join(dataDir, f), 'utf8'));
 
+// Temporary unpublish (default). Until the Colegio de Registradores data-reuse
+// licence is confirmed, the barómetro must not redistribute the official figures:
+// it serves a noindex placeholder and no CSV. Re-enable by setting the build env
+// var BAROMETRO_PUBLISHED=1 — no code change needed. generate-seo-files.mjs reads
+// the same flag to keep the route out of the sitemap while unpublished.
+const PUBLISHED = process.env.BAROMETRO_PUBLISHED === '1' || process.env.BAROMETRO_PUBLISHED === 'true';
+
+function writePlaceholder() {
+  let html = readFileSync(path.join(distDir, 'index.html'), 'utf8');
+  html = html.replace(/<noscript>[\s\S]*?<\/noscript>/, '');
+  html = injectHead(html, {
+    title: 'Barómetro empresarial | Mapa Societario',
+    description: 'El barómetro empresarial está temporalmente no disponible.',
+    canonical: `${SITE}/es/barometro-empresarial/`,
+  });
+  html = html.replace(/<html\s+lang="[^"]*"/, '<html lang="es"');
+  html = html.replace('</head>', '    <meta name="robots" content="noindex,follow" />\n  </head>');
+  const body = `
+    <style>body{background:#fff;color:#0f172a;margin:0}main{font-family:Arial,Helvetica,sans-serif}h1{font-size:1.6rem;margin:.4rem 0 1rem}a{color:#2563eb}</style>
+    <main style="max-width:680px;margin:4rem auto;padding:0 1rem;line-height:1.6">
+      <p style="margin:0 0 1.2rem"><a href="/" style="text-decoration:none;font-weight:700">Mapa Societario</a></p>
+      <h1>Barómetro empresarial</h1>
+      <p>Esta sección está temporalmente no disponible mientras revisamos nuestras fuentes de datos. Vuelve pronto.</p>
+      <p><a href="/app">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
+    </main>`;
+  html = html.replace('<div id="root"></div>', `<div id="root">${body}</div>`);
+  html = html.replace(/<script[^>]*\btype="module"[^>]*>[\s\S]*?<\/script>/g, '');
+  html = html.replace(/<link[^>]*\brel="modulepreload"[^>]*>/g, '');
+  html = html.replace(/<link[^>]*rel="stylesheet"[^>]*href="\/assets\/[^"]*"[^>]*>/g, '');
+  const outDir = path.join(distDir, 'es', 'barometro-empresarial');
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(path.join(outDir, 'index.html'), html, 'utf8');
+  console.log('  Barómetro: UNPUBLISHED — noindex placeholder, no data, no CSV (set BAROMETRO_PUBLISHED=1 to restore).');
+}
+
 function main() {
+  if (!PUBLISHED) { writePlaceholder(); return; }
   const constRows = load('const.csv');
   const extinRows = load('extin.csv');
   const year = Number(process.env.BAROMETRO_YEAR) || latestFullYearFromRows(constRows);
