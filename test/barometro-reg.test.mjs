@@ -68,3 +68,36 @@ test('buildNetRows computes net, prior-year net, YoY, sorted desc by net', () =>
   assert.equal(rows[1].province, 'Alicante');
   assert.equal(rows[1].net, 40);
 });
+
+import { trendDualSvg, renderNetArticle, netCsv } from '../scripts/barometro-lib.mjs';
+
+test('trendDualSvg renders two polylines', () => {
+  const svg = trendDualSvg([{ year: 2024, count: 5 }, { year: 2025, count: 8 }],
+                           [{ year: 2024, count: 2 }, { year: 2025, count: 3 }]);
+  assert.equal((svg.match(/<polyline /g) || []).length, 2);
+  assert.match(svg, /^<svg /);
+});
+
+test('netCsv has header + one row per province', () => {
+  const csv = netCsv([{ province: 'Madrid', const_: 100, extin: 40, net: 60 }], 2025);
+  assert.match(csv, /provincia,constituciones_2025,extinciones_2025,neto_2025/);
+  assert.match(csv, /Madrid,100,40,60/);
+});
+
+test('renderNetArticle includes net hero, province net table, charts, source', () => {
+  const d = {
+    year: 2025, prevYear: 2024, nationalConst: 128871, nationalExtin: 34259,
+    nationalNet: 94612, nationalNetPrev: 90000, netPct: 5.1, capital: 1234567,
+    netRows: [{ province: 'Madrid', const_: 28899, extin: 8341, net: 20558, netPrev: 20000, pct: 2.8 }],
+    typeRows: [{ type: 'SL', count: 127138, share: 98.7 }],
+    barSvg: '<svg id="bar"></svg>', trendSvg: '<svg id="trend"></svg>',
+  };
+  const html = renderNetArticle(d);
+  assert.match(html, /94\.612/);
+  assert.match(html, /Madrid/);
+  assert.match(html, /20\.558/);
+  assert.match(html, /Registradores/);
+  assert.match(html, /id="bar"/);
+  assert.match(html, /barometro-empresarial\.csv/);
+  assert.match(html, /href="\/app"/);
+});

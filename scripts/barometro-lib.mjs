@@ -232,6 +232,88 @@ export function buildNetRows(constCur, extinCur, constPrev, extinPrev) {
     .sort((a, b) => b.net - a.net);
 }
 
+export function trendDualSvg(seriesA, seriesB, { w = 680, h = 220, pad = 30 } = {}) {
+  const all = [...seriesA, ...seriesB];
+  const max = Math.max(...all.map((p) => p.count), 1);
+  const years = seriesA.map((p) => p.year);
+  const n = Math.max(1, years.length - 1);
+  const x = (i) => pad + (i / n) * (w - pad * 2);
+  const y = (v) => h - pad - (v / max) * (h - pad * 2);
+  const line = (s, color) =>
+    `<polyline points="${s.map((p, i) => `${x(i).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2"></polyline>`;
+  const labels = years
+    .map((yr, i) => (i % 2 === 0 || i === years.length - 1
+      ? `<text x="${x(i).toFixed(1)}" y="${h - 8}" font-size="10" text-anchor="middle">${esc(yr)}</text>` : ''))
+    .join('');
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" role="img" width="100%" font-family="Arial,sans-serif" fill="#64748b">${line(seriesA, '#2563eb')}${line(seriesB, '#ef4444')}${labels}</svg>`;
+}
+
+function netTable(rows, year) {
+  const body = rows
+    .map((r) => `<tr><td>${esc(r.province)}</td><td>${intEs(r.const_)}</td><td>${intEs(r.extin)}</td><td>${intEs(r.net)}</td><td>${pctEs(r.pct)}</td></tr>`)
+    .join('');
+  return `<table><thead><tr><th>Provincia</th><th>Constituciones</th><th>Extinciones</th><th>Neto ${year}</th><th>Neto vs ${year - 1}</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function regTypeTable(rows, year) {
+  const body = rows
+    .map((r) => `<tr><td>${esc(r.type)}</td><td>${intEs(r.count)}</td><td>${shareEs(r.share)}</td></tr>`)
+    .join('');
+  return `<table><thead><tr><th>Forma jurídica</th><th>Constituciones ${year}</th><th>% del total</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+export function netCsv(rows, year) {
+  const head = `provincia,constituciones_${year},extinciones_${year},neto_${year}`;
+  const cell = (s) => (/[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : s);
+  const body = rows.map((r) => `${cell(r.province)},${r.const_},${r.extin},${r.net}`).join('\n');
+  return `${head}\n${body}\n`;
+}
+
+export function renderNetArticle(d) {
+  const top = d.netRows[0];
+  return `
+    <style>
+      body{background:#fff;color:#0f172a;margin:0}
+      main{font-family:Arial,Helvetica,sans-serif}
+      h1{font-size:1.9rem;line-height:1.2;margin:.4rem 0 1rem}
+      h2{font-size:1.3rem;margin:2.2rem 0 .6rem;border-top:1px solid #e2e8f0;padding-top:1.2rem}
+      table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:14px}
+      th,td{border:1px solid #e2e8f0;padding:6px 10px;text-align:left}
+      th{background:#f1f5f9;font-weight:600}
+      tbody td:nth-child(n+2),thead th:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}
+      a{color:#2563eb}
+      svg{max-width:100%;height:auto;margin:.5rem 0}
+    </style>
+    <main style="max-width:880px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+      <p style="margin:0 0 1.2rem"><a href="/" style="text-decoration:none;font-weight:700">Mapa Societario</a></p>
+      <h1>Barómetro empresarial: creación neta de empresas en España (${d.year})</h1>
+      <p>En ${d.year} España registró una <strong>creación neta de ${intEs(d.nationalNet)} sociedades</strong>
+         (${intEs(d.nationalConst)} constituciones − ${intEs(d.nationalExtin)} extinciones; ${pctEs(d.netPct)} frente a ${d.prevYear}).
+         <strong>${esc(top.province)}</strong> lidera con ${intEs(top.net)} netas. Datos del Colegio de Registradores.</p>
+
+      <h2>Creación neta por provincia (${d.year})</h2>
+      ${d.barSvg}
+      ${netTable(d.netRows, d.year)}
+
+      <h2>Por forma jurídica</h2>
+      <p>Casi todas las nuevas sociedades son SL.</p>
+      ${regTypeTable(d.typeRows, d.year)}
+
+      <h2>Constituciones y extinciones (2011–${d.year})</h2>
+      <p>Azul: constituciones. Rojo: extinciones.</p>
+      ${d.trendSvg}
+
+      <h2>Capital</h2>
+      <p>Capital suscrito en las nuevas sociedades en ${d.year}: <strong>${intEs(d.capital)} €</strong>.</p>
+
+      <h2>Metodología y fuente</h2>
+      <p>Fuente: <strong>Colegio de Registradores de España</strong> (estadística mercantil). "Constitución" y "extinción"
+         según inscripción registral; "creación neta" = constituciones − extinciones. Cobertura 2011–${d.year}. Sin desestacionalizar.</p>
+      <p><a href="/es/barometro-empresarial.csv">Descargar datos (CSV)</a></p>
+      <p><a href="/app">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
+    </main>`;
+}
+
 export function injectHead(template, { title, description, canonical, ogType = 'article' }) {
   let html = template.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
   html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/, `$1${esc(description)}$2`);
