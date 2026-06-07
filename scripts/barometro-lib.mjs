@@ -129,6 +129,7 @@ export function renderArticleHtml(d) {
   const top = d.provinceRows[0];
   return `
     <main style="font-family:Arial,sans-serif;max-width:880px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+      <p style="margin:0 0 1.2rem"><a href="/" style="color:#2563eb;text-decoration:none;font-weight:700">Mapa Societario</a></p>
       <h1>Barómetro empresarial: dónde se crean empresas en España (${d.year})</h1>
       <p>En ${d.year} se constituyeron <strong>${intEs(d.nationalCur)}</strong> nuevas sociedades en España
          (${pctEs(d.nationalPct)} frente a ${d.prevYear}). <strong>${esc(top.province)}</strong> lidera con
