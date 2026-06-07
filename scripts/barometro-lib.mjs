@@ -1,12 +1,13 @@
 // Pure logic + rendering for the Barómetro Empresarial data story. No network, no fs.
 
 export function latestFullYear(series) {
-  const byYear = {};
+  const monthsByYear = {};
   for (const { date } of series) {
-    const y = Number(String(date).slice(0, 4));
-    byYear[y] = (byYear[y] || 0) + 1;
+    const ym = String(date).slice(0, 7); // "YYYY-MM"
+    const y = Number(ym.slice(0, 4));
+    (monthsByYear[y] ??= new Set()).add(ym);
   }
-  const full = Object.keys(byYear).map(Number).filter((y) => byYear[y] >= 12);
+  const full = Object.keys(monthsByYear).map(Number).filter((y) => monthsByYear[y].size >= 12);
   if (!full.length) throw new Error('latestFullYear: no complete year in series');
   return Math.max(...full);
 }
@@ -98,7 +99,7 @@ export function trendChartSvg(yearly, { w = 680, h = 220, pad = 30 } = {}) {
   const pts = yearly.map((p, i) => `${x(i).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ');
   const labels = yearly
     .map((p, i) => (i % 2 === 0 || i === yearly.length - 1
-      ? `<text x="${x(i).toFixed(1)}" y="${h - 8}" font-size="10" text-anchor="middle">${p.year}</text>`
+      ? `<text x="${x(i).toFixed(1)}" y="${h - 8}" font-size="10" text-anchor="middle">${esc(p.year)}</text>`
       : ''))
     .join('');
   return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" role="img" width="100%" font-family="Arial,sans-serif" fill="#64748b"><polyline points="${pts}" fill="none" stroke="#2563eb" stroke-width="2"></polyline>${labels}</svg>`;
@@ -151,6 +152,6 @@ export function renderArticleHtml(d) {
 export function injectHead(template, { title, description, canonical }) {
   let html = template.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
   html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/, `$1${esc(description)}$2`);
-  html = html.replace(/(<link\s+rel="canonical"[^>]*href=")[^"]*(")/, `$1${canonical}$2`);
+  html = html.replace(/(<link\s+rel="canonical"[^>]*href=")[^"]*(")/, `$1${esc(canonical)}$2`);
   return html;
 }

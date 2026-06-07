@@ -109,3 +109,11 @@ test('injectHead sets title, description and canonical', () => {
   assert.match(out, /content="D"/);
   assert.match(out, /href="https:\/\/mapasocietario\.es\/es\/barometro-empresarial\/"/);
 });
+
+test('injectHead escapes HTML-special characters in title, description and canonical', () => {
+  const tpl = '<title>x</title><meta name="description" content="y"><link rel="canonical" href="z" />';
+  const out = injectHead(tpl, { title: '<b>"t"</b>', description: '<i>d</i>', canonical: 'https://e.com/"><script>' });
+  assert.match(out, /&lt;b&gt;/);
+  assert.doesNotMatch(out, /<b>/);
+  assert.doesNotMatch(out, /<script>/);
+});
