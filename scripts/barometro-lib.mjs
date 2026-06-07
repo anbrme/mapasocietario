@@ -206,8 +206,9 @@ const PROV_NORM = {
   'Valencia / València': 'Valencia', 'València / Valencia': 'Valencia',
   'Araba / Álava': 'Álava',
   'Bizkaia': 'Vizcaya', 'Gipuzkoa': 'Guipúzcoa',
-  'Girona': 'Gerona', 'Lleida': 'Lérida', 'Ourense': 'Orense',
   'Illes Balears': 'Baleares',
+  // Girona, Lleida, Ourense kept as the official source spells them (not the
+  // anachronistic Gerona/Lérida/Orense); single spelling, no merge needed.
 };
 export function normProvince(p) { return PROV_NORM[p] || p; }
 

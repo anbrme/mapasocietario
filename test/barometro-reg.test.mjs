@@ -11,6 +11,19 @@ test('parseCsv parses headers and coerces numbers', () => {
   assert.equal(rows[0].capital_subscribed, 5000);
 });
 
+test('parseCsv handles a quoted province field containing a comma', () => {
+  const rows = parseCsv('province,year,month,form,count\n"Coruña, A",2025,1,SL,10\n');
+  assert.equal(rows[0].province, 'Coruña, A');
+  assert.equal(rows[0].year, 2025);
+  assert.equal(rows[0].count, 10);
+});
+
+test('normProvince keeps official names (Girona/Lleida/Ourense), not anachronistic Castilian', () => {
+  assert.equal(normProvince('Girona'), 'Girona');
+  assert.equal(normProvince('Lleida'), 'Lleida');
+  assert.equal(normProvince('Ourense'), 'Ourense');
+});
+
 test('normProvince merges both bilingual orderings to one Castilian name', () => {
   assert.equal(normProvince('Alacant / Alicante'), 'Alicante');
   assert.equal(normProvince('Alicante / Alacant'), 'Alicante');
