@@ -201,6 +201,37 @@ export function latestFullYearFromRows(rows) {
   return Math.max(...full);
 }
 
+export function sumByProvince(rows, year) {
+  const m = {};
+  for (const r of rows) if (r.year === year) { const p = normProvince(r.province); m[p] = (m[p] || 0) + r.count; }
+  return m;
+}
+export function sumByForm(rows, year) {
+  const m = {};
+  for (const r of rows) if (r.year === year) m[r.form] = (m[r.form] || 0) + r.count;
+  return m;
+}
+export function sumYears(rows) {
+  const m = {};
+  for (const r of rows) m[r.year] = (m[r.year] || 0) + r.count;
+  return Object.keys(m).map(Number).sort((a, b) => a - b).map((y) => ({ year: y, count: m[y] }));
+}
+export function sumCapital(rows, year) {
+  let t = 0;
+  for (const r of rows) if (r.year === year) t += (r.capital_subscribed || 0);
+  return t;
+}
+export function buildNetRows(constCur, extinCur, constPrev, extinPrev) {
+  const provs = new Set([...Object.keys(constCur), ...Object.keys(extinCur)]);
+  return [...provs]
+    .map((p) => {
+      const c = constCur[p] || 0, e = extinCur[p] || 0;
+      const netPrev = (constPrev[p] || 0) - (extinPrev[p] || 0);
+      return { province: p, const_: c, extin: e, net: c - e, netPrev, pct: pctChange(c - e, netPrev) };
+    })
+    .sort((a, b) => b.net - a.net);
+}
+
 export function injectHead(template, { title, description, canonical, ogType = 'article' }) {
   let html = template.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
   html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/, `$1${esc(description)}$2`);
