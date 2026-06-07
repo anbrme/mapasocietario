@@ -60,3 +60,20 @@ test('toCsv escapes, includes header with years', () => {
   assert.match(csv, /provincia,formaciones_2025,formaciones_2024,variacion_pct/);
   assert.match(csv, /"A,B",10,8,25\.0/);
 });
+
+import { barChartSvg, trendChartSvg } from '../scripts/barometro-lib.mjs';
+
+test('barChartSvg renders one <rect> per item and is valid svg', () => {
+  const svg = barChartSvg([{ label: 'Madrid', value: 100 }, { label: 'Soria', value: 10 }]);
+  assert.match(svg, /^<svg /);
+  assert.match(svg, /<\/svg>$/);
+  assert.equal((svg.match(/<rect /g) || []).length, 2);
+  assert.match(svg, /Madrid/);
+});
+
+test('trendChartSvg renders a polyline with one point per year', () => {
+  const svg = trendChartSvg([{ year: 2023, count: 5 }, { year: 2024, count: 8 }, { year: 2025, count: 6 }]);
+  assert.match(svg, /<polyline /);
+  const pts = svg.match(/points="([^"]+)"/)[1].trim().split(/\s+/);
+  assert.equal(pts.length, 3);
+});

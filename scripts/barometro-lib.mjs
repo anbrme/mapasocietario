@@ -70,3 +70,36 @@ export function toCsv(rows, year) {
     .join('\n');
   return `${head}\n${body}\n`;
 }
+
+export function barChartSvg(items, { w = 680, barH = 22, gap = 8, pad = 8, labelW = 130 } = {}) {
+  const max = Math.max(...items.map((i) => i.value), 1);
+  const valW = 70;
+  const chartW = w - labelW - valW - pad;
+  const h = pad * 2 + items.length * (barH + gap) - gap;
+  const bars = items
+    .map((it, i) => {
+      const y = pad + i * (barH + gap);
+      const bw = Math.max(1, Math.round((it.value / max) * chartW));
+      return (
+        `<text x="0" y="${y + barH * 0.7}" font-size="12">${esc(it.label)}</text>` +
+        `<rect x="${labelW}" y="${y}" width="${bw}" height="${barH}" fill="#2563eb" rx="3"></rect>` +
+        `<text x="${labelW + bw + 6}" y="${y + barH * 0.7}" font-size="12">${esc(intEs(it.value))}</text>`
+      );
+    })
+    .join('');
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" role="img" width="100%" font-family="Arial,sans-serif" fill="#0f172a">${bars}</svg>`;
+}
+
+export function trendChartSvg(yearly, { w = 680, h = 220, pad = 30 } = {}) {
+  const max = Math.max(...yearly.map((p) => p.count), 1);
+  const n = Math.max(1, yearly.length - 1);
+  const x = (i) => pad + (i / n) * (w - pad * 2);
+  const y = (v) => h - pad - (v / max) * (h - pad * 2);
+  const pts = yearly.map((p, i) => `${x(i).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ');
+  const labels = yearly
+    .map((p, i) => (i % 2 === 0 || i === yearly.length - 1
+      ? `<text x="${x(i).toFixed(1)}" y="${h - 8}" font-size="10" text-anchor="middle">${p.year}</text>`
+      : ''))
+    .join('');
+  return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" role="img" width="100%" font-family="Arial,sans-serif" fill="#64748b"><polyline points="${pts}" fill="none" stroke="#2563eb" stroke-width="2"></polyline>${labels}</svg>`;
+}
