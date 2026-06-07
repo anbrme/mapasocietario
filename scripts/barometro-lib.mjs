@@ -212,6 +212,15 @@ const PROV_NORM = {
 };
 export function normProvince(p) { return PROV_NORM[p] || p; }
 
+// URL-safe slug for a province page, e.g. "Álava" -> "alava", "A Coruña" -> "a-coruna".
+export function provinceSlug(name) {
+  return String(name)
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents (ñ -> n, á -> a)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export function latestFullYearFromRows(rows) {
   const months = {};
   for (const r of rows) (months[r.year] ??= new Set()).add(r.month);
@@ -233,6 +242,13 @@ export function sumByForm(rows, year) {
 export function sumYears(rows) {
   const m = {};
   for (const r of rows) m[r.year] = (m[r.year] || 0) + r.count;
+  return Object.keys(m).map(Number).sort((a, b) => a - b).map((y) => ({ year: y, count: m[y] }));
+}
+// Yearly series for a single province (normalized), for the per-province trend chart.
+export function sumYearsByProvince(rows, province) {
+  const target = normProvince(province);
+  const m = {};
+  for (const r of rows) if (normProvince(r.province) === target) m[r.year] = (m[r.year] || 0) + r.count;
   return Object.keys(m).map(Number).sort((a, b) => a - b).map((y) => ({ year: y, count: m[y] }));
 }
 export function sumCapital(rows, year) {
@@ -269,7 +285,7 @@ export function trendDualSvg(seriesA, seriesB, { w = 680, h = 220, pad = 30 } = 
 
 function netTable(rows, year) {
   const body = rows
-    .map((r) => `<tr><td>${esc(r.province)}</td><td>${intEs(r.const_)}</td><td>${intEs(r.extin)}</td><td>${intEs(r.net)}</td><td>${pctEs(r.pct)}</td></tr>`)
+    .map((r) => `<tr><td><a href="/es/barometro-empresarial/${provinceSlug(r.province)}/">${esc(r.province)}</a></td><td>${intEs(r.const_)}</td><td>${intEs(r.extin)}</td><td>${intEs(r.net)}</td><td>${pctEs(r.pct)}</td></tr>`)
     .join('');
   return `<table><thead><tr><th>Provincia</th><th>Constituciones</th><th>Extinciones</th><th>Neto ${year}</th><th>Neto vs ${year - 1}</th></tr></thead><tbody>${body}</tbody></table>`;
 }
@@ -288,9 +304,7 @@ export function netCsv(rows, year) {
   return `${head}\n${body}\n`;
 }
 
-export function renderNetArticle(d) {
-  const top = d.netRows[0];
-  return `
+const ARTICLE_STYLE = `
     <style>
       body{background:#fff;color:#0f172a;margin:0}
       main{font-family:Arial,Helvetica,sans-serif}
@@ -302,13 +316,18 @@ export function renderNetArticle(d) {
       tbody td:nth-child(n+2),thead th:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}
       a{color:#2563eb}
       svg{max-width:100%;height:auto;margin:.5rem 0}
-    </style>
+    </style>`;
+
+export function renderNetArticle(d) {
+  const top = d.netRows[0];
+  return `${ARTICLE_STYLE}
     <main style="max-width:880px;margin:2rem auto;padding:0 1rem;line-height:1.6">
       <p style="margin:0 0 1.2rem"><a href="/" style="text-decoration:none;font-weight:700">Mapa Societario</a></p>
       <h1>Barómetro empresarial: creación neta de empresas en España (${d.year})</h1>
       <p>En ${d.year} España registró una <strong>creación neta de ${intEs(d.nationalNet)} sociedades</strong>
          (${intEs(d.nationalConst)} constituciones − ${intEs(d.nationalExtin)} extinciones; ${pctEs(d.netPct)} frente a ${d.prevYear}).
-         <strong>${esc(top.province)}</strong> lidera con ${intEs(top.net)} netas. Datos del Colegio de Registradores.</p>
+         <strong>${esc(top.province)}</strong> lidera con ${intEs(top.net)} netas.
+         <a href="https://opendata.registradores.org/" target="_blank" rel="noopener">Datos del Colegio de Registradores</a>.</p>
 
       <h2>Creación neta por provincia (${d.year})</h2>
       ${d.barSvg}
@@ -326,11 +345,61 @@ export function renderNetArticle(d) {
       <p>Capital suscrito en las nuevas sociedades en ${d.year}: <strong>${intEs(d.capital)} €</strong>.</p>
 
       <h2>Metodología y fuente</h2>
-      <p>Fuente: <strong>Colegio de Registradores de España</strong> (estadística mercantil). "Constitución" y "extinción"
+      <p>Fuente: <a href="https://opendata.registradores.org/" target="_blank" rel="noopener"><strong>Colegio de Registradores de España</strong></a> (estadística mercantil). "Constitución" y "extinción"
          según inscripción registral; "creación neta" = constituciones − extinciones. Cobertura 2011–${d.year}. Sin desestacionalizar.</p>
       <p><a href="/es/barometro-empresarial.csv">Descargar datos (CSV)</a></p>
       <p><a href="/app">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
     </main>`;
+}
+
+function provinceYearTable(rows) {
+  const body = rows
+    .map((r) => `<tr><td>${r.year}</td><td>${intEs(r.const_)}</td><td>${intEs(r.extin)}</td><td>${intEs(r.net)}</td></tr>`)
+    .join('');
+  return `<table><thead><tr><th>Año</th><th>Constituciones</th><th>Extinciones</th><th>Neto</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+// BreadcrumbList: Inicio › Barómetro empresarial › {provincia}.
+function provinceJsonLd(d) {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Mapa Societario', item: `${d.site}/` },
+      { '@type': 'ListItem', position: 2, name: 'Barómetro empresarial', item: `${d.site}/es/barometro-empresarial/` },
+      { '@type': 'ListItem', position: 3, name: `Creación de empresas en ${d.province} (${d.year})` },
+    ],
+  };
+  return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+}
+
+// One province's drill-down page. `d` carries the province totals, its rank/share
+// vs the nation, the per-province yearly series (yearRows) and trend SVG.
+export function renderProvinceArticle(d) {
+  return `${ARTICLE_STYLE}
+    <main style="max-width:880px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+      <p style="margin:0 0 1.2rem"><a href="/" style="text-decoration:none;font-weight:700">Mapa Societario</a>
+         › <a href="/es/barometro-empresarial/">Barómetro empresarial</a></p>
+      <h1>Creación de empresas en ${esc(d.province)} (${d.year})</h1>
+      <p>En ${d.year}, ${esc(d.province)} registró una <strong>creación neta de ${intEs(d.net)} sociedades</strong>
+         (${intEs(d.const_)} constituciones − ${intEs(d.extin)} extinciones; ${pctEs(d.pct)} frente a ${d.prevYear}).
+         Representa el <strong>${shareEs(d.share)}</strong> de las constituciones de España y ocupa el
+         <strong>puesto ${d.rank}</strong> de ${d.totalProvinces} provincias por número de constituciones.</p>
+
+      <h2>Constituciones y extinciones en ${esc(d.province)} (2011–${d.year})</h2>
+      <p>Azul: constituciones. Rojo: extinciones.</p>
+      ${d.trendSvg}
+
+      <h2>Serie anual</h2>
+      ${provinceYearTable(d.yearRows)}
+
+      <h2>Metodología y fuente</h2>
+      <p>Fuente: <a href="https://opendata.registradores.org/" target="_blank" rel="noopener"><strong>Colegio de Registradores de España</strong></a>
+         (estadística mercantil). "Creación neta" = constituciones − extinciones. Cobertura 2011–${d.year}. Sin desestacionalizar.</p>
+      <p><a href="/es/barometro-empresarial/">← Volver al barómetro nacional</a></p>
+      <p><a href="/app">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
+    </main>
+    ${provinceJsonLd(d)}`;
 }
 
 export function injectHead(template, { title, description, canonical, ogType = 'article' }) {

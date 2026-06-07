@@ -8,4 +8,8 @@
     <loc>https://mapasocietario.es/sitemap-empresas.xml</loc>
     <lastmod>2026-06-07</lastmod>
   </sitemap>
+  <sitemap>
+    <loc>https://mapasocietario.es/sitemap-barometro.xml</loc>
+    <lastmod>2026-06-07</lastmod>
+  </sitemap>
 </sitemapindex>

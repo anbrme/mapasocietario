@@ -62,6 +62,10 @@ const sitemapIndexXml = `<?xml version="1.0" encoding="UTF-8"?>
     <loc>${siteUrl}/sitemap-empresas.xml</loc>
     <lastmod>${buildDate}</lastmod>
   </sitemap>
+  <sitemap>
+    <loc>${siteUrl}/sitemap-barometro.xml</loc>
+    <lastmod>${buildDate}</lastmod>
+  </sitemap>
 </sitemapindex>
 `;
 

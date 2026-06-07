@@ -82,7 +82,10 @@ test('buildNetRows computes net, prior-year net, YoY, sorted desc by net', () =>
   assert.equal(rows[1].net, 40);
 });
 
-import { trendDualSvg, renderNetArticle, netCsv } from '../scripts/barometro-lib.mjs';
+import {
+  trendDualSvg, renderNetArticle, netCsv,
+  provinceSlug, sumYearsByProvince, renderProvinceArticle,
+} from '../scripts/barometro-lib.mjs';
 
 test('trendDualSvg renders two polylines', () => {
   const svg = trendDualSvg([{ year: 2024, count: 5 }, { year: 2025, count: 8 }],
@@ -110,7 +113,53 @@ test('renderNetArticle includes net hero, province net table, charts, source', (
   assert.match(html, /Madrid/);
   assert.match(html, /20\.558/);
   assert.match(html, /Registradores/);
+  // Source is a link to the official Registradores open-data portal, opening in a new tab.
+  assert.match(html, /<a href="https:\/\/opendata\.registradores\.org\/" target="_blank" rel="noopener">/);
   assert.match(html, /id="bar"/);
   assert.match(html, /barometro-empresarial\.csv/);
   assert.match(html, /href="\/app"/);
+  // Province names in the national table link to their drill-down pages.
+  assert.match(html, /<a href="\/es\/barometro-empresarial\/madrid\/">Madrid<\/a>/);
+});
+
+test('provinceSlug folds accents, ñ and spaces', () => {
+  assert.equal(provinceSlug('Madrid'), 'madrid');
+  assert.equal(provinceSlug('Álava'), 'alava');
+  assert.equal(provinceSlug('A Coruña'), 'a-coruna');
+  assert.equal(provinceSlug('Castellón'), 'castellon');
+  assert.equal(provinceSlug('Santa Cruz de Tenerife'), 'santa-cruz-de-tenerife');
+});
+
+test('sumYearsByProvince aggregates one province across years (normalized)', () => {
+  const rows = [
+    { province: 'Madrid', year: 2024, count: 10 },
+    { province: 'Madrid', year: 2025, count: 12 },
+    { province: 'Illes Balears', year: 2025, count: 5 }, // normalizes to Baleares
+    { province: 'Barcelona', year: 2025, count: 99 },
+  ];
+  assert.deepEqual(sumYearsByProvince(rows, 'Madrid'), [
+    { year: 2024, count: 10 }, { year: 2025, count: 12 },
+  ]);
+  // querying by the normalized name still finds the source row spelled differently
+  assert.deepEqual(sumYearsByProvince(rows, 'Baleares'), [{ year: 2025, count: 5 }]);
+});
+
+test('renderProvinceArticle includes hero, trend, yearly table, source link, breadcrumb', () => {
+  const d = {
+    province: 'Barcelona', year: 2025, prevYear: 2024,
+    const_: 19808, extin: 9000, net: 10808, pct: 3.2,
+    share: 15.4, rank: 2, totalProvinces: 52,
+    trendSvg: '<svg id="ptrend"></svg>', site: 'https://mapasocietario.es',
+    yearRows: [{ year: 2024, const_: 18000, extin: 8500, net: 9500 },
+               { year: 2025, const_: 19808, extin: 9000, net: 10808 }],
+  };
+  const html = renderProvinceArticle(d);
+  assert.match(html, /Creación de empresas en Barcelona \(2025\)/);
+  assert.match(html, /10\.808/);
+  assert.match(html, /puesto 2<\/strong> de 52/);
+  assert.match(html, /id="ptrend"/);
+  assert.match(html, /<a href="https:\/\/opendata\.registradores\.org\/" target="_blank" rel="noopener">/);
+  assert.match(html, /Volver al barómetro nacional/);
+  assert.match(html, /"@type":"BreadcrumbList"/);
+  assert.match(html, /Barómetro empresarial/);
 });
