@@ -70,6 +70,12 @@ async function main() {
     description: `Constituciones de empresas en España en ${year} por provincia y forma jurídica (${intEs(nationalCur)} nuevas sociedades), con datos oficiales del BORME.`,
     canonical: `${SITE}/es/barometro-empresarial/`,
   });
+  // Spanish-page language signals (prerender.mjs does this for its /es routes; the barometro must too).
+  html = html.replace(/<html\s+lang="[^"]*"/, '<html lang="es"');
+  html = html.replace(/(property="og:locale"[^>]*content=")[^"]*(")/, '$1es_ES$2');
+  html = html.replace('</head>',
+    `    <link rel="alternate" hreflang="es" href="${SITE}/es/barometro-empresarial/" />\n` +
+    `    <link rel="alternate" hreflang="x-default" href="${SITE}/" />\n  </head>`);
   html = html.replace('<div id="root"></div>', `<div id="root">${renderArticleHtml(data)}</div>`);
 
   const outDir = path.join(distDir, 'es', 'barometro-empresarial');

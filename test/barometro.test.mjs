@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { latestFullYear, pctChange, intEs, pctEs } from '../scripts/barometro-lib.mjs';
+import { latestFullYear, pctChange, intEs, pctEs, shareEs } from '../scripts/barometro-lib.mjs';
 import { buildProvinceRows, buildTypeRows, yearlyTotals, toCsv } from '../scripts/barometro-lib.mjs';
 
 test('latestFullYear returns the most recent year with 12 months', () => {
@@ -18,6 +18,11 @@ test('pctChange handles normal and zero-prev', () => {
 
 test('intEs formats with es-ES thousands separators', () => {
   assert.equal(intEs(38459), '38.459');
+});
+
+test('shareEs formats a proportion with NO leading + sign', () => {
+  assert.equal(shareEs(96.7), '96,7 %');
+  assert.equal(shareEs(null), '—');
 });
 
 test('pctEs shows sign and one decimal, em-dash for null', () => {

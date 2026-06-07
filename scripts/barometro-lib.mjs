@@ -27,6 +27,12 @@ export function pctEs(p) {
   return `${sign}${p.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 }
 
+// A proportion/share (no leading "+"); pctEs is for year-over-year change.
+export function shareEs(p) {
+  if (p == null) return '—';
+  return `${p.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+}
+
 export function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -114,7 +120,7 @@ function provinceTable(rows, year) {
 
 function typeTable(rows, year) {
   const body = rows
-    .map((r) => `<tr><td>${esc(r.type)}</td><td>${intEs(r.count)}</td><td>${pctEs(r.share)}</td></tr>`)
+    .map((r) => `<tr><td>${esc(r.type)}</td><td>${intEs(r.count)}</td><td>${shareEs(r.share)}</td></tr>`)
     .join('');
   return `<table><thead><tr><th>Forma jurídica</th><th>Constituciones ${year}</th><th>% del total</th></tr></thead><tbody>${body}</tbody></table>`;
 }
