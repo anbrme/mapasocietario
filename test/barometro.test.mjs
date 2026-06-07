@@ -77,3 +77,35 @@ test('trendChartSvg renders a polyline with one point per year', () => {
   const pts = svg.match(/points="([^"]+)"/)[1].trim().split(/\s+/);
   assert.equal(pts.length, 3);
 });
+
+import { renderArticleHtml, injectHead } from '../scripts/barometro-lib.mjs';
+
+const DATA = {
+  year: 2025, prevYear: 2024,
+  nationalCur: 155399, nationalPrev: 150000, nationalPct: 3.6,
+  provinceRows: [
+    { province: 'Barcelona', cur: 38459, prev: 30229, pct: 27.2 },
+    { province: 'Madrid', cur: 30287, prev: 29900, pct: 1.3 },
+  ],
+  typeRows: [{ type: 'SL', count: 150337, share: 96.7 }, { type: 'Otras', count: 5062, share: 3.3 }],
+  barSvg: '<svg id="bar"></svg>', trendSvg: '<svg id="trend"></svg>',
+};
+
+test('renderArticleHtml includes a row per province and the charts', () => {
+  const html = renderArticleHtml(DATA);
+  assert.match(html, /Barcelona/);
+  assert.match(html, /Madrid/);
+  assert.match(html, /38\.459/);
+  assert.match(html, /id="bar"/);
+  assert.match(html, /id="trend"/);
+  assert.match(html, /barometro-empresarial\.csv/);
+  assert.match(html, /href="\/app"/);
+});
+
+test('injectHead sets title, description and canonical', () => {
+  const tpl = '<title>x</title><meta name="description" content="y"><link rel="canonical" id="canonical-link" href="z" />';
+  const out = injectHead(tpl, { title: 'T', description: 'D', canonical: 'https://mapasocietario.es/es/barometro-empresarial/' });
+  assert.match(out, /<title>T<\/title>/);
+  assert.match(out, /content="D"/);
+  assert.match(out, /href="https:\/\/mapasocietario\.es\/es\/barometro-empresarial\/"/);
+});

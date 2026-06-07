@@ -103,3 +103,54 @@ export function trendChartSvg(yearly, { w = 680, h = 220, pad = 30 } = {}) {
     .join('');
   return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" role="img" width="100%" font-family="Arial,sans-serif" fill="#64748b"><polyline points="${pts}" fill="none" stroke="#2563eb" stroke-width="2"></polyline>${labels}</svg>`;
 }
+
+function provinceTable(rows, year) {
+  const body = rows
+    .map((r) => `<tr><td>${esc(r.province)}</td><td>${intEs(r.cur)}</td><td>${intEs(r.prev)}</td><td>${pctEs(r.pct)}</td></tr>`)
+    .join('');
+  return `<table><thead><tr><th>Provincia</th><th>${year}</th><th>${year - 1}</th><th>Variación</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function typeTable(rows, year) {
+  const body = rows
+    .map((r) => `<tr><td>${esc(r.type)}</td><td>${intEs(r.count)}</td><td>${pctEs(r.share)}</td></tr>`)
+    .join('');
+  return `<table><thead><tr><th>Forma jurídica</th><th>Constituciones ${year}</th><th>% del total</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+export function renderArticleHtml(d) {
+  const top = d.provinceRows[0];
+  return `
+    <main style="font-family:Arial,sans-serif;max-width:880px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+      <h1>Barómetro empresarial: dónde se crean empresas en España (${d.year})</h1>
+      <p>En ${d.year} se constituyeron <strong>${intEs(d.nationalCur)}</strong> nuevas sociedades en España
+         (${pctEs(d.nationalPct)} frente a ${d.prevYear}). <strong>${esc(top.province)}</strong> lidera con
+         ${intEs(top.cur)} constituciones. Datos oficiales del BORME.</p>
+
+      <h2>Constituciones por provincia (${d.year} vs ${d.prevYear})</h2>
+      ${d.barSvg}
+      ${provinceTable(d.provinceRows, d.year)}
+
+      <h2>Por forma jurídica</h2>
+      <p>Casi todas las nuevas sociedades son SL: la sociedad limitada concentra la gran mayoría de constituciones.</p>
+      ${typeTable(d.typeRows, d.year)}
+
+      <h2>Evolución de las constituciones (2009–${d.year})</h2>
+      ${d.trendSvg}
+
+      <h2>Metodología y datos</h2>
+      <p>Fuente: Boletín Oficial del Registro Mercantil (BORME), procesado por Mapa Societario. "Constitución" =
+         primera inscripción de la sociedad en el BORME. Cobertura desde 2009. Mapa Societario no es un registro oficial.</p>
+      <p>Las disoluciones y la creación neta (constituciones − disoluciones) se incorporarán en una próxima edición,
+         una vez validada la cobertura de los datos de disolución por registro.</p>
+      <p><a href="/es/barometro-empresarial.csv">Descargar datos (CSV)</a></p>
+      <p><a href="/app">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
+    </main>`;
+}
+
+export function injectHead(template, { title, description, canonical }) {
+  let html = template.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
+  html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/, `$1${esc(description)}$2`);
+  html = html.replace(/(<link\s+rel="canonical"[^>]*href=")[^"]*(")/, `$1${canonical}$2`);
+  return html;
+}
