@@ -168,6 +168,39 @@ export function renderArticleHtml(d) {
     </main>`;
 }
 
+// --- Official Registradores CSV layer ---------------------------------------
+
+export function parseCsv(text) {
+  const lines = text.replace(/^﻿/, '').trim().split(/\r?\n/);
+  const head = lines[0].split(',');
+  const numCols = new Set(['year', 'month', 'count', 'capital_subscribed']);
+  return lines.slice(1).map((line) => {
+    const cells = line.split(',');
+    const o = {};
+    head.forEach((h, i) => { o[h] = numCols.has(h) ? Number(cells[i]) : cells[i]; });
+    return o;
+  });
+}
+
+const PROV_NORM = {
+  'Alacant / Alicante': 'Alicante', 'Alicante / Alacant': 'Alicante',
+  'Castelló / Castellón': 'Castellón', 'Castellón / Castelló': 'Castellón',
+  'Valencia / València': 'Valencia', 'València / Valencia': 'Valencia',
+  'Araba / Álava': 'Álava',
+  'Bizkaia': 'Vizcaya', 'Gipuzkoa': 'Guipúzcoa',
+  'Girona': 'Gerona', 'Lleida': 'Lérida', 'Ourense': 'Orense',
+  'Illes Balears': 'Baleares',
+};
+export function normProvince(p) { return PROV_NORM[p] || p; }
+
+export function latestFullYearFromRows(rows) {
+  const months = {};
+  for (const r of rows) (months[r.year] ??= new Set()).add(r.month);
+  const full = Object.keys(months).map(Number).filter((y) => months[y].size >= 12);
+  if (!full.length) throw new Error('latestFullYearFromRows: no complete year');
+  return Math.max(...full);
+}
+
 export function injectHead(template, { title, description, canonical, ogType = 'article' }) {
   let html = template.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
   html = html.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/, `$1${esc(description)}$2`);
