@@ -170,12 +170,30 @@ export function renderArticleHtml(d) {
 
 // --- Official Registradores CSV layer ---------------------------------------
 
+function splitCsvLine(line) {
+  const out = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; } else inQuotes = false;
+      } else cur += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',') { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
 export function parseCsv(text) {
   const lines = text.replace(/^﻿/, '').trim().split(/\r?\n/);
-  const head = lines[0].split(',');
+  const head = splitCsvLine(lines[0]);
   const numCols = new Set(['year', 'month', 'count', 'capital_subscribed']);
   return lines.slice(1).map((line) => {
-    const cells = line.split(',');
+    const cells = splitCsvLine(line);
     const o = {};
     head.forEach((h, i) => { o[h] = numCols.has(h) ? Number(cells[i]) : cells[i]; });
     return o;
