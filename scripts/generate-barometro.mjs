@@ -82,6 +82,9 @@ async function main() {
   // to /es — wiping the prerendered article. No SPA = the static article just renders.
   html = html.replace(/<script[^>]*\btype="module"[^>]*>[\s\S]*?<\/script>/g, '');
   html = html.replace(/<link[^>]*\brel="modulepreload"[^>]*>/g, '');
+  // Strip the dark-theme app stylesheet — this standalone page is light-themed and
+  // fully self-styled (the article carries its own <style>). Keeps the Google Fonts link.
+  html = html.replace(/<link[^>]*rel="stylesheet"[^>]*href="\/assets\/[^"]*"[^>]*>/g, '');
 
   const outDir = path.join(distDir, 'es', 'barometro-empresarial');
   mkdirSync(outDir, { recursive: true });

@@ -128,6 +128,18 @@ function typeTable(rows, year) {
 export function renderArticleHtml(d) {
   const top = d.provinceRows[0];
   return `
+    <style>
+      body{background:#fff;color:#0f172a;margin:0}
+      main{font-family:Arial,Helvetica,sans-serif}
+      h1{font-size:1.9rem;line-height:1.2;margin:.4rem 0 1rem}
+      h2{font-size:1.3rem;margin:2.2rem 0 .6rem;border-top:1px solid #e2e8f0;padding-top:1.2rem}
+      table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:14px}
+      th,td{border:1px solid #e2e8f0;padding:6px 10px;text-align:left}
+      th{background:#f1f5f9;font-weight:600}
+      tbody td:nth-child(n+2),thead th:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}
+      a{color:#2563eb}
+      svg{max-width:100%;height:auto;margin:.5rem 0}
+    </style>
     <main style="font-family:Arial,sans-serif;max-width:880px;margin:2rem auto;padding:0 1rem;line-height:1.6">
       <p style="margin:0 0 1.2rem"><a href="/" style="color:#2563eb;text-decoration:none;font-weight:700">Mapa Societario</a></p>
       <h1>Barómetro empresarial: dónde se crean empresas en España (${d.year})</h1>
