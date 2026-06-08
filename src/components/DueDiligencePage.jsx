@@ -209,7 +209,7 @@ export default function DueDiligencePage() {
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 <Chip label="Official Registro Mercantil document" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
                 <Chip label="AI financial analysis" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
-                <Chip label="1-2 business days delivery" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
+                <Chip label="30-45 minutes delivery" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
               </Box>
             </Box>
           </Box>
