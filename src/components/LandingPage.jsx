@@ -157,12 +157,12 @@ const SPANISH_RESOURCES = [
 ];
 
 const TOP_LINKS = [
+  { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'About', href: '/about.html' },
   { label: 'Terms', href: '/terms.html' },
   { label: 'Privacy', href: '/privacy.html' },
-  { label: 'API', href: 'https://github.com/anbrme/borme-public-api', external: true },
-  { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence' },
-  { label: 'Español', href: '/es' },
+  { label: 'Español', href: '/es', alignRight: true },
 ];
 
 const PROFESSIONAL_PATHS = [
@@ -282,7 +282,8 @@ export default function LandingPage() {
               px: { xs: 2.5, sm: 4 },
               pt: { xs: 2, sm: 2.5 },
               display: 'flex',
-              justifyContent: 'center',
+              alignItems: 'center',
+              justifyContent: { xs: 'center', sm: 'flex-start' },
               flexWrap: 'wrap',
               gap: { xs: 1.25, sm: 2.25 },
             }}
@@ -299,6 +300,7 @@ export default function LandingPage() {
                   fontWeight: 650,
                   fontSize: '0.72rem',
                   textDecoration: 'none',
+                  ...(link.alignRight && { ml: { sm: 'auto' } }),
                   '&:hover': { color: 'primary.light', textDecoration: 'underline' },
                 }}
               >

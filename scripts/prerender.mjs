@@ -135,6 +135,29 @@ const routes = [
       </main>`,
   },
   {
+    path: '/pricing',
+    title: 'Pricing | Mapa Societario',
+    description:
+      'Mapa Societario pricing: Spanish company due diligence reports from EUR 22.50, with an optional financial statements add-on (EUR 17.50). No subscription, no account required. Volume pricing for law firms and consultancies.',
+    ogType: 'website',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Pricing</h1>
+        <p>Explore the corporate relationship graph for free. Pay only when you need a documented report &mdash; no subscription, no account required.</p>
+        ${disclaimerHtmlEn}
+        <h2>One-off reports</h2>
+        <ul>
+          <li><strong>Company due diligence report</strong> &mdash; <strong>EUR&nbsp;22.50</strong>. AI analysis, corporate structure, full officer history, capital events, BOE sanctions checks, and red flags, delivered as a PDF.</li>
+          <li><strong>Financial statements add-on</strong> &mdash; <strong>+EUR&nbsp;17.50</strong>. Official Cuentas Anuales from the Registro Mercantil plus an AI financial analysis.</li>
+          <li><strong>Full report with financial statements</strong> &mdash; <strong>EUR&nbsp;40.00</strong>.</li>
+        </ul>
+        <p>Prices exclude VAT, calculated at checkout. On Android, Google Play is the merchant of record and adds VAT per country.</p>
+        <h2>Volume pricing</h2>
+        <p>Law firms, consultancies, and compliance teams running repeat checks can get volume pricing. <a href="mailto:app@ncdata.eu?subject=Volume%20pricing%20%E2%80%94%20Mapa%20Societario%20reports">Get in touch</a>.</p>
+        <p><a href="/app">Search a company</a> | <a href="/spanish-company-due-diligence">What is in a report</a></p>
+      </main>`,
+  },
+  {
     path: '/dashboard',
     title: 'Dashboard | Mapa Societario',
     description:
