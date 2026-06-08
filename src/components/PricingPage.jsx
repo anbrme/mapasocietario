@@ -15,6 +15,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import LegalDisclaimer from './LegalDisclaimer';
+import { isAndroidNativeApp } from '../services/playBillingService';
 
 const LINE_ITEMS = [
   {
@@ -23,8 +24,8 @@ const LINE_ITEMS = [
     price: '€22.50',
   },
   {
-    label: 'Financial statements add-on',
-    sub: 'Official Cuentas Anuales from the Registro Mercantil, plus an AI financial analysis with key ratios and trends.',
+    label: 'Financial statements add-on (optional)',
+    sub: 'Optional. If selected, the report gains a dedicated financial analysis section: the official Cuentas Anuales from the Registro Mercantil plus an accurate AI analysis.',
     price: '+€17.50',
   },
 ];
@@ -118,29 +119,32 @@ export default function PricingPage() {
             </Box>
           </Paper>
 
-          {/* Volume pricing — validation, not a built-out package machinery yet */}
-          <Paper
-            component="section"
-            elevation={0}
-            sx={{ p: { xs: 2.5, sm: 4 }, bgcolor: 'rgba(25,118,210,0.06)', border: '1px solid rgba(25,118,210,0.25)', borderRadius: 3 }}
-          >
-            <Box sx={{ color: 'primary.light', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 26 } }}><GroupsIcon /></Box>
-            <Typography variant="h6" component="h2" sx={{ fontWeight: 750, mb: 1 }}>
-              Checking several companies?
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.75, maxWidth: 780, mb: 2.5 }}>
-              Law firms, consultancies, and compliance teams running repeat checks can get volume pricing.
-              Tell us roughly how many reports you expect and we will set up the right arrangement.
-            </Typography>
-            <Button
-              href="mailto:app@ncdata.eu?subject=Volume%20pricing%20%E2%80%94%20Mapa%20Societario%20reports"
-              variant="contained"
-              startIcon={<AssessmentIcon />}
-              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+          {/* Volume pricing — web only. Hidden in the native Android app to avoid
+              steering in-app purchases off Google Play billing (anti-steering policy). */}
+          {!isAndroidNativeApp() && (
+            <Paper
+              component="section"
+              elevation={0}
+              sx={{ p: { xs: 2.5, sm: 4 }, bgcolor: 'rgba(25,118,210,0.06)', border: '1px solid rgba(25,118,210,0.25)', borderRadius: 3 }}
             >
-              Get volume pricing
-            </Button>
-          </Paper>
+              <Box sx={{ color: 'primary.light', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 26 } }}><GroupsIcon /></Box>
+              <Typography variant="h6" component="h2" sx={{ fontWeight: 750, mb: 1 }}>
+                Checking several companies?
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.75, maxWidth: 780, mb: 2.5 }}>
+                Law firms, consultancies, and compliance teams running repeat checks can get volume pricing.
+                Tell us roughly how many reports you expect and we will set up the right arrangement.
+              </Typography>
+              <Button
+                href="mailto:app@ncdata.eu?subject=Volume%20pricing%20%E2%80%94%20Mapa%20Societario%20reports"
+                variant="contained"
+                startIcon={<AssessmentIcon />}
+                sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+              >
+                Get volume pricing
+              </Button>
+            </Paper>
+          )}
 
           <Box component="section" sx={{ borderTop: '1px solid rgba(255,255,255,0.08)', pt: 4 }}>
             <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7, maxWidth: 780 }}>

@@ -148,12 +148,12 @@ const routes = [
         <h2>One-off reports</h2>
         <ul>
           <li><strong>Company due diligence report</strong> &mdash; <strong>EUR&nbsp;22.50</strong>. AI analysis, corporate structure, full officer history, capital events, BOE sanctions checks, and red flags, delivered as a PDF.</li>
-          <li><strong>Financial statements add-on</strong> &mdash; <strong>+EUR&nbsp;17.50</strong>. Official Cuentas Anuales from the Registro Mercantil plus an AI financial analysis.</li>
+          <li><strong>Financial statements add-on (optional)</strong> &mdash; <strong>+EUR&nbsp;17.50</strong>. Optional. If selected, the report gains a dedicated financial analysis section: the official Cuentas Anuales from the Registro Mercantil plus an accurate AI analysis.</li>
           <li><strong>Full report with financial statements</strong> &mdash; <strong>EUR&nbsp;40.00</strong>.</li>
         </ul>
         <p>Prices exclude VAT, calculated at checkout. On Android, Google Play is the merchant of record and adds VAT per country.</p>
         <h2>Volume pricing</h2>
-        <p>Law firms, consultancies, and compliance teams running repeat checks can get volume pricing. <a href="mailto:app@ncdata.eu?subject=Volume%20pricing%20%E2%80%94%20Mapa%20Societario%20reports">Get in touch</a>.</p>
+        <p>Law firms, consultancies, and compliance teams running repeat checks can get volume pricing. See the <a href="/pricing">pricing page</a> to get in touch.</p>
         <p><a href="/app">Search a company</a> | <a href="/spanish-company-due-diligence">What is in a report</a></p>
       </main>`,
   },
