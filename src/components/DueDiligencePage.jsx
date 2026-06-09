@@ -181,20 +181,6 @@ export default function DueDiligencePage() {
             overflow: 'hidden',
           }}
         >
-          <Chip
-            label="Coming Soon"
-            size="small"
-            sx={{
-              position: 'absolute',
-              top: 12,
-              right: 12,
-              fontSize: '0.65rem',
-              height: 22,
-              fontWeight: 700,
-              bgcolor: 'rgba(25,118,210,0.15)',
-              color: 'primary.light',
-            }}
-          />
           <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 1.5 }}>
             <AccountBalanceIcon sx={{ color: 'primary.main', mt: 0.25, fontSize: 28 }} />
             <Box>
@@ -210,6 +196,7 @@ export default function DueDiligencePage() {
                 <Chip label="Official Registro Mercantil document" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
                 <Chip label="AI financial analysis" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
                 <Chip label="30-45 minutes delivery" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
+                <Chip label="+€17.50 per company" variant="outlined" size="small" sx={{ fontSize: '0.7rem', fontWeight: 600 }} />
               </Box>
             </Box>
           </Box>
