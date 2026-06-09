@@ -148,6 +148,11 @@ const PROOF_ITEMS = [
   'Reports from EUR 22.50',
 ];
 
+// Company shown in the landing demo screenshot. MUST match the company
+// captured in public/graph-demo.png so the click-through lands on the
+// same graph the visitor just saw.
+const DEMO_COMPANY = 'ACERINOX SA';
+
 const SPANISH_RESOURCES = [
   { label: 'Mapa societario de empresas españolas', href: '/es' },
   { label: 'Informes due diligence de empresas', href: '/es/informes-due-diligence-empresas' },
@@ -233,6 +238,10 @@ const SectionLabel = ({ children }) => (
 
 export default function LandingPage() {
   const navigate = useNavigate();
+
+  // Hide the demo frame entirely if the screenshot asset is missing —
+  // never render a broken image.
+  const [demoImgOk, setDemoImgOk] = React.useState(true);
 
   return (
     <>
@@ -640,6 +649,50 @@ export default function LandingPage() {
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4, maxWidth: 560 }}>
               The graph is fully interactive. Here's what you can do:
             </Typography>
+            {demoImgOk && (
+              <Box sx={{ mb: 4 }}>
+                <Box
+                  sx={{
+                    borderRadius: 2,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    overflow: 'hidden',
+                    bgcolor: '#0d1220',
+                  }}
+                >
+                  {/* Browser-chrome top bar */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
+                      <Box key={c} sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c, opacity: 0.8 }} />
+                    ))}
+                    <Typography variant="caption" sx={{ ml: 1, color: 'text.disabled', fontSize: '0.68rem' }}>
+                      mapasocietario.es/app
+                    </Typography>
+                  </Box>
+                  <Box component="a" href={`/app?search=${encodeURIComponent(DEMO_COMPANY)}`} sx={{ display: 'block' }}>
+                    <Box
+                      component="img"
+                      src="/graph-demo.png"
+                      alt={`Interactive BORME corporate relationship graph of ${DEMO_COMPANY}: directors, officers and connected companies`}
+                      loading="lazy"
+                      onError={() => setDemoImgOk(false)}
+                      sx={{ display: 'block', width: '100%', height: 'auto', aspectRatio: '16 / 9', objectFit: 'cover' }}
+                    />
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                  <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                    Real BORME data: the board and corporate connections of {DEMO_COMPANY}.
+                  </Typography>
+                  <Link
+                    href={`/app?search=${encodeURIComponent(DEMO_COMPANY)}`}
+                    variant="caption"
+                    sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    Explore this graph live →
+                  </Link>
+                </Box>
+              </Box>
+            )}
             <Box
               sx={{
                 display: 'grid',
