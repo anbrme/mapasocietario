@@ -673,7 +673,6 @@ export default function LandingPage() {
                       component="img"
                       src="/graph-demo.png"
                       alt={`Interactive BORME corporate relationship graph of ${DEMO_COMPANY}: directors, officers and connected companies`}
-                      loading="lazy"
                       onError={() => setDemoImgOk(false)}
                       sx={{ display: 'block', width: '100%', height: 'auto', aspectRatio: '16 / 9', objectFit: 'cover' }}
                     />
