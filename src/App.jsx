@@ -8,6 +8,13 @@ import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph'
 export default function App() {
   const navigate = useNavigate();
 
+  // /empresa pages and the landing demo link here as /app?search=<company>.
+  // Read once on mount; the graph auto-searches via initialCompanyName.
+  const initialSearch = React.useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get('search') || '').trim() || undefined;
+  }, []);
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Helmet>
@@ -66,6 +73,7 @@ export default function App() {
       <SpanishCompanyNetworkGraph
         visible={true}
         embedded={true}
+        initialCompanyName={initialSearch}
       />
     </Box>
   );
