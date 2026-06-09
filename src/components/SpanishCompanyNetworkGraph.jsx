@@ -71,6 +71,11 @@ import LegalDisclaimer from './LegalDisclaimer';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import ForceGraph2D from 'react-force-graph-2d';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
+import {
+  POSITION_CATEGORY_ORDER,
+  positionCategoryFor,
+  SIMPLIFIED_EXCLUDED_CATEGORIES,
+} from '../utils/positionCategories';
 import { useTerms } from '../hooks/useTerms';
 import { spanishCompaniesService, SpanishCompaniesService } from '../services/spanishCompaniesService';
 import { findDeputyMatch } from '../services/congresoOfficerMatcher';
@@ -453,39 +458,8 @@ const summarizePathLinks = links => {
   };
 };
 
-// Map a raw position string (as stored on link.relationship, e.g. "APO.SOL",
-// "CONS.EJECUTIVO", "MIE.COM.PER.", "APODERAD.SOL") to one of ~10 canonical
-// category labels used for filter chips. Keeps the chip row from growing to 50+
-// entries on large companies.
-const POSITION_CATEGORY_ORDER = [
-  'Presidente',
-  'Vicepresidente',
-  'Consejero',
-  'Administrador',
-  'Secretario',
-  'Liquidador',
-  'Vocal / Comisión',
-  'Apoderado',
-  'Auditor',
-  'Otros',
-];
-const positionCategoryFor = pos => {
-  const p = (pos || '').toUpperCase();
-  if (!p) return 'Otros';
-  if (p.startsWith('PRESIDENTE') || p.startsWith('PDTE') || p.startsWith('PRES.') || p.startsWith('PRE.COM')) return 'Presidente';
-  if (p.startsWith('VICEPRESIDENTE') || p.startsWith('VPDTE') || p.startsWith('VICEPTE') || p.startsWith('VIC.COM') || p.startsWith('VICPTE')) return 'Vicepresidente';
-  if (p.startsWith('CONSEJERO') || p.startsWith('CONS.') || p.startsWith('CONS ') || p.startsWith('CON.DEL') || p.startsWith('CONS.EJ') || p.startsWith('CONS.IND')) return 'Consejero';
-  if (p.startsWith('ADMINISTRADOR') || p.startsWith('ADM.') || p.startsWith('ADM ')) return 'Administrador';
-  if (p.startsWith('SECRETARIO') || p.startsWith('SECRET.') || p.startsWith('SRIO') || p.startsWith('SECR.')) return 'Secretario';
-  if (p.startsWith('LIQUIDADOR') || p.startsWith('LIQ.') || p.startsWith('LIQ ')) return 'Liquidador';
-  if (p.startsWith('VOCAL')) return 'Vocal / Comisión';
-  if (/^(MIE|MBRO|MRO|MIEM|M)\.?COM/.test(p)) return 'Vocal / Comisión';
-  if (p.startsWith('AUDITOR') || p.startsWith('AUD.')) return 'Auditor';
-  if (p.startsWith('APO') || p.startsWith('APODERADO') || p.startsWith('APD')) return 'Apoderado';
-  return 'Otros';
-};
-
-const COLLAPSIBLE_POSITION_CATEGORIES = new Set(['Apoderado', 'Auditor', 'Otros']);
+// Position-category mapping (filter chips + simplified mode) lives in
+// ../utils/positionCategories so the capping service and tests share it.
 
 // Convert v3 company docs to graph-ready entries with per-company officer caps.
 // Board roles (Presidente, Vicepresidente, Consejero, Administrador, Secretario,
@@ -3937,11 +3911,11 @@ const SpanishCompanyNetworkGraph = ({
         const link = nodeLinks[0];
         if (link.type && link.type !== 'officer-company') return;
 
+        // Exclusion list: simplified mode hides ONLY apoderado-type roles.
+        // Everything else (board roles, auditors, unmapped positions, former
+        // officers) stays visible — see SIMPLIFIED_EXCLUDED_CATEGORIES.
         const positionCategory = positionCategoryFor(link.relationship);
-        const shouldCollapse =
-          COLLAPSIBLE_POSITION_CATEGORIES.has(positionCategory) ||
-          !isActiveLinkCategory(link.category);
-        if (!shouldCollapse) return;
+        if (!SIMPLIFIED_EXCLUDED_CATEGORIES.has(positionCategory)) return;
 
         const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
         const targetId = normalizeNodeId(getNodeIdFromRef(link.target));

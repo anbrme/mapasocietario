@@ -9,6 +9,8 @@
  * - OpenAPI spec: https://raw.githubusercontent.com/anbrme/borme-public-api/main/openapi.yaml
  */
 
+import { positionCategoryFor } from '../utils/positionCategories';
+
 class SpanishCompaniesService {
   constructor() {
     // Use api-proxy worker for CORS handling
@@ -566,20 +568,22 @@ class SpanishCompaniesService {
   static prioritizeV3Officers(activeList, resignedList, options = {}) {
     const { maxOfficers = 100 } = options;
 
-    const tierFor = pos => {
-      const p = (pos || '').toUpperCase();
-      if (p.startsWith('PRESIDENTE') || p.startsWith('PDTE') || p.startsWith('PRES.')) return 0;
-      if (p.startsWith('VICEPRESIDENTE') || p.startsWith('VPDTE') || p.startsWith('VICEPTE')) return 1;
-      if (p.startsWith('CONSEJERO') || p.startsWith('CONS.') || p.startsWith('CONS ')) return 2;
-      if (p.startsWith('ADMINISTRADOR') || p.startsWith('ADM.') || p.startsWith('ADM ')) return 3;
-      if (p.startsWith('SECRETARIO') || p.startsWith('SECRET.') || p.startsWith('SRIO')) return 4;
-      if (p.startsWith('LIQUIDADOR') || p.startsWith('LIQ.') || p.startsWith('LIQ ')) return 5;
-      if (p.startsWith('VOCAL')) return 6;
-      if (/^(MIE|MBRO|MRO|MIEM|M)\.?COM/.test(p)) return 6;
-      if (p.startsWith('AUDITOR') || p.startsWith('AUD.')) return 8;
-      if (p.startsWith('APO') || p.startsWith('APODERADO')) return 9;
-      return 7;
+    // Shared categorizer (src/utils/positionCategories.js) so capping agrees
+    // with the graph's chips/simplified mode. Board roles first, then unknown
+    // roles, then auditors, then apoderados.
+    const TIER_BY_CATEGORY = {
+      'Presidente': 0,
+      'Vicepresidente': 1,
+      'Consejero': 2,
+      'Administrador': 3,
+      'Secretario': 4,
+      'Liquidador': 5,
+      'Vocal / Comisión': 6,
+      'Otros': 7,
+      'Auditor': 8,
+      'Apoderado': 9,
     };
+    const tierFor = pos => TIER_BY_CATEGORY[positionCategoryFor(pos)] ?? 7;
 
     const keyFor = o => {
       const n = (o.name || o.name_normalized || '').trim().toUpperCase();
