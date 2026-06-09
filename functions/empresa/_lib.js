@@ -212,7 +212,10 @@ const T = {
     hubThCompany: 'Empresa',
     hubThSector: 'Sector',
     hubThTicker: 'Ticker',
-    hubView: 'Ver ficha →', 
+    hubView: 'Ver ficha →',
+    hubRelatedTitle: 'Red de consejeros y accionistas del IBEX 35',
+    hubRelatedLead: 'Visualización interactiva de los vínculos entre consejeros y accionistas de las empresas del IBEX 35 (en inglés).',
+    hubRelatedLink: 'Explore the interactive board-director and shareholder network of the IBEX 35 companies (English) →',
     cnmvTitle: 'Accionistas significativos (CNMV)',
     cnmvHolder: 'Titular',
     cnmvPctTotal: '% total',
@@ -328,6 +331,9 @@ const T = {
     hubThSector: 'Sector',
     hubThTicker: 'Ticker',
     hubView: 'View profile →',
+    hubRelatedTitle: 'IBEX 35 board-director and shareholder network',
+    hubRelatedLead: 'Interactive visualisation of the links between the board directors and shareholders of the IBEX 35 companies.',
+    hubRelatedLink: 'Explore the interactive board-director and shareholder network of the IBEX 35 companies (English) →',
     cnmvTitle: 'Significant shareholders (CNMV)',
     cnmvHolder: 'Shareholder',
     cnmvPctTotal: '% total',
@@ -944,6 +950,12 @@ const HUB_STYLE = `<style>
   td.name a:hover{text-decoration:underline}
   td.sector{color:var(--mut);font-size:14px}
   td.tk{color:var(--mut);font-size:13px;font-variant-numeric:tabular-nums}
+  .related{margin-top:32px;padding:20px 22px;background:#fff;border:1px solid var(--line);border-radius:12px}
+  .related h2{font-size:18px;margin:0 0 6px}
+  .related p{margin:0 0 8px;color:var(--mut);font-size:15px}
+  .related p:last-child{margin-bottom:0}
+  .related a{font-weight:600;text-decoration:none}
+  .related a:hover{text-decoration:underline}
   footer{margin-top:40px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
   .nav-overlay{position:fixed;inset:0;background:rgba(248,250,252,.92);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:9999}
   .nav-overlay.on{display:flex}
@@ -1022,6 +1034,11 @@ ${HUB_STYLE}
     <thead><tr><th>${t.hubThCompany}</th><th>${t.hubThSector}</th><th>${t.hubThTicker}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
+  <section class="related">
+    <h2>${esc(t.hubRelatedTitle)}</h2>
+    <p>${esc(t.hubRelatedLead)}</p>
+    <p><a href="https://ibex35dashboard.ncdata.eu" hreflang="en" lang="en" rel="noopener">${esc(t.hubRelatedLink)}</a></p>
+  </section>
   <footer>${t.footer('—')}</footer>
 </div>
 <div class="nav-overlay" id="navOverlay" role="status" aria-live="polite">
