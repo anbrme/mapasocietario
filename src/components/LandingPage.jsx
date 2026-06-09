@@ -153,6 +153,22 @@ const PROOF_ITEMS = [
 // same graph the visitor just saw.
 const DEMO_COMPANY = 'ACERINOX SA';
 
+// Quiet styling shared by the two secondary hero buttons so they never drift.
+const secondaryHeroButtonSx = {
+  textTransform: 'none',
+  fontWeight: 600,
+  px: 2.5,
+  py: 1,
+  borderRadius: 2,
+  borderColor: 'rgba(255,255,255,0.23)',
+  color: 'text.secondary',
+  '&:hover': {
+    borderColor: 'rgba(255,255,255,0.4)',
+    bgcolor: 'rgba(255,255,255,0.05)',
+    color: 'text.primary',
+  },
+};
+
 const SPANISH_RESOURCES = [
   { label: 'Mapa societario de empresas españolas', href: '/es' },
   { label: 'Informes due diligence de empresas', href: '/es/informes-due-diligence-empresas' },
@@ -403,20 +419,7 @@ export default function LandingPage() {
                   }
                 }}
                 startIcon={<TrendingUpIcon />}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 2.5,
-                  py: 1,
-                  borderRadius: 2,
-                  borderColor: 'rgba(255,255,255,0.23)',
-                  color: 'text.secondary',
-                  '&:hover': {
-                    borderColor: 'rgba(255,255,255,0.4)',
-                    bgcolor: 'rgba(255,255,255,0.05)',
-                    color: 'text.primary',
-                  },
-                }}
+                sx={secondaryHeroButtonSx}
               >
                 Publicly-traded companies (IBEX 35)
               </Button>
@@ -425,20 +428,7 @@ export default function LandingPage() {
                 size="medium"
                 startIcon={<BarChartIcon />}
                 onClick={() => navigate('/dashboard')}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 2.5,
-                  py: 1,
-                  borderRadius: 2,
-                  borderColor: 'rgba(255,255,255,0.23)',
-                  color: 'text.secondary',
-                  '&:hover': {
-                    borderColor: 'rgba(255,255,255,0.4)',
-                    bgcolor: 'rgba(255,255,255,0.05)',
-                    color: 'text.primary',
-                  },
-                }}
+                sx={secondaryHeroButtonSx}
               >
                 Spain company statistics
               </Button>
