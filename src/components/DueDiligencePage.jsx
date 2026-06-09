@@ -164,17 +164,17 @@ export default function DueDiligencePage() {
             <NotificationsActiveIcon sx={{ color: '#16a34a', mt: 0.25, fontSize: 28 }} />
             <Box>
               <Typography variant="body1" sx={{ fontWeight: 700, mb: 0.5 }}>
-                Monitorización gratuita incluida
+                Free monitoring included
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6, mb: 1.5 }}>
-                Cada informe Due Diligence incluye monitorización gratuita de la empresa. Recibirás alertas
-                por email cuando se publiquen nuevos actos en el BORME (nombramientos, ceses, cambios de capital,
-                disoluciones) o cuando un regulador internacional emita una advertencia a través de IOSCO.
+                Every Due Diligence report includes free monitoring of the company. You will receive email
+                alerts when new BORME filings are published (appointments, resignations, capital changes,
+                dissolutions) or when an international regulator issues a warning through IOSCO.
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Chip label="Alertas BORME" variant="outlined" size="small" sx={{ fontSize: '0.7rem', borderColor: 'rgba(22,163,74,0.3)', color: '#16a34a' }} />
-                <Chip label="Alertas IOSCO (90+ reguladores)" variant="outlined" size="small" sx={{ fontSize: '0.7rem', borderColor: 'rgba(22,163,74,0.3)', color: '#16a34a' }} />
-                <Chip label="Email automático" variant="outlined" size="small" sx={{ fontSize: '0.7rem', borderColor: 'rgba(22,163,74,0.3)', color: '#16a34a' }} />
+                <Chip label="BORME alerts" variant="outlined" size="small" sx={{ fontSize: '0.7rem', borderColor: 'rgba(22,163,74,0.3)', color: '#16a34a' }} />
+                <Chip label="IOSCO alerts (90+ regulators)" variant="outlined" size="small" sx={{ fontSize: '0.7rem', borderColor: 'rgba(22,163,74,0.3)', color: '#16a34a' }} />
+                <Chip label="Automatic email" variant="outlined" size="small" sx={{ fontSize: '0.7rem', borderColor: 'rgba(22,163,74,0.3)', color: '#16a34a' }} />
               </Box>
             </Box>
           </Box>
