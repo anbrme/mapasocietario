@@ -368,7 +368,7 @@ export default function LandingPage() {
             >
               Operated by Nurnberg Consulting SL, Madrid, since 2013. Unofficial service based on public BOE/BORME data.
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
               <Button
                 variant="contained"
                 size="large"
@@ -393,7 +393,7 @@ export default function LandingPage() {
                   and open the live page in an in-app Custom Tab instead. */}
               <Button
                 variant="outlined"
-                size="large"
+                size="medium"
                 component="a"
                 href="/empresas-cotizadas"
                 onClick={(e) => {
@@ -406,18 +406,15 @@ export default function LandingPage() {
                 sx={{
                   textTransform: 'none',
                   fontWeight: 600,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: '1rem',
+                  px: 2.5,
+                  py: 1,
                   borderRadius: 2,
-                  borderWidth: 1.5,
-                  borderColor: 'rgba(102,187,106,0.6)',
-                  color: '#81c784',
-                  bgcolor: 'rgba(102,187,106,0.08)',
+                  borderColor: 'rgba(255,255,255,0.23)',
+                  color: 'text.secondary',
                   '&:hover': {
-                    borderWidth: 1.5,
-                    borderColor: '#66bb6a',
-                    bgcolor: 'rgba(102,187,106,0.16)',
+                    borderColor: 'rgba(255,255,255,0.4)',
+                    bgcolor: 'rgba(255,255,255,0.05)',
+                    color: 'text.primary',
                   },
                 }}
               >
@@ -425,21 +422,21 @@ export default function LandingPage() {
               </Button>
               <Button
                 variant="outlined"
-                size="large"
+                size="medium"
                 startIcon={<BarChartIcon />}
                 onClick={() => navigate('/dashboard')}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 600,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: '1rem',
+                  px: 2.5,
+                  py: 1,
                   borderRadius: 2,
-                  borderColor: 'rgba(25,118,210,0.5)',
-                  color: '#64b5f6',
+                  borderColor: 'rgba(255,255,255,0.23)',
+                  color: 'text.secondary',
                   '&:hover': {
-                    borderColor: '#1976d2',
-                    bgcolor: 'rgba(25,118,210,0.08)',
+                    borderColor: 'rgba(255,255,255,0.4)',
+                    bgcolor: 'rgba(255,255,255,0.05)',
+                    color: 'text.primary',
                   },
                 }}
               >
