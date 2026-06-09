@@ -208,7 +208,7 @@ export default function DueDiligencePage() {
                 <Chip label="Official Registro Mercantil document" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
                 <Chip label="AI financial analysis" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
                 <Chip label="30-45 minutes delivery" variant="outlined" size="small" sx={{ fontSize: '0.7rem' }} />
-                <Chip label="+€17.50 per company" variant="outlined" size="small" sx={{ fontSize: '0.7rem', fontWeight: 600 }} />
+                <Chip label="+EUR 17.50 per company" variant="outlined" size="small" sx={{ fontSize: '0.7rem', fontWeight: 600 }} />
               </Box>
             </Box>
           </Box>
