@@ -12,6 +12,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import SearchIcon from '@mui/icons-material/Search';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import GroupsIcon from '@mui/icons-material/Groups';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import LegalDisclaimer from './LegalDisclaimer';
@@ -116,6 +117,32 @@ export default function PricingPage() {
               <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate('/spanish-company-due-diligence')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, color: 'warning.light', borderColor: 'rgba(255,167,38,0.45)' }}>
                 What is in a report
               </Button>
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: { xs: 1.5, sm: 3 }, mt: 2.5 }}>
+              <Box
+                component="a"
+                href="/sample-dd-report.pdf"
+                target="_blank"
+                rel="noopener"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  color: 'warning.light',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                <DescriptionIcon sx={{ fontSize: 17 }} />
+                See a sample report
+              </Box>
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, color: 'text.secondary', fontSize: '0.82rem', fontWeight: 500 }}>
+                <VerifiedIcon sx={{ fontSize: 17, color: 'success.light' }} />
+                Money-back if the data is wrong or inaccurate
+              </Box>
             </Box>
           </Paper>
 
