@@ -78,6 +78,18 @@ export default function DueDiligencePage() {
             <Chip label="Instant delivery" variant="outlined" size="small" />
             <Chip label="No account needed" variant="outlined" size="small" />
             <Chip label="+ Free monitoring" size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(22,163,74,0.15)', color: '#16a34a' }} />
+            <Chip
+              label="See a sample report (PDF)"
+              size="small"
+              component="a"
+              href="/sample-dd-report.pdf"
+              target="_blank"
+              rel="noopener"
+              clickable
+              icon={<DescriptionIcon sx={{ fontSize: 16, color: 'warning.light' }} />}
+              variant="outlined"
+              sx={{ fontWeight: 600, color: 'warning.light', borderColor: 'rgba(255,167,38,0.5)' }}
+            />
           </Box>
         </Box>
 
