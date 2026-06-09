@@ -16,6 +16,7 @@ const AdminPage = lazy(() => import('./components/AdminPage'));
 import { FilterProvider } from './contexts/FilterProvider';
 import usePageTracking from './hooks/usePageTracking';
 import useAndroidBackButton from './hooks/useAndroidBackButton';
+import { isNativeApp } from './services/listedCompaniesNav';
 import './index.css';
 
 function AppRoutes() {
@@ -58,6 +59,13 @@ if (ddSessionId && /^cs_(test|live|free)_[A-Za-z0-9_]{10,}$/.test(ddSessionId)) 
   localStorage.removeItem('dd_pending_session');
   localStorage.removeItem('dd_include_fs');
   window.location.replace(`/order/${ddSessionId}`);
+}
+
+// Native app launches land on the search screen, not the marketing landing
+// page. Rewrite (not redirect) only at launch so in-app navigation to "/"
+// (graph breadcrumb) still reaches the landing page with the other options.
+if (isNativeApp() && window.location.pathname === '/') {
+  window.history.replaceState(null, '', '/app');
 }
 
 const darkTheme = createTheme({
