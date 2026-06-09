@@ -1,9 +1,16 @@
 // Map a raw position string (as stored on link.relationship / officer
-// position_normalized, e.g. "APO.SOL", "CON.IND.", "CONS.EXT.DOM") to one of
-// ~10 canonical category labels. Shared by the graph component (filter chips +
-// simplified mode) and the officer-capping service so both classify positions
-// identically. The full vocabulary of registry positions lives in
-// src/data/terms.json (officersPositions).
+// position_normalized, e.g. "APO.SOL", "CON.IND.", "VICEPRESID.",
+// "PRECOMAUDIT") to one of ~10 canonical category labels. Shared by the graph
+// component (filter chips + simplified mode) and the officer-capping service
+// so both classify positions identically. The full vocabulary of registry
+// positions lives in src/data/terms.json (officersPositions, ~1045 entries);
+// test/position-categories.test.mjs sweeps all of them.
+//
+// BORME abbreviations are wildly inconsistent (CONSEJERO / CONS. / CONSJ. /
+// CON.IND. all mean consejero), so the rules are families of prefixes, with
+// one structural rule first: a chair/vice-chair/secretary/member/suplente OF
+// an organ (comisión, junta directiva, consejo rector…) is an organ role
+// ("Vocal / Comisión"), not a company-level Presidente/Secretario.
 export const POSITION_CATEGORY_ORDER = [
   'Presidente',
   'Vicepresidente',
@@ -17,22 +24,46 @@ export const POSITION_CATEGORY_ORDER = [
   'Otros',
 ];
 
+// Tokens marking that the role is held within an organ (comisión, comité,
+// junta, consejo rector, asamblea). COM(?!ISAR|SAR|ISIN) keeps COMISARIO /
+// COMSARIO / COMISINOBLI (bondholder-syndicate trustees) out — those are
+// "Otros", not commission members.
+const ORGAN_CONTEXT = /COM(?!ISAR|SAR|ISIN)|CMS|CMTE|CTE[.\s]|JTA|JUNTA|JUN[.\s]|J\.\s?DIR|J\.\s?ADM|J\.\s?G|J\.\s?REC|J\.D\b|J\.R\b|JT\.\s?DI|CON[S]?\.?\s?RE[CG]?\b|C\.\s?RE[CT]|C\.PERM|CJO|ASAMBL|CONS\.GO|CON\.GOB|CONADM|CONS\.\s?LIQ|C\.DIR|CO\.E|C\.C\.|C\.D\.|C\.N\.|C\.A\.|CO\.DE|C\.RIESGO|C\.SEGURI|C\.INV|C\.RET|C\.PRO|C\.AUD/;
+
+// Role-prefix shapes that combine with ORGAN_CONTEXT (pre/vice/sec/tes/vocal/
+// member/suplente abbreviations, down to single letters like "P.COM.EJEC.").
+const ORGAN_ROLE_PREFIX = /^(P\b|P\.|PR\b|PR\.|PRE|PRES|V\b|V\.|V-|VP|VPR|VPRE|VPTE|VICE|VIC|VS|VSE|VSEC|VCS|VCP|S\b|S\.|SC|SCR|SCT|SE\.|SEC|VOC|VO\.|VOTI|VOSU|MIE|MIEM|MMBR|MBRO|MRO|M\.|TES|SUPL|SUP\b|SUP\.|VTE|CO\.|COPRE)/;
+
 export const positionCategoryFor = pos => {
-  const p = (pos || '').toUpperCase();
+  const p = (pos || '').trim().toUpperCase();
   if (!p) return 'Otros';
-  if (p.startsWith('PRESIDENTE') || p.startsWith('PDTE') || p.startsWith('PRES.') || p.startsWith('PRE.COM')) return 'Presidente';
-  if (p.startsWith('VICEPRESIDENTE') || p.startsWith('VPDTE') || p.startsWith('VICEPTE') || p.startsWith('VIC.COM') || p.startsWith('VICPTE')) return 'Vicepresidente';
-  // "CON." covers the registry's S-less consejero abbreviations: CON.DEL.*,
-  // CON.IND.*, CON.INTERIN., CON.JUN.ADM., … (no apoderado/auditor starts with "CON.")
-  if (p.startsWith('CONSEJERO') || p.startsWith('CONS.') || p.startsWith('CONS ') || p.startsWith('CON.')) return 'Consejero';
-  if (p.startsWith('ADMINISTRADOR') || p.startsWith('ADM.') || p.startsWith('ADM ')) return 'Administrador';
-  if (p.startsWith('SECRETARIO') || p.startsWith('SECRET.') || p.startsWith('SRIO') || p.startsWith('SECR.')) return 'Secretario';
-  if (p.startsWith('LIQUIDADOR') || p.startsWith('LIQ.') || p.startsWith('LIQ ')) return 'Liquidador';
-  if (p.startsWith('VOCAL')) return 'Vocal / Comisión';
-  if (/^(MIE|MBRO|MRO|MIEM|M)\.?COM/.test(p)) return 'Vocal / Comisión';
-  if (p.startsWith('AUDITOR') || p.startsWith('AUD.')) return 'Auditor';
+
+  // Organ roles first — except consejero/presidente titles, which stay
+  // company-level even when the abbreviation mentions an organ (CON.DEL.COM.,
+  // PRESIDENTE...). Bare commission names used as the cargo ("COM. AUDIT.",
+  // "COMS.SEGUIM.") and fused chair/secretary forms (PRECOMAUDIT, SECOAUDI)
+  // are organ roles too.
+  if (/^COMS?[.\s]/.test(p)) return 'Vocal / Comisión';
+  if (/^(PRE|SEC|VP|VS)CO/.test(p)) return 'Vocal / Comisión';
+  if (
+    ORGAN_CONTEXT.test(p) &&
+    ORGAN_ROLE_PREFIX.test(p) &&
+    !/^(CONSEJER|CONSJ|CONS\.\s?DEL|CON\.DEL|PRESIDENT)/.test(p)
+  ) {
+    return 'Vocal / Comisión';
+  }
+
+  if (/^(PRESIDENT|PDTE|PTE\b|PTE\.|PRES|PRESID|COPRE)/.test(p)) return 'Presidente';
+  if (/^(VICEPRESIDEN|VICEPRESID|VICEPRESI|VICEPRE|VICEPR|VICPRES|VICPTE|VICEPTE|VPDTE|V-PRE|VPRE|VPTE)/.test(p)) return 'Vicepresidente';
+  if (/^(CONSEJER|CONSEJ|CONSJ|CONS[.\s]|CON\.)/.test(p)) return 'Consejero';
+  if (/^(ADMINISTRADOR|ADMINISTRAD|ADMINISTR|ADMIN|ADM[.\s]|ADMR|ADMOR|ADMPROV)/.test(p)) return 'Administrador';
+  if (/^(SECRETARI|SECRET|SECRE|SECR|SEC[.\s]|SRIO|VICESECRETAR|VICESECRET|VICESEC|VICSEC|VSECR|VSEC|VCSEC|V-SEC|SCR|SCRT)/.test(p)) return 'Secretario';
+  if (/^(LIQUIDADOR|LIQUID|LIQ[.\s])/.test(p)) return 'Liquidador';
+  if (/^VOC(AL|[\d.])/.test(p)) return 'Vocal / Comisión';
+  if (/^(MIE|MIEM|MMBR|MBRO|MRO|M)\.?COM/.test(p)) return 'Vocal / Comisión';
+  if (/^(AUDITOR|AUDIT|AUDT|AUD[.\s]|COAUD|CO-AUD)/.test(p)) return 'Auditor';
   // DTOR.APO.SUC = director apoderado de sucursal — apoderado variant.
-  if (p.startsWith('APO') || p.startsWith('APD') || p.startsWith('DTOR.APO')) return 'Apoderado';
+  if (/^(APO|APD)/.test(p) || /^DTOR\.APO/.test(p)) return 'Apoderado';
   return 'Otros';
 };
 

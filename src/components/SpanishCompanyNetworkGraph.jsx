@@ -3906,22 +3906,19 @@ const SpanishCompanyNetworkGraph = ({
         if (isSameNodeId(pathfinderStartNode?.id, nodeId) || isSameNodeId(pathfinderEndNode?.id, nodeId)) return;
 
         const nodeLinks = linksByNodeId.get(nodeId) || [];
-        if (nodeLinks.length !== 1) return;
-
-        const link = nodeLinks[0];
-        if (link.type && link.type !== 'officer-company') return;
+        if (nodeLinks.length === 0) return;
 
         // Exclusion list: simplified mode hides ONLY apoderado-type roles.
-        // Everything else (board roles, auditors, unmapped positions, former
-        // officers) stays visible — see SIMPLIFIED_EXCLUDED_CATEGORIES.
-        const positionCategory = positionCategoryFor(link.relationship);
-        if (!SIMPLIFIED_EXCLUDED_CATEGORIES.has(positionCategory)) return;
-
-        const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
-        const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
-        const companyId = sourceId === nodeId ? targetId : sourceId;
-        const companyNode = filteredNodes.find(n => isSameNodeId(n.id, companyId));
-        if (!companyNode || companyNode.type === 'officer') return;
+        // Collapse requires EVERY link to be an excluded role (an apoderado
+        // with both an appointment and a revocation edge, or proxy roles in
+        // several companies, still collapses; anyone holding a single
+        // non-excluded position anywhere stays visible). Non officer-company
+        // links (e.g. merge edges) keep the node, conservatively.
+        const allLinksExcluded = nodeLinks.every(link =>
+          (!link.type || link.type === 'officer-company') &&
+          SIMPLIFIED_EXCLUDED_CATEGORIES.has(positionCategoryFor(link.relationship))
+        );
+        if (!allLinksExcluded) return;
         lowValueNodeIds.add(nodeId);
       });
 
