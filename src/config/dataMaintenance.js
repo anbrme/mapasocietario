@@ -1,5 +1,5 @@
 export const DATA_MAINTENANCE = Object.freeze({
-  enabled: true,
+  enabled: false,
   title: 'IMPORTANT - MAINTENANCE MODE RUNNING',
   message:
     'Company and officers search is currently unavailable. It will be available again in a few hours. Thanks for your patience.',
