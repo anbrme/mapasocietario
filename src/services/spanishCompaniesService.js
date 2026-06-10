@@ -11,6 +11,14 @@
 
 import { positionCategoryFor } from '../utils/positionCategories';
 
+const createApiError = (label, response, responseBody = '') => {
+  const detail = responseBody ? ` - ${responseBody}` : '';
+  const error = new Error(`${label}: ${response.status}${detail}`);
+  error.status = response.status;
+  error.responseBody = responseBody;
+  return error;
+};
+
 class SpanishCompaniesService {
   constructor() {
     // Use api-proxy worker for CORS handling
@@ -380,7 +388,7 @@ class SpanishCompaniesService {
     );
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`V3 search error: ${response.status} - ${errorText}`);
+      throw createApiError('V3 search error', response, errorText);
     }
     return response.json();
   }
@@ -396,7 +404,7 @@ class SpanishCompaniesService {
     );
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`V3 company error: ${response.status} - ${errorText}`);
+      throw createApiError('V3 company error', response, errorText);
     }
     return response.json();
   }
@@ -417,7 +425,7 @@ class SpanishCompaniesService {
     );
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`V3 events error: ${response.status} - ${errorText}`);
+      throw createApiError('V3 events error', response, errorText);
     }
     return response.json();
   }
@@ -436,7 +444,10 @@ class SpanishCompaniesService {
       `${this.baseUrl}/bormes/v3/expand-officer?${params}`,
       { method: 'GET' }
     );
-    if (!response.ok) throw new Error(`expandOfficerV3 ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw createApiError('V3 officer expansion error', response, errorText);
+    }
     const data = await response.json();
 
     // The API does substring matching — "PIÑEIRO GOMEZ JOSE" also returns

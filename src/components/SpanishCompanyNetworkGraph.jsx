@@ -78,6 +78,10 @@ import {
 } from '../utils/positionCategories';
 import { useTerms } from '../hooks/useTerms';
 import { spanishCompaniesService, SpanishCompaniesService } from '../services/spanishCompaniesService';
+import {
+  DATA_MAINTENANCE,
+  isDataIndexUnavailableError,
+} from '../config/dataMaintenance';
 import { findDeputyMatch } from '../services/congresoOfficerMatcher';
 import {
   findShortestPath,
@@ -1235,6 +1239,12 @@ const SpanishCompanyNetworkGraph = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleAutocomplete = useCallback(
     debounce(async value => {
+      if (DATA_MAINTENANCE.enabled) {
+        setAutocompleteOptions([]);
+        setAutocompleteLoading(false);
+        return;
+      }
+
       if (!value || value.length < 2) {
         setAutocompleteOptions([]);
         return;
@@ -1323,6 +1333,11 @@ const SpanishCompanyNetworkGraph = ({
   }, []);
 
   const handleSearch = async (queryOverride = null, exactMatch = false, searchTypeOverride = null) => {
+    if (DATA_MAINTENANCE.enabled) {
+      setError(null);
+      return;
+    }
+
     const query = (queryOverride || searchQuery).trim();
     if (!query) {
       setError('Por favor, introduce un término de búsqueda');
@@ -1414,7 +1429,15 @@ const SpanishCompanyNetworkGraph = ({
       }
     } catch (err) {
       console.error('Search error:', err);
-      setError(`Error en la búsqueda: ${err.message}`);
+      if (isDataIndexUnavailableError(err)) {
+        setError({
+          kind: 'maintenance',
+          title: DATA_MAINTENANCE.title,
+          message: DATA_MAINTENANCE.message,
+        });
+      } else {
+        setError(`Error en la búsqueda: ${err.message}`);
+      }
     } finally {
       setIsSearching(false);
     }
@@ -4633,7 +4656,7 @@ const SpanishCompanyNetworkGraph = ({
 
   // Handle key down for search
   const handleKeyDown = e => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !DATA_MAINTENANCE.enabled) {
       handleSearch();
     }
   };
@@ -4641,6 +4664,20 @@ const SpanishCompanyNetworkGraph = ({
   // Shared search panel content
   const searchPanelContent = (
     <Paper sx={{ p: 1, px: 1.5, m: embedded ? 0 : 2, mb: 0 }}>
+      {DATA_MAINTENANCE.enabled && (
+        <Alert
+          severity="info"
+          sx={{
+            mb: 1.25,
+            '& .MuiAlert-message': { width: '100%' },
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+            {DATA_MAINTENANCE.title}
+          </Typography>
+          <Typography variant="body2">{DATA_MAINTENANCE.message}</Typography>
+        </Alert>
+      )}
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel>Tipo</InputLabel>
@@ -4701,6 +4738,7 @@ const SpanishCompanyNetworkGraph = ({
 
         <Autocomplete
           freeSolo
+          disabled={DATA_MAINTENANCE.enabled}
           options={autocompleteOptions}
           loading={autocompleteLoading}
           inputValue={searchQuery}
@@ -4897,7 +4935,7 @@ const SpanishCompanyNetworkGraph = ({
         <Button
           variant="contained"
           onClick={() => handleSearch()}
-          disabled={isSearching || !searchQuery.trim()}
+          disabled={DATA_MAINTENANCE.enabled || isSearching || !searchQuery.trim()}
           startIcon={isSearching ? <CircularProgress size={16} /> : <SearchIcon />}
         >
           Search
@@ -5437,8 +5475,21 @@ const SpanishCompanyNetworkGraph = ({
 
       {/* Error Display */}
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }} onClose={() => setError(null)}>
-          {error}
+        <Alert
+          severity={typeof error === 'object' && error.kind === 'maintenance' ? 'info' : 'error'}
+          sx={{ mt: 2 }}
+          onClose={() => setError(null)}
+        >
+          {typeof error === 'object' && error.kind === 'maintenance' ? (
+            <>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                {error.title}
+              </Typography>
+              <Typography variant="body2">{error.message}</Typography>
+            </>
+          ) : (
+            error
+          )}
         </Alert>
       )}
     </Paper>
