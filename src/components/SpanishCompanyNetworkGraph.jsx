@@ -3566,6 +3566,9 @@ const SpanishCompanyNetworkGraph = ({
               isDissolved,
               isInConcurso,
               isUnipersonal,
+              // Re-registration trail: >1 entry means the company changed its
+              // hoja registral (e.g. a provincial move — CaixaBank 2017).
+              hojaHistory: company?.hoja_history || [],
               officers: datedOfficers,
               currentOfficers,
               eventCount: events.length,
@@ -6624,6 +6627,18 @@ const SpanishCompanyNetworkGraph = ({
                         <Box>
                           <Typography variant="caption" color="text.secondary">Publicaciones encontradas</Typography>
                           <Typography variant="body2">{e.eventCount}</Typography>
+                        </Box>
+                      )}
+                      {e?.hojaHistory?.length > 1 && (
+                        <Box sx={{ gridColumn: '1 / -1' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Cambio de hoja registral (reinscripción)
+                          </Typography>
+                          <Typography variant="body2">
+                            {e.hojaHistory.map((h, i) => (
+                              `${h.hoja}${h.province ? ` (${h.province})` : ''} ${formatDate(h.first_seen)} — ${formatDate(h.last_seen)}`
+                            )).join('  →  ')}
+                          </Typography>
                         </Box>
                       )}
                     </Box>
