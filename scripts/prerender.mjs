@@ -179,21 +179,27 @@ const routes = [
   },
   {
     path: '/es',
-    title: 'Mapa Societario de Empresas Españolas | Mapa Societario',
+    title: 'Mapa Societario | Buscador de Empresas Españolas y Grafo de Relaciones Societarias',
     description:
-      'Busca empresas y administradores en España. Visualiza relaciones societarias basadas en BORME y genera informes due diligence desde EUR 22.50.',
-    ogType: 'article',
+      'Due diligence de empresas y administradores españoles al instante. Grafo interactivo de relaciones societarias basado en BORME, historial de administradores e informes due diligence por IA desde 22,50 EUR.',
+    ogType: 'website',
     lang: 'es',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Mapa societario de empresas españolas</h1>
-        <p>Explora empresas, administradores, cargos y conexiones societarias en España con un grafo interactivo basado en publicaciones oficiales del BORME.</p>
+        <h1>Mapa Societario &mdash; Due diligence de empresas y administradores españoles</h1>
+        <p>Explora relaciones societarias entre empresas españolas y sus administradores con un grafo interactivo basado en publicaciones oficiales del BORME (Registro Mercantil), y genera informes due diligence desde 22,50 EUR.</p>
         ${disclaimerHtmlEs}
-        <h2>Qué puedes investigar</h2>
-        <p>Busca una sociedad española y ve sus administradores, cargos, socios únicos y participaciones íntegramente poseídas por otras sociedades. También puedes buscar por persona para descubrir en qué sociedades aparece como administrador, consejero, apoderado u otro cargo mercantil.</p>
-        <h2>Por qué es útil</h2>
-        <p>El BORME contiene información pública esencial, pero no siempre es cómodo para una investigación rápida. Mapa Societario convierte esas publicaciones en un índice consultable y en un grafo navegable, incorpora comprobación de sanciones publicadas en el BOE para informes due diligence y marca con una insignia amarilla a administradores que tienen o tuvieron cargo político en el Congreso de los Diputados.</p>
-        <p><a href="/app">Buscar en el grafo</a> | <a href="/due-diligence">Ver informes due diligence</a></p>
+        <h2>Explorar</h2>
+        <ul>
+          <li><a href="/app">Buscar empresas y administradores (grafo interactivo)</a></li>
+          <li><a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></li>
+          <li><a href="/due-diligence">Informes due diligence</a></li>
+          <li><a href="/es/informes-due-diligence-empresas/">Informes due diligence de empresas</a></li>
+          <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
+          <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
+          <li><a href="/es/mapa-relaciones-societarias/">Mapa de relaciones societarias</a></li>
+          <li><a href="/">English version</a></li>
+        </ul>
       </main>`,
   },
   {
@@ -324,11 +330,14 @@ for (const route of routes) {
     /(<link\s+rel="canonical"[^>]*href=")[^"]*(")/, `$1${pageUrl}$2`,
   );
 
-  if (route.lang === 'es') {
+  // hreflang reciprocity: only the homepage pair (/ and /es) are true
+  // translations of each other, so only they carry alternate links. The
+  // other /es/* guide pages have no English equivalents.
+  if (route.path === '/' || route.path === '/es') {
     html = injectHeadLinks(
       html,
-      `    <link rel="alternate" hreflang="es" href="${pageUrl}" />
-    <link rel="alternate" hreflang="en" href="${siteUrl}/" />
+      `    <link rel="alternate" hreflang="en" href="${siteUrl}/" />
+    <link rel="alternate" hreflang="es" href="${siteUrl}/es/" />
     <link rel="alternate" hreflang="x-default" href="${siteUrl}/" />`,
     );
   }

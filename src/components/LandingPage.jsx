@@ -37,115 +37,31 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
 import { isNativeApp, openListedCompanies } from '../services/listedCompaniesNav';
+import { LANDING_COPY } from './landingCopy';
 
-const CAPABILITIES = [
-  {
-    icon: <AccountTreeIcon />,
-    title: 'Company network graph',
-    desc: 'Search any Spanish company and instantly see its directors, officers, and corporate connections in an interactive force graph.',
-    color: '#1976d2',
-    href: '/app',
-  },
-  {
-    icon: <PersonIcon />,
-    title: 'Officer lookup',
-    desc: 'Search an officer by name and discover every company they are or were associated with — appointments, resignations, roles. This includes a comprehensive history of all their corporate affiliations, sorted by seniority and recency, with key details like appointment dates, roles, and even current or former political positions highlighted.',
-    color: '#f57c00',
-    href: '/app',
-  },
-  {
-    icon: <DescriptionIcon />,
-    title: 'Due Diligence PDF',
-    desc: 'Purchase a comprehensive AI-powered report with sanctions screening, risk scoring, capital history, and red flag analysis. Add financial statements with AI analysis.',
-    color: '#f57c00',
-    href: '/due-diligence',
-  },
-  {
-    icon: <BarChartIcon />,
-    title: 'Analytics dashboard',
-    desc: 'Monitor formations, dissolutions, officer changes, and capital trends across Spain — filterable by province and date.',
-    color: '#1976d2',
-    href: '/dashboard',
-  },
+const SITE_URL = 'https://mapasocietario.es';
+
+// Structural (non-copy) counterparts of the copy arrays in landingCopy.jsx.
+// Each array MUST keep the same length and order as its copy counterpart;
+// they are zipped by index at render time.
+const CAPABILITY_META = [
+  { icon: <AccountTreeIcon />, color: '#1976d2', href: '/app' },
+  { icon: <PersonIcon />, color: '#f57c00', href: '/app' },
+  { icon: <DescriptionIcon />, color: '#f57c00', href: '/due-diligence' },
+  { icon: <BarChartIcon />, color: '#1976d2', href: '/dashboard' },
 ];
 
-const USE_CASES = [
-  { icon: <SecurityIcon />, label: 'Compliance / KYC', desc: 'Screen counterparties and verify corporate structures before onboarding.' },
-  { icon: <TrendingUpIcon />, label: 'Sales / lead research', desc: 'Identify decision-makers and map corporate groups for targeted outreach.' },
-  { icon: <NewspaperIcon />, label: 'Journalists / investigators', desc: 'Trace connections between companies and individuals across the registry.' },
-  { icon: <GavelIcon />, label: 'Investors / M&A screening', desc: 'Evaluate corporate history, officer track records, and red flags before deals.' },
-];
+const USE_CASE_ICONS = [<SecurityIcon />, <TrendingUpIcon />, <NewspaperIcon />, <GavelIcon />];
 
-const HOW_TO_STEPS = [
-  {
-    number: '1',
-    icon: <SearchIcon />,
-    title: 'Search',
-    desc: 'Type a company or officer name in the search bar. Select from the autocomplete suggestions to load the entity and its connections into the graph.',
-  },
-  {
-    number: '2',
-    icon: <TouchAppIcon />,
-    title: 'Double-click to expand',
-    desc: 'Double-click any node in the graph to expand it — for a company, this loads all its officers; for an officer, it loads all their companies.',
-  },
-  {
-    number: '3',
-    icon: <MouseIcon />,
-    title: 'Right-click for actions',
-    desc: 'Right-click any node to open a context menu. You can edit or merge nodes, hide them, delete them, preview the full data, or buy a Due Diligence report.',
-  },
-  {
-    number: '4',
-    icon: <PreviewIcon />,
-    title: 'Preview company data',
-    desc: 'Select "Vista previa de datos" from the right-click menu to see a detailed overview: current officers sorted by seniority, address, capital, corporate events — all before buying a report.',
-  },
-  {
-    number: '5',
-    icon: <ZoomInIcon />,
-    title: 'Navigate the graph',
-    desc: 'Scroll to zoom in/out. Drag the canvas to pan. Drag individual nodes to reposition them. Use the settings panel to adjust node size, label size, and physics.',
-  },
-  {
-    number: '6',
-    icon: <DescriptionIcon />,
-    title: 'Buy a Due Diligence report',
-    desc: 'From the right-click menu or the data preview, purchase a comprehensive PDF with AI analysis, sanctions screening, red flags, officer network, and optional financial statements.',
-  },
-];
+const STEP_ICONS = [<SearchIcon />, <TouchAppIcon />, <MouseIcon />, <PreviewIcon />, <ZoomInIcon />, <DescriptionIcon />];
 
-const DIFFERENTIATORS = [
-  { icon: <VerifiedIcon />, title: 'Spanish registry focus', desc: 'Purpose-built for BORME data — not a generic international database.' },
-  { icon: <HubIcon />, title: 'Relationship graph', desc: 'Visual network exploration, not just record lookup. See connections at a glance.' },
-  { icon: <PaymentsIcon />, title: 'Cheap one-off reports', desc: 'EUR 22.50 per Due Diligence report (plus VAT — on Android, Google Play adds it per country). No subscription, no account required.' },
-  { icon: <SpeedIcon />, title: 'Fast exploratory workflow', desc: 'From search to insight in seconds. Type a name, explore the graph, buy a report.' },
-];
+const DIFFERENTIATOR_ICONS = [<VerifiedIcon />, <HubIcon />, <PaymentsIcon />, <SpeedIcon />];
 
-const FAQ_ITEMS = [
-  {
-    question: 'Is the data accurate and up-to-date?',
-    answer: 'Data is sourced from official Spanish public registries (BORME) and updated daily. The data covers the period from 1 January 2009 to the present, so companies formed or having registry activity before 1 January 2009 may show missing information (precisely, the information filed before 1 January 2009). Since the data is parsed from PDF publications, you should be aware of some caveats — specifically, officers are identified by name, and while we use several techniques to avoid mismatches, always verify critical information with official sources.',
-  },
-  { 
-    question: 'Do I need to pay or create an account?',
-    answer: 'The network graph as well as all options available by right-clicking on a node are completely free — no account, no signup. Due Diligence reports are a paid feature available via a one-time purchase per company (EUR 22.50). Spanish financial statements (Cuentas Anuales) are an optional add-on for an additional EUR 17.50 per company. There are no subscriptions or recurring fees — just pay for the reports you need, when you need them. On the web, taxes are calculated by Stripe at checkout; in the Android app, Google Play is the merchant of record and adds VAT per country, so the final price shown there may differ from EUR 22.50.',
-  }, 
-  {
-    question: 'What is a Due Diligence report?',
-    answer: 'A comprehensive PDF with AI-powered analysis and sanctions cross-checking, covering corporate structure, full officer history, capital events, red flags, and key changes over time — far more detail than the network graph alone. You can also add official financial statements (Cuentas Anuales) from the Registro Mercantil, including an AI-powered financial analysis with key ratios and trends.',
-  },
-  {
-    question: 'Can I get API access?',
-    answer: 'Yes. Please write to app@ncdata.eu with a brief description of your intended use case, so that we can tailor our response to your needs.',
-  },
-];
-
-const PROOF_ITEMS = [
-  'By Nurnberg Consulting SL (Madrid, since 2013)',
-  'Based on official BORME publications',
-  'Free graph exploration',
-  'Reports from EUR 22.50',
+const PROFESSIONAL_META = [
+  { icon: <DescriptionIcon />, href: '/spanish-company-due-diligence' },
+  { icon: <NotificationsActiveIcon />, href: '/due-diligence' },
+  { icon: <HubIcon />, href: 'mailto:app@ncdata.eu?subject=Spanish%20company%20data%20API' },
+  { icon: <BusinessCenterIcon />, href: 'https://nurnbergconsulting.com', external: true },
 ];
 
 // Company shown in the landing demo screenshot. MUST match the company
@@ -168,55 +84,6 @@ const secondaryHeroButtonSx = {
     color: 'text.primary',
   },
 };
-
-const SPANISH_RESOURCES = [
-  { label: 'Mapa societario de empresas españolas', href: '/es' },
-  { label: 'Informes due diligence de empresas', href: '/es/informes-due-diligence-empresas' },
-  { label: 'Buscar administradores de empresas', href: '/es/buscar-administradores-empresas' },
-  { label: 'Grafo de empresas BORME', href: '/es/borme-grafo-empresas' },
-  { label: 'Mapa de relaciones societarias', href: '/es/mapa-relaciones-societarias' },
-];
-
-const TOP_LINKS = [
-  { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence' },
-  { label: 'Pricing', href: '/pricing' },
-  { label: 'About', href: '/about.html' },
-  { label: 'Terms', href: '/terms.html' },
-  { label: 'Privacy', href: '/privacy.html' },
-  { label: 'Español', href: '/es', alignRight: true },
-];
-
-const PROFESSIONAL_PATHS = [
-  {
-    icon: <DescriptionIcon />,
-    title: 'Instant self-serve reports',
-    desc: 'One-off Spanish company due diligence PDFs for quick KYB, supplier checks, investor screening, and internal files.',
-    action: 'See report details',
-    href: '/spanish-company-due-diligence',
-  },
-  {
-    icon: <NotificationsActiveIcon />,
-    title: 'Monitoring included',
-    desc: 'Every Spanish due diligence purchase can include free BORME and IOSCO alert monitoring for the reviewed company.',
-    action: 'Open due diligence',
-    href: '/due-diligence',
-  },
-  {
-    icon: <HubIcon />,
-    title: 'NC Data API and licensing',
-    desc: 'For platforms, compliance providers, and data resellers that need Spanish registry intelligence through NC Data API access or data feeds.',
-    action: 'Discuss NC Data API access',
-    href: 'mailto:app@ncdata.eu?subject=Spanish%20company%20data%20API',
-  },
-  {
-    icon: <BusinessCenterIcon />,
-    title: 'Human-led investigations',
-    desc: 'For higher-stakes matters, Nurnberg Consulting uses these platforms internally and adds analyst judgment, source retrieval, and bespoke research.',
-    action: 'Visit Nurnberg Consulting',
-    href: 'https://nurnbergconsulting.com',
-    external: true,
-  },
-];
 
 // Shared section wrapper for consistent vertical rhythm
 const Section = ({ children, sx = {}, ...props }) => (
@@ -252,27 +119,34 @@ const SectionLabel = ({ children }) => (
   </Typography>
 );
 
-export default function LandingPage() {
+export default function LandingPage({ lang = 'en' }) {
+  const copy = LANDING_COPY[lang];
   const navigate = useNavigate();
 
   // Hide the demo frame entirely if the screenshot asset is missing —
   // never render a broken image.
   const [demoImgOk, setDemoImgOk] = React.useState(true);
 
+  const canonical = lang === 'es' ? `${SITE_URL}/es/` : `${SITE_URL}/`;
+
   return (
     <>
-      <Helmet>
-        <title>Mapa Societario | Spanish Company Search &amp; Corporate Relationship Graph</title>
-        <meta name="description" content="Due diligence on Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history lookup, and AI-powered due diligence reports from EUR 22.50." />
-        <link rel="canonical" href="https://mapasocietario.es/" />
-        <meta property="og:title" content="Mapa Societario | Spanish Company Search & Corporate Relationship Graph" />
-        <meta property="og:description" content="Due diligence on Spanish companies and directors instantly. Interactive BORME-based corporate relationship graph, officer history, and AI-powered due diligence reports." />
-        <meta property="og:url" content="https://mapasocietario.es/" />
+      <Helmet htmlAttributes={{ lang }}>
+        <title>{copy.meta.title}</title>
+        <meta name="description" content={copy.meta.description} />
+        <link rel="canonical" href={canonical} />
+        <link rel="alternate" hrefLang="en" href={`${SITE_URL}/`} />
+        <link rel="alternate" hrefLang="es" href={`${SITE_URL}/es/`} />
+        <link rel="alternate" hrefLang="x-default" href={`${SITE_URL}/`} />
+        <meta property="og:locale" content={copy.meta.ogLocale} />
+        <meta property="og:title" content={copy.meta.title} />
+        <meta property="og:description" content={copy.meta.ogDescription} />
+        <meta property="og:url" content={canonical} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Mapa Societario" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Mapa Societario | Spanish Company Search & Corporate Relationship Graph" />
-        <meta name="twitter:description" content="Due diligence on Spanish companies and directors instantly. BORME-based corporate graph, officer history, and due diligence reports from EUR 22.50." />
+        <meta name="twitter:title" content={copy.meta.title} />
+        <meta name="twitter:description" content={copy.meta.twitterDescription} />
       </Helmet>
 
       <Box
@@ -313,7 +187,7 @@ export default function LandingPage() {
               gap: { xs: 1.25, sm: 2.25 },
             }}
           >
-            {TOP_LINKS.map((link) => (
+            {copy.topLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -356,7 +230,7 @@ export default function LandingPage() {
                 mx: 'auto',
               }}
             >
-              Due diligence on Spanish companies and directors in seconds
+              {copy.hero.h1}
             </Typography>
             <Typography
               variant="body1"
@@ -369,7 +243,7 @@ export default function LandingPage() {
                 mb: 4,
               }}
             >
-              BORME-based corporate relationship search, officer history, and instant due diligence reports.
+              {copy.hero.subtitle}
             </Typography>
             <Typography
               variant="caption"
@@ -382,7 +256,7 @@ export default function LandingPage() {
                 lineHeight: 1.6,
               }}
             >
-              Operated by Nurnberg Consulting SL, Madrid, since 2013. Unofficial service based on public BOE/BORME data.
+              {copy.hero.operatedBy}
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
               <Button
@@ -401,7 +275,7 @@ export default function LandingPage() {
                   '&:hover': { bgcolor: '#1565c0' },
                 }}
               >
-                Search companies and officers
+                {copy.hero.searchCta}
               </Button>
               {/* Real anchor (full page load) so the Cloudflare Pages Function
                   serves /empresas-cotizadas rather than the SPA fallback. In the
@@ -421,7 +295,7 @@ export default function LandingPage() {
                 startIcon={<TrendingUpIcon />}
                 sx={secondaryHeroButtonSx}
               >
-                Publicly-traded companies (IBEX 35)
+                {copy.hero.listedCta}
               </Button>
               <Button
                 variant="outlined"
@@ -430,7 +304,7 @@ export default function LandingPage() {
                 onClick={() => navigate('/dashboard')}
                 sx={secondaryHeroButtonSx}
               >
-                Spain company statistics
+                {copy.hero.statsCta}
               </Button>
             </Box>
             {/* Trust row — the two signals that most reduce buyer hesitation
@@ -463,7 +337,7 @@ export default function LandingPage() {
                 }}
               >
                 <DescriptionIcon sx={{ fontSize: 17 }} />
-                See a sample report
+                {copy.hero.sampleReportCta}
               </Box>
               <Box
                 sx={{
@@ -476,7 +350,7 @@ export default function LandingPage() {
                 }}
               >
                 <VerifiedIcon sx={{ fontSize: 17, color: 'success.light' }} />
-                Money-back if the data is wrong or inaccurate
+                {copy.hero.moneyBack}
               </Box>
             </Box>
             {!isNativeApp() && (
@@ -487,19 +361,19 @@ export default function LandingPage() {
                   href="https://play.google.com/store/apps/details?id=es.mapasocietario.app"
                   target="_blank"
                   rel="noopener"
-                  aria-label="Get it on Google Play"
+                  aria-label={copy.hero.playBadgeAlt}
                   sx={{ display: 'inline-block', transition: 'opacity .15s', '&:hover': { opacity: 0.85 } }}
                 >
                   <Box
                     component="img"
                     src="/google-play-badge.svg"
-                    alt="Get it on Google Play"
+                    alt={copy.hero.playBadgeAlt}
                     sx={{ height: 56, width: 'auto', display: 'block' }}
                   />
                 </Box>
               </Box>
             )}
-            <LegalDisclaimer dense sx={{ mt: 4, maxWidth: 760, mx: 'auto' }} />
+            <LegalDisclaimer dense language={lang} sx={{ mt: 4, maxWidth: 760, mx: 'auto' }} />
           </Section>
         </Box>
 
@@ -526,7 +400,7 @@ export default function LandingPage() {
               gap: { xs: 2, sm: 5 },
             }}
           >
-            {PROOF_ITEMS.map((item) => (
+            {copy.proofItems.map((item) => (
               <Typography
                 key={item}
                 variant="caption"
@@ -559,9 +433,9 @@ export default function LandingPage() {
             WHAT YOU CAN DO
         ============================================================ */}
         <Section>
-          <SectionLabel>What you can do</SectionLabel>
+          <SectionLabel>{copy.capabilities.label}</SectionLabel>
           <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 4, letterSpacing: '-0.02em' }}>
-            Explore corporate relationships, perform due diligence on officers, and generate reports
+            {copy.capabilities.heading}
           </Typography>
           <Box
             sx={{
@@ -570,11 +444,11 @@ export default function LandingPage() {
               gap: 2.5,
             }}
           >
-            {CAPABILITIES.map((cap) => (
+            {copy.capabilities.items.map((cap, i) => (
               <Paper
                 key={cap.title}
                 component="a"
-                href={cap.href}
+                href={CAPABILITY_META[i].href}
                 elevation={0}
                 sx={{
                   display: 'block',
@@ -586,7 +460,7 @@ export default function LandingPage() {
                   color: 'inherit',
                   transition: 'border-color 0.2s, background-color 0.2s, transform 0.2s',
                   '&:hover': {
-                    borderColor: `${cap.color}80`,
+                    borderColor: `${CAPABILITY_META[i].color}80`,
                     bgcolor: 'rgba(255,255,255,0.04)',
                     transform: 'translateY(-2px)',
                   },
@@ -595,13 +469,13 @@ export default function LandingPage() {
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
                   <Box
                     sx={{
-                      color: cap.color,
+                      color: CAPABILITY_META[i].color,
                       opacity: 0.8,
                       mt: 0.25,
                       '& .MuiSvgIcon-root': { fontSize: 24 },
                     }}
                   >
-                    {cap.icon}
+                    {CAPABILITY_META[i].icon}
                   </Box>
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
@@ -629,12 +503,12 @@ export default function LandingPage() {
           }}
         >
           <Section>
-            <SectionLabel>How it works</SectionLabel>
+            <SectionLabel>{copy.howItWorks.label}</SectionLabel>
             <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1, letterSpacing: '-0.02em' }}>
-              From search to insight in seconds
+              {copy.howItWorks.heading}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4, maxWidth: 560 }}>
-              The graph is fully interactive. Here's what you can do:
+              {copy.howItWorks.sub}
             </Typography>
             {demoImgOk && (
               <Box sx={{ mb: 4 }}>
@@ -659,7 +533,7 @@ export default function LandingPage() {
                     <Box
                       component="img"
                       src="/graph-demo.png"
-                      alt={`Interactive BORME corporate relationship graph of ${DEMO_COMPANY}: directors, officers and connected companies`}
+                      alt={copy.howItWorks.demoAlt(DEMO_COMPANY)}
                       onError={() => setDemoImgOk(false)}
                       sx={{ display: 'block', width: '100%', height: 'auto', aspectRatio: '16 / 9', objectFit: 'cover' }}
                     />
@@ -667,14 +541,14 @@ export default function LandingPage() {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                   <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                    Real BORME data: the board and corporate connections of {DEMO_COMPANY}.
+                    {copy.howItWorks.demoCaption(DEMO_COMPANY)}
                   </Typography>
                   <Link
                     href={`/app?search=${encodeURIComponent(DEMO_COMPANY)}`}
                     variant="caption"
                     sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                   >
-                    Explore this graph live →
+                    {copy.howItWorks.demoCta}
                   </Link>
                 </Box>
               </Box>
@@ -686,9 +560,9 @@ export default function LandingPage() {
                 gap: 2,
               }}
             >
-              {HOW_TO_STEPS.map((step) => (
+              {copy.howItWorks.steps.map((step, i) => (
                 <Box
-                  key={step.number}
+                  key={i}
                   sx={{
                     p: 2.5,
                     borderRadius: 2,
@@ -718,7 +592,7 @@ export default function LandingPage() {
                       '& .MuiSvgIcon-root': { fontSize: 18 },
                     }}
                   >
-                    {step.icon}
+                    {STEP_ICONS[i]}
                   </Box>
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
@@ -739,7 +613,7 @@ export default function LandingPage() {
                 onClick={() => navigate('/app')}
                 sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
               >
-                Try it now
+                {copy.howItWorks.tryCta}
               </Button>
               <Button
                 size="small"
@@ -758,7 +632,7 @@ export default function LandingPage() {
                   '&:hover': { borderColor: '#f57c00', bgcolor: 'rgba(255,167,38,0.08)' },
                 }}
               >
-                See sample report
+                {copy.howItWorks.sampleCta}
               </Button>
             </Box>
           </Section>
@@ -768,9 +642,9 @@ export default function LandingPage() {
             USE CASES
         ============================================================ */}
         <Section>
-          <SectionLabel>Who it's for</SectionLabel>
+          <SectionLabel>{copy.useCases.label}</SectionLabel>
           <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 4, letterSpacing: '-0.02em' }}>
-            Built for anyone who needs corporate intelligence in Spain
+            {copy.useCases.heading}
           </Typography>
           <Box
             sx={{
@@ -779,7 +653,7 @@ export default function LandingPage() {
               gap: 2.5,
             }}
           >
-            {USE_CASES.map((uc) => (
+            {copy.useCases.items.map((uc, i) => (
               <Box
                 key={uc.label}
                 sx={{
@@ -793,7 +667,7 @@ export default function LandingPage() {
                 }}
               >
                 <Box sx={{ color: 'text.secondary', mt: 0.25, '& .MuiSvgIcon-root': { fontSize: 22 } }}>
-                  {uc.icon}
+                  {USE_CASE_ICONS[i]}
                 </Box>
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.25 }}>
@@ -820,9 +694,9 @@ export default function LandingPage() {
           }}
         >
           <Section>
-            <SectionLabel>Why Mapa Societario</SectionLabel>
+            <SectionLabel>{copy.differentiators.label}</SectionLabel>
             <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 4, letterSpacing: '-0.02em' }}>
-              Purpose-built for the Spanish corporate registry
+              {copy.differentiators.heading}
             </Typography>
             <Box
               sx={{
@@ -831,7 +705,7 @@ export default function LandingPage() {
                 gap: 2.5,
               }}
             >
-              {DIFFERENTIATORS.map((d) => (
+              {copy.differentiators.items.map((d, i) => (
                 <Box key={d.title} sx={{ textAlign: 'center', p: 2 }}>
                   <Box
                     sx={{
@@ -848,7 +722,7 @@ export default function LandingPage() {
                       '& .MuiSvgIcon-root': { fontSize: 22 },
                     }}
                   >
-                    {d.icon}
+                    {DIFFERENTIATOR_ICONS[i]}
                   </Box>
                   <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
                     {d.title}
@@ -866,14 +740,12 @@ export default function LandingPage() {
             PROFESSIONAL PATHS
         ============================================================ */}
         <Section>
-          <SectionLabel>For professional use</SectionLabel>
+          <SectionLabel>{copy.professional.label}</SectionLabel>
           <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1.5, letterSpacing: 0 }}>
-            From free exploration to API access and human investigations
+            {copy.professional.heading}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4, maxWidth: 680, lineHeight: 1.6 }}>
-            Mapa Societario is the public Spanish workflow. The same data and tooling can support
-            self-serve reports, monitoring, third-party integrations, and analyst-led work by
-            Nurnberg Consulting for higher-stakes cases.
+            {copy.professional.intro}
           </Typography>
           <Box
             sx={{
@@ -882,7 +754,7 @@ export default function LandingPage() {
               gap: 2.5,
             }}
           >
-            {PROFESSIONAL_PATHS.map((path) => (
+            {copy.professional.items.map((path, i) => (
               <Paper
                 key={path.title}
                 elevation={0}
@@ -895,7 +767,7 @@ export default function LandingPage() {
               >
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                   <Box sx={{ color: 'primary.light', mt: 0.25, '& .MuiSvgIcon-root': { fontSize: 22 } }}>
-                    {path.icon}
+                    {PROFESSIONAL_META[i].icon}
                   </Box>
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -905,9 +777,9 @@ export default function LandingPage() {
                       {path.desc}
                     </Typography>
                     <Link
-                      href={path.href}
-                      target={path.external ? '_blank' : undefined}
-                      rel={path.external ? 'noopener' : undefined}
+                      href={PROFESSIONAL_META[i].href}
+                      target={PROFESSIONAL_META[i].external ? '_blank' : undefined}
+                      rel={PROFESSIONAL_META[i].external ? 'noopener' : undefined}
                       variant="caption"
                       sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                     >
@@ -932,16 +804,15 @@ export default function LandingPage() {
           }}
         >
           <Section>
-            <SectionLabel>Spanish resources</SectionLabel>
+            <SectionLabel>{copy.spanishResources.label}</SectionLabel>
             <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1.5, letterSpacing: 0 }}>
-              Research Spanish companies in Spanish
+              {copy.spanishResources.heading}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, maxWidth: 620, lineHeight: 1.6 }}>
-              Spanish-language pages for common corporate registry workflows: finding administrators,
-              mapping company relationships, understanding BORME data, and ordering due diligence reports.
+              {copy.spanishResources.intro}
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
-              {SPANISH_RESOURCES.map((resource) => (
+              {copy.spanishResources.links.map((resource) => (
                 <Button
                   key={resource.href}
                   href={resource.href}
@@ -967,14 +838,12 @@ export default function LandingPage() {
             WHO'S BEHIND IT (TRUST / OWNERSHIP)
         ============================================================ */}
         <Section>
-          <SectionLabel>Who's behind it</SectionLabel>
+          <SectionLabel>{copy.whoIsBehind.label}</SectionLabel>
           <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1, letterSpacing: '-0.02em' }}>
-            A real company with real professionals behind it
+            {copy.whoIsBehind.heading}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, maxWidth: 640, lineHeight: 1.6 }}>
-            Mapa Societario is operated by <strong>Nurnberg Consulting SL</strong>, a Madrid-based
-            consultancy specialised in corporate intelligence and business research. We've been helping
-            clients navigate European corporate registries since 2013.
+            {copy.whoIsBehind.intro}
           </Typography>
 
           <Paper
@@ -1011,7 +880,7 @@ export default function LandingPage() {
                 Nurnberg Consulting SL
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.55 }}>
-                Corporate intelligence &amp; business research consultancy
+                {copy.whoIsBehind.companyTagline}
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 1.5, lineHeight: 1.55, fontFamily: 'monospace' }}>
                 NIF B86829538
@@ -1027,13 +896,13 @@ export default function LandingPage() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                   <LocationOnIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    Madrid, Spain
+                    {copy.whoIsBehind.location}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                   <EventIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    Operating since 2013
+                    {copy.whoIsBehind.since}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -1064,17 +933,11 @@ export default function LandingPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <HubIcon sx={{ fontSize: 18, color: 'primary.light' }} />
               <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.light' }}>
-                Need a full investigation platform? Try NC Data
+                {copy.whoIsBehind.ncdata.heading}
               </Typography>
             </Box>
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.6, mb: 1.25 }}>
-              Mapa Societario is our dedicated Spanish product. For professional investigators,
-              we also operate <strong>NC Data</strong>, a full-fledged investigation platform
-              covering companies in Spain, the United Kingdom, France, Switzerland and Italy. Beyond corporate due diligence, NC Data includes one-of-a-kind,
-              cutting-edge tools such as <strong>Document Studio</strong>, which lets users
-              fine-tune AI for sophisticated analysis of complex, context-heavy documents, along
-              with deeper entity resolution, cross-border linking and advanced investigative
-              workflows for demanding use cases.
+              {copy.whoIsBehind.ncdata.body}
             </Typography>
             <Link
               href="https://ncdata.eu"
@@ -1091,7 +954,7 @@ export default function LandingPage() {
                 '&:hover': { textDecoration: 'underline' },
               }}
             >
-              Visit ncdata.eu &rarr;
+              {copy.whoIsBehind.ncdata.cta}
             </Link>
           </Box>
         </Section>
@@ -1100,12 +963,12 @@ export default function LandingPage() {
             FAQ
         ============================================================ */}
         <Section>
-          <SectionLabel>FAQ</SectionLabel>
+          <SectionLabel>{copy.faq.label}</SectionLabel>
           <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 3, letterSpacing: '-0.02em' }}>
-            Frequently asked questions
+            {copy.faq.heading}
           </Typography>
           <Box sx={{ maxWidth: 640 }}>
-            {FAQ_ITEMS.map((item) => (
+            {copy.faq.items.map((item) => (
               <Accordion
                 key={item.question}
                 disableGutters
@@ -1154,10 +1017,10 @@ export default function LandingPage() {
               component="p"
               sx={{ fontWeight: 700, mb: 1.5, letterSpacing: '-0.02em' }}
             >
-              Ready to investigate?
+              {copy.finalCta.heading}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4, maxWidth: 420, mx: 'auto' }}>
-              Search companies and officers for free. Purchase a Due Diligence report when you need deeper analysis.
+              {copy.finalCta.sub}
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Button
@@ -1176,7 +1039,7 @@ export default function LandingPage() {
                   '&:hover': { bgcolor: '#1565c0' },
                 }}
               >
-                Search now
+                {copy.finalCta.searchCta}
               </Button>
               <Button
                 variant="outlined"
@@ -1198,7 +1061,7 @@ export default function LandingPage() {
                   },
                 }}
               >
-                Order a due diligence report
+                {copy.finalCta.reportCta}
               </Button>
             </Box>
           </Section>
@@ -1227,7 +1090,7 @@ export default function LandingPage() {
               lineHeight: 1.5,
             }}
           >
-            &copy; {new Date().getFullYear()} Mapa Societario &middot; A product of{' '}
+            &copy; {new Date().getFullYear()} Mapa Societario &middot; {copy.footer.productOf}{' '}
             <Link
               href="https://nurnbergconsulting.com"
               target="_blank"
@@ -1236,10 +1099,10 @@ export default function LandingPage() {
             >
               Nurnberg Consulting SL
             </Link>
-            {' '}(Madrid, Spain) &middot; Data sourced from BORME (Registro Mercantil)
+            {copy.footer.productOfSuffix}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem', lineHeight: 1.5, maxWidth: 760, px: 2 }}>
-            Based on data from the{' '}
+            {copy.footer.basedOnPrefix}
             <Link
               href="https://www.boe.es"
               target="_blank"
@@ -1248,7 +1111,7 @@ export default function LandingPage() {
             >
               Agencia Estatal Boletín Oficial del Estado
             </Link>
-            . This service is unofficial and is not endorsed by the AEBOE.
+            {copy.footer.basedOnSuffix}
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
             <Link
@@ -1256,14 +1119,14 @@ export default function LandingPage() {
               variant="caption"
               sx={{ fontSize: '0.65rem', color: 'warning.light', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
             >
-              Due Diligence Reports
+              {copy.footer.ddReports}
             </Link>
             <Link
               href="/dashboard"
               variant="caption"
               sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
             >
-              Dashboard
+              {copy.footer.dashboard}
             </Link>
             <Link
               href="/about.html"
@@ -1272,7 +1135,7 @@ export default function LandingPage() {
               variant="caption"
               sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
             >
-              About
+              {copy.footer.about}
             </Link>
             <Link
               href="https://github.com/anbrme/borme-public-api"
@@ -1281,7 +1144,7 @@ export default function LandingPage() {
               variant="caption"
               sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
             >
-              Public API docs
+              {copy.footer.apiDocs}
             </Link>
             <Link
               href="https://ncdata.eu"
@@ -1290,7 +1153,7 @@ export default function LandingPage() {
               variant="caption"
               sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
             >
-              NC Data (multi-country)
+              {copy.footer.ncdata}
             </Link>
             <Link
               href="/privacy.html"
@@ -1299,7 +1162,7 @@ export default function LandingPage() {
               variant="caption"
               sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
             >
-              Privacy & Cookies
+              {copy.footer.privacy}
             </Link>
             <Link
               href="/terms.html"
@@ -1308,7 +1171,7 @@ export default function LandingPage() {
               variant="caption"
               sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
             >
-              Terms
+              {copy.footer.terms}
             </Link>
           </Box>
         </Box>

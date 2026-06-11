@@ -36,39 +36,6 @@ const SpanishPageShell = ({ children }) => (
 );
 
 const pages = {
-  home: {
-    path: '/es',
-    title: 'Mapa Societario de Empresas Españolas | Mapa Societario',
-    description:
-      'Busca empresas y administradores en España. Visualiza relaciones societarias basadas en BORME y genera informes due diligence desde EUR 22.50.',
-    h1: 'Mapa societario de empresas españolas',
-    eyebrow: 'BORME, administradores y relaciones societarias',
-    intro:
-      'Explora empresas, administradores, cargos y conexiones societarias en España con un grafo interactivo basado en publicaciones oficiales del BORME.',
-    icon: <AccountTreeIcon />,
-    chips: ['Grafo gratuito', 'Socios únicos', 'Sanciones BOE', 'Cargos políticos Congreso'],
-    sections: [
-      {
-        title: 'Qué puedes investigar',
-        body: [
-          'Mapa Societario permite buscar una sociedad española y ver sus administradores, cargos, socios únicos y participaciones íntegramente poseídas por otras sociedades. También puedes buscar por persona para descubrir en qué sociedades aparece como administrador, consejero, apoderado u otro cargo mercantil.',
-          'La herramienta está pensada para compliance, KYC, periodistas, analistas, abogados, inversores y equipos comerciales que necesitan entender rápido quién está detrás de una sociedad o cómo se conecta un grupo empresarial.',
-        ],
-      },
-      {
-        title: 'Por qué es útil',
-        body: [
-          'El BORME contiene información pública esencial, pero no siempre es cómodo para una investigación rápida. Convertimos esas publicaciones en un índice consultable y en un grafo que permite seguir relaciones entre sociedades y personas.',
-          'Puedes usar el grafo gratis y pedir un informe due diligence cuando necesites un PDF con análisis más profundo, historial societario, señales de riesgo, comprobación de sanciones en el BOE y controles adicionales. Además, el grafo cruza administradores con diputados que tienen o tuvieron cargo político en el Congreso de los Diputados, marcándolos con una insignia amarilla.',
-        ],
-      },
-    ],
-    cards: [
-      { icon: <SearchIcon />, title: 'Buscar empresas', text: 'Encuentra sociedades españolas por nombre y abre su red de administradores.' },
-      { icon: <HubIcon />, title: 'Explorar conexiones', text: 'Expande nodos para descubrir sociedades relacionadas, cargos compartidos, socios únicos, participaciones al 100% y coincidencias con diputados.' },
-      { icon: <DescriptionIcon />, title: 'Pedir informes', text: 'Genera informes due diligence en PDF para empresas concretas.' },
-    ],
-  },
   'informes-due-diligence-empresas': {
     path: '/es/informes-due-diligence-empresas',
     title: 'Informes Due Diligence de Empresas Españolas | Mapa Societario',
@@ -212,9 +179,6 @@ function SeoHead({ page }) {
       <title>{page.title}</title>
       <meta name="description" content={page.description} />
       <link rel="canonical" href={canonical} />
-      <link rel="alternate" hrefLang="es" href={canonical} />
-      <link rel="alternate" hrefLang="en" href={`${SITE_URL}/`} />
-      <link rel="alternate" hrefLang="x-default" href={`${SITE_URL}/`} />
       <meta property="og:locale" content="es_ES" />
       <meta property="og:title" content={page.title} />
       <meta property="og:description" content={page.description} />
@@ -224,10 +188,6 @@ function SeoHead({ page }) {
       <meta name="twitter:description" content={page.description} />
     </Helmet>
   );
-}
-
-export function SpanishSeoHome() {
-  return <SpanishSeoPage pageKey="home" />;
 }
 
 export default function SpanishSeoPage({ pageKey: explicitPageKey }) {
@@ -333,6 +293,14 @@ export default function SpanishSeoPage({ pageKey: explicitPageKey }) {
             Más recursos en español
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
+            <Button
+              href="/es"
+              variant="outlined"
+              size="small"
+              sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 650 }}
+            >
+              Mapa societario de empresas españolas
+            </Button>
             {pageList.map((item) => (
               <Button
                 key={item.path}

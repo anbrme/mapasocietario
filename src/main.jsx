@@ -25,7 +25,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/es" element={<Suspense fallback={null}><SpanishSeoPage pageKey="home" /></Suspense>} />
+      <Route path="/es" element={<LandingPage lang="es" />} />
       <Route path="/es/:slug" element={<Suspense fallback={null}><SpanishSeoPage /></Suspense>} />
       <Route path="/app" element={<App />} />
       <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
