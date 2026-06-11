@@ -396,6 +396,14 @@ const normalizeNameForMerge = value =>
     .trim()
     .toLowerCase();
 
+// Officer node identity. BORME spells the same person differently across
+// hojas ("GARCIA-BRAGADO" in one era's doc, "GARCIA BRAGADO" in another), and
+// node ids collapse whitespace to hyphens — so the existing-node check must be
+// exactly as tolerant as the id, or two node objects end up sharing one id and
+// ForceGraph attaches every link to a single one (the other renders orphaned).
+const officerNodeKey = name => (name || '').trim().toLowerCase().replace(/[\s-]+/g, '-');
+const officerIdFor = name => `officer-${officerNodeKey(name)}`;
+
 const BORME_SECTION_NAMES = new Set([
   'nombramientos', 'reelecciones', 'ceses_dimisiones', 'ceses', 'revocaciones',
   'dimisiones', 'cargo no especificado',
@@ -983,7 +991,7 @@ const SpanishCompanyNetworkGraph = ({
         addOfficerToGraph(entries, initialOfficerData.name);
       }
       // Pin initial officer node
-      const officerId = `officer-${initialOfficerData.name.toLowerCase().trim().replace(/\s+/g, '-')}`;
+      const officerId = officerIdFor(initialOfficerData.name);
       setPinnedNodeIds(prev => new Set([...prev, officerId]));
     }
   }, [visible, initialCompanyData, initialOfficerData]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1359,7 +1367,7 @@ const SpanishCompanyNetworkGraph = ({
         if (data.success && fetchedCount > 0) {
           await addOfficerToGraph(data.officers, query);
           // Pin the officer node so it survives filtering
-          const officerId = `officer-${query.toLowerCase().trim().replace(/\s+/g, '-')}`;
+          const officerId = officerIdFor(query);
           setPinnedNodeIds(prev => new Set([...prev, officerId]));
           setLastSearchContext({
             query,
@@ -1462,7 +1470,7 @@ const SpanishCompanyNetworkGraph = ({
         const fetchedCount = data.officers?.length || 0;
         if (data.success && fetchedCount > 0) {
           await addOfficerToGraph(data.officers, context.query);
-          const officerId = `officer-${context.query.toLowerCase().trim().replace(/\s+/g, '-')}`;
+          const officerId = officerIdFor(context.query);
           setPinnedNodeIds(prev => new Set([...prev, officerId]));
           setLastSearchContext(prev =>
             prev
@@ -1650,10 +1658,10 @@ const SpanishCompanyNetworkGraph = ({
             );
             if (existingNode) shId = existingNode.id;
           } else {
-            const normalizedName = shName.toLowerCase().trim();
-            shId = `officer-${normalizedName.replace(/\s+/g, '-')}`;
+            const nameKey = officerNodeKey(shName);
+            shId = officerIdFor(shName);
             existingNode = newNodes.find(
-              n => n.type === 'officer' && n.name.trim().toLowerCase() === normalizedName
+              n => n.type === 'officer' && officerNodeKey(n.name) === nameKey
             );
             if (existingNode) shId = existingNode.id;
           }
@@ -2164,7 +2172,7 @@ const SpanishCompanyNetworkGraph = ({
             // from role X does not mark the officer as resigned from role Y.
             const officerEffectiveCategory = {};
             allOfficersList.forEach(o => {
-              const key = `${o.name.trim().toLowerCase()}||${(o.position || '').trim().toLowerCase()}`;
+              const key = `${officerNodeKey(o.name)}||${(o.position || '').trim().toLowerCase()}`;
               const d = new Date(o.date || 0);
               if (!officerEffectiveCategory[key] || d > officerEffectiveCategory[key].date) {
                 officerEffectiveCategory[key] = { category: o.category, date: d };
@@ -2175,18 +2183,18 @@ const SpanishCompanyNetworkGraph = ({
             let officerRingIdx = 0;
             allOfficersList.forEach(officer => {
               // Create a normalized name for consistent node identification
-              const normalizedName = officer.name.trim().toLowerCase();
-              const officerId = `officer-${normalizedName.replace(/\s+/g, '-')}`;
+              const normalizedName = officerNodeKey(officer.name);
+              const officerId = officerIdFor(officer.name);
 
               // Check if officer already exists by name (not just ID) - also check existing graph data
               let officerNode = newNodes.find(
-                n => n.type === 'officer' && n.name.trim().toLowerCase() === normalizedName
+                n => n.type === 'officer' && officerNodeKey(n.name) === normalizedName
               );
 
               // Also check in the existing graph data (prevData.nodes)
               if (!officerNode) {
                 officerNode = prevData.nodes.find(
-                  n => n.type === 'officer' && n.name.trim().toLowerCase() === normalizedName
+                  n => n.type === 'officer' && officerNodeKey(n.name) === normalizedName
                 );
                 if (officerNode) {
                   // If found in existing data, add it to newNodes to work with
@@ -2394,8 +2402,8 @@ const SpanishCompanyNetworkGraph = ({
 
           // Create the officer node first - use parameter instead of state
           const officerName = officerNameParam || results[0]?.name || 'Unknown Officer';
-          const normalizedOfficerName = officerName.toLowerCase().trim();
-          const officerId = `officer-${normalizedOfficerName.replace(/\s+/g, '-')}`;
+          const normalizedOfficerName = officerNodeKey(officerName);
+          const officerId = officerIdFor(officerName);
 
           // Check if officer already exists
           let officerNode = newNodes.find(n => n.id === officerId);
@@ -2544,7 +2552,7 @@ const SpanishCompanyNetworkGraph = ({
           // Officer may be a sole shareholder of other companies that don't appear here.
           const officerName = (officerNameParam || '').trim();
           if (officerName) {
-            const officerId = `officer-${officerName.toLowerCase().replace(/\s+/g, '-')}`;
+            const officerId = officerIdFor(officerName);
             addOwnedCompaniesForEntity(officerName, officerId, 'person');
           }
         }
@@ -2570,7 +2578,7 @@ const SpanishCompanyNetworkGraph = ({
       const cleanName = isCompanyKind ? normalizeCompanyName(entityName) : entityName.trim();
       const entityId = isCompanyKind
         ? companyNameToId(cleanName)
-        : `officer-${cleanName.toLowerCase().replace(/\s+/g, '-')}`;
+        : officerIdFor(cleanName);
 
       setGraphData(prev => {
         if (prev.nodes.find(n => n.id === entityId)) return prev;
