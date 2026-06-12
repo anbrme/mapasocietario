@@ -412,11 +412,18 @@ class SpanishCompaniesService {
   /**
    * Get events for a company from borme_events_v3.
    * Returns normalized event docs with clean officers per event.
+   *
+   * Options:
+   *   size     — max events to return (default 50)
+   *   groupKey — v3 company doc id (e.g. "H:M-445656" or "N:..."); when set,
+   *              query by group_key instead of company name. The server expands
+   *              hojas + N: fallback, avoiding name-match leakage from other
+   *              companies whose name embeds this one.
    */
   async getCompanyEventsV3(companyName, options = {}) {
-    const { size = 50 } = options;
+    const { size = 50, groupKey = null } = options;
     const params = new URLSearchParams({
-      company: companyName,
+      ...(groupKey ? { group_key: groupKey } : { company: companyName }),
       size: size.toString(),
     });
     const response = await this.fetchWithRetry(

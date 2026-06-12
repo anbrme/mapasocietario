@@ -888,7 +888,8 @@ export async function handleCompany({ params }, lang = 'es') {
       : null;
     const [profile, eventsResp, cnmvResp, chartSvg, boeResp, gleifResp] = await Promise.all([
       jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`, controller.signal),
-      jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=8`, controller.signal),
+      // Over-fetch (16) so the group_key post-filter below can still fill 8 slots.
+      jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=16`, controller.signal),
       // Significant shareholders + history chart: only IBEX seed companies have CNMV data.
       seed ? jsonOrNull(`${API_BASE}/bormes/cnmv/shareholders?company=${encodeURIComponent(slug)}`, controller.signal) : Promise.resolve(null),
       seed ? textOrNull(`${API_BASE}/bormes/cnmv/history-chart?company=${encodeURIComponent(slug)}&lang=${lang}`, controller.signal) : Promise.resolve(null),
@@ -907,8 +908,23 @@ export async function handleCompany({ params }, lang = 'es') {
       });
     }
 
+    // The events endpoint falls back to name matching, which can leak events of
+    // OTHER companies whose name embeds this one (e.g. an AIE named after its
+    // members). Keep only events whose group_key belongs to this company; events
+    // without a group_key pass (fail open — never blank the section).
+    const allowed = new Set(
+      [
+        company._id,
+        ...(company.hojas || []).map((h) => `H:${h}`),
+        company.company_name_normalized ? `N:${company.company_name_normalized}` : null,
+      ].filter(Boolean)
+    );
+    const events = ((eventsResp && eventsResp.events) || [])
+      .filter((e) => !e.group_key || allowed.has(e.group_key))
+      .slice(0, 8);
+
     const gleif = gleifResp && gleifResp.success ? gleifResp.data : null;
-    const html = renderCompanyPage(company, (eventsResp && eventsResp.events) || [], slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif);
+    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif);
     return new Response(html, {
       status: 200,
       headers: {
