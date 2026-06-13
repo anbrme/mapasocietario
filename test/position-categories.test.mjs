@@ -62,6 +62,36 @@ test('apoderado variants map to Apoderado', () => {
   }
 });
 
+test('Art. 143 RRM organic permanent reps map to Representante 143 RRM', () => {
+  // The physical rep a corporate administrator must designate (Art. 143 RRM):
+  // administrator-level, NOT a voluntary power. Distinct, visible category.
+  for (const pos of ['REPR.143 RRM', 'Repr.143 Rrm', 'R.L.C.PERMA.', 'R.L.C.PER.S.', 'R.L.C.PER.M.', 'REPR.PERMAN.']) {
+    assert.equal(positionCategoryFor(pos), 'Representante 143 RRM', pos);
+  }
+});
+
+test('generic / voluntary representatives are NOT reclassified as 143 RRM', () => {
+  // These are ordinary/voluntary reps, not the organic 143-RRM rep; they must
+  // keep falling through to Otros.
+  for (const pos of ['REPRESENTAN', 'REPRE.FISCAL', 'REPR.SUCURS.', 'REP.SUC.']) {
+    assert.equal(positionCategoryFor(pos), 'Otros', pos);
+  }
+});
+
+test('143 RRM category stays visible (not hidden by Simplificar) and is ordered', () => {
+  assert.equal(
+    SIMPLIFIED_EXCLUDED_CATEGORIES.has('Representante 143 RRM'),
+    false
+  );
+  assert.ok(POSITION_CATEGORY_ORDER.includes('Representante 143 RRM'));
+});
+
+test('apoderado variants remain Apoderado (143 RRM rule did not steal them)', () => {
+  for (const pos of ['APODERADO', 'APO.SOL', 'DTOR.APO.SUC']) {
+    assert.equal(positionCategoryFor(pos), 'Apoderado', pos);
+  }
+});
+
 test('simplified mode excludes ONLY the Apoderado category', () => {
   assert.deepEqual([...SIMPLIFIED_EXCLUDED_CATEGORIES], ['Apoderado']);
   // Auditors, unknown roles, and everything else must survive simplification.

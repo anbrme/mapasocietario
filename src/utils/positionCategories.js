@@ -1,6 +1,7 @@
 // Map a raw position string (as stored on link.relationship / officer
 // position_normalized, e.g. "APO.SOL", "CON.IND.", "VICEPRESID.",
-// "PRECOMAUDIT") to one of ~10 canonical category labels. Shared by the graph
+// "PRECOMAUDIT") to one of ~11 canonical category labels (incl. the dedicated
+// Art. 143 RRM organic permanent representative). Shared by the graph
 // component (filter chips + simplified mode) and the officer-capping service
 // so both classify positions identically. The full vocabulary of registry
 // positions lives in src/data/terms.json (officersPositions, ~1045 entries);
@@ -16,6 +17,7 @@ export const POSITION_CATEGORY_ORDER = [
   'Vicepresidente',
   'Consejero',
   'Administrador',
+  'Representante 143 RRM',
   'Secretario',
   'Liquidador',
   'Vocal / Comisión',
@@ -62,6 +64,15 @@ export const positionCategoryFor = pos => {
   if (/^VOC(AL|[\d.])/.test(p)) return 'Vocal / Comisión';
   if (/^(MIE|MIEM|MMBR|MBRO|MRO|M)\.?COM/.test(p)) return 'Vocal / Comisión';
   if (/^(AUDITOR|AUDIT|AUDT|AUD[.\s]|COAUD|CO-AUD)/.test(p)) return 'Auditor';
+  // Art. 143 RRM organic *permanent* physical representative that a CORPORATE
+  // administrator must designate to exercise the post — administrator-level,
+  // NOT a voluntary power. Forms: "REPR.143 RRM", "R.L.C.PERMA./PER.S./PER.M."
+  // (representante legal con carácter permanente), "REPR.PERMAN.". Generic /
+  // voluntary reps (REPRESENTAN, REPRE.FISCAL, REPR.SUCURS., REP.SUC.,
+  // REPRESSUPLEN) deliberately fall through to Otros.
+  if (/143/.test(p) || /^R\.?L\.?C/.test(p) || /^REPR\.?\s?PERMAN/.test(p)) {
+    return 'Representante 143 RRM';
+  }
   // DTOR.APO.SUC = director apoderado de sucursal — apoderado variant.
   if (/^(APO|APD)/.test(p) || /^DTOR\.APO/.test(p)) return 'Apoderado';
   return 'Otros';
