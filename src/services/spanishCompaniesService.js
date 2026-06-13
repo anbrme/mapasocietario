@@ -594,6 +594,10 @@ class SpanishCompaniesService {
       'Vicepresidente': 1,
       'Consejero': 2,
       'Administrador': 3,
+      // Art. 143 RRM organic permanent rep = the natural person exercising a
+      // corporate administrator's post; rank just below Administrador so
+      // officer-capping keeps it, not at the Otros/Apoderado tail.
+      'Representante 143 RRM': 3.5,
       'Secretario': 4,
       'Liquidador': 5,
       'Vocal / Comisión': 6,
