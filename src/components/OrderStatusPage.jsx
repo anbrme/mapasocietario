@@ -20,10 +20,9 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { Helmet } from 'react-helmet-async';
 import { isAndroidNativeApp } from '../services/playBillingService';
+import { API_URL, PAYMENTS_API } from '../config';
 
 const POLL_INTERVAL = 15_000; // 15 seconds
-const PAYMENTS_API = 'https://payments.ncdata.eu';
-const API_URL = 'https://api.ncdata.eu';
 // Flask backend hosting the anonymous alert endpoint. Lives on rag.ncdata.eu
 // behind the Nginx /bormes/* location block.
 const ALERTS_API = 'https://rag.ncdata.eu/bormes/v3/alerts';

@@ -24,8 +24,7 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { Helmet } from 'react-helmet-async';
 import CnmvReviewTab from './CnmvReviewTab';
-
-const PAYMENTS_API = 'https://payments.ncdata.eu';
+import { PAYMENTS_API } from '../config';
 
 export default function AdminPage() {
   const [adminKey, setAdminKey] = useState(() => {

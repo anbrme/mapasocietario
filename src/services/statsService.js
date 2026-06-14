@@ -1,4 +1,6 @@
-const BASE_URL = 'https://api.ncdata.eu';
+import { API_URL } from '../config';
+
+const BASE_URL = API_URL;
 
 async function fetchStats(endpoint, params = {}) {
   const url = new URL(`${BASE_URL}/bormes/stats/${endpoint}`);
