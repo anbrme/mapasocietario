@@ -2,63 +2,68 @@
 import React, { useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, Button,
-  TextField, Alert, CircularProgress, Chip,
+  TextField, Alert, CircularProgress, Chip, ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import { PAYMENTS_API } from '../config';
+import TranslateIcon from '@mui/icons-material/Translate';
+import { API_URL } from '../config';
 import { getClientId } from '../utils/clientId';
 
 const SOFT_WARN_COMPANIES = 10;
 
 // `scope`   : { companies:[], officersByCompany:{}, counts:{companies,officers,sharedPeople} }
 // `subjects`: [{ name, group_key }]  (group_keys resolved by the parent before opening)
+//
+// Free (beta) relationship report: generated and downloaded directly from the
+// DD endpoint — no payment flow. The report analyses ALL registered officers of
+// the selected companies (the on-screen filtering chooses which COMPANIES to
+// include, not which officers). A premium price will attach later, once the
+// directed AI analysis layer is added.
 export default function RelationshipReportDialog({ open, onClose, scope, subjects, lang = 'es' }) {
   const [directive, setDirective] = useState('');
-  const [email, setEmail] = useState('');
+  const [reportLang, setReportLang] = useState(lang === 'en' ? 'en' : 'es');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const counts = scope?.counts || { companies: 0, officers: 0, sharedPeople: 0 };
-  const large = counts.companies > SOFT_WARN_COMPANIES;
+  const es = reportLang !== 'en';
+  const companyNames = scope?.companies || [];
+  const n = companyNames.length;
+  const large = n > SOFT_WARN_COMPANIES;
 
-  const handleCheckout = async () => {
-    if (!email.trim()) { setError('Introduce un email para recibir el informe.'); return; }
+  const generate = async () => {
     setError(''); setLoading(true);
     try {
-      const visible_officers = {};
-      subjects.forEach(s => {
-        visible_officers[s.group_key] = scope.officersByCompany[s.name] || [];
-      });
+      const title = subjects.map(s => s.name).join(' · ').slice(0, 200);
       const options = {
         mode: 'relationship',
         account_id: getClientId(),
-        language: lang,
+        language: reportLang,
         subjects,
-        visible_officers,
         directive: directive.trim() || undefined,
       };
-      const res = await fetch(`${PAYMENTS_API}/api/stripe/create-dd-checkout`, {
+      const res = await fetch(`${API_URL}/bormes/dd-report/company`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          country: 'es',
-          // No single company — send a synthetic identifier/title.
-          companyIdentifier: subjects.map(s => s.group_key).join('+'),
-          companyName: subjects.map(s => s.name).join(' · ').slice(0, 200),
-          options,
-          email: email.trim() || undefined,
-          returnUrl: window.location.href,
-        }),
+        body: JSON.stringify({ company_name: title || 'Relationship Report', options }),
       });
-      const data = await res.json();
-      if (data.url) {
-        localStorage.setItem('dd_return_url', window.location.href);
-        window.location.href = data.url;
-      } else {
-        setError('No se pudo crear la sesión de pago. Inténtalo de nuevo.');
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.error || `Error ${res.status}`);
       }
+      const blob = await res.blob();
+      const dispo = res.headers.get('Content-Disposition') || '';
+      const m = dispo.match(/filename="?([^"]+)"?/);
+      const filename = (m && m[1]) || (es ? 'Informe_de_Relaciones.pdf' : 'Relationship_Report.pdf');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      onClose();
     } catch (e) {
-      setError(e.message || 'Error de conexión. Inténtalo de nuevo.');
+      setError(
+        (es ? 'No se pudo generar el informe: ' : 'Could not generate the report: ') +
+        (e.message || (es ? 'error de conexión.' : 'connection error.')));
     } finally {
       setLoading(false);
     }
@@ -67,52 +72,68 @@ export default function RelationshipReportDialog({ open, onClose, scope, subject
   return (
     <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="sm" fullWidth>
       <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <AccountTreeIcon color="primary" />
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            Informe de Relaciones
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, flex: 1 }}>
+            {es ? 'Informe de Relaciones' : 'Relationship Report'}
           </Typography>
-          <Chip label="No autoritativo" size="small" color="warning" variant="outlined" />
+          <Chip label={es ? 'No autoritativo' : 'Not authoritative'} size="small" color="warning" variant="outlined" />
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1 }}>
+          <TranslateIcon sx={{ fontSize: 15, color: 'text.disabled' }} />
+          <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+            {es ? 'Idioma del informe' : 'Report language'}
+          </Typography>
+          <ToggleButtonGroup
+            value={reportLang} exclusive size="small"
+            onChange={(_, v) => v && setReportLang(v)}
+            sx={{ ml: 0.5, '& .MuiToggleButton-root': { py: 0.2, px: 1.2, fontSize: '0.72rem', textTransform: 'none' } }}>
+            <ToggleButton value="es">Español</ToggleButton>
+            <ToggleButton value="en">English</ToggleButton>
+          </ToggleButtonGroup>
         </Box>
       </DialogTitle>
       <DialogContent>
-        <Typography variant="body2" sx={{ mb: 1.5 }}>
-          Este informe cubre <strong>{counts.companies} empresas</strong>, ~<strong>{counts.officers} administradores</strong> y
-          aproximadamente <strong>{counts.sharedPeople} relación(es)</strong> entre ellas (personas en ≥2 empresas).
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          {es
+            ? <>Analiza estas <strong>{n} empresas</strong> y las relaciones entre ellas: administradores compartidos, conectores y vínculos de propiedad.</>
+            : <>Analyses these <strong>{n} companies</strong> and the relationships between them: shared directors, connectors and ownership links.</>}
         </Typography>
         <Box sx={{ mb: 2 }}>
-          {scope?.companies?.map(c => (
+          {companyNames.map(c => (
             <Chip key={c} label={c} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
           ))}
         </Box>
         <Alert severity="info" sx={{ mb: 2, fontSize: '0.8rem' }}>
-          El informe analiza lo que ves ahora en el grafo. Si una empresa tiene cientos de
-          apoderados, fíltralos salvo que conecten con otras empresas — depura el grafo hasta que
-          muestre lo que te interesa y luego genera el informe.
+          {es
+            ? 'Se incluyen todos los administradores registrados de las empresas seleccionadas. Eliges el alcance decidiendo qué empresas añadir al grafo, no qué administradores.'
+            : 'All registered officers of the selected companies are included. You set the scope by choosing which companies to add to the graph, not which officers.'}
         </Alert>
         {large && (
           <Alert severity="warning" sx={{ mb: 2, fontSize: '0.8rem' }}>
-            Has seleccionado {counts.companies} empresas. Cuantas más incluyas, más largo y costoso
-            será el informe; considera filtrar a las imprescindibles.
+            {es
+              ? `Has seleccionado ${n} empresas. Cuantas más incluyas, más tardará el informe; considera limitarlo a las imprescindibles.`
+              : `You selected ${n} companies. The more you include, the longer the report takes; consider limiting it to the essential ones.`}
           </Alert>
         )}
         <TextField
           fullWidth multiline minRows={2} size="small"
-          label="Indicación para el análisis (opcional)"
-          placeholder="p. ej. analiza posibles conflictos de interés entre A y B"
-          value={directive} onChange={e => setDirective(e.target.value)} sx={{ mb: 2 }}
+          label={es ? 'Indicación para el análisis (opcional)' : 'Analysis directive (optional)'}
+          placeholder={es ? 'p. ej. analiza posibles conflictos de interés entre A y B' : 'e.g. analyse possible conflicts of interest between A and B'}
+          value={directive} onChange={e => setDirective(e.target.value)}
         />
-        <TextField
-          fullWidth size="small" label="Email (obligatorio)" placeholder="tu@email.com"
-          value={email} onChange={e => setEmail(e.target.value)}
-        />
+        <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: 'success.main', fontWeight: 600 }}>
+          {es ? 'Gratis durante la fase beta.' : 'Free during beta.'}
+        </Typography>
         {error && <Alert severity="error" sx={{ mt: 2, fontSize: '0.8rem' }}>{error}</Alert>}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
-        <Button variant="contained" onClick={handleCheckout} disabled={loading}
-          startIcon={loading ? <CircularProgress size={16} /> : null}>
-          {loading ? 'Redirigiendo…' : 'Continuar al pago'}
+        <Button onClick={onClose} disabled={loading}>{es ? 'Cancelar' : 'Cancel'}</Button>
+        <Button variant="contained" onClick={generate} disabled={loading || n < 2}
+          startIcon={loading ? <CircularProgress size={16} /> : <AccountTreeIcon />}>
+          {loading
+            ? (es ? 'Generando… (hasta ~1 min)' : 'Generating… (up to ~1 min)')
+            : (es ? 'Generar informe' : 'Generate report')}
         </Button>
       </DialogActions>
     </Dialog>

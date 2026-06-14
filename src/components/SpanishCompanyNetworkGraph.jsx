@@ -4203,16 +4203,24 @@ const SpanishCompanyNetworkGraph = ({
 
   const simplifiedLowValueCount = filteredGraphData.simplifiedCount || 0;
 
+  // Relationship-report subjects = the companies the user explicitly added
+  // (searched/expanded → pinned), NOT auto-pulled socio-único subsidiaries.
+  // Restrict to those that are still visible (in filteredGraphData).
+  const relationshipSubjectIds = React.useMemo(
+    () => new Set([...pinnedNodeIds].map(normalizeNodeId)),
+    [pinnedNodeIds]);
+
   const visibleCompanyCount = React.useMemo(
     () => filteredGraphData.nodes.filter(
-      n => n.type === 'company' || n.type === 'spanish-company-group').length,
-    [filteredGraphData.nodes]);
+      n => (n.type === 'company' || n.type === 'spanish-company-group')
+        && relationshipSubjectIds.has(normalizeNodeId(n.id))).length,
+    [filteredGraphData.nodes, relationshipSubjectIds]);
 
   // Build a Relationship Report from the visible graph. Declared AFTER
   // filteredGraphData: its dependency array reads filteredGraphData at render
   // time, so defining it earlier triggers a temporal-dead-zone ReferenceError.
   const openRelationshipReport = useCallback(async () => {
-    const scope = extractVisibleScope(filteredGraphData, normalizeNodeId);
+    const scope = extractVisibleScope(filteredGraphData, normalizeNodeId, relationshipSubjectIds);
     if (scope.companies.length < 2) return;
     setRelResolving(true);
     try {
@@ -4232,7 +4240,7 @@ const SpanishCompanyNetworkGraph = ({
     } finally {
       setRelResolving(false);
     }
-  }, [filteredGraphData]);
+  }, [filteredGraphData, relationshipSubjectIds]);
 
   // Connected Components / Clusters analysis for the active rendered graph.
   const clustersData = React.useMemo(() => {

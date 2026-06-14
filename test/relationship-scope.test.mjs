@@ -49,3 +49,13 @@ test('empty graph yields empty scope', () => {
   assert.deepStrictEqual(s.companies, []);
   assert.strictEqual(s.counts.companies, 0);
 });
+
+test('subjectIds limits subjects to the given companies (excludes others)', () => {
+  // Only ALPHA is a subject; BETA is context (e.g. an auto-pulled subsidiary).
+  const s = extractVisibleScope(graph, (x) => x, new Set(['c:alpha']));
+  assert.deepStrictEqual(s.companies, ['ALPHA SA']);
+  assert.deepStrictEqual(s.officersByCompany['ALPHA SA'].sort(), ['JUANA DIR', 'PACO APO']);
+  assert.strictEqual(s.officersByCompany['BETA SA'], undefined);
+  assert.strictEqual(s.counts.companies, 1);
+  assert.strictEqual(s.counts.sharedPeople, 0); // JUANA only counts at ALPHA now
+});

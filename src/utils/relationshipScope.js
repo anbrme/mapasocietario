@@ -11,15 +11,22 @@ const isOfficer = n => !!n && n.type === 'officer';
  * @param graphData {nodes, links} — the visible graph
  * @param normalizeId optional id normalizer (the graph component passes its
  *   normalizeNodeId so link refs match node ids exactly). Defaults to identity.
+ * @param subjectIds optional Set of NORMALIZED node ids that count as subjects.
+ *   When provided, only company nodes whose id is in this set become subjects —
+ *   used to limit the report to the companies the user explicitly added
+ *   (searched/expanded = pinned), excluding auto-pulled socio-único subsidiaries.
+ *   When omitted, every visible company node is a subject.
  */
-export function extractVisibleScope(graphData, normalizeId = (x) => x) {
+export function extractVisibleScope(graphData, normalizeId = (x) => x, subjectIds = null) {
   const nodes = (graphData && graphData.nodes) || [];
   const links = (graphData && graphData.links) || [];
 
   const byId = new Map();
   nodes.forEach(n => byId.set(normalizeId(n.id), n));
 
-  const companies = nodes.filter(isCompany);
+  const isSubject = n => isCompany(n) && (!subjectIds || subjectIds.has(normalizeId(n.id)));
+  const companies = nodes.filter(isSubject);
+  const subjectNames = new Set(companies.map(c => c.name));
   const officersByCompany = {};
   companies.forEach(c => { officersByCompany[c.name] = new Set(); });
 
@@ -28,10 +35,10 @@ export function extractVisibleScope(graphData, normalizeId = (x) => x) {
     const b = byId.get(normalizeId(refId(l.target)));
     if (!a || !b) return;
     let company = null, officer = null;
-    if (isCompany(a) && isOfficer(b)) { company = a; officer = b; }
-    else if (isCompany(b) && isOfficer(a)) { company = b; officer = a; }
+    if (isSubject(a) && isOfficer(b)) { company = a; officer = b; }
+    else if (isSubject(b) && isOfficer(a)) { company = b; officer = a; }
     else return;
-    if (!officersByCompany[company.name]) officersByCompany[company.name] = new Set();
+    if (!subjectNames.has(company.name)) return;
     officersByCompany[company.name].add(officer.name);
   });
 
