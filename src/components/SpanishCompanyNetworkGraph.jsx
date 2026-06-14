@@ -3210,29 +3210,6 @@ const SpanishCompanyNetworkGraph = ({
     [subjectCompanyName, resolveSubjectGroupKey]
   );
 
-  const openRelationshipReport = useCallback(async () => {
-    const scope = extractVisibleScope(filteredGraphData, normalizeNodeId);
-    if (scope.companies.length < 2) return;
-    setRelResolving(true);
-    try {
-      // Resolve a group_key per visible company; drop ones we can't confidently resolve.
-      const resolved = await Promise.all(
-        scope.companies.map(async name => ({ name, group_key: await resolveGroupKey(name) })));
-      const subjects = resolved.filter(s => s.group_key);
-      if (subjects.length < 2) {
-        setError('No pude identificar con seguridad al menos 2 de las empresas visibles. Prueba a buscarlas por su nombre exacto.');
-        return;
-      }
-      setRelScope(scope);
-      setRelSubjects(subjects);
-      setRelReportOpen(true);
-    } catch (e) {
-      setError(`No se pudo preparar el informe de relaciones: ${e.message}`);
-    } finally {
-      setRelResolving(false);
-    }
-  }, [filteredGraphData]);
-
   // Keep the "Mis correcciones (N)" counter in sync with the loaded company.
   useEffect(() => {
     if (!subjectCompanyName) {
@@ -4230,6 +4207,32 @@ const SpanishCompanyNetworkGraph = ({
     () => filteredGraphData.nodes.filter(
       n => n.type === 'company' || n.type === 'spanish-company-group').length,
     [filteredGraphData.nodes]);
+
+  // Build a Relationship Report from the visible graph. Declared AFTER
+  // filteredGraphData: its dependency array reads filteredGraphData at render
+  // time, so defining it earlier triggers a temporal-dead-zone ReferenceError.
+  const openRelationshipReport = useCallback(async () => {
+    const scope = extractVisibleScope(filteredGraphData, normalizeNodeId);
+    if (scope.companies.length < 2) return;
+    setRelResolving(true);
+    try {
+      // Resolve a group_key per visible company; drop ones we can't confidently resolve.
+      const resolved = await Promise.all(
+        scope.companies.map(async name => ({ name, group_key: await resolveGroupKey(name) })));
+      const subjects = resolved.filter(s => s.group_key);
+      if (subjects.length < 2) {
+        setError('No pude identificar con seguridad al menos 2 de las empresas visibles. Prueba a buscarlas por su nombre exacto.');
+        return;
+      }
+      setRelScope(scope);
+      setRelSubjects(subjects);
+      setRelReportOpen(true);
+    } catch (e) {
+      setError(`No se pudo preparar el informe de relaciones: ${e.message}`);
+    } finally {
+      setRelResolving(false);
+    }
+  }, [filteredGraphData]);
 
   // Connected Components / Clusters analysis for the active rendered graph.
   const clustersData = React.useMemo(() => {
