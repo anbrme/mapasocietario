@@ -651,6 +651,12 @@ const SpanishCompanyNetworkGraph = ({
   const [markResignedDate, setMarkResignedDate] = useState('');
   // Cache of subject company name -> resolved group_key (avoids re-querying autocomplete)
   const subjectGroupKeyCache = useRef(new Map());
+  // The "primary subject" = the FIRST company loaded into the graph. Corrections
+  // and the Custom DD attach to it. It is sticky: officer searches, node
+  // expansions, and additional companies do NOT change it — only a graph reset
+  // clears it. (Derived-from-lastSearchContext was fragile: exploring the graph
+  // moved the subject off the company the user was actually investigating.)
+  const [primarySubject, setPrimarySubject] = useState(null);
 
   // Officer timeline dialog state
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
@@ -858,6 +864,7 @@ const SpanishCompanyNetworkGraph = ({
       setError(null);
       setSearchQuery('');
       setLastSearchContext(null);
+      setPrimarySubject(null);
       setLoadingMore(false);
       setContainerReady(false);
       setHiddenNodesMenuAnchorEl(null);
@@ -995,13 +1002,16 @@ const SpanishCompanyNetworkGraph = ({
       (async () => {
         const { entries, aliasMap } = await fetchWithNameChangeRelations(initialCompanyData, { cap: officersPerCompany });
         await addCompanyWithOfficersToGraph(entries, null, aliasMap);
+        let firstCompanyName = null;
         entries.forEach(company => {
           const companyName = normalizeCompanyName(company.name || company.company_name || '');
           if (companyName) {
+            if (!firstCompanyName) firstCompanyName = companyName;
             const companyId = companyNameToId(companyName);
             setPinnedNodeIds(prev => new Set([...prev, companyId]));
           }
         });
+        if (firstCompanyName) setPrimarySubject(prev => prev || firstCompanyName);
       })();
     } else if (initialOfficerData && initialOfficerData.name) {
       const entries = initialOfficerData.companies || [];
@@ -1445,6 +1455,9 @@ const SpanishCompanyNetworkGraph = ({
               hasMore: false, // v3 company docs are complete (all officers pre-aggregated)
               total: v3Data.total || v3Results.length,
             });
+            // First company loaded becomes the sticky Custom-DD subject; later
+            // company searches append to the graph but keep the original subject.
+            setPrimarySubject(prev => prev || query);
             setSearchQuery('');
           } else {
             setError(`No precise company match found for "${query}". Try a broader search.`);
@@ -3149,14 +3162,11 @@ const SpanishCompanyNetworkGraph = ({
   );
 
   // ── Corrections overlay (Custom DD) ──────────────────────────────────────
-  // The subject company of any persisted correction is the company whose graph
-  // is currently loaded (the committed company search). Officer edits attach to
-  // its group_key; if the root search was an officer (no single subject), edits
-  // stay graph-only and nothing is persisted.
-  const subjectCompanyName =
-    lastSearchContext?.searchType === 'company'
-      ? (lastSearchContext.query || '').trim() || null
-      : null;
+  // The subject company of any persisted correction is the primary subject (the
+  // first company loaded — sticky across graph exploration). Officer edits attach
+  // to its group_key; if no company has been loaded yet (e.g. an officer-only
+  // search), edits stay graph-only and nothing is persisted.
+  const subjectCompanyName = primarySubject;
 
   // Resolve (and cache) the subject company's group_key on demand. Graph nodes
   // are name-keyed, not group_key-keyed, so we resolve via directory autocomplete.
@@ -4648,6 +4658,7 @@ const SpanishCompanyNetworkGraph = ({
     setHiddenNodeIds(new Set());
     setError(null);
     setLastSearchContext(null);
+    setPrimarySubject(null);
     setLoadingMore(false);
     setSimplifyGraph(false);
   };
@@ -5147,7 +5158,8 @@ const SpanishCompanyNetworkGraph = ({
         >
           Search
         </Button>
-        {searchType === 'company' && graphData.nodes.length > 0 && (
+        {graphData.nodes.length > 0 &&
+          (searchType === 'company' || (primarySubject && correctionsCount > 0)) && (
           <Button
             variant="outlined"
             color="warning"
@@ -5155,7 +5167,13 @@ const SpanishCompanyNetworkGraph = ({
             startIcon={<DescriptionIcon />}
             sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
             onClick={() => {
-              const name = (lastSearchContext?.query || searchQuery || '').trim();
+              // Prefer the sticky subject when it has corrections, so the Custom
+              // option is offered; otherwise fall back to the latest search.
+              const name = (
+                (correctionsCount > 0 && primarySubject)
+                  ? primarySubject
+                  : (lastSearchContext?.query || searchQuery || primarySubject || '')
+              ).trim();
               if (!name) return;
               setDdCheckoutCompany(name);
               setDdCheckoutOpen(true);
