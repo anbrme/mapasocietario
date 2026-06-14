@@ -30,6 +30,8 @@ import {
   queryAndroidBillingProducts,
 } from '../services/playBillingService';
 import { API_URL, PAYMENTS_API } from '../config';
+import { getClientId } from '../utils/clientId';
+import { resolveGroupKey, listCorrections } from '../services/correctionsService';
 
 const DD_PRICE = 22.50;
 const FS_PRICE = 17.50;
@@ -59,6 +61,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   const [error, setError] = useState('');
   const [androidProducts, setAndroidProducts] = useState([]);
   const [androidProductsLoading, setAndroidProductsLoading] = useState(false);
+  // DD mode: 'faithful' (Company-based, registry as-is + quality notes) vs
+  // 'amended' (Custom, applies the user's per-company corrections overlay).
+  const [mode, setMode] = useState('faithful');
+  const [correctionsCount, setCorrectionsCount] = useState(0);
+  const [groupKey, setGroupKey] = useState(null);
 
   const subtotal = DD_PRICE + (includeFS ? FS_PRICE : 0);
   const isAndroidApp = isAndroidNativeApp();
@@ -90,6 +97,44 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       cancelled = true;
     };
   }, [open, isAndroidApp]);
+
+  // On open, look up the company's corrections overlay. The "Custom" mode is
+  // only offered when the user actually has corrections for this company; until
+  // then there is nothing to amend and the Company-based report is the product.
+  useEffect(() => {
+    if (!open || !companyName) {
+      setCorrectionsCount(0);
+      setGroupKey(null);
+      setMode('faithful');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const gk = await resolveGroupKey(companyName);
+        if (cancelled) return;
+        setGroupKey(gk);
+        if (!gk) {
+          setCorrectionsCount(0);
+          setMode('faithful');
+          return;
+        }
+        const list = await listCorrections(gk);
+        if (cancelled) return;
+        setCorrectionsCount(list.length);
+        // Default to Custom when the user has corrections — that's why they made them.
+        setMode(list.length > 0 ? 'amended' : 'faithful');
+      } catch {
+        if (!cancelled) {
+          setCorrectionsCount(0);
+          setMode('faithful');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, companyName]);
 
   const ensureReportCanBeGenerated = async () => {
     // Pre-flight: confirm the Spanish company has a v3 profile before
@@ -155,6 +200,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         } : undefined,
         options: {
           language: pendingLang,
+          mode,
+          ...(mode === 'amended' ? {
+            account_id: getClientId(),
+            ...(groupKey ? { group_key: groupKey } : {}),
+          } : {}),
           financialStatements: pendingIncludeFS,
           ...(pendingIncludeFS ? {
             financialStatementsYear: pendingFinancialStatementsYear || 'latest',
@@ -229,6 +279,13 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
 
       const options = {
         language: lang,
+        // Custom (amended) DD: thread the mode + per-user corrections scope so the
+        // backend applies the overlay (mode==='amended' branch reads account_id + group_key).
+        mode,
+        ...(mode === 'amended' ? {
+          account_id: getClientId(),
+          ...(groupKey ? { group_key: groupKey } : {}),
+        } : {}),
         ...(includeFS ? {
           financialStatements: true,
           financialStatementsYear,
@@ -342,6 +399,64 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       </DialogTitle>
 
       <DialogContent sx={{ pt: 1 }}>
+        {/* Report mode selector — only when the user has graph corrections for this
+            company. Company-based = registry as-is; Custom = applies your corrections. */}
+        {correctionsCount > 0 && (
+          <Box
+            sx={{
+              p: 1.5,
+              mb: 2,
+              borderRadius: 1.5,
+              bgcolor: 'rgba(102,187,106,0.06)',
+              border: '1px solid rgba(102,187,106,0.2)',
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                mb: 1,
+                color: 'text.disabled',
+                fontSize: '0.62rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 600,
+              }}
+            >
+              Tipo de informe
+            </Typography>
+            <ToggleButtonGroup
+              value={mode}
+              exclusive
+              onChange={(_, v) => v && setMode(v)}
+              size="small"
+              fullWidth
+              sx={{
+                '& .MuiToggleButton-root': {
+                  py: 0.6,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.78rem',
+                  borderColor: 'rgba(255,255,255,0.15)',
+                  color: 'text.secondary',
+                  '&.Mui-selected': {
+                    bgcolor: 'success.main',
+                    color: '#000',
+                    '&:hover': { bgcolor: 'success.dark' },
+                  },
+                },
+              }}
+            >
+              <ToggleButton value="faithful">Company-based</ToggleButton>
+              <ToggleButton value="amended">{`Custom (${correctionsCount})`}</ToggleButton>
+            </ToggleButtonGroup>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1, lineHeight: 1.45 }}>
+              {mode === 'amended'
+                ? `Aplica tus ${correctionsCount} corrección(es) al informe. Se marca como «Custom — no autoritativo».`
+                : 'Informe registral: los datos tal como constan en el Registro Mercantil, con notas de calidad.'}
+            </Typography>
+          </Box>
+        )}
         {/*
         {!isAndroidApp && LAUNCH_PROMO_CODE && (
           <Box

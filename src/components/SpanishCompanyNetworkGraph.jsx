@@ -35,6 +35,7 @@ import {
   Chip,
   Switch,
   FormControlLabel,
+  Snackbar,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -63,9 +64,12 @@ import {
   Preview as PreviewIcon,
   Info as InfoIcon,
   AltRoute as RouteIcon,
+  EventBusy as EventBusyIcon,
+  FactCheck as FactCheckIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import DDCheckoutDialog from './DDCheckoutDialog';
+import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 import LegalDisclaimer from './LegalDisclaimer';
 import TimelineIcon from '@mui/icons-material/Timeline';
@@ -633,6 +637,20 @@ const SpanishCompanyNetworkGraph = ({
   // DD Checkout dialog state
   const [ddCheckoutOpen, setDdCheckoutOpen] = useState(false);
   const [ddCheckoutCompany, setDdCheckoutCompany] = useState('');
+
+  // Corrections overlay state (feeds the "Custom" amended DD; see correctionsService).
+  // Officer edits (hide / merge / mark-resigned) on the subject company are
+  // persisted per-user and scoped to that company's group_key.
+  const [correctionsCount, setCorrectionsCount] = useState(0);
+  const [correctionsSnackbar, setCorrectionsSnackbar] = useState(null); // { id, message, undoGraph }
+  const [myCorrectionsAnchor, setMyCorrectionsAnchor] = useState(null);
+  const [myCorrectionsList, setMyCorrectionsList] = useState([]);
+  const [myCorrectionsLoading, setMyCorrectionsLoading] = useState(false);
+  // Mark-resigned dialog state (optional resignation date)
+  const [markResignedNode, setMarkResignedNode] = useState(null);
+  const [markResignedDate, setMarkResignedDate] = useState('');
+  // Cache of subject company name -> resolved group_key (avoids re-querying autocomplete)
+  const subjectGroupKeyCache = useRef(new Map());
 
   // Officer timeline dialog state
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
@@ -3130,6 +3148,130 @@ const SpanishCompanyNetworkGraph = ({
     [activeNodeId]
   );
 
+  // ── Corrections overlay (Custom DD) ──────────────────────────────────────
+  // The subject company of any persisted correction is the company whose graph
+  // is currently loaded (the committed company search). Officer edits attach to
+  // its group_key; if the root search was an officer (no single subject), edits
+  // stay graph-only and nothing is persisted.
+  const subjectCompanyName =
+    lastSearchContext?.searchType === 'company'
+      ? (lastSearchContext.query || '').trim() || null
+      : null;
+
+  // Resolve (and cache) the subject company's group_key on demand. Graph nodes
+  // are name-keyed, not group_key-keyed, so we resolve via directory autocomplete.
+  const resolveSubjectGroupKey = useCallback(async name => {
+    if (!name) return null;
+    const cache = subjectGroupKeyCache.current;
+    if (cache.has(name)) return cache.get(name);
+    const gk = await resolveGroupKey(name);
+    cache.set(name, gk);
+    return gk;
+  }, []);
+
+  // Persist one officer correction scoped to the subject company, then surface
+  // an undo toast. No-ops (silently) when there is no subject company.
+  const recordCorrection = useCallback(
+    async ({ action, nameA, nameB, resignedDate, undoGraph, label }) => {
+      if (!subjectCompanyName || !nameA) return;
+      try {
+        const groupKey = await resolveSubjectGroupKey(subjectCompanyName);
+        if (!groupKey) {
+          setError(
+            'No pude vincular la corrección a la empresa principal; el cambio es solo visual y no afectará al informe.'
+          );
+          return;
+        }
+        const { id } = await postCorrection({ groupKey, action, nameA, nameB, resignedDate });
+        setCorrectionsCount(c => c + 1);
+        setCorrectionsSnackbar({ id, message: label || 'Corrección guardada', undoGraph: undoGraph || null });
+      } catch (e) {
+        setError(`No se pudo guardar la corrección: ${e.message}`);
+      }
+    },
+    [subjectCompanyName, resolveSubjectGroupKey]
+  );
+
+  // Keep the "Mis correcciones (N)" counter in sync with the loaded company.
+  useEffect(() => {
+    if (!subjectCompanyName) {
+      setCorrectionsCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const gk = await resolveSubjectGroupKey(subjectCompanyName);
+      if (cancelled) return;
+      if (!gk) {
+        setCorrectionsCount(0);
+        return;
+      }
+      try {
+        const list = await listCorrections(gk);
+        if (!cancelled) setCorrectionsCount(list.length);
+      } catch {
+        /* count is best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [subjectCompanyName, resolveSubjectGroupKey]);
+
+  // Undo from the toast: delete the persisted correction and revert the graph
+  // for reversible actions (hide). Merge/mark-resigned only remove the overlay row.
+  const undoCorrectionFromSnackbar = useCallback(async () => {
+    const snack = correctionsSnackbar;
+    setCorrectionsSnackbar(null);
+    if (!snack) return;
+    try {
+      if (snack.id) {
+        await deleteCorrection(snack.id);
+        setCorrectionsCount(c => Math.max(0, c - 1));
+      }
+      if (typeof snack.undoGraph === 'function') snack.undoGraph();
+    } catch (e) {
+      setError(`No se pudo deshacer la corrección: ${e.message}`);
+    }
+  }, [correctionsSnackbar]);
+
+  // "Mis correcciones" panel: load the current list when opened.
+  const openMyCorrections = useCallback(
+    async event => {
+      const anchor = event.currentTarget;
+      setMyCorrectionsAnchor(anchor);
+      if (!subjectCompanyName) {
+        setMyCorrectionsList([]);
+        return;
+      }
+      setMyCorrectionsLoading(true);
+      try {
+        const gk = await resolveSubjectGroupKey(subjectCompanyName);
+        const list = gk ? await listCorrections(gk) : [];
+        setMyCorrectionsList(list);
+        setCorrectionsCount(list.length);
+      } catch (e) {
+        setError(`No se pudieron cargar las correcciones: ${e.message}`);
+        setMyCorrectionsList([]);
+      } finally {
+        setMyCorrectionsLoading(false);
+      }
+    },
+    [subjectCompanyName, resolveSubjectGroupKey]
+  );
+
+  const closeMyCorrections = useCallback(() => setMyCorrectionsAnchor(null), []);
+
+  const removeCorrectionFromPanel = useCallback(async correctionId => {
+    try {
+      await deleteCorrection(correctionId);
+      setMyCorrectionsList(prev => prev.filter(c => c.id !== correctionId));
+      setCorrectionsCount(c => Math.max(0, c - 1));
+    } catch (e) {
+      setError(`No se pudo eliminar la corrección: ${e.message}`);
+    }
+  }, []);
+
   // Right-click on node to open actions menu (desktop), also called by single tap on touch devices
   const handleNodeRightClick = useCallback(
     (node, event) => {
@@ -3259,15 +3401,56 @@ const SpanishCompanyNetworkGraph = ({
 
   const hideNodeFromMenu = useCallback(() => {
     if (!contextNode) return;
-    hideNode(contextNode.id, { withConnected: false });
+    const node = contextNode;
+    hideNode(node.id, { withConnected: false });
     closeNodeContextMenu();
-  }, [contextNode, hideNode, closeNodeContextMenu]);
+    if (node.type === 'officer' && node.name) {
+      recordCorrection({
+        action: 'hide',
+        nameA: node.name,
+        label: `Directivo ocultado: ${node.name}`,
+        undoGraph: () => unhideNode(node.id),
+      });
+    }
+  }, [contextNode, hideNode, closeNodeContextMenu, recordCorrection, unhideNode]);
 
   const hideNodeWithRelationsFromMenu = useCallback(() => {
     if (!contextNode) return;
-    hideNode(contextNode.id, { withConnected: true });
+    const node = contextNode;
+    hideNode(node.id, { withConnected: true });
     closeNodeContextMenu();
-  }, [contextNode, hideNode, closeNodeContextMenu]);
+    // Only the officer itself is a DD correction; connected nodes stay graph-only.
+    if (node.type === 'officer' && node.name) {
+      recordCorrection({
+        action: 'hide',
+        nameA: node.name,
+        label: `Directivo ocultado: ${node.name}`,
+        undoGraph: () => unhideNode(node.id),
+      });
+    }
+  }, [contextNode, hideNode, closeNodeContextMenu, recordCorrection, unhideNode]);
+
+  // Mark an officer as resigned (DD overlay only — moves the officer from the
+  // active to the resigned set in the Custom report). Opens a small dialog so
+  // the user can optionally supply the resignation date.
+  const openMarkResignedDialog = useCallback(() => {
+    if (!contextNode || contextNode.type !== 'officer') return;
+    setMarkResignedNode(contextNode);
+    setMarkResignedDate('');
+    closeNodeContextMenu();
+  }, [contextNode, closeNodeContextMenu]);
+
+  const confirmMarkResigned = useCallback(() => {
+    const node = markResignedNode;
+    setMarkResignedNode(null);
+    if (!node || !node.name) return;
+    recordCorrection({
+      action: 'mark_resigned',
+      nameA: node.name,
+      resignedDate: markResignedDate || undefined,
+      label: `Marcado como cesado: ${node.name}`,
+    });
+  }, [markResignedNode, markResignedDate, recordCorrection]);
 
   // Data preview: fetch company or officer data and show in modal
   const openDataPreview = useCallback(async () => {
@@ -3637,11 +3820,24 @@ const SpanishCompanyNetworkGraph = ({
       setError('Selecciona un nodo destino para fusionar.');
       return;
     }
-    mergeNodes(contextNode.id, effectiveTarget.node.id);
+    const sourceNode = contextNode;
+    const targetNode = effectiveTarget.node;
+    mergeNodes(sourceNode.id, targetNode.id);
     setIsMergeNodeDialogOpen(false);
     setMergeTargetOption(null);
     setMergeSearchText('');
-  }, [contextNode, mergeTargetOption, exactTypedMergeOption, mergeNodes]);
+    // Persist as a DD correction only when both are officers. name_a (the merged
+    // duplicate) collapses into name_b (the canonical spelling). Graph merge is
+    // not auto-reversible, so undo only removes the persisted overlay row.
+    if (sourceNode.type === 'officer' && targetNode.type === 'officer' && sourceNode.name && targetNode.name) {
+      recordCorrection({
+        action: 'merge',
+        nameA: sourceNode.name,
+        nameB: targetNode.name,
+        label: `Fusionado: ${sourceNode.name} → ${targetNode.name}`,
+      });
+    }
+  }, [contextNode, mergeTargetOption, exactTypedMergeOption, mergeNodes, recordCorrection]);
 
   // Handle zoom changes
   const handleZoom = useCallback(zoom => {
@@ -4968,6 +5164,19 @@ const SpanishCompanyNetworkGraph = ({
             Due Diligence
           </Button>
         )}
+        {subjectCompanyName && correctionsCount > 0 && (
+          <Tooltip title="Tus correcciones para el informe «Custom» de esta empresa">
+            <Chip
+              icon={<FactCheckIcon />}
+              label={`Mis correcciones (${correctionsCount})`}
+              size="small"
+              color="info"
+              variant="outlined"
+              onClick={openMyCorrections}
+              sx={{ fontWeight: 600 }}
+            />
+          </Tooltip>
+        )}
         <TextField
           label="Filtrar nodos"
           placeholder="ej: Garcia, Telefonica"
@@ -6230,6 +6439,14 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>Línea temporal</ListItemText>
             </MenuItem>
           )}
+          {contextNode && contextNode.type === 'officer' && (
+            <MenuItem onClick={openMarkResignedDialog}>
+              <ListItemIcon>
+                <EventBusyIcon fontSize="small" color="warning" />
+              </ListItemIcon>
+              <ListItemText>Marcar como cesado</ListItemText>
+            </MenuItem>
+          )}
           {contextNode && contextNode.type !== 'officer' && (
             <MenuItem
               onClick={() => {
@@ -7036,6 +7253,115 @@ const SpanishCompanyNetworkGraph = ({
             <Button onClick={() => setLegalDisclaimerOpen(false)}>Cerrar</Button>
           </DialogActions>
         </Dialog>
+
+        {/* Mark-resigned dialog (optional resignation date) — Custom DD overlay */}
+        <Dialog
+          open={Boolean(markResignedNode)}
+          onClose={() => setMarkResignedNode(null)}
+          maxWidth="xs"
+          fullWidth
+          container={overlayContainer}
+        >
+          <DialogTitle>Marcar como cesado</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Marcar a <strong>{markResignedNode?.name}</strong> como cesado en el informe
+              personalizado. Esto no modifica el Registro Mercantil; solo afecta a tu informe
+              «Custom».
+            </Typography>
+            <TextField
+              type="date"
+              label="Fecha de cese (opcional)"
+              value={markResignedDate}
+              onChange={e => setMarkResignedDate(e.target.value)}
+              fullWidth
+              size="small"
+              InputLabelProps={{ shrink: true }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setMarkResignedNode(null)}>Cancelar</Button>
+            <Button color="warning" variant="contained" onClick={confirmMarkResigned}>
+              Marcar como cesado
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* "Mis correcciones (N)" panel — list + per-row undo */}
+        <Menu
+          open={Boolean(myCorrectionsAnchor)}
+          anchorEl={myCorrectionsAnchor}
+          onClose={closeMyCorrections}
+          container={overlayContainer}
+        >
+          <Box sx={{ px: 2, py: 1, minWidth: 300, maxWidth: 380 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              Mis correcciones
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {subjectCompanyName || 'Sin empresa seleccionada'}
+            </Typography>
+          </Box>
+          <Divider />
+          {myCorrectionsLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={20} />
+            </Box>
+          )}
+          {!myCorrectionsLoading && myCorrectionsList.length === 0 && (
+            <Box sx={{ px: 2, py: 1.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                Aún no has hecho correcciones en esta empresa. Usa el menú de un directivo
+                (ocultar, fusionar, marcar como cesado) para crearlas.
+              </Typography>
+            </Box>
+          )}
+          {!myCorrectionsLoading &&
+            myCorrectionsList.map(c => {
+              const label =
+                c.action === 'hide'
+                  ? `Ocultar: ${c.name_a}`
+                  : c.action === 'merge'
+                  ? `Fusionar: ${c.name_a} → ${c.name_b}`
+                  : `Cesado: ${c.name_a}${c.resigned_date ? ` (${c.resigned_date})` : ''}`;
+              return (
+                <Box
+                  key={c.id}
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    maxWidth: 380,
+                  }}
+                >
+                  <Typography variant="body2" sx={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
+                    {label}
+                  </Typography>
+                  <Tooltip title="Eliminar corrección">
+                    <IconButton size="small" onClick={() => removeCorrectionFromPanel(c.id)}>
+                      <DeleteOutlineIcon fontSize="small" color="error" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              );
+            })}
+        </Menu>
+
+        {/* Undo toast after a correction is saved */}
+        <Snackbar
+          open={Boolean(correctionsSnackbar)}
+          autoHideDuration={6000}
+          onClose={() => setCorrectionsSnackbar(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          message={correctionsSnackbar?.message}
+          action={
+            <Button color="warning" size="small" onClick={undoCorrectionFromSnackbar}>
+              Deshacer
+            </Button>
+          }
+        />
       </>
     );
   })();
