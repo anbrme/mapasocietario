@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Paper, Button, CircularProgress, Alert, Chip, Collapse } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { API_URL } from '../config';
 
-const BORME_API = 'https://api.ncdata.eu';
+const BORME_API = API_URL;
 const fmtPct = (n) => (typeof n === 'number' ? `${n.toFixed(3)} %` : '—');
 const CHANGE_COLOR = { new: 'success', increased: 'info', decreased: 'warning', dropped: 'default' };
 

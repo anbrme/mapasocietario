@@ -10,6 +10,7 @@
  */
 
 import { positionCategoryFor } from '../utils/positionCategories';
+import { API_URL } from '../config';
 
 const createApiError = (label, response, responseBody = '') => {
   const detail = responseBody ? ` - ${responseBody}` : '';
@@ -21,8 +22,9 @@ const createApiError = (label, response, responseBody = '') => {
 
 class SpanishCompaniesService {
   constructor() {
-    // Use api-proxy worker for CORS handling
-    this.baseUrl = 'https://api.ncdata.eu';
+    // Use api-proxy worker for CORS handling (prod). Overridable via
+    // VITE_API_URL for local/branch backends — see src/config.js.
+    this.baseUrl = API_URL;
     this.apiKey = null; // Auth is handled by the api-proxy Cloudflare Worker
     this.name = 'spanish-companies';
     this.version = '1.1.0'; // Production-grade improvements

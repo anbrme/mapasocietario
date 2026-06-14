@@ -29,9 +29,8 @@ import {
   purchaseAndroidReport,
   queryAndroidBillingProducts,
 } from '../services/playBillingService';
+import { API_URL, PAYMENTS_API } from '../config';
 
-const PAYMENTS_API = 'https://payments.ncdata.eu';
-const API_URL = 'https://api.ncdata.eu';
 const DD_PRICE = 22.50;
 const FS_PRICE = 17.50;
 // On Android, Google Play is the merchant of record: it adds the buyer's
