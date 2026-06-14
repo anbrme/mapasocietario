@@ -69,6 +69,8 @@ import {
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import DDCheckoutDialog from './DDCheckoutDialog';
+import RelationshipReportDialog from './RelationshipReportDialog';
+import { extractVisibleScope } from '../utils/relationshipScope';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 import LegalDisclaimer from './LegalDisclaimer';
@@ -637,6 +639,12 @@ const SpanishCompanyNetworkGraph = ({
   // DD Checkout dialog state
   const [ddCheckoutOpen, setDdCheckoutOpen] = useState(false);
   const [ddCheckoutCompany, setDdCheckoutCompany] = useState('');
+
+  // Relationship Report dialog state
+  const [relReportOpen, setRelReportOpen] = useState(false);
+  const [relScope, setRelScope] = useState(null);
+  const [relSubjects, setRelSubjects] = useState([]);
+  const [relResolving, setRelResolving] = useState(false);
 
   // Corrections overlay state (feeds the "Custom" amended DD; see correctionsService).
   // Officer edits (hide / merge / mark-resigned) on the subject company are
@@ -3202,6 +3210,29 @@ const SpanishCompanyNetworkGraph = ({
     [subjectCompanyName, resolveSubjectGroupKey]
   );
 
+  const openRelationshipReport = useCallback(async () => {
+    const scope = extractVisibleScope(filteredGraphData, normalizeNodeId);
+    if (scope.companies.length < 2) return;
+    setRelResolving(true);
+    try {
+      // Resolve a group_key per visible company; drop ones we can't confidently resolve.
+      const resolved = await Promise.all(
+        scope.companies.map(async name => ({ name, group_key: await resolveGroupKey(name) })));
+      const subjects = resolved.filter(s => s.group_key);
+      if (subjects.length < 2) {
+        setError('No pude identificar con seguridad al menos 2 de las empresas visibles. Prueba a buscarlas por su nombre exacto.');
+        return;
+      }
+      setRelScope(scope);
+      setRelSubjects(subjects);
+      setRelReportOpen(true);
+    } catch (e) {
+      setError(`No se pudo preparar el informe de relaciones: ${e.message}`);
+    } finally {
+      setRelResolving(false);
+    }
+  }, [filteredGraphData]);
+
   // Keep the "Mis correcciones (N)" counter in sync with the loaded company.
   useEffect(() => {
     if (!subjectCompanyName) {
@@ -4195,6 +4226,11 @@ const SpanishCompanyNetworkGraph = ({
 
   const simplifiedLowValueCount = filteredGraphData.simplifiedCount || 0;
 
+  const visibleCompanyCount = React.useMemo(
+    () => filteredGraphData.nodes.filter(
+      n => n.type === 'company' || n.type === 'spanish-company-group').length,
+    [filteredGraphData.nodes]);
+
   // Connected Components / Clusters analysis for the active rendered graph.
   const clustersData = React.useMemo(() => {
     return detectConnectedComponents(filteredGraphData.nodes, filteredGraphData.links);
@@ -5181,6 +5217,20 @@ const SpanishCompanyNetworkGraph = ({
           >
             Due Diligence
           </Button>
+        )}
+        {visibleCompanyCount >= 2 && (
+          <Tooltip title="Genera una Due Diligence de relaciones sobre las empresas visibles">
+            <span>
+              <Button
+                variant="outlined" color="primary" size="small"
+                startIcon={relResolving ? <CircularProgress size={14} /> : <AccountTreeIcon />}
+                disabled={relResolving}
+                sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+                onClick={openRelationshipReport}>
+                Informe de relaciones
+              </Button>
+            </span>
+          </Tooltip>
         )}
         {subjectCompanyName && correctionsCount > 0 && (
           <Tooltip title="Tus correcciones para el informe «Custom» de esta empresa">
@@ -7427,6 +7477,13 @@ const SpanishCompanyNetworkGraph = ({
           companyName={ddCheckoutCompany}
           country="es"
         />
+        <RelationshipReportDialog
+          open={relReportOpen}
+          onClose={() => setRelReportOpen(false)}
+          scope={relScope}
+          subjects={relSubjects}
+          lang="es"
+        />
       </Box>
     );
   }
@@ -7485,6 +7542,13 @@ const SpanishCompanyNetworkGraph = ({
         onClose={() => setDdCheckoutOpen(false)}
         companyName={ddCheckoutCompany}
         country="es"
+      />
+      <RelationshipReportDialog
+        open={relReportOpen}
+        onClose={() => setRelReportOpen(false)}
+        scope={relScope}
+        subjects={relSubjects}
+        lang="es"
       />
     </>
   );
