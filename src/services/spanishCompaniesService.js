@@ -640,19 +640,6 @@ class SpanishCompaniesService {
     const kept = all.slice(0, maxOfficers);
     const keptKeys = new Set(kept.map(x => keyFor(x.officer)));
 
-    // Reserve a quota for the most-recent apoderados. They sit at the bottom
-    // tier, so on board-heavy companies the cap squeezes them out entirely —
-    // but users want to see them. Add up to APODERADO_QUOTA of the newest
-    // apoderados ON TOP of the cap (bounded), so governance roles are never
-    // dropped to make room. They still render newest-first via the chip order.
-    const APODERADO_QUOTA = 20;
-    const extraApos = all
-      .filter(x => positionCategoryFor(x.officer.position_normalized || '') === 'Apoderado'
-        && !keptKeys.has(keyFor(x.officer)))
-      .sort((a, b) => b.date - a.date)
-      .slice(0, APODERADO_QUOTA);
-    extraApos.forEach(x => keptKeys.add(keyFor(x.officer)));
-
     return {
       active: activeList.filter(o => keptKeys.has(keyFor(o))),
       resigned: resignedList.filter(o => keptKeys.has(keyFor(o))),
