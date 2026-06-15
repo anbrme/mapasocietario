@@ -36,6 +36,7 @@ import {
   Switch,
   FormControlLabel,
   Snackbar,
+  Badge,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -68,8 +69,9 @@ import {
   FactCheck as FactCheckIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
+import HubIcon from '@mui/icons-material/Hub';
 import DDCheckoutDialog from './DDCheckoutDialog';
-import RelationshipReportDialog from './RelationshipReportDialog';
+import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
@@ -645,6 +647,7 @@ const SpanishCompanyNetworkGraph = ({
   const [relScope, setRelScope] = useState(null);
   const [relSubjects, setRelSubjects] = useState([]);
   const [relResolving, setRelResolving] = useState(false);
+  const [showSharedConnections, setShowSharedConnections] = useState(false);
 
   // Corrections overlay state (feeds the "Custom" amended DD; see correctionsService).
   // Officer edits (hide / merge / mark-resigned) on the subject company are
@@ -4228,11 +4231,21 @@ const SpanishCompanyNetworkGraph = ({
         && relationshipSubjectIds.has(normalizeNodeId(n.id))).length,
     [filteredGraphData.nodes, relationshipSubjectIds]);
 
+  // Live, detailed relationship scope from the visible graph — single source of
+  // truth for both the report modal and the shared-connections highlight.
+  const relationshipDetailedScope = React.useMemo(
+    () => extractVisibleScope(filteredGraphData, normalizeNodeId, relationshipSubjectIds),
+    [filteredGraphData, relationshipSubjectIds]);
+
+  const sharedHighlightIds = showSharedConnections
+    ? relationshipDetailedScope.sharedNodeIds
+    : null;
+
   // Build a Relationship Report from the visible graph. Declared AFTER
   // filteredGraphData: its dependency array reads filteredGraphData at render
   // time, so defining it earlier triggers a temporal-dead-zone ReferenceError.
   const openRelationshipReport = useCallback(async () => {
-    const scope = extractVisibleScope(filteredGraphData, normalizeNodeId, relationshipSubjectIds);
+    const scope = relationshipDetailedScope;
     if (scope.companies.length < 2) return;
     setRelResolving(true);
     try {
@@ -4252,6 +4265,21 @@ const SpanishCompanyNetworkGraph = ({
     } finally {
       setRelResolving(false);
     }
+  }, [relationshipDetailedScope, filteredGraphData, relationshipSubjectIds]);
+
+  // Remove a company from the report: unpin it and hide it from the graph, so
+  // the report scope (= pinned subjects) and the graph stay in sync.
+  const removeCompanyFromReport = useCallback((companyName) => {
+    const node = filteredGraphData.nodes.find(
+      n => (n.type === 'company' || n.type === 'spanish-company-group') && n.name === companyName);
+    if (!node) return;
+    const id = normalizeNodeId(node.id);
+    setPinnedNodeIds(prev => {
+      const next = new Set(prev); next.delete(id); return next;
+    });
+    setHiddenNodeIds(prev => new Set([...prev, id]));
+    setRelScope(extractVisibleScope(filteredGraphData, normalizeNodeId,
+      new Set([...relationshipSubjectIds].filter(x => x !== id))));
   }, [filteredGraphData, relationshipSubjectIds]);
 
   // Connected Components / Clusters analysis for the active rendered graph.
@@ -4391,8 +4419,11 @@ const SpanishCompanyNetworkGraph = ({
 
       // Pathfinder alpha control
       const inPath = shortestPathNodes.has(normalizeNodeId(node.id));
+      const isSharedConnector = !!sharedHighlightIds && sharedHighlightIds.has(normalizeNodeId(node.id));
       if (pathfinderActive && shortestPathNodes.size > 0) {
         ctx.globalAlpha = inPath ? 1.0 : PATH_DIM_ALPHA;
+      } else if (sharedHighlightIds) {
+        ctx.globalAlpha = isSharedConnector ? 1.0 : PATH_DIM_ALPHA;
       } else {
         ctx.globalAlpha = 1.0;
       }
@@ -4432,6 +4463,12 @@ const SpanishCompanyNetworkGraph = ({
       } else if (pathfinderActive && inPath) {
         ctx.strokeStyle = PATH_HIGHLIGHT_COLOR;
         ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius + 4, 0, 2 * Math.PI, false);
+        ctx.stroke();
+      } else if (isSharedConnector) {
+        ctx.strokeStyle = PATH_HIGHLIGHT_COLOR;
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeRadius + 4, 0, 2 * Math.PI, false);
         ctx.stroke();
@@ -4524,7 +4561,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds]
   );
 
   const linkCanvasObject = useCallback(
@@ -4548,9 +4585,14 @@ const SpanishCompanyNetworkGraph = ({
       // Determine link color based on appointment category
       const cat = (link.category || '').toLowerCase();
       const isLinkInPath = shortestPathLinks.has(normalizeNodeId(link.id));
+      const touchesShared = !!sharedHighlightIds && (
+        sharedHighlightIds.has(normalizeNodeId(typeof start === 'object' ? start.id : start)) ||
+        sharedHighlightIds.has(normalizeNodeId(typeof end === 'object' ? end.id : end)));
       let linkColor;
 
       if (pathfinderActive && isLinkInPath) {
+        linkColor = PATH_HIGHLIGHT_COLOR;
+      } else if (sharedHighlightIds && touchesShared) {
         linkColor = PATH_HIGHLIGHT_COLOR;
       } else if (link.type === 'ownership') {
         linkColor = cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d'; // Gold — sole shareholder
@@ -4568,6 +4610,8 @@ const SpanishCompanyNetworkGraph = ({
       // Pathfinder alpha control
       if (pathfinderActive && shortestPathNodes.size > 0) {
         ctx.globalAlpha = isLinkInPath ? 0.95 : PATH_DIM_ALPHA;
+      } else if (sharedHighlightIds) {
+        ctx.globalAlpha = touchesShared ? 1.0 : PATH_DIM_ALPHA;
       } else {
         ctx.globalAlpha = 1.0;
       }
@@ -4689,7 +4733,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR]
+    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds]
   );
 
   // Graph controls
@@ -5242,17 +5286,34 @@ const SpanishCompanyNetworkGraph = ({
           </Button>
         )}
         {visibleCompanyCount >= 2 && (
-          <Tooltip title="Genera una Due Diligence de relaciones sobre las empresas visibles">
+          <Tooltip title="Informe de relaciones sobre las empresas visibles (gratis)">
             <span>
-              <Button
-                variant="outlined" color="primary" size="small"
-                startIcon={relResolving ? <CircularProgress size={14} /> : <AccountTreeIcon />}
-                disabled={relResolving}
-                sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
-                onClick={openRelationshipReport}>
-                Informe de relaciones
-              </Button>
+              <Badge badgeContent={visibleCompanyCount} color="primary"
+                sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
+                <Button
+                  variant="outlined" color="primary" size="small"
+                  startIcon={relResolving ? <CircularProgress size={14} /> : <AccountTreeIcon />}
+                  disabled={relResolving}
+                  sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+                  onClick={openRelationshipReport}>
+                  Informe de relaciones
+                </Button>
+              </Badge>
             </span>
+          </Tooltip>
+        )}
+        {visibleCompanyCount >= 2 && (
+          <Tooltip title={showSharedConnections
+            ? 'Ocultar conexiones compartidas'
+            : 'Resaltar administradores/entidades en varias empresas y atenuar el resto'}>
+            <Button
+              variant={showSharedConnections ? 'contained' : 'outlined'}
+              color="info" size="small"
+              startIcon={<HubIcon />}
+              sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+              onClick={() => setShowSharedConnections(v => !v)}>
+              {showSharedConnections ? 'Conexiones compartidas ✓' : 'Conexiones compartidas'}
+            </Button>
           </Tooltip>
         )}
         {subjectCompanyName && correctionsCount > 0 && (
@@ -7500,12 +7561,13 @@ const SpanishCompanyNetworkGraph = ({
           companyName={ddCheckoutCompany}
           country="es"
         />
-        <RelationshipReportDialog
+        <RelationshipReportModal
           open={relReportOpen}
           onClose={() => setRelReportOpen(false)}
           scope={relScope}
           subjects={relSubjects}
           lang="es"
+          onRemoveCompany={removeCompanyFromReport}
         />
       </Box>
     );
@@ -7566,12 +7628,13 @@ const SpanishCompanyNetworkGraph = ({
         companyName={ddCheckoutCompany}
         country="es"
       />
-      <RelationshipReportDialog
+      <RelationshipReportModal
         open={relReportOpen}
         onClose={() => setRelReportOpen(false)}
         scope={relScope}
         subjects={relSubjects}
         lang="es"
+        onRemoveCompany={removeCompanyFromReport}
       />
     </>
   );
