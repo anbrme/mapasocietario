@@ -36,3 +36,15 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Relationship report: print only the report body when Save-as-PDF is used. */
+@media print {
+  body * { visibility: hidden !important; }
+  #relationship-report-print, #relationship-report-print * { visibility: visible !important; }
+  #relationship-report-print {
+    position: absolute; left: 0; top: 0; width: 100%;
+    max-height: none !important; overflow: visible !important;
+    color: #000; background: #fff;
+  }
+  .rel-report-no-print { display: none !important; }
+}
