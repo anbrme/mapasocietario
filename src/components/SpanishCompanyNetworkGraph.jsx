@@ -1045,6 +1045,18 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [initialCompanyName, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-refetch when the per-company officer cap ("Cargos/empresa") changes, so
+  // the selector is live — e.g. raise it to 500 to pull in apoderados without
+  // having to re-search. Only refetches when a company search is loaded.
+  const officersCapRef = useRef(officersPerCompany);
+  useEffect(() => {
+    if (officersCapRef.current === officersPerCompany) return; // skip initial mount
+    officersCapRef.current = officersPerCompany;
+    if (lastSearchContext?.searchType === 'company' && lastSearchContext.query) {
+      handleSearch(lastSearchContext.query, lastSearchContext.exactMatch || false, 'company');
+    }
+  }, [officersPerCompany]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Add roundRect polyfill for older browsers
   useEffect(() => {
     if (
