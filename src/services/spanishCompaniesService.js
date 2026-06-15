@@ -481,11 +481,14 @@ class SpanishCompaniesService {
       // so we never depend on name ranking.
       const wanted = groupKey.trim();
       try {
-        const searchData = await this.searchCompaniesV3(wanted, { size: 10 });
+        // Search by NAME to get candidate docs, then select the one whose stable
+        // id matches the group_key — never depend on name ranking. The live v3
+        // search exposes the group_key as `_id`; `id`/`group_key` are added by a
+        // backend change, so accept all three.
+        const searchData = await this.searchCompaniesV3(companyName || wanted, { size: 10 });
         const results = searchData.results || [];
         const match = results.find(
-          r =>
-            (r.id || r.group_key || r.company_name_normalized || '').trim() === wanted
+          r => (r._id || r.id || r.group_key || '').trim() === wanted
         );
         if (match) return { company: match };
         // No exact group_key hit in search — fall through to the name path so the
