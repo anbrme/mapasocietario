@@ -7,6 +7,12 @@ const refId = ref => (ref && typeof ref === 'object' ? ref.id : ref);
 const isCompany = n => !!n && (n.type === 'company' || n.type === 'spanish-company-group');
 const isOfficer = n => !!n && n.type === 'officer';
 
+export function isActiveOfficerCategory(category) {
+  const c = (category || '').toLowerCase();
+  return c.includes('nombramiento') || c.includes('reeleccion') || c.includes('reelección');
+}
+const isOwnership = l => !!l && l.type === 'ownership';
+
 /**
  * @param graphData {nodes, links} — the visible graph
  * @param normalizeId optional id normalizer (the graph component passes its
@@ -49,10 +55,57 @@ export function extractVisibleScope(graphData, normalizeId = (x) => x, subjectId
   });
   const sharedPeople = Object.values(companiesPerOfficer).filter(n => n >= 2).length;
 
+  // Per-connector detail (officers at >= 2 subject companies) + ownership links.
+  const connectorAcc = {}; // name -> { node, companies:Set, roles:Set, anyActive, anyCeased }
+  const ownership = [];
+  links.forEach(l => {
+    const a = byId.get(normalizeId(refId(l.source)));
+    const b = byId.get(normalizeId(refId(l.target)));
+    if (!a || !b) return;
+    if (isOwnership(l)) {
+      if (isSubject(a) || isSubject(b)) {
+        ownership.push({
+          owner: a.name, owned: b.name,
+          lost: (l.category || '').toLowerCase() === 'socio_perdido',
+        });
+      }
+      return;
+    }
+    let company = null, officer = null;
+    if (isSubject(a) && isOfficer(b)) { company = a; officer = b; }
+    else if (isSubject(b) && isOfficer(a)) { company = b; officer = a; }
+    else return;
+    if (!subjectNames.has(company.name)) return;
+    const acc = connectorAcc[officer.name] || (connectorAcc[officer.name] = {
+      node: officer, companies: new Set(), roles: new Set(), anyActive: false, anyCeased: false,
+    });
+    acc.companies.add(company.name);
+    const role = (l.relationship || l.category || '').trim();
+    if (role) acc.roles.add(role);
+    if (isActiveOfficerCategory(l.category)) acc.anyActive = true; else acc.anyCeased = true;
+  });
+
+  const connectors = Object.entries(connectorAcc)
+    .filter(([, acc]) => acc.companies.size >= 2)
+    .map(([name, acc]) => ({
+      name,
+      nodeId: normalizeId(acc.node.id),
+      type: acc.node.subtype === 'company' ? 'entity' : 'individual',
+      companies: [...acc.companies],
+      roles: [...acc.roles],
+      status: acc.anyActive && acc.anyCeased ? 'mixed' : (acc.anyActive ? 'active' : 'ceased'),
+    }))
+    .sort((x, y) => y.companies.length - x.companies.length);
+
+  const sharedNodeIds = new Set(connectors.map(c => c.nodeId));
+
   return {
     companies: companies.map(c => c.name),
     officersByCompany: Object.fromEntries(
       Object.entries(officersByCompany).map(([c, set]) => [c, [...set]])),
+    connectors,
+    ownership,
+    sharedNodeIds,
     counts: {
       companies: companies.length,
       officers: Object.keys(companiesPerOfficer).length,
