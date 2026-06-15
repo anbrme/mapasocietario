@@ -7,3 +7,4 @@ dist
 # Local env overrides (branch/dev backend URLs) — never commit
 .env.local
 .env*.local
+.superpowers/
