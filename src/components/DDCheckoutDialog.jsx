@@ -35,28 +35,177 @@ import { resolveGroupKey, listCorrections } from '../services/correctionsService
 
 const DD_PRICE = 22.50;
 const FS_PRICE = 17.50;
-// On Android, Google Play is the merchant of record: it adds the buyer's
-// country VAT to this base price and may round the final amount, so the
-// charged total can differ from EUR 22.50.
-const ANDROID_VAT_NOTE =
-  'Final price is set by Google Play and includes VAT calculated for your country, so it may differ from EUR 22.50.';
 // Product Hunt launch promo. Set to null after the launch to hide the banner.
 //const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
 const ANDROID_PLAY_BILLING_ENABLED = true;
 const FS_FALLBACK_KEEP_DD = 'keep_dd_refund_fs';
 const FS_FALLBACK_FULL_REFUND = 'full_refund';
 
+const DD_COPY = {
+  en: {
+    androidVatNote:
+      'Final price is set by Google Play and includes VAT calculated for your country, so it may differ from EUR 22.50.',
+    googlePlayProductsError:
+      'Google Play products are not available yet. Check Play Console product setup.',
+    missingCompany: companyName =>
+      `We could not find "${companyName}" in our Spanish corporate registry. ` +
+      'This usually means it is a foreign entity that appears only as a shareholder of Spanish companies. ' +
+      'We do not hold a corporate profile for it, so a Due Diligence report cannot be generated. ' +
+      'If you believe this is wrong, please email app@ncdata.eu.',
+    fulfillFailed:
+      'Google Play purchase was paid, but report fulfillment failed. Please contact app@ncdata.eu.',
+    emailRequired: 'Email is required to receive your report.',
+    googlePlayConnecting:
+      'Google Play checkout is being connected for Android. Stripe checkout is disabled in the Android app.',
+    createCheckoutFailed: 'Could not create checkout session. Please try again.',
+    connectionError: 'Connection error. Please try again.',
+    title: 'Due Diligence Report',
+    reportLanguage: 'Report language',
+    reportType: 'Report type',
+    companyBased: 'Company-based',
+    custom: 'Custom',
+    amendedMode: count =>
+      `Applies your ${count} correction${count === 1 ? '' : 's'} to the report. It is marked as "Custom - not authoritative".`,
+    faithfulMode:
+      'Registry report: the data as published in the Registro Mercantil, with quality notes.',
+    baseDescription: 'Corporate structure, officer history, sanctions screening, risk analysis',
+    sampleReport: 'See a sample report before you buy',
+    financialStatements: 'Financial Statements (Cuentas Anuales)',
+    financialStatementsDescription:
+      'Official PDF from Registro Mercantil + AI-powered financial analysis (OCR + LLM). Delivered within 30-45 minutes.',
+    financialStatementsYear: 'Financial statements year',
+    latestAvailable: 'Latest available',
+    fallbackPrompt:
+      'If the requested accounts are not available, choose how we should handle the order.',
+    keepDd: 'Keep the Due Diligence report',
+    keepDdDescription: 'Refund only the financial statements part and keep the DD report.',
+    cancelOrder: 'Cancel the whole order',
+    cancelOrderDescription: 'Issue a full refund if the requested accounts cannot be retrieved.',
+    refundNote:
+      'We will handle the refund and tax adjustment for the unavailable part, or for the full order if you choose full refund.',
+    emailLabel: 'Email (required)',
+    emailHelp:
+      'Used only to deliver your report and (if you opt in) BORME monitoring alerts. Never resold.',
+    androidInfo:
+      'Stripe checkout is disabled in the Android app. Payments are processed by Google Play.',
+    googlePlayPrice: 'Google Play price',
+    basePrice: 'Base price',
+    taxVat: 'Tax / VAT',
+    includedGooglePlay: 'Included - set by Google Play per country',
+    calculatedStripe: 'Calculated by Stripe',
+    total: 'Total',
+    shownAtStripe: 'Shown at Stripe Checkout',
+    invoice:
+      'Invoiced by Nurnberg Consulting SL · NIF B86829538 · Madrid, Spain.',
+    androidPayments:
+      'Android payments are processed by Google Play, which calculates and remits VAT per country. The final price may differ from EUR 22.50.',
+    stripePayments:
+      'Payments securely processed by Stripe or Google Pay (for Android). Stripe calculates taxes and validates supported business VAT IDs at checkout.',
+    accept: 'By continuing you accept our',
+    terms: 'terms',
+    and: 'and',
+    privacy: 'privacy policy',
+    questions: 'Questions before paying? Email',
+    reply: 'we usually reply within a few hours on business days.',
+    guaranteeTitle: 'Data-quality guarantee.',
+    guarantee:
+      "If your report has data-quality issues, email us within 7 days and we'll re-issue it free or refund you in full.",
+    openingGooglePlay: 'Opening Google Play...',
+    redirectingStripe: 'Redirecting to Stripe...',
+    payGooglePlay: price => `Pay with Google Play · ${price}`,
+    googlePlaySoon: 'Google Play checkout coming soon',
+    continueStripe: subtotal => `Continue to Stripe · from EUR ${subtotal.toFixed(2)}`,
+    cancel: 'Cancel',
+  },
+  es: {
+    androidVatNote:
+      'El precio final lo fija Google Play e incluye el IVA calculado para tu país, por lo que puede diferir de EUR 22,50.',
+    googlePlayProductsError:
+      'Los productos de Google Play aún no están disponibles. Revisa la configuración en Play Console.',
+    missingCompany: companyName =>
+      `No hemos encontrado "${companyName}" en nuestro registro societario español. ` +
+      'Normalmente esto significa que es una entidad extranjera que solo aparece como accionista de sociedades españolas. ' +
+      'No tenemos un perfil societario propio para ella, por lo que no se puede generar un informe Due Diligence. ' +
+      'Si crees que es un error, escríbenos a app@ncdata.eu.',
+    fulfillFailed:
+      'La compra en Google Play se ha pagado, pero no se pudo preparar el informe. Contacta con app@ncdata.eu.',
+    emailRequired: 'El email es obligatorio para recibir el informe.',
+    googlePlayConnecting:
+      'Estamos conectando Google Play para Android. Stripe está desactivado dentro de la app Android.',
+    createCheckoutFailed: 'No se pudo crear la sesión de pago. Inténtalo de nuevo.',
+    connectionError: 'Error de conexión. Inténtalo de nuevo.',
+    title: 'Informe Due Diligence',
+    reportLanguage: 'Idioma del informe',
+    reportType: 'Tipo de informe',
+    companyBased: 'Registral',
+    custom: 'Custom',
+    amendedMode: count =>
+      `Aplica tus ${count} corrección${count === 1 ? '' : 'es'} al informe. Se marca como "Custom - no autoritativo".`,
+    faithfulMode:
+      'Informe registral: los datos tal como constan en el Registro Mercantil, con notas de calidad.',
+    baseDescription:
+      'Estructura societaria, historial de administradores, cruce de sanciones y análisis de riesgo',
+    sampleReport: 'Ver un informe de ejemplo antes de comprar',
+    financialStatements: 'Cuentas anuales',
+    financialStatementsDescription:
+      'PDF oficial del Registro Mercantil + análisis financiero por IA (OCR + LLM). Entrega en 30-45 minutos.',
+    financialStatementsYear: 'Ejercicio de cuentas anuales',
+    latestAvailable: 'Último disponible',
+    fallbackPrompt:
+      'Si las cuentas solicitadas no están disponibles, elige cómo debemos gestionar el pedido.',
+    keepDd: 'Mantener el informe Due Diligence',
+    keepDdDescription: 'Reembolsar solo la parte de cuentas anuales y mantener el informe DD.',
+    cancelOrder: 'Cancelar todo el pedido',
+    cancelOrderDescription: 'Emitir un reembolso completo si no se pueden obtener las cuentas solicitadas.',
+    refundNote:
+      'Gestionaremos el reembolso y el ajuste fiscal de la parte no disponible, o de todo el pedido si eliges reembolso completo.',
+    emailLabel: 'Email (obligatorio)',
+    emailHelp:
+      'Se usa solo para entregar el informe y, si lo activas, alertas de seguimiento BORME. Nunca se revende.',
+    androidInfo:
+      'Stripe está desactivado en la app Android. Los pagos se procesan con Google Play.',
+    googlePlayPrice: 'Precio de Google Play',
+    basePrice: 'Precio base',
+    taxVat: 'Impuestos / IVA',
+    includedGooglePlay: 'Incluido - fijado por Google Play según país',
+    calculatedStripe: 'Calculado por Stripe',
+    total: 'Total',
+    shownAtStripe: 'Mostrado en Stripe Checkout',
+    invoice:
+      'Factura emitida por Nurnberg Consulting SL · NIF B86829538 · Madrid, España.',
+    androidPayments:
+      'Los pagos Android se procesan con Google Play, que calcula y liquida el IVA por país. El precio final puede diferir de EUR 22,50.',
+    stripePayments:
+      'Pagos seguros procesados por Stripe o Google Pay (en Android). Stripe calcula impuestos y valida NIF-IVA empresariales compatibles en el pago.',
+    accept: 'Al continuar aceptas nuestros',
+    terms: 'términos',
+    and: 'y',
+    privacy: 'política de privacidad',
+    questions: '¿Preguntas antes de pagar? Escribe a',
+    reply: 'solemos responder en unas horas en días laborables.',
+    guaranteeTitle: 'Garantía de calidad de datos.',
+    guarantee:
+      'Si tu informe tiene problemas de calidad de datos, escríbenos en un plazo de 7 días y lo reemitiremos gratis o te reembolsaremos el importe completo.',
+    openingGooglePlay: 'Abriendo Google Play...',
+    redirectingStripe: 'Redirigiendo a Stripe...',
+    payGooglePlay: price => `Pagar con Google Play · ${price}`,
+    googlePlaySoon: 'Pago con Google Play próximamente',
+    continueStripe: subtotal => `Continuar a Stripe · desde EUR ${subtotal.toFixed(2)}`,
+    cancel: 'Cancelar',
+  },
+};
+
 function buildFinancialStatementYearOptions() {
   const latestClosedYear = new Date().getFullYear() - 1;
   return Array.from({ length: 6 }, (_, index) => String(latestClosedYear - index));
 }
 
-export default function DDCheckoutDialog({ open, onClose, companyName, country = 'es' }) {
+export default function DDCheckoutDialog({ open, onClose, companyName, country = 'es', language = 'en' }) {
   const [includeFS, setIncludeFS] = useState(false);
   const [financialStatementsYear, setFinancialStatementsYear] = useState('latest');
   const [financialStatementsFallback, setFinancialStatementsFallback] = useState(FS_FALLBACK_KEEP_DD);
   const [email, setEmail] = useState('');
-  const [lang, setLang] = useState('es');
+  const [lang, setLang] = useState(language === 'es' ? 'es' : 'en');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [androidProducts, setAndroidProducts] = useState([]);
@@ -77,6 +226,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   );
   const androidDisplayPrice = selectedAndroidProduct?.formattedPrice || `EUR ${subtotal.toFixed(2)}`;
   const financialStatementYearOptions = buildFinancialStatementYearOptions();
+  const copy = DD_COPY[lang === 'es' ? 'es' : 'en'];
+
+  useEffect(() => {
+    if (open) setLang(language === 'es' ? 'es' : 'en');
+  }, [open, language]);
 
   useEffect(() => {
     if (!open || !isAndroidApp || !ANDROID_PLAY_BILLING_ENABLED) return;
@@ -88,7 +242,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       })
       .catch(err => {
         console.warn('Google Play product query failed:', err);
-        if (!cancelled) setError('Google Play products are not available yet. Check Play Console product setup.');
+        if (!cancelled) setError(copy.googlePlayProductsError);
       })
       .finally(() => {
         if (!cancelled) setAndroidProductsLoading(false);
@@ -96,7 +250,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     return () => {
       cancelled = true;
     };
-  }, [open, isAndroidApp]);
+  }, [open, isAndroidApp, copy.googlePlayProductsError]);
 
   // On open, look up the company's corrections overlay. The "Custom" mode is
   // only offered when the user actually has corrections for this company; until
@@ -156,13 +310,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
 
       const checkData = await checkRes.json();
       if (checkData && checkData.exists === false) {
-        setError(
-          `We could not find "${companyName}" in our Spanish corporate registry. ` +
-          `This usually means it is a foreign entity that appears only as a ` +
-          `shareholder of Spanish companies — we do not hold a corporate profile ` +
-          `for it, so a Due Diligence report cannot be generated. ` +
-          `If you believe this is wrong, please email app@ncdata.eu.`
-        );
+        setError(copy.missingCompany(companyName));
         return false;
       }
     } catch (preErr) {
@@ -216,7 +364,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
 
     const fulfillData = await fulfillRes.json().catch(() => ({}));
     if (!fulfillRes.ok || !fulfillData.sessionId) {
-      throw new Error(fulfillData.error || 'Google Play purchase was paid, but report fulfillment failed. Please contact app@ncdata.eu.');
+      throw new Error(fulfillData.error || copy.fulfillFailed);
     }
 
     localStorage.removeItem('dd_google_play_pending_purchase');
@@ -228,7 +376,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
 
   const handleCheckout = async () => {
     if (!email.trim()) {
-      setError('Email is required to receive your report.');
+      setError(copy.emailRequired);
       return;
     }
     setError('');
@@ -242,7 +390,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
 
       if (isAndroidApp) {
         if (!ANDROID_PLAY_BILLING_ENABLED) {
-          setError('Google Play checkout is being connected for Android. Stripe checkout is disabled in the Android app.');
+          setError(copy.googlePlayConnecting);
           return;
         }
 
@@ -313,11 +461,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         }
         window.location.href = data.url;
       } else {
-        setError('Could not create checkout session. Please try again.');
+        setError(copy.createCheckoutFailed);
       }
     } catch (err) {
       console.error('DD checkout error:', err);
-      setError(err.message || 'Connection error. Please try again.');
+      setError(err.message || copy.connectionError);
     } finally {
       setLoading(false);
     }
@@ -343,7 +491,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <DescriptionIcon sx={{ color: 'warning.main', fontSize: 22 }} />
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                Due Diligence Report
+                {copy.title}
               </Typography>
             </Box>
             {companyName && (
@@ -366,7 +514,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                   fontWeight: 600,
                 }}
               >
-                Report language
+                {copy.reportLanguage}
               </Typography>
             </Box>
             <ToggleButtonGroup
@@ -423,7 +571,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 fontWeight: 600,
               }}
             >
-              Tipo de informe
+              {copy.reportType}
             </Typography>
             <ToggleButtonGroup
               value={mode}
@@ -447,13 +595,13 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 },
               }}
             >
-              <ToggleButton value="faithful">Company-based</ToggleButton>
-              <ToggleButton value="amended">{`Custom (${correctionsCount})`}</ToggleButton>
+              <ToggleButton value="faithful">{copy.companyBased}</ToggleButton>
+              <ToggleButton value="amended">{`${copy.custom} (${correctionsCount})`}</ToggleButton>
             </ToggleButtonGroup>
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1, lineHeight: 1.45 }}>
               {mode === 'amended'
-                ? `Aplica tus ${correctionsCount} corrección(es) al informe. Se marca como «Custom — no autoritativo».`
-                : 'Informe registral: los datos tal como constan en el Registro Mercantil, con notas de calidad.'}
+                ? copy.amendedMode(correctionsCount)
+                : copy.faithfulMode}
             </Typography>
           </Box>
         )}
@@ -496,7 +644,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <DescriptionIcon sx={{ fontSize: 18, color: 'warning.main' }} />
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                Due Diligence Report
+                {copy.title}
               </Typography>
             </Box>
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>
@@ -506,7 +654,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             </Typography>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
-            Corporate structure, officer history, sanctions screening, risk analysis
+            {copy.baseDescription}
           </Typography>
           {/* Let hesitating buyers see exactly what they're paying for, right here at the decision point. */}
           <Box
@@ -527,11 +675,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             }}
           >
             <PictureAsPdfIcon sx={{ fontSize: 15 }} />
-            See a sample report before you buy
+            {copy.sampleReport}
           </Box>
           {isAndroidApp && (
             <Typography variant="caption" sx={{ color: 'text.disabled', mt: 0.5, display: 'block', fontStyle: 'italic' }}>
-              {ANDROID_VAT_NOTE}
+              {copy.androidVatNote}
             </Typography>
           )}
         </Box>
@@ -561,12 +709,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <AccountBalanceIcon sx={{ fontSize: 16, color: includeFS ? 'primary.main' : 'text.secondary' }} />
                   <Typography variant="body2" sx={{ fontWeight: 600, color: includeFS ? 'text.primary' : 'text.secondary' }}>
-                    Financial Statements (Cuentas Anuales)
+                    {copy.financialStatements}
                   </Typography>
                 </Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25, ml: 3 }}>
-                  Official PDF from Registro Mercantil + AI-powered financial analysis (OCR + LLM).
-                  Delivered within 30-45 minutes.
+                  {copy.financialStatementsDescription}
                 </Typography>
                 <Typography variant="caption" sx={{ color: includeFS ? 'primary.light' : 'text.secondary', display: 'block', mt: 0.25, ml: 3, fontWeight: 600 }}>
                   + EUR {FS_PRICE.toFixed(2)}
@@ -591,7 +738,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               fullWidth
               select
               size="small"
-              label="Financial statements year"
+              label={copy.financialStatementsYear}
               value={financialStatementsYear}
               onChange={(e) => setFinancialStatementsYear(e.target.value)}
               SelectProps={{ native: true }}
@@ -603,14 +750,14 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 },
               }}
             >
-              <option value="latest">Latest available</option>
+              <option value="latest">{copy.latestAvailable}</option>
               {financialStatementYearOptions.map((year) => (
                 <option key={year} value={year}>{year}</option>
               ))}
             </TextField>
 
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.75 }}>
-              If the requested accounts are not available, choose how we should handle the order.
+              {copy.fallbackPrompt}
             </Typography>
             <RadioGroup
               value={financialStatementsFallback}
@@ -622,17 +769,17 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             >
               <FallbackRadioOption
                 value={FS_FALLBACK_KEEP_DD}
-                label="Keep the Due Diligence report"
-                description="Refund only the financial statements part and keep the DD report."
+                label={copy.keepDd}
+                description={copy.keepDdDescription}
               />
               <FallbackRadioOption
                 value={FS_FALLBACK_FULL_REFUND}
-                label="Cancel the whole order"
-                description="Issue a full refund if the requested accounts cannot be retrieved."
+                label={copy.cancelOrder}
+                description={copy.cancelOrderDescription}
               />
             </RadioGroup>
             <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.75, lineHeight: 1.45 }}>
-              We will handle the refund and tax adjustment for the unavailable part, or for the full order if you choose full refund.
+              {copy.refundNote}
             </Typography>
           </Box>
         )}
@@ -641,7 +788,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         <TextField
           fullWidth
           size="small"
-          label="Email (required)"
+          label={copy.emailLabel}
           placeholder="your@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -657,7 +804,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           }}
         />
         <Typography variant="caption" sx={{ display: 'block', mt: 0.75, px: 0.5, color: 'text.disabled', fontSize: '0.7rem', lineHeight: 1.45 }}>
-          Used only to deliver your report and (if you opt in) BORME monitoring alerts. Never resold.
+          {copy.emailHelp}
         </Typography>
 
         {error && (
@@ -667,7 +814,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         )}
         {isAndroidApp && !error && (
           <Alert severity="info" sx={{ mt: 2, fontSize: '0.75rem' }}>
-            Stripe checkout is disabled in the Android app. Payments are processed by Google Play.
+            {copy.androidInfo}
           </Alert>
         )}
       </DialogContent>
@@ -677,22 +824,22 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         <Box sx={{ width: '100%', mb: 0.5 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {isAndroidApp ? 'Google Play price' : 'Base price'}
+              {isAndroidApp ? copy.googlePlayPrice : copy.basePrice}
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {isAndroidApp ? androidDisplayPrice : `EUR ${subtotal.toFixed(2)}`}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>Tax / VAT</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>{copy.taxVat}</Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {isAndroidApp ? 'Included — set by Google Play per country' : 'Calculated by Stripe'}
+              {isAndroidApp ? copy.includedGooglePlay : copy.calculatedStripe}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1, mt: 0.5, pt: 0.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <Typography variant="body2" sx={{ fontWeight: 700 }}>Total</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>{copy.total}</Typography>
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>
-              {isAndroidApp ? androidDisplayPrice : 'Shown at Stripe Checkout'}
+              {isAndroidApp ? androidDisplayPrice : copy.shownAtStripe}
             </Typography>
           </Box>
           <Typography
@@ -706,14 +853,12 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               lineHeight: 1.45,
             }}
           >
-            Invoiced by <strong>Nurnberg Consulting SL</strong> &middot; NIF B86829538 &middot; Madrid, Spain.
-            {isAndroidApp
-              ? 'Android payments are processed by Google Play, which calculates and remits VAT per country. The final price may differ from EUR 22.50. '
-              : ' Payments securely processed by Stripe or Google Pay (for Android). Stripe calculates taxes and validates supported business VAT IDs at checkout. '}
-            By continuing you accept our{' '}
-            <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>terms</a>{' '}
-            and{' '}
-            <a href="/privacy.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>privacy policy</a>.
+            {copy.invoice}{' '}
+            {isAndroidApp ? copy.androidPayments : copy.stripePayments}{' '}
+            {copy.accept}{' '}
+            <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{copy.terms}</a>{' '}
+            {copy.and}{' '}
+            <a href="/privacy.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{copy.privacy}</a>.
           </Typography>
           <Typography
             variant="caption"
@@ -726,9 +871,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               lineHeight: 1.5,
             }}
           >
-            Questions before paying? Email{' '}
+            {copy.questions}{' '}
             <a href="mailto:app@ncdata.eu" style={{ color: '#8bc5ff', textDecoration: 'none' }}>app@ncdata.eu</a>
-            {' '}— we usually reply within a few hours on business days.
+            {' '}— {copy.reply}
           </Typography>
         </Box>
         {/* Data-quality guarantee — the real refund promise, surfaced at the moment of maximum doubt. */}
@@ -746,7 +891,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         >
           <VerifiedUserIcon sx={{ fontSize: 18, color: 'success.light', mt: '1px', flexShrink: 0 }} />
           <Typography variant="caption" sx={{ color: 'success.light', fontSize: '0.74rem', lineHeight: 1.45 }}>
-            <strong>Data-quality guarantee.</strong> If your report has data-quality issues, email us within 7 days and we&apos;ll re-issue it free or refund you in full.
+            <strong>{copy.guaranteeTitle}</strong> {copy.guarantee}
           </Typography>
         </Box>
         <Button
@@ -767,10 +912,10 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           }}
         >
           {loading
-            ? (isAndroidApp ? 'Opening Google Play...' : 'Redirecting to Stripe...')
+            ? (isAndroidApp ? copy.openingGooglePlay : copy.redirectingStripe)
             : isAndroidApp
-              ? (ANDROID_PLAY_BILLING_ENABLED ? `Pay with Google Play · ${androidDisplayPrice}` : 'Google Play checkout coming soon')
-              : `Continue to Stripe · from EUR ${subtotal.toFixed(2)}`}
+              ? (ANDROID_PLAY_BILLING_ENABLED ? copy.payGooglePlay(androidDisplayPrice) : copy.googlePlaySoon)
+              : copy.continueStripe(subtotal)}
         </Button>
         <Button
           variant="text"
@@ -779,7 +924,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           disabled={loading}
           sx={{ textTransform: 'none', color: 'text.secondary', fontSize: '0.8rem' }}
         >
-          Cancel
+          {copy.cancel}
         </Button>
       </DialogActions>
     </Dialog>

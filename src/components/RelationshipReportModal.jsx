@@ -1,5 +1,5 @@
 // mapasocietario/src/components/RelationshipReportModal.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, Button,
   Chip, ToggleButton, ToggleButtonGroup, Table, TableHead, TableBody, TableRow,
@@ -16,6 +16,10 @@ export default function RelationshipReportModal({ open, onClose, scope, subjects
   const [reportLang, setReportLang] = useState(lang === 'en' ? 'en' : 'es');
   const [copied, setCopied] = useState(false);
   const es = reportLang !== 'en';
+
+  useEffect(() => {
+    if (open) setReportLang(lang === 'en' ? 'en' : 'es');
+  }, [open, lang]);
 
   const companies = scope?.companies || [];
   const connectors = scope?.connectors || [];

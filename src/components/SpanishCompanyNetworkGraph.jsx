@@ -97,17 +97,28 @@ import {
 } from '../utils/networkAnalysis';
 
 const CATEGORY_LABELS = {
-  nombramientos: 'Nombramiento',
-  reelecciones: 'Reelección',
-  ceses_dimisiones: 'Cese/Dimisión',
-  revocaciones: 'Revocación',
-  socio_unico: 'Socio único',
-  socio_perdido: 'Pérdida socio único',
+  es: {
+    nombramientos: 'Nombramiento',
+    reelecciones: 'Reelección',
+    ceses_dimisiones: 'Cese/Dimisión',
+    revocaciones: 'Revocación',
+    socio_unico: 'Socio único',
+    socio_perdido: 'Pérdida socio único',
+  },
+  en: {
+    nombramientos: 'Appointment',
+    reelecciones: 'Re-election',
+    ceses_dimisiones: 'Termination/Resignation',
+    revocaciones: 'Revocation',
+    socio_unico: 'Sole shareholder',
+    socio_perdido: 'Loss of sole shareholder',
+  },
 };
 
-const getCategoryLabel = category => {
-  if (!category) return 'Relación';
-  return CATEGORY_LABELS[category] || category;
+const getCategoryLabel = (category, language = 'es') => {
+  const labels = CATEGORY_LABELS[language === 'en' ? 'en' : 'es'];
+  if (!category) return language === 'en' ? 'Relationship' : 'Relación';
+  return labels[category] || category;
 };
 
 const CATEGORY_LAYOUT_ANGLE = {
@@ -133,15 +144,462 @@ const companyNameToId = name => {
   return `company-${clean.replace(/\s+/g, '-').toLowerCase()}`;
 };
 
-const formatDate = dateStr => {
+const formatDate = (dateStr, language = 'es') => {
   if (!dateStr) return '-';
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return '-';
-    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString(language === 'en' ? 'en-GB' : 'es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
   } catch {
     return '-';
   }
+};
+
+const SEARCH_COPY = {
+  en: {
+    type: 'Type',
+    company: 'Company',
+    companies: 'Companies',
+    officer: 'Officer',
+    officers: 'Officers',
+    officersPerCompany: 'Officers/company',
+    searchCompanyPlaceholder: 'Search company...',
+    searchOfficerPlaceholder: 'Search officer...',
+    search: 'Search',
+    dueDiligence: 'Due Diligence',
+    relationshipReportTooltip: 'Relationship report for visible companies (free)',
+    relationshipReport: 'Relationship report',
+    hideShared: 'Hide shared connections',
+    showShared: 'Highlight officers/entities across several companies and dim the rest',
+    sharedConnections: 'Shared connections',
+    myCorrectionsTooltip: 'Your corrections for this company\'s "Custom" report',
+    myCorrections: count => `My corrections (${count})`,
+    filterNodes: 'Filter nodes',
+    filterPlaceholder: 'e.g. Garcia, Telefonica',
+    legalTooltip: 'Source and legal notice',
+    legalLabel: 'Source and legal notice',
+    pathfinderTooltip: 'Find connection path (Pathfinder)',
+    graphSettingsTitle: 'Graph settings',
+    pathfinderTitle: 'Connection Path Finder (Pathfinder)',
+    originNode: 'Source milestone',
+    destinationNode: 'Destination milestone',
+    nodePlaceholder: 'Company or officer...',
+    officerIndividual: 'Individual officer',
+    officerCompany: 'Corporate officer',
+    clear: 'Clear',
+    connectionFound: jumps => `CONNECTION FOUND (${jumps} ${jumps === 1 ? 'jump' : 'jumps'})`,
+    hideDetail: 'Hide details',
+    showDetail: 'Show details',
+    pathDetails: 'PATH DETAILS',
+    jump: index => `Jump ${index}`,
+    lastRecord: 'Latest record',
+    moreRelationships: count => `+${count} more relationships`,
+    connectedWith: (a, b, count) => `${a} connected with ${b}${count > 1 ? ` through ${count} loaded links.` : '.'}`,
+    noConnection: 'No direct or indirect connection was found between these two milestones in the loaded network.',
+    soleShareholderOf: (name, count) => (
+      <>
+        <strong>{name}</strong> is sole shareholder of {count} compan{count === 1 ? 'y' : 'ies'}.
+      </>
+    ),
+    loadSubsidiaries: count => `Load ${count} subsidiar${count === 1 ? 'y' : 'ies'}`,
+    loading: 'Loading...',
+    loaded: 'Loaded',
+    loadMore: 'Load more',
+    active: 'Active',
+    ceased: 'Ceased',
+    soleShareholder: 'Sole shareholder',
+    simplify: 'Simplify',
+    hidden: 'hidden',
+    positions: 'Roles',
+    clearFilters: 'Clear filters',
+    statusTooltip:
+      'Each role is tracked by its exact BORME title. If a person changes role type over time, each title is tracked separately, so the same person may appear as active under one title and ceased under another.',
+    nodeSize: 'Node size',
+    labelSize: 'Label size',
+    colorByNetworks: 'Color by networks',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    center: 'Center',
+    clearGraph: 'Clear graph',
+    fullscreenExit: 'Exit fullscreen',
+    fullscreenEmbedded: 'Fullscreen (needed to manage nodes with right click)',
+    fullscreen: 'Fullscreen',
+    manageHiddenNodes: 'Manage hidden nodes',
+    hiddenButton: count => `${count} hidden`,
+    nodes: 'Nodes',
+    links: 'Links',
+    data: 'Data',
+    buyDdTooltip: 'Buy Due Diligence report',
+    copyTableTooltip: 'Copy table (Excel/Word)',
+    expandTable: 'Expand table',
+    minimizeTable: 'Minimize table',
+    tableCompany: 'Company',
+    tableOfficer: 'Officer',
+    tableRole: 'Role',
+    tableType: 'Type',
+    tableDate: 'Date',
+    emptyTable: 'Search for a company or officer to see data',
+    rowCompanyActions: company => `Actions for ${company}`,
+    rowOfficerActions: officer => `Actions for ${officer}`,
+    filterByDate: company => `Filter by this date in ${company}`,
+    legendCompanies: 'Companies',
+    legendPeople: 'People',
+    legendCorporateOfficers: 'Corp. officers',
+    legendExpanded: 'Expanded',
+    legendSearch: 'Search',
+    legendAppointments: 'Appts.',
+    legendCessations: 'Cessations',
+    legendHintEmbedded: 'Double click: expand | Fullscreen to manage',
+    legendHint: 'Double click: expand | Right click: manage',
+    hiddenNodes: 'Hidden nodes',
+    nodeCount: count => `${count} node${count === 1 ? '' : 's'}`,
+    showAll: 'Show all',
+    noHiddenNodes: 'No hidden nodes',
+    expandNode: 'Expand node',
+    editNode: 'Edit node',
+    mergeNode: 'Merge node',
+    noMergeCandidates: 'No compatible nodes to merge',
+    dataPreview: 'Data preview',
+    timeline: 'Timeline',
+    markResigned: 'Mark as ceased',
+    buyDueDiligence: 'Buy Due Diligence',
+    hideNodeOnly: 'Hide this node only',
+    hideNodeRelations: 'Hide node + connected',
+    deleteNode: 'Delete node',
+    visibleName: 'Visible name',
+    officerType: 'Officer type',
+    individualPerson: 'Individual person',
+    legalPerson: 'Legal entity',
+    editHelp: 'This changes the name shown in the graph to help correct variants.',
+    cancel: 'Cancel',
+    saveChanges: 'Save changes',
+    mergeNodes: 'Merge nodes',
+    mergeBody: name => <>Merge <strong>{name}</strong> into another node. All relationships will move to the target node.</>,
+    targetNode: 'Target node',
+    noMatchingNodes: 'No matching nodes',
+    similarNames: 'Similar names',
+    mergeRecommendation:
+      'Recommendation: merge only nodes that clearly represent the same entity. BORME may spell the same officer in different ways. Merging combines both variants in the preview and report. If they are different people with similar names, the merge will mix unrelated data.',
+    merge: 'Merge',
+    deleteBody: name => <>Are you sure you want to delete <strong>{name}</strong> and all its relationships?</>,
+    delete: 'Delete',
+    dissolved: 'Dissolved',
+    concurso: 'Insolvency',
+    unipersonal: 'Single-member',
+    loadingData: 'Loading data...',
+    name: 'Name',
+    date: 'Date',
+    summary: 'Summary',
+    legalName: 'Legal name',
+    previous: 'Previous',
+    status: 'Status',
+    address: 'Address',
+    externalEstimate: '(external-source estimate - verify)',
+    activity: 'Corporate purpose',
+    capital: 'Share capital',
+    bormeRange: 'BORME publication range',
+    publicationsFound: 'Publications found',
+    registrySheetChange: 'Registry sheet change (re-registration)',
+    currentOfficers: count => `Current officers (${count})`,
+    appointments: 'Appointments',
+    reelections: 'Re-elections',
+    cessations: 'Terminations/Resignations',
+    revocations: 'Revocations',
+    previewWatermark: 'Preview - buy a Due Diligence report for the full report',
+    congressDeputy: 'Congress deputy',
+    formerCongressDeputy: 'Former Congress deputy',
+    matchesWith: 'Matches',
+    party: 'Party',
+    group: 'Group',
+    constituency: 'Constituency',
+    legislature: count => `Legislature${count === 1 ? '' : 's'} (${count})`,
+    period: 'Period',
+    present: 'present',
+    congressProfile: 'Profile on congreso.es',
+    mergedNodesData: 'Combined data from merged nodes',
+    nameVariants: 'Name variants',
+    mergedWarning: 'If the names belong to different people, the shown roles may mix data from different people.',
+    whollyOwned: count => `Sole shareholder of ${count} compan${count === 1 ? 'y' : 'ies'}`,
+    whollyOwnedHelp: 'This person appears as 100% owner of the following companies.',
+    rolesInCompanies: count => `Roles in ${count} compan${count === 1 ? 'y' : 'ies'}`,
+    role: 'Role',
+    unknown: 'Unknown',
+    close: 'Close',
+    legalTitle: 'Source and legal notice',
+    markResignedBody: name => (
+      <>
+        Mark <strong>{name}</strong> as ceased in the custom report. This does not modify the Registro Mercantil; it only affects your "Custom" report.
+      </>
+    ),
+    resignationDate: 'Cessation date (optional)',
+    noSelectedCompany: 'No company selected',
+    emptyCorrections:
+      'You have not made corrections for this company yet. Use an officer menu action (hide, merge, mark as ceased) to create them.',
+    correctionLabel: correction => {
+      if (correction.action === 'hide') return `Hide: ${correction.name_a}`;
+      if (correction.action === 'merge') return `Merge: ${correction.name_a} -> ${correction.name_b}`;
+      return `Ceased: ${correction.name_a}${correction.resigned_date ? ` (${correction.resigned_date})` : ''}`;
+    },
+    removeCorrection: 'Remove correction',
+    undo: 'Undo',
+    graphTitle: 'Spanish Company Network',
+    searching: query => `Searching ${query}...`,
+    searchEmpty: 'Please enter a search term',
+    officerNoResults: query => `No results found for officer "${query}".`,
+    noPreciseMatch: query => `No precise company match found for "${query}". Try a broader search.`,
+    noResults: query => `No results found for "${query}".`,
+    searchError: message => `Search error: ${message}`,
+    noMorePrecise: query => `No more precise matches for "${query}".`,
+    loadMoreError: message => `Error loading more results: ${message}`,
+    addCompanyError: message => `Error adding company to graph: ${message}`,
+    addOfficerError: message => `Error adding officer to graph: ${message}`,
+    loadSubsidiariesError: message => `Error loading subsidiaries: ${message}`,
+    noAdditionalResults: name => `No additional results found for "${name}"`,
+    expandError: message => `Error expanding node: ${message}`,
+    correctionSubjectError:
+      'I could not link the correction to the main company; the change is visual only and will not affect the report.',
+    correctionSaved: 'Correction saved',
+    hiddenOfficerCorrection: name => `Officer hidden: ${name}`,
+    resignedOfficerCorrection: name => `Marked as ceased: ${name}`,
+    mergedOfficerCorrection: (from, to) => `Merged: ${from} -> ${to}`,
+    correctionSaveError: message => `Could not save the correction: ${message}`,
+    correctionUndoError: message => `Could not undo the correction: ${message}`,
+    correctionsLoadError: message => `Could not load corrections: ${message}`,
+    correctionDeleteError: message => `Could not remove the correction: ${message}`,
+    noOfficerPreview: 'No data found for this officer.',
+    noCompanyPreview: 'No data found for this company.',
+    previewError: message => `Error fetching data: ${message}`,
+    emptyNodeName: 'Node name cannot be empty.',
+    selectMergeTarget: 'Select a target node to merge into.',
+    relationshipResolveError:
+      'I could not reliably identify at least 2 visible companies. Try searching for them by exact name.',
+    relationshipPrepareError: message => `Could not prepare the relationship report: ${message}`,
+    copyTableError: 'Could not copy the table to the clipboard.',
+  },
+  es: {
+    type: 'Tipo',
+    company: 'Empresa',
+    companies: 'Empresas',
+    officer: 'Directivo',
+    officers: 'Directivos',
+    officersPerCompany: 'Cargos/empresa',
+    searchCompanyPlaceholder: 'Buscar empresa...',
+    searchOfficerPlaceholder: 'Buscar directivo...',
+    search: 'Buscar',
+    dueDiligence: 'Due Diligence',
+    relationshipReportTooltip: 'Informe de relaciones sobre las empresas visibles (gratis)',
+    relationshipReport: 'Informe de relaciones',
+    hideShared: 'Ocultar conexiones compartidas',
+    showShared: 'Resaltar administradores/entidades en varias empresas y atenuar el resto',
+    sharedConnections: 'Conexiones compartidas',
+    myCorrectionsTooltip: 'Tus correcciones para el informe "Custom" de esta empresa',
+    myCorrections: count => `Mis correcciones (${count})`,
+    filterNodes: 'Filtrar nodos',
+    filterPlaceholder: 'ej: Garcia, Telefonica',
+    legalTooltip: 'Fuente y aviso legal',
+    legalLabel: 'Fuente y aviso legal',
+    pathfinderTooltip: 'Buscar camino de conexión (Pathfinder)',
+    graphSettingsTitle: 'Configuración del grafo',
+    pathfinderTitle: 'Buscador de Caminos de Conexión (Pathfinder)',
+    originNode: 'Hito de origen',
+    destinationNode: 'Hito de destino',
+    nodePlaceholder: 'Empresa o administrador...',
+    officerIndividual: 'Administrador persona física',
+    officerCompany: 'Administrador persona jurídica',
+    clear: 'Limpiar',
+    connectionFound: jumps => `CONEXIÓN ENCONTRADA (${jumps} saltos)`,
+    hideDetail: 'Ocultar detalle',
+    showDetail: 'Ver detalle',
+    pathDetails: 'DETALLE DEL CAMINO',
+    jump: index => `Salto ${index}`,
+    lastRecord: 'Último registro',
+    moreRelationships: count => `+${count} relaciones más`,
+    connectedWith: (a, b, count) => `${a} conectado con ${b}${count > 1 ? ` mediante ${count} enlaces cargados.` : '.'}`,
+    noConnection: 'No se ha encontrado ninguna conexión directa o indirecta entre estos dos hitos en la red cargada.',
+    soleShareholderOf: (name, count) => (
+      <>
+        <strong>{name}</strong> es socio único de {count} empresa{count === 1 ? '' : 's'}.
+      </>
+    ),
+    loadSubsidiaries: count => `Cargar ${count} participada${count === 1 ? '' : 's'}`,
+    loading: 'Cargando...',
+    loaded: 'Cargados',
+    loadMore: 'Cargar más',
+    active: 'Vigentes',
+    ceased: 'Cesados',
+    soleShareholder: 'Socio único',
+    simplify: 'Simplificar',
+    hidden: 'ocultos',
+    positions: 'Cargos',
+    clearFilters: 'Limpiar filtros',
+    statusTooltip:
+      'Cada cargo se sigue por su denominación exacta en el BORME. Si una persona cambia de tipo de cargo con el tiempo, cada denominación se registra por separado, por lo que una misma persona puede aparecer a la vez como vigente bajo una denominación y como cesada bajo otra.',
+    nodeSize: 'Tamaño de nodos',
+    labelSize: 'Tamaño de etiquetas',
+    colorByNetworks: 'Colorear por redes',
+    zoomIn: 'Acercar',
+    zoomOut: 'Alejar',
+    center: 'Centrar',
+    clearGraph: 'Limpiar grafo',
+    fullscreenExit: 'Salir de pantalla completa',
+    fullscreenEmbedded: 'Pantalla completa (necesaria para gestionar nodos con clic derecho)',
+    fullscreen: 'Pantalla completa',
+    manageHiddenNodes: 'Gestionar nodos ocultos',
+    hiddenButton: count => `${count} ocultos`,
+    nodes: 'Nodos',
+    links: 'Enlaces',
+    data: 'Datos',
+    buyDdTooltip: 'Comprar informe Due Diligence',
+    copyTableTooltip: 'Copiar tabla (Excel/Word)',
+    expandTable: 'Expandir tabla',
+    minimizeTable: 'Minimizar tabla',
+    tableCompany: 'Empresa',
+    tableOfficer: 'Directivo',
+    tableRole: 'Cargo',
+    tableType: 'Tipo',
+    tableDate: 'Fecha',
+    emptyTable: 'Busca una empresa o directivo para ver datos',
+    rowCompanyActions: company => `Acciones sobre ${company}`,
+    rowOfficerActions: officer => `Acciones sobre ${officer}`,
+    filterByDate: company => `Filtrar por esta fecha en ${company}`,
+    legendCompanies: 'Empresas',
+    legendPeople: 'Personas',
+    legendCorporateOfficers: 'Emp. directivas',
+    legendExpanded: 'Expandidos',
+    legendSearch: 'Búsqueda',
+    legendAppointments: 'Nombram.',
+    legendCessations: 'Ceses',
+    legendHintEmbedded: 'Doble clic: expandir | Pantalla completa para gestionar',
+    legendHint: 'Doble clic: expandir | Clic derecho: gestionar',
+    hiddenNodes: 'Nodos ocultos',
+    nodeCount: count => `${count} nodo${count === 1 ? '' : 's'}`,
+    showAll: 'Mostrar todos',
+    noHiddenNodes: 'Sin nodos ocultos',
+    expandNode: 'Expandir nodo',
+    editNode: 'Modificar nodo',
+    mergeNode: 'Fusionar nodo',
+    noMergeCandidates: 'Sin nodos compatibles para fusionar',
+    dataPreview: 'Vista previa de datos',
+    timeline: 'Línea temporal',
+    markResigned: 'Marcar como cesado',
+    buyDueDiligence: 'Comprar Due Diligence',
+    hideNodeOnly: 'Ocultar solo nodo',
+    hideNodeRelations: 'Ocultar nodo + conectados',
+    deleteNode: 'Eliminar nodo',
+    visibleName: 'Nombre visible',
+    officerType: 'Tipo de directivo',
+    individualPerson: 'Persona física',
+    legalPerson: 'Persona jurídica',
+    editHelp: 'Esta operación cambia el nombre mostrado en el grafo para ayudarte a corregir variantes.',
+    cancel: 'Cancelar',
+    saveChanges: 'Guardar cambios',
+    mergeNodes: 'Fusionar nodos',
+    mergeBody: name => <>Fusionar <strong>{name}</strong> en otro nodo. Todas las relaciones pasarán al nodo destino.</>,
+    targetNode: 'Nodo destino',
+    noMatchingNodes: 'No hay nodos que coincidan',
+    similarNames: 'Nombres similares',
+    mergeRecommendation:
+      'Recomendación: fusiona solo nodos que representen claramente la misma entidad. En el BORME, un mismo directivo puede aparecer con variantes de nombre. Al fusionar, los datos de ambas variantes se combinan en la vista previa y el informe. Si se trata de personas distintas con nombres similares, la fusión mezclará datos no relacionados.',
+    merge: 'Fusionar',
+    deleteBody: name => <>¿Seguro que quieres eliminar <strong>{name}</strong> y todas sus relaciones?</>,
+    delete: 'Eliminar',
+    dissolved: 'Disuelta',
+    concurso: 'Concurso',
+    unipersonal: 'Unipersonal',
+    loadingData: 'Cargando datos...',
+    name: 'Nombre',
+    date: 'Fecha',
+    summary: 'Resumen',
+    legalName: 'Denominación',
+    previous: 'Antes',
+    status: 'Estado',
+    address: 'Domicilio',
+    externalEstimate: '(estimación de fuente externa - verificar)',
+    activity: 'Objeto social',
+    capital: 'Capital social',
+    bormeRange: 'Rango de publicaciones BORME',
+    publicationsFound: 'Publicaciones encontradas',
+    registrySheetChange: 'Cambio de hoja registral (reinscripción)',
+    currentOfficers: count => `Directivos actuales (${count})`,
+    appointments: 'Nombramientos',
+    reelections: 'Reelecciones',
+    cessations: 'Ceses/Dimisiones',
+    revocations: 'Revocaciones',
+    previewWatermark: 'Vista previa - para un informe completo, adquiera una Due Diligence',
+    congressDeputy: 'Diputado del Congreso',
+    formerCongressDeputy: 'Ex-diputado del Congreso',
+    matchesWith: 'Coincide con',
+    party: 'Partido',
+    group: 'Grupo',
+    constituency: 'Circunscripción',
+    legislature: count => `Legislatura${count === 1 ? '' : 's'} (${count})`,
+    period: 'Período',
+    present: 'actualidad',
+    congressProfile: 'Ficha en congreso.es',
+    mergedNodesData: 'Datos combinados de nodos fusionados',
+    nameVariants: 'Variantes de nombre',
+    mergedWarning: 'Si los nombres corresponden a personas distintas, los cargos mostrados pueden mezclar datos de personas diferentes.',
+    whollyOwned: count => `Socio único de ${count} empresa${count === 1 ? '' : 's'}`,
+    whollyOwnedHelp: 'Esta persona figura como propietaria al 100% de las empresas siguientes.',
+    rolesInCompanies: count => `Cargos en ${count} empresa${count === 1 ? '' : 's'}`,
+    role: 'Cargo',
+    unknown: 'Desconocido',
+    close: 'Cerrar',
+    legalTitle: 'Fuente y aviso legal',
+    markResignedBody: name => (
+      <>
+        Marcar a <strong>{name}</strong> como cesado en el informe personalizado. Esto no modifica el Registro Mercantil; solo afecta a tu informe "Custom".
+      </>
+    ),
+    resignationDate: 'Fecha de cese (opcional)',
+    noSelectedCompany: 'Sin empresa seleccionada',
+    emptyCorrections:
+      'Aún no has hecho correcciones en esta empresa. Usa el menú de un directivo (ocultar, fusionar, marcar como cesado) para crearlas.',
+    correctionLabel: correction => {
+      if (correction.action === 'hide') return `Ocultar: ${correction.name_a}`;
+      if (correction.action === 'merge') return `Fusionar: ${correction.name_a} -> ${correction.name_b}`;
+      return `Cesado: ${correction.name_a}${correction.resigned_date ? ` (${correction.resigned_date})` : ''}`;
+    },
+    removeCorrection: 'Eliminar corrección',
+    undo: 'Deshacer',
+    graphTitle: 'Red de Empresas Españolas',
+    searching: query => `Buscando ${query}...`,
+    searchEmpty: 'Por favor, introduce un término de búsqueda',
+    officerNoResults: query => `No se encontraron resultados para el directivo "${query}".`,
+    noPreciseMatch: query => `No se encontró una coincidencia precisa para "${query}". Prueba con una búsqueda más amplia.`,
+    noResults: query => `No se encontraron resultados para "${query}".`,
+    searchError: message => `Error en la búsqueda: ${message}`,
+    noMorePrecise: query => `No hay más coincidencias precisas para "${query}".`,
+    loadMoreError: message => `Error al cargar más resultados: ${message}`,
+    addCompanyError: message => `Error al añadir empresa al grafo: ${message}`,
+    addOfficerError: message => `Error al añadir directivo al grafo: ${message}`,
+    loadSubsidiariesError: message => `Error al cargar participadas: ${message}`,
+    noAdditionalResults: name => `No se encontraron resultados adicionales para "${name}"`,
+    expandError: message => `Error al expandir nodo: ${message}`,
+    correctionSubjectError:
+      'No pude vincular la corrección a la empresa principal; el cambio es solo visual y no afectará al informe.',
+    correctionSaved: 'Corrección guardada',
+    hiddenOfficerCorrection: name => `Directivo ocultado: ${name}`,
+    resignedOfficerCorrection: name => `Marcado como cesado: ${name}`,
+    mergedOfficerCorrection: (from, to) => `Fusionado: ${from} -> ${to}`,
+    correctionSaveError: message => `No se pudo guardar la corrección: ${message}`,
+    correctionUndoError: message => `No se pudo deshacer la corrección: ${message}`,
+    correctionsLoadError: message => `No se pudieron cargar las correcciones: ${message}`,
+    correctionDeleteError: message => `No se pudo eliminar la corrección: ${message}`,
+    noOfficerPreview: 'No se encontraron datos para este directivo.',
+    noCompanyPreview: 'No se encontraron datos para esta empresa.',
+    previewError: message => `Error al obtener datos: ${message}`,
+    emptyNodeName: 'El nombre del nodo no puede estar vacío.',
+    selectMergeTarget: 'Selecciona un nodo destino para fusionar.',
+    relationshipResolveError:
+      'No pude identificar con seguridad al menos 2 de las empresas visibles. Prueba a buscarlas por su nombre exacto.',
+    relationshipPrepareError: message => `No se pudo preparar el informe de relaciones: ${message}`,
+    copyTableError: 'No se pudo copiar la tabla al portapapeles.',
+  },
 };
 
 const isFinitePoint = point => Number.isFinite(point?.x) && Number.isFinite(point?.y);
@@ -422,22 +880,23 @@ const normalizeEdgeLabelText = (relationship, _category) => {
   return text;
 };
 
-const getPathNodeKindLabel = node => {
-  if (!node) return 'Hito';
+const getPathNodeKindLabel = (node, language = 'es') => {
+  if (!node) return language === 'en' ? 'Milestone' : 'Hito';
   if (node.type === 'officer') {
+    if (language === 'en') return node.subtype === 'company' ? 'corporate officer' : 'officer';
     return node.subtype === 'company' ? 'Administrador persona jurídica' : 'Administrador';
   }
-  return 'Empresa';
+  return language === 'en' ? 'company' : 'Empresa';
 };
 
 const getPathNodeName = node => node?.name || node?.label || node?.id || 'Hito desconocido';
 
-const getPathLinkLabel = link => {
+const getPathLinkLabel = (link, language = 'es') => {
   const relationship = normalizeEdgeLabelText(link?.relationship, link?.category);
-  return relationship || getCategoryLabel(link?.category);
+  return relationship || getCategoryLabel(link?.category, language);
 };
 
-const getPathLinkDateLabel = link => {
+const getPathLinkDateLabel = (link, language = 'es') => {
   const dates = [];
   if (Array.isArray(link?.events)) {
     link.events.forEach(event => {
@@ -452,27 +911,27 @@ const getPathLinkDateLabel = link => {
     .sort((a, b) => b.ts - a.ts);
 
   if (sorted.length === 0) return '';
-  const latest = formatDate(sorted[0].date);
+  const latest = formatDate(sorted[0].date, language);
   return sorted.length > 1 ? `${latest} (+${sorted.length - 1})` : latest;
 };
 
-const summarizePathLinks = links => {
+const summarizePathLinks = (links, language = 'es') => {
   if (!links || links.length === 0) {
     return {
-      relationship: 'Relación cargada',
-      category: 'Relación',
+      relationship: language === 'en' ? 'Loaded relationship' : 'Relación cargada',
+      category: language === 'en' ? 'Relationship' : 'Relación',
       date: '',
       extraCount: 0,
     };
   }
 
-  const labels = Array.from(new Set(links.map(getPathLinkLabel).filter(Boolean)));
-  const categories = Array.from(new Set(links.map(link => getCategoryLabel(link.category)).filter(Boolean)));
-  const dateLabels = Array.from(new Set(links.map(getPathLinkDateLabel).filter(Boolean)));
+  const labels = Array.from(new Set(links.map(link => getPathLinkLabel(link, language)).filter(Boolean)));
+  const categories = Array.from(new Set(links.map(link => getCategoryLabel(link.category, language)).filter(Boolean)));
+  const dateLabels = Array.from(new Set(links.map(link => getPathLinkDateLabel(link, language)).filter(Boolean)));
 
   return {
-    relationship: labels.slice(0, 2).join(' / ') || 'Relación cargada',
-    category: categories.slice(0, 2).join(' / ') || 'Relación',
+    relationship: labels.slice(0, 2).join(' / ') || (language === 'en' ? 'Loaded relationship' : 'Relación cargada'),
+    category: categories.slice(0, 2).join(' / ') || (language === 'en' ? 'Relationship' : 'Relación'),
     date: dateLabels[0] || '',
     extraCount: Math.max(0, labels.length - 2),
   };
@@ -600,8 +1059,12 @@ const SpanishCompanyNetworkGraph = ({
   initialOfficerData,
   initialCompanyName,
   initialSearchType,
+  language = 'es',
   embedded = false,
 }) => {
+  const uiLanguage = language === 'en' ? 'en' : 'es';
+  const text = SEARCH_COPY[uiLanguage];
+
   // Graph state
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [isLoading, setIsLoading] = useState(false);
@@ -1388,7 +1851,7 @@ const SpanishCompanyNetworkGraph = ({
   const handleSearch = async (queryOverride = null, exactMatch = false, searchTypeOverride = null, groupKeyOverride = null) => {
     const query = (queryOverride || searchQuery).trim();
     if (!query) {
-      setError('Por favor, introduce un término de búsqueda');
+      setError(text.searchEmpty);
       return;
     }
 
@@ -1420,7 +1883,7 @@ const SpanishCompanyNetworkGraph = ({
           });
           setSearchQuery('');
         } else {
-          setError(`No results found for officer "${query}".`);
+          setError(text.officerNoResults(query));
         }
       } else {
         // Company search: use borme_companies_v3 (clean, pre-aggregated index with
@@ -1504,10 +1967,10 @@ const SpanishCompanyNetworkGraph = ({
             setPrimarySubject(prev => prev || query);
             setSearchQuery('');
           } else {
-            setError(`No precise company match found for "${query}". Try a broader search.`);
+            setError(text.noPreciseMatch(query));
           }
         } else {
-          setError(`No results found for "${query}".`);
+          setError(text.noResults(query));
         }
       }
     } catch (err) {
@@ -1519,7 +1982,7 @@ const SpanishCompanyNetworkGraph = ({
           message: DATA_MAINTENANCE.message,
         });
       } else {
-        setError(`Error en la búsqueda: ${err.message}`);
+        setError(text.searchError(err.message));
       }
     } finally {
       setIsSearching(false);
@@ -1585,7 +2048,7 @@ const SpanishCompanyNetworkGraph = ({
           );
 
           if (filtered.length === 0 && !data.hasMore) {
-            setError(`No hay más coincidencias precisas para "${context.query}".`);
+            setError(text.noMorePrecise(context.query));
           }
         } else {
           setLastSearchContext(prev => (prev ? { ...prev, hasMore: false } : prev));
@@ -1593,7 +2056,7 @@ const SpanishCompanyNetworkGraph = ({
       }
     } catch (err) {
       console.error('Load more error:', err);
-      setError(`Error al cargar más resultados: ${err.message}`);
+      setError(text.loadMoreError(err.message));
     } finally {
       setLoadingMore(false);
     }
@@ -2409,12 +2872,12 @@ const SpanishCompanyNetworkGraph = ({
 
       } catch (err) {
         console.error('Error adding company with officers to graph:', err);
-        setError(`Error al añadir empresa al grafo: ${err.message}`);
+        setError(text.addCompanyError(err.message));
       } finally {
         setIsLoading(false);
       }
     },
-    [extractOfficersFromText, isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates, officersPerCompany]
+    [extractOfficersFromText, isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates, officersPerCompany, text]
   );
 
   // Add officer to graph with associated companies
@@ -2657,12 +3120,12 @@ const SpanishCompanyNetworkGraph = ({
         enrichLinksWithEventDates(Array.from(uniqueCompanyNames));
       } catch (err) {
         console.error('Error adding officer to graph:', err);
-        setError(`Error al añadir directivo al grafo: ${err.message}`);
+        setError(text.addOfficerError(err.message));
       } finally {
         setIsLoading(false);
       }
     },
-    [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates]
+    [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates, text]
   );
 
   // Plot a bare shareholder node (no officers, no subsidiaries) so the user
@@ -2728,13 +3191,13 @@ const SpanishCompanyNetworkGraph = ({
         await addOwnedCompaniesForEntity(entityName, entityId, entityKind);
       } catch (err) {
         console.error('Load subsidiaries failed:', err);
-        setError(`Error al cargar participadas: ${err.message}`);
+        setError(text.loadSubsidiariesError(err.message));
       } finally {
         setLoadingSubsidiaries(false);
         setPendingSubsidiaries(null);
       }
     },
-    [addOwnedCompaniesForEntity]
+    [addOwnedCompaniesForEntity, text]
   );
 
   // Expand officer node to show other companies
@@ -2980,7 +3443,7 @@ const SpanishCompanyNetworkGraph = ({
         }
 
         if (!found) {
-          setError(`No se encontraron resultados adicionales para "${node.name}"`);
+          setError(text.noAdditionalResults(node.name));
         }
         // Note: node.expanded = true was set above via direct mutation.
         // Do NOT call setGraphData here to re-create node objects — that breaks
@@ -2988,12 +3451,12 @@ const SpanishCompanyNetworkGraph = ({
         // the node to detach from its edges on drag.
       } catch (err) {
         console.error('Error expanding node:', err);
-        setError(`Error al expandir nodo: ${err.message}`);
+        setError(text.expandError(err.message));
       } finally {
         setIsLoading(false);
       }
     },
-    [expandOfficerNode, expandCompanyNode]
+    [expandOfficerNode, expandCompanyNode, text]
   );
 
   // handleNodeClick is defined after handleNodeRightClick (below) for mobile touch support
@@ -3258,19 +3721,17 @@ const SpanishCompanyNetworkGraph = ({
       try {
         const groupKey = await resolveSubjectGroupKey(subjectCompanyName);
         if (!groupKey) {
-          setError(
-            'No pude vincular la corrección a la empresa principal; el cambio es solo visual y no afectará al informe.'
-          );
+          setError(text.correctionSubjectError);
           return;
         }
         const { id } = await postCorrection({ groupKey, action, nameA, nameB, resignedDate });
         setCorrectionsCount(c => c + 1);
-        setCorrectionsSnackbar({ id, message: label || 'Corrección guardada', undoGraph: undoGraph || null });
+        setCorrectionsSnackbar({ id, message: label || text.correctionSaved, undoGraph: undoGraph || null });
       } catch (e) {
-        setError(`No se pudo guardar la corrección: ${e.message}`);
+        setError(text.correctionSaveError(e.message));
       }
     },
-    [subjectCompanyName, resolveSubjectGroupKey]
+    [subjectCompanyName, resolveSubjectGroupKey, text]
   );
 
   // Keep the "Mis correcciones (N)" counter in sync with the loaded company.
@@ -3312,9 +3773,9 @@ const SpanishCompanyNetworkGraph = ({
       }
       if (typeof snack.undoGraph === 'function') snack.undoGraph();
     } catch (e) {
-      setError(`No se pudo deshacer la corrección: ${e.message}`);
+      setError(text.correctionUndoError(e.message));
     }
-  }, [correctionsSnackbar]);
+  }, [correctionsSnackbar, text]);
 
   // "Mis correcciones" panel: load the current list when opened.
   const openMyCorrections = useCallback(
@@ -3332,13 +3793,13 @@ const SpanishCompanyNetworkGraph = ({
         setMyCorrectionsList(list);
         setCorrectionsCount(list.length);
       } catch (e) {
-        setError(`No se pudieron cargar las correcciones: ${e.message}`);
+        setError(text.correctionsLoadError(e.message));
         setMyCorrectionsList([]);
       } finally {
         setMyCorrectionsLoading(false);
       }
     },
-    [subjectCompanyName, resolveSubjectGroupKey]
+    [subjectCompanyName, resolveSubjectGroupKey, text]
   );
 
   const closeMyCorrections = useCallback(() => setMyCorrectionsAnchor(null), []);
@@ -3349,9 +3810,9 @@ const SpanishCompanyNetworkGraph = ({
       setMyCorrectionsList(prev => prev.filter(c => c.id !== correctionId));
       setCorrectionsCount(c => Math.max(0, c - 1));
     } catch (e) {
-      setError(`No se pudo eliminar la corrección: ${e.message}`);
+      setError(text.correctionDeleteError(e.message));
     }
-  }, []);
+  }, [text]);
 
   // Right-click on node to open actions menu (desktop), also called by single tap on touch devices
   const handleNodeRightClick = useCallback(
@@ -3489,11 +3950,11 @@ const SpanishCompanyNetworkGraph = ({
       recordCorrection({
         action: 'hide',
         nameA: node.name,
-        label: `Directivo ocultado: ${node.name}`,
+        label: text.hiddenOfficerCorrection(node.name),
         undoGraph: () => unhideNode(node.id),
       });
     }
-  }, [contextNode, hideNode, closeNodeContextMenu, recordCorrection, unhideNode]);
+  }, [contextNode, hideNode, closeNodeContextMenu, recordCorrection, unhideNode, text]);
 
   const hideNodeWithRelationsFromMenu = useCallback(() => {
     if (!contextNode) return;
@@ -3505,11 +3966,11 @@ const SpanishCompanyNetworkGraph = ({
       recordCorrection({
         action: 'hide',
         nameA: node.name,
-        label: `Directivo ocultado: ${node.name}`,
+        label: text.hiddenOfficerCorrection(node.name),
         undoGraph: () => unhideNode(node.id),
       });
     }
-  }, [contextNode, hideNode, closeNodeContextMenu, recordCorrection, unhideNode]);
+  }, [contextNode, hideNode, closeNodeContextMenu, recordCorrection, unhideNode, text]);
 
   // Mark an officer as resigned (DD overlay only — moves the officer from the
   // active to the resigned set in the Custom report). Opens a small dialog so
@@ -3529,9 +3990,9 @@ const SpanishCompanyNetworkGraph = ({
       action: 'mark_resigned',
       nameA: node.name,
       resignedDate: markResignedDate || undefined,
-      label: `Marcado como cesado: ${node.name}`,
+      label: text.resignedOfficerCorrection(node.name),
     });
-  }, [markResignedNode, markResignedDate, recordCorrection]);
+  }, [markResignedNode, markResignedDate, recordCorrection, text]);
 
   // Data preview: fetch company or officer data and show in modal
   const openDataPreview = useCallback(async () => {
@@ -3598,7 +4059,7 @@ const SpanishCompanyNetworkGraph = ({
             nameVariants: allNames.length > 1 ? allNames : undefined,
           });
         } else {
-          setPreviewError('No se encontraron datos para este directivo.');
+          setPreviewError(text.noOfficerPreview);
         }
       } else {
         // Resolve the company to a STABLE group_key before fetching so an
@@ -3632,7 +4093,7 @@ const SpanishCompanyNetworkGraph = ({
             const parsedFallback = parseSpanishCompanyData(summary.entries[0]);
             setPreviewData({ type: 'company', name, entries: summary.entries, parsed: parsedFallback, company: null, enriched: null });
           } else {
-            setPreviewError('No se encontraron datos para esta empresa.');
+            setPreviewError(text.noCompanyPreview);
           }
         } else {
           // Extract rich data from events (capital, address, activity, CIF, dated officers)
@@ -3762,7 +4223,7 @@ const SpanishCompanyNetworkGraph = ({
           if (capitalRaw) {
             const num = typeof capitalRaw === 'number' ? capitalRaw : parseFloat(String(capitalRaw).replace(/[^\d.,]/g, '').replace(',', '.'));
             if (!isNaN(num)) {
-              formattedCapital = new Intl.NumberFormat('es-ES', { useGrouping: true, maximumFractionDigits: 2 }).format(num) + ' \u20AC';
+              formattedCapital = new Intl.NumberFormat(uiLanguage === 'en' ? 'en-GB' : 'es-ES', { useGrouping: true, maximumFractionDigits: 2 }).format(num) + ' \u20AC';
             } else {
               formattedCapital = String(capitalRaw);
             }
@@ -3860,17 +4321,17 @@ const SpanishCompanyNetworkGraph = ({
       }
     } catch (err) {
       console.error('[Preview] Error fetching data:', err);
-      setPreviewError(`Error al obtener datos: ${err.message}`);
+      setPreviewError(text.previewError(err.message));
     } finally {
       setPreviewLoading(false);
     }
-  }, [contextNode, closeNodeContextMenu]);
+  }, [contextNode, closeNodeContextMenu, text, uiLanguage]);
 
   const saveNodeEdit = useCallback(() => {
     if (!contextNode) return;
     const nextName = editNodeName.trim();
     if (!nextName) {
-      setError('El nombre del nodo no puede estar vacío.');
+      setError(text.emptyNodeName);
       return;
     }
 
@@ -3903,12 +4364,12 @@ const SpanishCompanyNetworkGraph = ({
     });
 
     setIsEditNodeDialogOpen(false);
-  }, [contextNode, editNodeName, editNodeSubtype]);
+  }, [contextNode, editNodeName, editNodeSubtype, text]);
 
   const confirmMergeNodes = useCallback(() => {
     const effectiveTarget = mergeTargetOption || exactTypedMergeOption;
     if (!contextNode || !effectiveTarget?.node) {
-      setError('Selecciona un nodo destino para fusionar.');
+      setError(text.selectMergeTarget);
       return;
     }
     const sourceNode = contextNode;
@@ -3925,10 +4386,10 @@ const SpanishCompanyNetworkGraph = ({
         action: 'merge',
         nameA: sourceNode.name,
         nameB: targetNode.name,
-        label: `Fusionado: ${sourceNode.name} → ${targetNode.name}`,
+        label: text.mergedOfficerCorrection(sourceNode.name, targetNode.name),
       });
     }
-  }, [contextNode, mergeTargetOption, exactTypedMergeOption, mergeNodes, recordCorrection]);
+  }, [contextNode, mergeTargetOption, exactTypedMergeOption, mergeNodes, recordCorrection, text]);
 
   // Handle zoom changes
   const handleZoom = useCallback(zoom => {
@@ -4312,18 +4773,18 @@ const SpanishCompanyNetworkGraph = ({
         scope.companies.map(async name => ({ name, group_key: await resolveGroupKey(name) })));
       const subjects = resolved.filter(s => s.group_key);
       if (subjects.length < 2) {
-        setError('No pude identificar con seguridad al menos 2 de las empresas visibles. Prueba a buscarlas por su nombre exacto.');
+        setError(text.relationshipResolveError);
         return;
       }
       setRelScope(scope);
       setRelSubjects(subjects);
       setRelReportOpen(true);
     } catch (e) {
-      setError(`No se pudo preparar el informe de relaciones: ${e.message}`);
+      setError(text.relationshipPrepareError(e.message));
     } finally {
       setRelResolving(false);
     }
-  }, [relationshipDetailedScope, filteredGraphData, relationshipSubjectIds]);
+  }, [relationshipDetailedScope, filteredGraphData, relationshipSubjectIds, text]);
 
   // Remove a company from the report: hide it AND any officers/subsidiaries that
   // were only attached to it, so no orphan nodes are left floating. Nodes still
@@ -4507,10 +4968,10 @@ const SpanishCompanyNetworkGraph = ({
         sourceNode,
         targetNode,
         links,
-        summary: summarizePathLinks(links),
+        summary: summarizePathLinks(links, uiLanguage),
       };
     });
-  }, [shortestPathArray, filteredGraphData.nodes, filteredGraphData.links]);
+  }, [shortestPathArray, filteredGraphData.nodes, filteredGraphData.links, uiLanguage]);
 
   // Graph rendering functions
   const nodeCanvasObject = useCallback(
@@ -4917,7 +5378,7 @@ const SpanishCompanyNetworkGraph = ({
             ...baseRow,
             position: ev.position || baseRow.position,
             category: ev.category,
-            date: formatDate(ev.date),
+            date: formatDate(ev.date, uiLanguage),
             dateRaw: ev.date || null,
           });
         });
@@ -4925,7 +5386,7 @@ const SpanishCompanyNetworkGraph = ({
         rows.push({
           ...baseRow,
           category: link.category || '-',
-          date: formatDate(link.date),
+          date: formatDate(link.date, uiLanguage),
           dateRaw: link.date || null,
         });
       }
@@ -4937,7 +5398,7 @@ const SpanishCompanyNetworkGraph = ({
         (a.dateRaw || '').localeCompare(b.dateRaw || '')
     );
     return rows;
-  }, [filteredGraphData]);
+  }, [filteredGraphData, uiLanguage]);
 
   // Rows visible in the table after applying the optional date filter.
   const visibleTableRows = React.useMemo(() => {
@@ -5006,7 +5467,7 @@ const SpanishCompanyNetworkGraph = ({
 
   // Copy table as TSV for Excel/Word paste
   const copyTableToClipboard = useCallback(() => {
-    const headers = ['Empresa', 'Directivo', 'Cargo', 'Tipo', 'Fecha'];
+    const headers = [text.tableCompany, text.tableOfficer, text.tableRole, text.tableType, text.tableDate];
     const tsv = [
       headers.join('\t'),
       ...visibleTableRows.map(row =>
@@ -5014,16 +5475,16 @@ const SpanishCompanyNetworkGraph = ({
           row.company,
           row.officer,
           row.position,
-          getCategoryLabel(row.category),
+          getCategoryLabel(row.category, uiLanguage),
           row.date,
         ].join('\t')
       ),
     ].join('\n');
     navigator.clipboard.writeText(tsv).catch(err => {
       console.error('Failed to copy table:', err);
-      setError('No se pudo copiar la tabla al portapapeles.');
+      setError(text.copyTableError);
     });
-  }, [visibleTableRows]);
+  }, [visibleTableRows, text, uiLanguage]);
 
   // Toggle fullscreen
   const toggleFullscreen = useCallback(() => {
@@ -5103,7 +5564,7 @@ const SpanishCompanyNetworkGraph = ({
       )}
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
         <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Tipo</InputLabel>
+          <InputLabel>{text.type}</InputLabel>
           <Select
             value={searchType}
             onChange={e => {
@@ -5112,29 +5573,29 @@ const SpanishCompanyNetworkGraph = ({
               setSelectedAutocomplete(null);
               setLastSearchContext(null);
             }}
-            label="Tipo"
+            label={text.type}
           >
             <MenuItem value="company">
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <BusinessIcon sx={{ mr: 1, fontSize: 16 }} />
-                Empresa
+                {text.company}
               </Box>
             </MenuItem>
             <MenuItem value="officer">
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <PersonIcon sx={{ mr: 1, fontSize: 16 }} />
-                Directivo
+                {text.officer}
               </Box>
             </MenuItem>
           </Select>
         </FormControl>
  
         <FormControl size="small" sx={{ minWidth: 110 }}>
-          <InputLabel>Empresas</InputLabel>
+          <InputLabel>{text.companies}</InputLabel>
           <Select
             value={companiesPerSearch}
             onChange={e => setCompaniesPerSearch(Number(e.target.value))}
-            label="Empresas"
+            label={text.companies}
           >
             {COMPANIES_PER_SEARCH_OPTIONS.map(size => (
               <MenuItem key={size} value={size}>
@@ -5145,11 +5606,11 @@ const SpanishCompanyNetworkGraph = ({
         </FormControl>
 
         <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel>Cargos/empresa</InputLabel>
+          <InputLabel>{text.officersPerCompany}</InputLabel>
           <Select
             value={officersPerCompany}
             onChange={e => setOfficersPerCompany(Number(e.target.value))}
-            label="Cargos/empresa"
+            label={text.officersPerCompany}
           >
             {OFFICERS_PER_COMPANY_OPTIONS.map(size => (
               <MenuItem key={size} value={size}>
@@ -5255,7 +5716,7 @@ const SpanishCompanyNetworkGraph = ({
                           borderRadius: 0.5,
                         }}
                       >
-                        Socio único
+                        {text.soleShareholder}
                       </Typography>
                     )}
                     {option._deputyMatch?.deputy && (
@@ -5275,7 +5736,7 @@ const SpanishCompanyNetworkGraph = ({
                           borderRadius: 0.5,
                         }}
                       >
-                        🏛️ {option._deputyMatch.deputy.FECHABAJA ? 'Ex-diputado' : 'Diputado'}
+                        🏛️ {option._deputyMatch.deputy.FECHABAJA ? text.formerCongressDeputy : text.congressDeputy}
                         {option._deputyMatch.deputy.FORMACIONELECTORAL
                           ? ` · ${option._deputyMatch.deputy.FORMACIONELECTORAL}`
                           : ''}
@@ -5289,18 +5750,17 @@ const SpanishCompanyNetworkGraph = ({
                         color="text.secondary"
                         sx={{ display: 'block', fontStyle: 'italic' }}
                       >
-                        Socio único de {option.owns_total || option.owns?.length || 0} empresa
-                        {(option.owns_total || option.owns?.length || 0) !== 1 ? 's' : ''}
+                        {text.whollyOwned(option.owns_total || option.owns?.length || 0)}
                       </Typography>
                     )}
                   {option.is_alias && option.original_name && (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      Antes: {option.original_name}
+                      {text.previous}: {option.original_name}
                     </Typography>
                   )}
                   {option.has_new_name && option.new_company_name && (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      Ahora: {option.new_company_name}
+                      {uiLanguage === 'en' ? 'Now' : 'Ahora'}: {option.new_company_name}
                     </Typography>
                   )}
                   {option.type === 'company' && option.cif && (
@@ -5311,7 +5771,9 @@ const SpanishCompanyNetworkGraph = ({
                   {(option.type === 'officer' || option.type === 'officer_sole_shareholder') &&
                     option.company_count != null && option.company_count > 0 && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        {option.company_count} empresa{option.company_count !== 1 ? 's' : ''} (cargo)
+                        {uiLanguage === 'en'
+                          ? `${option.company_count} compan${option.company_count === 1 ? 'y' : 'ies'} (${text.role.toLowerCase()})`
+                          : `${option.company_count} empresa${option.company_count !== 1 ? 's' : ''} (cargo)`}
                       </Typography>
                     )}
                   {option.is_sole_shareholder &&
@@ -5320,8 +5782,7 @@ const SpanishCompanyNetworkGraph = ({
                         variant="caption"
                         sx={{ display: 'block', color: 'warning.dark', fontStyle: 'italic' }}
                       >
-                        Socio único de {option.owns_total || option.owns?.length || 0} empresa
-                        {(option.owns_total || option.owns?.length || 0) !== 1 ? 's' : ''}
+                        {text.whollyOwned(option.owns_total || option.owns?.length || 0)}
                       </Typography>
                     )}
                 </Box>
@@ -5333,7 +5794,7 @@ const SpanishCompanyNetworkGraph = ({
             <TextField
               {...params}
               size="small"
-              placeholder={searchType === 'company' ? 'Search company...' : 'Search officer...'}
+              placeholder={searchType === 'company' ? text.searchCompanyPlaceholder : text.searchOfficerPlaceholder}
               onKeyDown={handleKeyDown}
               InputProps={{
                 ...params.InputProps,
@@ -5362,7 +5823,7 @@ const SpanishCompanyNetworkGraph = ({
           disabled={isSearching || !searchQuery.trim()}
           startIcon={isSearching ? <CircularProgress size={16} /> : <SearchIcon />}
         >
-          Search
+          {text.search}
         </Button>
         {graphData.nodes.length > 0 &&
           (searchType === 'company' || (primarySubject && correctionsCount > 0)) && (
@@ -5385,11 +5846,11 @@ const SpanishCompanyNetworkGraph = ({
               setDdCheckoutOpen(true);
             }}
           >
-            Due Diligence
+            {text.dueDiligence}
           </Button>
         )}
         {visibleCompanyCount >= 2 && (
-          <Tooltip title="Informe de relaciones sobre las empresas visibles (gratis)">
+          <Tooltip title={text.relationshipReportTooltip}>
             <span>
               <Badge badgeContent={visibleCompanyCount} color="primary"
                 sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
@@ -5399,31 +5860,29 @@ const SpanishCompanyNetworkGraph = ({
                   disabled={relResolving}
                   sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
                   onClick={openRelationshipReport}>
-                  Informe de relaciones
+                  {text.relationshipReport}
                 </Button>
               </Badge>
             </span>
           </Tooltip>
         )}
         {visibleCompanyCount >= 2 && (
-          <Tooltip title={showSharedConnections
-            ? 'Ocultar conexiones compartidas'
-            : 'Resaltar administradores/entidades en varias empresas y atenuar el resto'}>
+          <Tooltip title={showSharedConnections ? text.hideShared : text.showShared}>
             <Button
               variant={showSharedConnections ? 'contained' : 'outlined'}
               color="info" size="small"
               startIcon={<HubIcon />}
               sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
               onClick={() => setShowSharedConnections(v => !v)}>
-              {showSharedConnections ? 'Conexiones compartidas ✓' : 'Conexiones compartidas'}
+              {showSharedConnections ? `${text.sharedConnections} ✓` : text.sharedConnections}
             </Button>
           </Tooltip>
         )}
         {subjectCompanyName && correctionsCount > 0 && (
-          <Tooltip title="Tus correcciones para el informe «Custom» de esta empresa">
+          <Tooltip title={text.myCorrectionsTooltip}>
             <Chip
               icon={<FactCheckIcon />}
-              label={`Mis correcciones (${correctionsCount})`}
+              label={text.myCorrections(correctionsCount)}
               size="small"
               color="info"
               variant="outlined"
@@ -5433,8 +5892,8 @@ const SpanishCompanyNetworkGraph = ({
           </Tooltip>
         )}
         <TextField
-          label="Filtrar nodos"
-          placeholder="ej: Garcia, Telefonica"
+          label={text.filterNodes}
+          placeholder={text.filterPlaceholder}
           value={labelFilterText}
           onChange={e => setLabelFilterText(e.target.value)}
           size="small"
@@ -5447,26 +5906,26 @@ const SpanishCompanyNetworkGraph = ({
             ),
           }}
         />
-        <Tooltip title="Fuente y aviso legal">
+        <Tooltip title={text.legalTooltip}>
           <IconButton
             onClick={() => setLegalDisclaimerOpen(true)}
             size="small"
-            aria-label="Fuente y aviso legal"
+            aria-label={text.legalLabel}
           >
             <InfoIcon />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Buscar camino de conexión (Pathfinder)">
+        <Tooltip title={text.pathfinderTooltip}>
           <IconButton
             onClick={() => setPathfinderActive(!pathfinderActive)}
             color={pathfinderActive ? "primary" : "default"}
             size="small"
-            aria-label="Buscar camino de conexión (Pathfinder)"
+            aria-label={text.pathfinderTooltip}
           >
             <RouteIcon />
           </IconButton>
         </Tooltip>
-        <IconButton onClick={() => setShowSettings(!showSettings)} title="Configuración del grafo">
+        <IconButton onClick={() => setShowSettings(!showSettings)} title={text.graphSettingsTitle}>
           <SettingsIcon />
         </IconButton>
       </Box>
@@ -5488,7 +5947,7 @@ const SpanishCompanyNetworkGraph = ({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <RouteIcon color="primary" />
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Buscador de Caminos de Conexión (Pathfinder)
+                {text.pathfinderTitle}
               </Typography>
             </Box>
             <IconButton size="small" onClick={() => setPathfinderActive(false)}>
@@ -5512,9 +5971,9 @@ const SpanishCompanyNetworkGraph = ({
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Hito de Origen"
+                  label={text.originNode}
                   size="small"
-                  placeholder="Empresa o administrador..."
+                  placeholder={text.nodePlaceholder}
                 />
               )}
               renderOption={(props, option) => {
@@ -5524,8 +5983,8 @@ const SpanishCompanyNetworkGraph = ({
                     <Typography variant="body2">{option.name || option.label}</Typography>
                     <Typography variant="caption" color="text.secondary">
                       {option.type === 'officer'
-                        ? `👥 ${option.subtype === 'company' ? 'Administrador Persona Jurídica' : 'Administrador Persona Física'}`
-                        : '🏢 Empresa'}
+                        ? `👥 ${option.subtype === 'company' ? text.officerCompany : text.officerIndividual}`
+                        : `🏢 ${text.company}`}
                     </Typography>
                   </Box>
                 );
@@ -5541,9 +6000,9 @@ const SpanishCompanyNetworkGraph = ({
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Hito de Destino"
+                  label={text.destinationNode}
                   size="small"
-                  placeholder="Empresa o administrador..."
+                  placeholder={text.nodePlaceholder}
                 />
               )}
               renderOption={(props, option) => {
@@ -5553,8 +6012,8 @@ const SpanishCompanyNetworkGraph = ({
                     <Typography variant="body2">{option.name || option.label}</Typography>
                     <Typography variant="caption" color="text.secondary">
                       {option.type === 'officer'
-                        ? `👥 ${option.subtype === 'company' ? 'Administrador Persona Jurídica' : 'Administrador Persona Física'}`
-                        : '🏢 Empresa'}
+                        ? `👥 ${option.subtype === 'company' ? text.officerCompany : text.officerIndividual}`
+                        : `🏢 ${text.company}`}
                     </Typography>
                   </Box>
                 );
@@ -5574,7 +6033,7 @@ const SpanishCompanyNetworkGraph = ({
                 }}
                 sx={{ alignSelf: { sm: 'center' }, height: 40 }}
               >
-                Limpiar
+                {text.clear}
               </Button>
             )}
           </Box>
@@ -5586,7 +6045,7 @@ const SpanishCompanyNetworkGraph = ({
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                      CONEXIÓN ENCONTRADA ({shortestPathArray.length - 1} saltos)
+                      {text.connectionFound(shortestPathArray.length - 1)}
                     </Typography>
                     <Button
                       size="small"
@@ -5595,7 +6054,7 @@ const SpanishCompanyNetworkGraph = ({
                       endIcon={pathDetailsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                       sx={{ minHeight: 26, py: 0, textTransform: 'none' }}
                     >
-                      {pathDetailsExpanded ? 'Ocultar detalle' : 'Ver detalle'}
+                      {pathDetailsExpanded ? text.hideDetail : text.showDetail}
                     </Button>
                   </Box>
                   <Box
@@ -5650,7 +6109,7 @@ const SpanishCompanyNetworkGraph = ({
                     }}
                   >
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                      DETALLE DEL CAMINO
+                      {text.pathDetails}
                     </Typography>
                     {pathSegments.map((segment, idx) => (
                       <Paper
@@ -5672,7 +6131,7 @@ const SpanishCompanyNetworkGraph = ({
                           }}
                         >
                           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                            Salto {idx + 1}
+                            {text.jump(idx + 1)}
                           </Typography>
                           <Chip
                             size="small"
@@ -5696,12 +6155,15 @@ const SpanishCompanyNetworkGraph = ({
                           <strong>{segment.summary.relationship}</strong>
                           {' · '}
                           {segment.summary.category}
-                          {segment.summary.date ? ` · Último registro: ${segment.summary.date}` : ''}
-                          {segment.summary.extraCount > 0 ? ` · +${segment.summary.extraCount} relaciones más` : ''}
+                          {segment.summary.date ? ` · ${text.lastRecord}: ${segment.summary.date}` : ''}
+                          {segment.summary.extraCount > 0 ? ` · ${text.moreRelationships(segment.summary.extraCount)}` : ''}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {getPathNodeKindLabel(segment.sourceNode)} conectado con {getPathNodeKindLabel(segment.targetNode)}
-                          {segment.links.length > 1 ? ` mediante ${segment.links.length} enlaces cargados.` : '.'}
+                          {text.connectedWith(
+                            getPathNodeKindLabel(segment.sourceNode, uiLanguage),
+                            getPathNodeKindLabel(segment.targetNode, uiLanguage),
+                            segment.links.length
+                          )}
                         </Typography>
                       </Paper>
                     ))}
@@ -5710,7 +6172,7 @@ const SpanishCompanyNetworkGraph = ({
                 </Box>
               ) : (
                 <Typography variant="body2" color="error" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  ⚠️ No se ha encontrado ninguna conexión directa o indirecta entre estos dos hitos en la red cargada.
+                  ⚠️ {text.noConnection}
                 </Typography>
               )}
             </Box>
@@ -5734,9 +6196,7 @@ const SpanishCompanyNetworkGraph = ({
           }}
         >
           <Typography variant="body2" sx={{ flex: 1 }}>
-            <strong>{pendingSubsidiaries.entityName}</strong> es socio único de{' '}
-            {pendingSubsidiaries.count} empresa
-            {pendingSubsidiaries.count !== 1 ? 's' : ''}.
+            {text.soleShareholderOf(pendingSubsidiaries.entityName, pendingSubsidiaries.count)}
           </Typography>
           <Button
             size="small"
@@ -5753,8 +6213,8 @@ const SpanishCompanyNetworkGraph = ({
             startIcon={loadingSubsidiaries ? <CircularProgress size={14} color="inherit" /> : null}
           >
             {loadingSubsidiaries
-              ? 'Cargando…'
-              : `Cargar ${pendingSubsidiaries.count} participada${pendingSubsidiaries.count !== 1 ? 's' : ''}`}
+              ? text.loading
+              : text.loadSubsidiaries(pendingSubsidiaries.count)}
           </Button>
           <IconButton size="small" onClick={() => setPendingSubsidiaries(null)}>
             <CloseIcon fontSize="small" />
@@ -5765,7 +6225,7 @@ const SpanishCompanyNetworkGraph = ({
       {lastSearchContext && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
           <Typography variant="caption" color="text.secondary">
-            Cargados: {lastSearchContext.offset}
+            {text.loaded}: {lastSearchContext.offset}
             {lastSearchContext.total ? ` / ${lastSearchContext.total}` : ''}
           </Typography>
           {lastSearchContext.hasMore && (
@@ -5776,7 +6236,7 @@ const SpanishCompanyNetworkGraph = ({
               disabled={loadingMore || isSearching}
               sx={{ textTransform: 'none' }}
             >
-              {loadingMore ? <CircularProgress size={14} /> : 'Cargar más'}
+              {loadingMore ? <CircularProgress size={14} /> : text.loadMore}
             </Button>
           )}
         </Box>
@@ -5787,7 +6247,7 @@ const SpanishCompanyNetworkGraph = ({
         <Box sx={{ mt: 1 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
             <Chip
-              label={`Vigentes (${statusCounts.active})`}
+              label={`${text.active} (${statusCounts.active})`}
               size="small"
               variant={statusFilters.has('active') ? 'filled' : 'outlined'}
               color="success"
@@ -5798,7 +6258,7 @@ const SpanishCompanyNetworkGraph = ({
               })}
             />
             <Chip
-              label={`Cesados (${statusCounts.ceased})`}
+              label={`${text.ceased} (${statusCounts.ceased})`}
               size="small"
               variant={statusFilters.has('ceased') ? 'filled' : 'outlined'}
               color="error"
@@ -5810,13 +6270,13 @@ const SpanishCompanyNetworkGraph = ({
             />
             <Tooltip
               arrow
-              title={'Cada cargo se sigue por su denominación exacta en el BORME. Si una persona cambia de tipo de cargo con el tiempo (p. ej. Consejero → Consejero Independiente → Consejero Externo), cada denominación se registra por separado, por lo que una misma persona puede aparecer a la vez como vigente bajo una denominación y como cesada bajo otra.'}
+              title={text.statusTooltip}
             >
               <InfoIcon sx={{ fontSize: 16, color: 'text.disabled', cursor: 'help' }} />
             </Tooltip>
             <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
             <Chip
-              label="Socio único"
+              label={text.soleShareholder}
               size="small"
               variant={showShareholders ? 'filled' : 'outlined'}
               sx={
@@ -5829,8 +6289,8 @@ const SpanishCompanyNetworkGraph = ({
             <Chip
               label={
                 simplifyGraph && simplifiedLowValueCount > 0
-                  ? `Simplificar (${simplifiedLowValueCount} ocultos)`
-                  : 'Simplificar'
+                  ? `${text.simplify} (${simplifiedLowValueCount} ${text.hidden})`
+                  : text.simplify
               }
               size="small"
               variant={simplifyGraph ? 'filled' : 'outlined'}
@@ -5846,13 +6306,13 @@ const SpanishCompanyNetworkGraph = ({
                 sx={{ minHeight: 24, py: 0, px: 1, textTransform: 'none', borderRadius: 4 }}
               >
                 {selectedPositionFilterCount > 0
-                  ? `Cargos (${selectedPositionFilterCount}/${availablePositionCount})`
-                  : `Cargos (${availablePositionCount})`}
+                  ? `${text.positions} (${selectedPositionFilterCount}/${availablePositionCount})`
+                  : `${text.positions} (${availablePositionCount})`}
               </Button>
             )}
             {hasChipFilters && (
               <Chip
-                label="Limpiar filtros"
+                label={text.clearFilters}
                 size="small"
                 variant="outlined"
                 onDelete={() => {
@@ -5896,7 +6356,7 @@ const SpanishCompanyNetworkGraph = ({
       {showSettings && (
         <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
           <Typography variant="subtitle2" gutterBottom>
-            Configuración del Grafo
+            {text.graphSettingsTitle}
           </Typography>
           <Box
             sx={{
@@ -5906,7 +6366,7 @@ const SpanishCompanyNetworkGraph = ({
             }}
           >
             <Box>
-              <Typography variant="caption">Tamaño de nodos</Typography>
+              <Typography variant="caption">{text.nodeSize}</Typography>
               <Slider
                 value={nodeSize}
                 onChange={(e, value) => setNodeSize(value)}
@@ -5917,7 +6377,7 @@ const SpanishCompanyNetworkGraph = ({
               />
             </Box>
             <Box>
-              <Typography variant="caption">Tamaño de etiquetas</Typography>
+              <Typography variant="caption">{text.labelSize}</Typography>
               <Slider
                 value={labelSize}
                 onChange={(e, value) => setLabelSize(value)}
@@ -5939,7 +6399,7 @@ const SpanishCompanyNetworkGraph = ({
                 }
                 label={
                   <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                    Colorear por Redes
+                    {text.colorByNetworks}
                   </Typography>
                 }
               />
@@ -5984,22 +6444,22 @@ const SpanishCompanyNetworkGraph = ({
         }}
       >
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title="Acercar">
+          <Tooltip title={text.zoomIn}>
             <IconButton onClick={zoomIn} size="small">
               <ZoomInIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Alejar">
+          <Tooltip title={text.zoomOut}>
             <IconButton onClick={zoomOut} size="small">
               <ZoomOutIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Centrar">
+          <Tooltip title={text.center}>
             <IconButton onClick={centerGraph} size="small">
               <CenterIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Limpiar grafo">
+          <Tooltip title={text.clearGraph}>
             <IconButton onClick={clearGraph} size="small">
               <RefreshIcon />
             </IconButton>
@@ -6007,10 +6467,10 @@ const SpanishCompanyNetworkGraph = ({
           <Tooltip
             title={
               isFullscreen
-                ? 'Salir de pantalla completa'
+                ? text.fullscreenExit
                 : embedded
-                  ? 'Pantalla completa (necesaria para gestionar nodos con clic derecho)'
-                  : 'Pantalla completa'
+                  ? text.fullscreenEmbedded
+                  : text.fullscreen
             }
           >
             <IconButton onClick={toggleFullscreen} size="small">
@@ -6021,7 +6481,7 @@ const SpanishCompanyNetworkGraph = ({
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {hiddenNodeIds.size > 0 && (
-            <Tooltip title="Gestionar nodos ocultos">
+            <Tooltip title={text.manageHiddenNodes}>
               <Button
                 size="small"
                 variant="outlined"
@@ -6029,16 +6489,16 @@ const SpanishCompanyNetworkGraph = ({
                 startIcon={<VisibilityIcon sx={{ fontSize: 14 }} />}
                 sx={{ fontSize: '0.7rem', py: 0, textTransform: 'none' }}
               >
-                {hiddenNodesList.length} ocultos
+                {text.hiddenButton(hiddenNodesList.length)}
               </Button>
             </Tooltip>
           )}
           <Typography variant="caption">
-            Nodos: {filteredGraphData.nodes.length}
+            {text.nodes}: {filteredGraphData.nodes.length}
             {filterTerms.length > 0 || hiddenNodeIds.size > 0
               ? ` / ${graphData.nodes.length}`
               : ''}{' '}
-            | Enlaces: {filteredGraphData.links.length}
+            | {text.links}: {filteredGraphData.links.length}
             {filterTerms.length > 0 || hiddenNodeIds.size > 0 ? ` / ${graphData.links.length}` : ''}
           </Typography>
           {isLoading && <CircularProgress size={16} />}
@@ -6143,7 +6603,7 @@ const SpanishCompanyNetworkGraph = ({
               
               <TableIcon sx={{ fontSize: 16 }} />
               <Typography variant="subtitle2" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                Datos (
+                {text.data} (
                 {dateFilter
                   ? `${visibleTableRows.length} / ${tableRows.length}`
                   : tableRows.length}
@@ -6152,7 +6612,7 @@ const SpanishCompanyNetworkGraph = ({
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
               {contextNode && contextNode.type !== 'officer' && (
-                <Tooltip title="Comprar informe Due Diligence">
+                <Tooltip title={text.buyDdTooltip}>
                   <span>
                     <IconButton
                       size="small"
@@ -6169,7 +6629,7 @@ const SpanishCompanyNetworkGraph = ({
                   </span>
                 </Tooltip>
               )}
-              <Tooltip title="Copiar tabla (Excel/Word)">
+              <Tooltip title={text.copyTableTooltip}>
                 <span>
                   <IconButton
                     size="small"
@@ -6181,7 +6641,7 @@ const SpanishCompanyNetworkGraph = ({
                   </IconButton>
                 </span>
               </Tooltip>
-              <Tooltip title={isTableCollapsed ? 'Expandir tabla' : 'Minimizar tabla'}>
+              <Tooltip title={isTableCollapsed ? text.expandTable : text.minimizeTable}>
                 <IconButton
                   size="small"
                   onClick={() => setIsTableCollapsed(prev => !prev)}
@@ -6219,7 +6679,7 @@ const SpanishCompanyNetworkGraph = ({
                     ? 'error'
                     : 'success'
                 }
-                label={`${getCategoryLabel(dateFilter.category)} · ${dateFilter.date}`}
+                label={`${getCategoryLabel(dateFilter.category, uiLanguage)} · ${dateFilter.date}`}
                 onDelete={() => setDateFilter(null)}
                 sx={{ fontSize: '0.65rem', height: 22 }}
               />
@@ -6252,7 +6712,7 @@ const SpanishCompanyNetworkGraph = ({
                         color: '#1565c0',
                       }}
                     >
-                      Empresa
+                      {text.tableCompany}
                     </TableCell>
                     <TableCell
                       sx={{
@@ -6263,7 +6723,7 @@ const SpanishCompanyNetworkGraph = ({
                         color: '#1565c0',
                       }}
                     >
-                      Directivo
+                      {text.tableOfficer}
                     </TableCell>
                     <TableCell
                       sx={{
@@ -6274,7 +6734,7 @@ const SpanishCompanyNetworkGraph = ({
                         color: '#1565c0',
                       }}
                     >
-                      Cargo
+                      {text.tableRole}
                     </TableCell>
                     <TableCell
                       sx={{
@@ -6285,7 +6745,7 @@ const SpanishCompanyNetworkGraph = ({
                         color: '#1565c0',
                       }}
                     >
-                      Tipo
+                      {text.tableType}
                     </TableCell>
                     <TableCell
                       sx={{
@@ -6296,7 +6756,7 @@ const SpanishCompanyNetworkGraph = ({
                         color: '#1565c0',
                       }}
                     >
-                      Fecha
+                      {text.tableDate}
                     </TableCell>
                   </TableRow>
                 </TableHead>
@@ -6305,7 +6765,7 @@ const SpanishCompanyNetworkGraph = ({
                     <TableRow>
                       <TableCell colSpan={5} align="center" sx={{ py: 3, color: '#4b5563' }}>
                         <Typography variant="caption" sx={{ color: '#4b5563' }}>
-                          Busca una empresa o directivo para ver datos
+                          {text.emptyTable}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -6338,7 +6798,7 @@ const SpanishCompanyNetworkGraph = ({
                               ? { textDecoration: 'underline' }
                               : undefined,
                           }}
-                          title={row.companyNode ? `Acciones sobre ${row.company}` : row.company}
+                          title={row.companyNode ? text.rowCompanyActions(row.company) : row.company}
                         >
                           {row.company}
                         </TableCell>
@@ -6363,9 +6823,9 @@ const SpanishCompanyNetworkGraph = ({
                           }}
                           title={
                             officerDeputyMatches[row.officer]?.deputy
-                              ? `${row.officer} — ${officerDeputyMatches[row.officer].deputy.FECHABAJA ? 'Ex-diputado' : 'Diputado'}${officerDeputyMatches[row.officer].deputy.FORMACIONELECTORAL ? ' · ' + officerDeputyMatches[row.officer].deputy.FORMACIONELECTORAL : ''}`
+                              ? `${row.officer} — ${officerDeputyMatches[row.officer].deputy.FECHABAJA ? text.formerCongressDeputy : text.congressDeputy}${officerDeputyMatches[row.officer].deputy.FORMACIONELECTORAL ? ' · ' + officerDeputyMatches[row.officer].deputy.FORMACIONELECTORAL : ''}`
                               : row.officerNode
-                                ? `Acciones sobre ${row.officer}`
+                                ? text.rowOfficerActions(row.officer)
                                 : row.officer
                           }
                         >
@@ -6389,7 +6849,7 @@ const SpanishCompanyNetworkGraph = ({
                                 whiteSpace: 'nowrap',
                               }}
                             >
-                              🏛️ {officerDeputyMatches[row.officer].deputy.FECHABAJA ? 'Ex-dip.' : 'Diputado'}
+                              🏛️ {officerDeputyMatches[row.officer].deputy.FECHABAJA ? (uiLanguage === 'en' ? 'Former MP' : 'Ex-dip.') : text.congressDeputy}
                             </Box>
                           )}
                         </TableCell>
@@ -6428,7 +6888,7 @@ const SpanishCompanyNetworkGraph = ({
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            {getCategoryLabel(row.category)}
+                            {getCategoryLabel(row.category, uiLanguage)}
                           </Box>
                         </TableCell>
                         <TableCell
@@ -6484,7 +6944,7 @@ const SpanishCompanyNetworkGraph = ({
                           }}
                           title={
                             row.date && row.date !== '-' && row.companyNode
-                              ? `Filtrar por esta fecha en ${row.company}`
+                              ? text.filterByDate(row.company)
                               : row.date
                           }
                         >
@@ -6503,11 +6963,11 @@ const SpanishCompanyNetworkGraph = ({
       {/* Legend - compact inline bar */}
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', px: 2, py: 0.5, opacity: 0.7, fontSize: '0.65rem' }}>
         {[
-          { color: nodeColors.company, label: 'Empresas' },
-          { color: nodeColors.officer_individual, label: 'Personas' },
-          { color: nodeColors.officer_company, label: 'Emp. Directivas' },
-          { color: nodeColors.expanded, label: 'Expandidos' },
-          { color: nodeColors.searchOrigin, label: 'Búsqueda' },
+          { color: nodeColors.company, label: text.legendCompanies },
+          { color: nodeColors.officer_individual, label: text.legendPeople },
+          { color: nodeColors.officer_company, label: text.legendCorporateOfficers },
+          { color: nodeColors.expanded, label: text.legendExpanded },
+          { color: nodeColors.searchOrigin, label: text.legendSearch },
         ].map(item => (
           <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
             <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color, flexShrink: 0 }} />
@@ -6516,11 +6976,11 @@ const SpanishCompanyNetworkGraph = ({
         ))}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
           <Box sx={{ width: 14, height: 2, bgcolor: '#2e7d32' }} />
-          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>Nombram.</Typography>
+          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.legendAppointments}</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
           <Box sx={{ width: 14, height: 2, bgcolor: '#d32f2f' }} />
-          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>Ceses</Typography>
+          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.legendCessations}</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
           <Box
@@ -6530,12 +6990,12 @@ const SpanishCompanyNetworkGraph = ({
               backgroundImage: 'repeating-linear-gradient(to right, #fbc02d 0 4px, transparent 4px 7px)',
             }}
           />
-          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>Socio único</Typography>
+          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.soleShareholder}</Typography>
         </Box>
         <Typography sx={{ fontSize: 'inherit', lineHeight: 1, ml: 'auto' }}>
           {embedded && !isFullscreen
-            ? 'Doble clic: expandir | Pantalla completa para gestionar'
-            : 'Doble clic: expandir | Clic derecho: gestionar'}
+            ? text.legendHintEmbedded
+            : text.legendHint}
         </Typography>
       </Box>
     </>
@@ -6552,9 +7012,9 @@ const SpanishCompanyNetworkGraph = ({
           container={overlayContainer}
         >
           <Box sx={{ px: 2, py: 1, minWidth: 260 }}>
-            <Typography variant="subtitle2">Nodos ocultos</Typography>
+            <Typography variant="subtitle2">{text.hiddenNodes}</Typography>
             <Typography variant="caption" color="text.secondary">
-              {hiddenNodesList.length} nodo(s)
+              {text.nodeCount(hiddenNodesList.length)}
             </Typography>
           </Box>
           <Divider />
@@ -6562,12 +7022,12 @@ const SpanishCompanyNetworkGraph = ({
             <ListItemIcon>
               <VisibilityIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Mostrar todos</ListItemText>
+            <ListItemText>{text.showAll}</ListItemText>
           </MenuItem>
           <Divider />
           {hiddenNodesList.length === 0 ? (
             <MenuItem disabled>
-              <ListItemText>Sin nodos ocultos</ListItemText>
+              <ListItemText>{text.noHiddenNodes}</ListItemText>
             </MenuItem>
           ) : (
             hiddenNodesList.map(node => (
@@ -6583,7 +7043,7 @@ const SpanishCompanyNetworkGraph = ({
                 </ListItemIcon>
                 <ListItemText
                   primary={node.name}
-                  secondary={node.type === 'officer' ? 'Directivo' : 'Empresa'}
+                  secondary={node.type === 'officer' ? text.officer : text.company}
                 />
               </MenuItem>
             ))
@@ -6604,7 +7064,7 @@ const SpanishCompanyNetworkGraph = ({
           {contextNode && (
             <Box sx={{ px: 2, py: 1, maxWidth: 320 }}>
               <Typography variant="caption" color="text.secondary">
-                {contextNode.type === 'officer' ? 'Directivo' : 'Empresa'}
+                {contextNode.type === 'officer' ? text.officer : text.company}
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
                 {contextNode.name}
@@ -6616,13 +7076,13 @@ const SpanishCompanyNetworkGraph = ({
             <ListItemIcon>
               <NetworkIcon fontSize="small" color="primary" />
             </ListItemIcon>
-            <ListItemText>Expandir nodo</ListItemText>
+            <ListItemText>{text.expandNode}</ListItemText>
           </MenuItem>
           <MenuItem onClick={openEditNodeDialog}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Modificar nodo</ListItemText>
+            <ListItemText>{text.editNode}</ListItemText>
           </MenuItem>
           <MenuItem
             onClick={openMergeNodeDialog}
@@ -6633,15 +7093,15 @@ const SpanishCompanyNetworkGraph = ({
             </ListItemIcon>
             <ListItemText>
               {mergeCandidateOptions.length > 0
-                ? 'Fusionar nodo'
-                : 'Sin nodos compatibles para fusionar'}
+                ? text.mergeNode
+                : text.noMergeCandidates}
             </ListItemText>
           </MenuItem>
           <MenuItem onClick={openDataPreview}>
             <ListItemIcon>
               <PreviewIcon fontSize="small" color="info" />
             </ListItemIcon>
-            <ListItemText>Vista previa de datos</ListItemText>
+            <ListItemText>{text.dataPreview}</ListItemText>
           </MenuItem>
           {contextNode && contextNode.type === 'officer' && (
             <MenuItem
@@ -6691,7 +7151,7 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemIcon>
                 <TimelineIcon fontSize="small" color="primary" />
               </ListItemIcon>
-              <ListItemText>Línea temporal</ListItemText>
+              <ListItemText>{text.timeline}</ListItemText>
             </MenuItem>
           )}
           {contextNode && contextNode.type === 'officer' && (
@@ -6699,7 +7159,7 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemIcon>
                 <EventBusyIcon fontSize="small" color="warning" />
               </ListItemIcon>
-              <ListItemText>Marcar como cesado</ListItemText>
+              <ListItemText>{text.markResigned}</ListItemText>
             </MenuItem>
           )}
           {contextNode && contextNode.type !== 'officer' && (
@@ -6715,27 +7175,27 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemIcon>
                 <DescriptionIcon fontSize="small" color="primary" />
               </ListItemIcon>
-              <ListItemText>Comprar Due Diligence</ListItemText>
+              <ListItemText>{text.buyDueDiligence}</ListItemText>
             </MenuItem>
           )}
           <MenuItem onClick={hideNodeFromMenu}>
             <ListItemIcon>
               <VisibilityOffIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Ocultar solo nodo</ListItemText>
+            <ListItemText>{text.hideNodeOnly}</ListItemText>
           </MenuItem>
           <MenuItem onClick={hideNodeWithRelationsFromMenu}>
             <ListItemIcon>
               <VisibilityOffIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Ocultar nodo + conectados</ListItemText>
+            <ListItemText>{text.hideNodeRelations}</ListItemText>
           </MenuItem>
           <Divider />
           <MenuItem onClick={openDeleteNodeDialog} sx={{ color: 'error.main' }}>
             <ListItemIcon>
               <DeleteOutlineIcon fontSize="small" color="error" />
             </ListItemIcon>
-            <ListItemText>Eliminar nodo</ListItemText>
+            <ListItemText>{text.deleteNode}</ListItemText>
           </MenuItem>
         </Menu>
 
@@ -6746,11 +7206,11 @@ const SpanishCompanyNetworkGraph = ({
           fullWidth
           container={overlayContainer}
         >
-          <DialogTitle>Modificar nodo</DialogTitle>
+          <DialogTitle>{text.editNode}</DialogTitle>
           <DialogContent>
             <Box sx={{ pt: 1 }}>
               <TextField
-                label="Nombre visible"
+                label={text.visibleName}
                 value={editNodeName}
                 onChange={e => setEditNodeName(e.target.value)}
                 fullWidth
@@ -6760,27 +7220,26 @@ const SpanishCompanyNetworkGraph = ({
             {contextNode?.type === 'officer' && (
               <Box sx={{ mt: 2 }}>
                 <FormControl fullWidth>
-                  <InputLabel>Tipo de directivo</InputLabel>
+                  <InputLabel>{text.officerType}</InputLabel>
                   <Select
-                    label="Tipo de directivo"
+                    label={text.officerType}
                     value={editNodeSubtype}
                     onChange={e => setEditNodeSubtype(e.target.value)}
                   >
-                    <MenuItem value="individual">Persona física</MenuItem>
-                    <MenuItem value="company">Persona jurídica</MenuItem>
+                    <MenuItem value="individual">{text.individualPerson}</MenuItem>
+                    <MenuItem value="company">{text.legalPerson}</MenuItem>
                   </Select>
                 </FormControl>
               </Box>
             )}
             <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-              Esta operación cambia el nombre mostrado en el grafo para ayudarte a corregir
-              variantes.
+              {text.editHelp}
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setIsEditNodeDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={() => setIsEditNodeDialogOpen(false)}>{text.cancel}</Button>
             <Button variant="contained" onClick={saveNodeEdit}>
-              Guardar cambios
+              {text.saveChanges}
             </Button>
           </DialogActions>
         </Dialog>
@@ -6797,11 +7256,10 @@ const SpanishCompanyNetworkGraph = ({
             },
           }}
         >
-          <DialogTitle>Fusionar nodos</DialogTitle>
+          <DialogTitle>{text.mergeNodes}</DialogTitle>
           <DialogContent sx={{ pb: 1 }}>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Fusionar <strong>{contextNode?.name}</strong> en otro nodo. Todas las relaciones
-              pasarán al nodo destino.
+              {text.mergeBody(contextNode?.name)}
             </Typography>
             <Autocomplete
               options={mergeCandidateOptions}
@@ -6817,7 +7275,7 @@ const SpanishCompanyNetworkGraph = ({
               isOptionEqualToValue={(option, value) =>
                 isSameNodeId(option.node.id, value?.node?.id)
               }
-              noOptionsText="No hay nodos que coincidan"
+              noOptionsText={text.noMatchingNodes}
               ListboxProps={{
                 sx: {
                   maxHeight: { xs: 280, sm: 420 },
@@ -6836,7 +7294,7 @@ const SpanishCompanyNetworkGraph = ({
                       display: 'block',
                     }}
                   >
-                    {params.group}
+                    {params.group === 'Nombres similares' ? text.similarNames : params.group}
                   </Typography>
                   <Divider />
                   <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
@@ -6860,7 +7318,7 @@ const SpanishCompanyNetworkGraph = ({
                       {option.node.name}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-                      {option.node.type === 'officer' ? 'Directivo' : 'Empresa'}
+                      {option.node.type === 'officer' ? text.officer : text.company}
                     </Typography>
                     {option.group === 'Nombres similares' && (
                       <Typography variant="caption" color="primary.main">
@@ -6870,23 +7328,20 @@ const SpanishCompanyNetworkGraph = ({
                   </Box>
                 </Box>
               )}
-              renderInput={params => <TextField {...params} label="Nodo destino" />}
+              renderInput={params => <TextField {...params} label={text.targetNode} />}
             />
             <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-              Recomendación: fusiona solo nodos que representen claramente la misma entidad.
-              En el BORME, un mismo directivo puede aparecer como «SANCHEZ GOMEZ JUAN» y «JUAN SANCHEZ GOMEZ».
-              Al fusionar, los datos de ambas variantes se combinan en la vista previa y el informe.
-              Si se trata de personas distintas con nombres similares, la fusión mezclará datos no relacionados.
+              {text.mergeRecommendation}
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setIsMergeNodeDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={() => setIsMergeNodeDialogOpen(false)}>{text.cancel}</Button>
             <Button
               variant="contained"
               onClick={confirmMergeNodes}
               disabled={!mergeTargetOption && !exactTypedMergeOption}
             >
-              Fusionar
+              {text.merge}
             </Button>
           </DialogActions>
         </Dialog>
@@ -6898,17 +7353,16 @@ const SpanishCompanyNetworkGraph = ({
           fullWidth
           container={overlayContainer}
         >
-          <DialogTitle>Eliminar nodo</DialogTitle>
+          <DialogTitle>{text.deleteNode}</DialogTitle>
           <DialogContent>
             <Typography variant="body2">
-              ¿Seguro que quieres eliminar <strong>{contextNode?.name}</strong> y todas sus
-              relaciones?
+              {text.deleteBody(contextNode?.name)}
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setIsDeleteNodeDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={() => setIsDeleteNodeDialogOpen(false)}>{text.cancel}</Button>
             <Button color="error" variant="contained" onClick={confirmDeleteNode}>
-              Eliminar
+              {text.delete}
             </Button>
           </DialogActions>
         </Dialog>
@@ -6939,19 +7393,19 @@ const SpanishCompanyNetworkGraph = ({
                 {previewNodeName}
               </Typography>
               <Chip
-                label={previewNodeType === 'officer' ? 'Directivo' : 'Empresa'}
+                label={previewNodeType === 'officer' ? text.officer : text.company}
                 size="small"
                 color={previewNodeType === 'officer' ? 'warning' : 'primary'}
                 variant="outlined"
               />
               {previewData?.type === 'company' && previewData.enriched?.isDissolved && (
-                <Chip label="Disuelta" size="small" color="error" />
+                <Chip label={text.dissolved} size="small" color="error" />
               )}
               {previewData?.type === 'company' && previewData.enriched?.isInConcurso && (
-                <Chip label="Concurso" size="small" color="warning" />
+                <Chip label={text.concurso} size="small" color="warning" />
               )}
               {previewData?.type === 'company' && previewData.enriched?.isUnipersonal && (
-                <Chip label="Unipersonal" size="small" color="info" variant="outlined" />
+                <Chip label={text.unipersonal} size="small" color="info" variant="outlined" />
               )}
             </Box>
             <IconButton onClick={() => setPreviewOpen(false)} size="small">
@@ -6962,7 +7416,7 @@ const SpanishCompanyNetworkGraph = ({
             {previewLoading && (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
                 <CircularProgress size={40} />
-                <Typography sx={{ ml: 2 }} color="text.secondary">Cargando datos...</Typography>
+                <Typography sx={{ ml: 2 }} color="text.secondary">{text.loadingData}</Typography>
               </Box>
             )}
             {previewError && (
@@ -6979,9 +7433,9 @@ const SpanishCompanyNetworkGraph = ({
                     <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>{text.name}</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>{text.role}</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -6989,7 +7443,7 @@ const SpanishCompanyNetworkGraph = ({
                           <TableRow key={i}>
                             <TableCell>{o.name || '-'}</TableCell>
                             <TableCell>{o.position || '-'}</TableCell>
-                            <TableCell>{o.date ? formatDate(o.date) : '-'}</TableCell>
+                            <TableCell>{o.date ? formatDate(o.date, uiLanguage) : '-'}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -7003,12 +7457,12 @@ const SpanishCompanyNetworkGraph = ({
                   {/* Overview section */}
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
                     <InfoIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
-                    Resumen
+                    {text.summary}
                   </Typography>
                   <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
                       <Box sx={{ gridColumn: '1 / -1' }}>
-                        <Typography variant="caption" color="text.secondary">Denominación</Typography>
+                        <Typography variant="caption" color="text.secondary">{text.legalName}</Typography>
                         <Typography
                           variant="body2"
                           sx={{
@@ -7028,7 +7482,7 @@ const SpanishCompanyNetworkGraph = ({
                                 display="block"
                                 sx={{ color: 'warning.main', fontStyle: 'italic' }}
                               >
-                                {nc.date ? `${formatDate(nc.date)}: ` : ''}
+                                {nc.date ? `${formatDate(nc.date, uiLanguage)}: ` : ''}
                                 {nc.old_name} → {nc.new_name}
                               </Typography>
                             ))}
@@ -7036,23 +7490,23 @@ const SpanishCompanyNetworkGraph = ({
                         ) : (
                           e?.previousNames?.length > 0 && (
                             <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
-                              Antes: {e.previousNames.join(', ')}
+                              {text.previous}: {e.previousNames.join(', ')}
                             </Typography>
                           )
                         )}
                       </Box>
                       {(e?.isDissolved || e?.isInConcurso || e?.isUnipersonal) && (
                         <Box sx={{ gridColumn: '1 / -1' }}>
-                          <Typography variant="caption" color="text.secondary">Estado</Typography>
+                          <Typography variant="caption" color="text.secondary">{text.status}</Typography>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
                             {e.isDissolved && (
-                              <Chip label="Disuelta" size="small" color="error" />
+                              <Chip label={text.dissolved} size="small" color="error" />
                             )}
                             {e.isInConcurso && (
-                              <Chip label="En concurso" size="small" color="warning" />
+                              <Chip label={text.concurso} size="small" color="warning" />
                             )}
                             {e.isUnipersonal && (
-                              <Chip label="Unipersonal" size="small" color="info" variant="outlined" />
+                              <Chip label={text.unipersonal} size="small" color="info" variant="outlined" />
                             )}
                           </Box>
                         </Box>
@@ -7065,12 +7519,12 @@ const SpanishCompanyNetworkGraph = ({
                       )}
                       {e?.address && (
                         <Box sx={{ gridColumn: e?.cif ? 'auto' : '1 / -1' }}>
-                          <Typography variant="caption" color="text.secondary">Domicilio</Typography>
+                          <Typography variant="caption" color="text.secondary">{text.address}</Typography>
                           <Typography variant="body2">
                             {e.address}
                             {e.addressExternal && (
                               <Typography component="span" variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', ml: 0.5 }}>
-                                (estimación de fuente externa — verificar)
+                                {text.externalEstimate}
                               </Typography>
                             )}
                           </Typography>
@@ -7078,18 +7532,18 @@ const SpanishCompanyNetworkGraph = ({
                       )}
                       {e?.activity && (
                         <Box sx={{ gridColumn: '1 / -1' }}>
-                          <Typography variant="caption" color="text.secondary">Objeto social</Typography>
+                          <Typography variant="caption" color="text.secondary">{text.activity}</Typography>
                           <Typography variant="body2">{e.activity}</Typography>
                         </Box>
                       )}
                       {e?.capital && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Capital social</Typography>
+                          <Typography variant="caption" color="text.secondary">{text.capital}</Typography>
                           <Typography variant="body2">
                             {e.capital}
                             {e.capitalExternal && (
                               <Typography component="span" variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', ml: 0.5 }}>
-                                (estimación de fuente externa — verificar)
+                                {text.externalEstimate}
                               </Typography>
                             )}
                           </Typography>
@@ -7097,26 +7551,26 @@ const SpanishCompanyNetworkGraph = ({
                       )}
                       {(e?.firstSeen || e?.lastSeen) && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Rango de publicaciones BORME</Typography>
+                          <Typography variant="caption" color="text.secondary">{text.bormeRange}</Typography>
                           <Typography variant="body2">
-                            {e.firstSeen ? formatDate(e.firstSeen) : '?'} — {e.lastSeen ? formatDate(e.lastSeen) : '?'}
+                            {e.firstSeen ? formatDate(e.firstSeen, uiLanguage) : '?'} — {e.lastSeen ? formatDate(e.lastSeen, uiLanguage) : '?'}
                           </Typography>
                         </Box>
                       )}
                       {e?.eventCount > 0 && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Publicaciones encontradas</Typography>
+                          <Typography variant="caption" color="text.secondary">{text.publicationsFound}</Typography>
                           <Typography variant="body2">{e.eventCount}</Typography>
                         </Box>
                       )}
                       {e?.hojaHistory?.length > 1 && (
                         <Box sx={{ gridColumn: '1 / -1' }}>
                           <Typography variant="caption" color="text.secondary">
-                            Cambio de hoja registral (reinscripción)
+                            {text.registrySheetChange}
                           </Typography>
                           <Typography variant="body2">
                             {e.hojaHistory.map((h, i) => (
-                              `${h.hoja}${h.province ? ` (${h.province})` : ''} ${formatDate(h.first_seen)} — ${formatDate(h.last_seen)}`
+                              `${h.hoja}${h.province ? ` (${h.province})` : ''} ${formatDate(h.first_seen, uiLanguage)} — ${formatDate(h.last_seen, uiLanguage)}`
                             )).join('  →  ')}
                           </Typography>
                         </Box>
@@ -7128,15 +7582,15 @@ const SpanishCompanyNetworkGraph = ({
                   {e?.currentOfficers?.length > 0 && (
                     <>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#1976d2' }}>
-                        Directivos actuales ({e.currentOfficers.length})
+                        {text.currentOfficers(e.currentOfficers.length)}
                       </Typography>
                       <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
                         <Table size="small">
                           <TableHead>
                             <TableRow>
-                              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Cargo(s)</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>{text.name}</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>{text.role}(s)</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
@@ -7144,7 +7598,7 @@ const SpanishCompanyNetworkGraph = ({
                               const dm = officerDeputyMatches[officer.name];
                               const deputyChip = dm?.deputy ? (
                                 <Chip
-                                  label={dm.deputy.FECHABAJA ? '🏛️ Ex-dip.' : `🏛️ Diputado${dm.deputy.FORMACIONELECTORAL ? ` · ${dm.deputy.FORMACIONELECTORAL}` : ''}`}
+                                  label={dm.deputy.FECHABAJA ? `🏛️ ${uiLanguage === 'en' ? 'Former MP' : 'Ex-dip.'}` : `🏛️ ${text.congressDeputy}${dm.deputy.FORMACIONELECTORAL ? ` · ${dm.deputy.FORMACIONELECTORAL}` : ''}`}
                                   size="small"
                                   variant="outlined"
                                   sx={{
@@ -7163,7 +7617,7 @@ const SpanishCompanyNetworkGraph = ({
                                     {deputyChip}
                                   </TableCell>
                                   <TableCell>{officer.positions[0].position || '-'}</TableCell>
-                                  <TableCell>{officer.positions[0].date ? formatDate(officer.positions[0].date) : '-'}</TableCell>
+                                  <TableCell>{officer.positions[0].date ? formatDate(officer.positions[0].date, uiLanguage) : '-'}</TableCell>
                                 </TableRow>
                               ) : (
                                 officer.positions.map((pos, j) => (
@@ -7178,7 +7632,7 @@ const SpanishCompanyNetworkGraph = ({
                                       {pos.position || '-'}
                                     </TableCell>
                                     <TableCell sx={j === officer.positions.length - 1 ? { borderBottom: '2px solid rgba(255,255,255,0.12)' } : undefined}>
-                                      {pos.date ? formatDate(pos.date) : '-'}
+                                      {pos.date ? formatDate(pos.date, uiLanguage) : '-'}
                                     </TableCell>
                                   </TableRow>
                                 ))
@@ -7193,10 +7647,10 @@ const SpanishCompanyNetworkGraph = ({
                   {/* Officers by category (historical) */}
                   {e?.officers && (
                     <>
-                      {officerTable(e.officers.nombramientos, '#43a047', 'Nombramientos')}
-                      {officerTable(e.officers.reelecciones, '#43a047', 'Reelecciones')}
-                      {officerTable(e.officers.ceses_dimisiones, '#e53935', 'Ceses/Dimisiones')}
-                      {officerTable(e.officers.revocaciones, '#e53935', 'Revocaciones')}
+                      {officerTable(e.officers.nombramientos, '#43a047', text.appointments)}
+                      {officerTable(e.officers.reelecciones, '#43a047', text.reelections)}
+                      {officerTable(e.officers.ceses_dimisiones, '#e53935', text.cessations)}
+                      {officerTable(e.officers.revocaciones, '#e53935', text.revocations)}
                     </>
                   )}
 
@@ -7205,7 +7659,7 @@ const SpanishCompanyNetworkGraph = ({
                     variant="caption"
                     sx={{ display: 'block', textAlign: 'center', color: 'text.disabled', mt: 2, fontStyle: 'italic' }}
                   >
-                    Vista previa — para un informe completo, adquiera una Due Diligence
+                    {text.previewWatermark}
                   </Typography>
                 </Box>
               );
@@ -7217,7 +7671,7 @@ const SpanishCompanyNetworkGraph = ({
               // Group by company
               const byCompany = {};
               officers.forEach(o => {
-                const companyName = o.company_name || o.company || 'Desconocida';
+                const companyName = o.company_name || o.company || text.unknown;
                 if (!byCompany[companyName]) byCompany[companyName] = [];
                 byCompany[companyName].push(o);
               });
@@ -7225,12 +7679,12 @@ const SpanishCompanyNetworkGraph = ({
               // event_type ("nombramientos"/"ceses_dimisiones"), status ("active"/"ceased"), date
               const resolveStatus = (o) => {
                 const st = (o.status || '').toLowerCase();
-                if (st === 'active') return { label: 'Activo', color: 'success' };
-                if (st === 'ceased') return { label: 'Cesado', color: 'error' };
+                if (st === 'active') return { label: uiLanguage === 'en' ? 'Active' : 'Activo', color: 'success' };
+                if (st === 'ceased') return { label: uiLanguage === 'en' ? 'Ceased' : 'Cesado', color: 'error' };
                 const evt = (o.event_type || '').toLowerCase();
-                if (evt.includes('nombr') || evt.includes('reelecc')) return { label: 'Activo', color: 'success' };
-                if (evt.includes('cese') || evt.includes('dimis') || evt.includes('revoc')) return { label: 'Cesado', color: 'error' };
-                return { label: 'Desconocido', color: 'default' };
+                if (evt.includes('nombr') || evt.includes('reelecc')) return { label: uiLanguage === 'en' ? 'Active' : 'Activo', color: 'success' };
+                if (evt.includes('cese') || evt.includes('dimis') || evt.includes('revoc')) return { label: uiLanguage === 'en' ? 'Ceased' : 'Cesado', color: 'error' };
+                return { label: text.unknown, color: 'default' };
               };
               const resolvePosition = (o) => o.specific_role || o.position_normalized || o.role || o.position || '-';
               const resolveDate = (o) => o.date || o.event_date || '';
@@ -7270,7 +7724,7 @@ const SpanishCompanyNetworkGraph = ({
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                           <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                            🏛️ {isFormer ? 'Ex-diputado del Congreso' : 'Diputado del Congreso'}
+                            🏛️ {isFormer ? text.formerCongressDeputy : text.congressDeputy}
                           </Typography>
                           <Chip
                             label={`${Math.round(deputyMatch.confidence * 100)}% match`}
@@ -7281,32 +7735,32 @@ const SpanishCompanyNetworkGraph = ({
                         </Box>
                         {fullName && fullName.toUpperCase() !== (previewData.name || '').toUpperCase() && (
                           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                            Coincide con: <b>{fullName}</b>
+                            {text.matchesWith}: <b>{fullName}</b>
                           </Typography>
                         )}
                         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.75, mt: 0.5 }}>
                           {d.FORMACIONELECTORAL && (
                             <Box>
-                              <Typography variant="caption" color="text.secondary">Partido</Typography>
+                              <Typography variant="caption" color="text.secondary">{text.party}</Typography>
                               <Typography variant="body2" sx={{ fontWeight: 500 }}>{d.FORMACIONELECTORAL}</Typography>
                             </Box>
                           )}
                           {d.GRUPOPARLAMENTARIO && (
                             <Box>
-                              <Typography variant="caption" color="text.secondary">Grupo</Typography>
+                              <Typography variant="caption" color="text.secondary">{text.group}</Typography>
                               <Typography variant="body2">{d.GRUPOPARLAMENTARIO}</Typography>
                             </Box>
                           )}
                           {d.CIRCUNSCRIPCION && (
                             <Box>
-                              <Typography variant="caption" color="text.secondary">Circunscripción</Typography>
+                              <Typography variant="caption" color="text.secondary">{text.constituency}</Typography>
                               <Typography variant="body2">{d.CIRCUNSCRIPCION}</Typography>
                             </Box>
                           )}
                           {legs.length > 0 && (
                             <Box>
                               <Typography variant="caption" color="text.secondary">
-                                Legislatura{legs.length !== 1 ? 's' : ''} ({legs.length})
+                                {text.legislature(legs.length)}
                               </Typography>
                               <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>
                                 {legs.join(', ')}
@@ -7315,10 +7769,10 @@ const SpanishCompanyNetworkGraph = ({
                           )}
                           {(earliest || latest) && (
                             <Box sx={{ gridColumn: '1 / -1' }}>
-                              <Typography variant="caption" color="text.secondary">Período</Typography>
+                              <Typography variant="caption" color="text.secondary">{text.period}</Typography>
                               <Typography variant="body2">
                                 {earliest || '?'}
-                                {isFormer ? ` — ${latest || '?'}` : ' — actualidad'}
+                                {isFormer ? ` — ${latest || '?'}` : ` — ${text.present}`}
                                 {sittingRow?.LEGISLATURA ? ` (${sittingRow.LEGISLATURA})` : ''}
                               </Typography>
                             </Box>
@@ -7333,7 +7787,7 @@ const SpanishCompanyNetworkGraph = ({
                             rel="noopener noreferrer"
                             sx={{ display: 'block', mt: 1, color: 'primary.main', textDecoration: 'underline' }}
                           >
-                            Ficha en congreso.es →
+                            {text.congressProfile} →
                           </Typography>
                         )}
                       </Alert>
@@ -7342,13 +7796,13 @@ const SpanishCompanyNetworkGraph = ({
                   {variants && variants.length > 1 && (
                     <Alert severity="info" sx={{ mb: 2 }}>
                       <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                        Datos combinados de nodos fusionados
+                        {text.mergedNodesData}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Variantes de nombre: {variants.join(' / ')}
+                        {text.nameVariants}: {variants.join(' / ')}
                       </Typography>
                       <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                        Si los nombres corresponden a personas distintas, los cargos mostrados pueden mezclar datos de personas diferentes.
+                        {text.mergedWarning}
                       </Typography>
                     </Alert>
                   )}
@@ -7358,10 +7812,10 @@ const SpanishCompanyNetworkGraph = ({
                     <Box sx={{ mb: 2.5 }}>
                       <Alert severity="warning" sx={{ mb: 1.5 }}>
                         <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          Socio único de {whollyOwned.length} empresa{whollyOwned.length !== 1 ? 's' : ''}
+                          {text.whollyOwned(whollyOwned.length)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Esta persona figura como propietaria al 100% de las empresas siguientes.
+                          {text.whollyOwnedHelp}
                         </Typography>
                       </Alert>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
@@ -7398,8 +7852,8 @@ const SpanishCompanyNetworkGraph = ({
                                 </Typography>
                               </Box>
                               <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                                {isDissolved && <Chip label="Disuelta" size="small" color="error" />}
-                                {isInConcurso && <Chip label="Concurso" size="small" color="warning" />}
+                                {isDissolved && <Chip label={text.dissolved} size="small" color="error" />}
+                                {isInConcurso && <Chip label={text.concurso} size="small" color="warning" />}
                                 <Chip label="100%" size="small" color={isDissolved ? 'error' : 'success'} />
                               </Box>
                             </Paper>
@@ -7411,7 +7865,7 @@ const SpanishCompanyNetworkGraph = ({
 
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
                     <PersonIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
-                    Cargos en {Object.keys(byCompany).length} empresa{Object.keys(byCompany).length !== 1 ? 's' : ''}
+                    {text.rolesInCompanies(Object.keys(byCompany).length)}
                   </Typography>
                   {Object.entries(byCompany).map(([companyName, companyOfficers]) => (
                     <Paper key={companyName} variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -7422,9 +7876,9 @@ const SpanishCompanyNetworkGraph = ({
                       <Table size="small">
                         <TableHead>
                           <TableRow>
-                            <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
-                            <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-                            <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>{text.role}</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>{text.status}</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -7441,7 +7895,7 @@ const SpanishCompanyNetworkGraph = ({
                                     variant="outlined"
                                   />
                                 </TableCell>
-                                <TableCell>{formatDate(resolveDate(o))}</TableCell>
+                                <TableCell>{formatDate(resolveDate(o), uiLanguage)}</TableCell>
                               </TableRow>
                             );
                           })}
@@ -7453,7 +7907,7 @@ const SpanishCompanyNetworkGraph = ({
                     variant="caption"
                     sx={{ display: 'block', textAlign: 'center', color: 'text.disabled', mt: 2, fontStyle: 'italic' }}
                   >
-                    Vista previa — para un informe completo, adquiera una Due Diligence
+                    {text.previewWatermark}
                   </Typography>
                 </Box>
               );
@@ -7471,10 +7925,10 @@ const SpanishCompanyNetworkGraph = ({
                   setDdCheckoutOpen(true);
                 }}
               >
-                Comprar Due Diligence
+                {text.buyDueDiligence}
               </Button>
             )}
-            <Button onClick={() => setPreviewOpen(false)}>Cerrar</Button>
+            <Button onClick={() => setPreviewOpen(false)}>{text.close}</Button>
           </DialogActions>
         </Dialog>
 
@@ -7484,6 +7938,7 @@ const SpanishCompanyNetworkGraph = ({
           officerName={timelineOfficerName}
           officerRecords={timelineOfficerRecords}
           nameVariants={contextNode?.nameVariants}
+          language={uiLanguage}
           onClose={() => setTimelineDialogOpen(false)}
           container={overlayContainer}
         />
@@ -7498,14 +7953,14 @@ const SpanishCompanyNetworkGraph = ({
           <DialogTitle>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <InfoIcon color="info" />
-              <Typography variant="h6">Fuente y aviso legal</Typography>
+              <Typography variant="h6">{text.legalTitle}</Typography>
             </Box>
           </DialogTitle>
           <DialogContent>
-            <LegalDisclaimer language="es" sx={{ mt: 1 }} />
+            <LegalDisclaimer language={uiLanguage} sx={{ mt: 1 }} />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setLegalDisclaimerOpen(false)}>Cerrar</Button>
+            <Button onClick={() => setLegalDisclaimerOpen(false)}>{text.close}</Button>
           </DialogActions>
         </Dialog>
 
@@ -7517,16 +7972,14 @@ const SpanishCompanyNetworkGraph = ({
           fullWidth
           container={overlayContainer}
         >
-          <DialogTitle>Marcar como cesado</DialogTitle>
+          <DialogTitle>{text.markResigned}</DialogTitle>
           <DialogContent>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Marcar a <strong>{markResignedNode?.name}</strong> como cesado en el informe
-              personalizado. Esto no modifica el Registro Mercantil; solo afecta a tu informe
-              «Custom».
+              {text.markResignedBody(markResignedNode?.name)}
             </Typography>
             <TextField
               type="date"
-              label="Fecha de cese (opcional)"
+              label={text.resignationDate}
               value={markResignedDate}
               onChange={e => setMarkResignedDate(e.target.value)}
               fullWidth
@@ -7535,9 +7988,9 @@ const SpanishCompanyNetworkGraph = ({
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setMarkResignedNode(null)}>Cancelar</Button>
+            <Button onClick={() => setMarkResignedNode(null)}>{text.cancel}</Button>
             <Button color="warning" variant="contained" onClick={confirmMarkResigned}>
-              Marcar como cesado
+              {text.markResigned}
             </Button>
           </DialogActions>
         </Dialog>
@@ -7551,10 +8004,10 @@ const SpanishCompanyNetworkGraph = ({
         >
           <Box sx={{ px: 2, py: 1, minWidth: 300, maxWidth: 380 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-              Mis correcciones
+              {text.myCorrections(correctionsCount)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {subjectCompanyName || 'Sin empresa seleccionada'}
+              {subjectCompanyName || text.noSelectedCompany}
             </Typography>
           </Box>
           <Divider />
@@ -7566,19 +8019,13 @@ const SpanishCompanyNetworkGraph = ({
           {!myCorrectionsLoading && myCorrectionsList.length === 0 && (
             <Box sx={{ px: 2, py: 1.5 }}>
               <Typography variant="body2" color="text.secondary">
-                Aún no has hecho correcciones en esta empresa. Usa el menú de un directivo
-                (ocultar, fusionar, marcar como cesado) para crearlas.
+                {text.emptyCorrections}
               </Typography>
             </Box>
           )}
           {!myCorrectionsLoading &&
             myCorrectionsList.map(c => {
-              const label =
-                c.action === 'hide'
-                  ? `Ocultar: ${c.name_a}`
-                  : c.action === 'merge'
-                  ? `Fusionar: ${c.name_a} → ${c.name_b}`
-                  : `Cesado: ${c.name_a}${c.resigned_date ? ` (${c.resigned_date})` : ''}`;
+              const label = text.correctionLabel(c);
               return (
                 <Box
                   key={c.id}
@@ -7594,7 +8041,7 @@ const SpanishCompanyNetworkGraph = ({
                   <Typography variant="body2" sx={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
                     {label}
                   </Typography>
-                  <Tooltip title="Eliminar corrección">
+                  <Tooltip title={text.removeCorrection}>
                     <IconButton size="small" onClick={() => removeCorrectionFromPanel(c.id)}>
                       <DeleteOutlineIcon fontSize="small" color="error" />
                     </IconButton>
@@ -7613,7 +8060,7 @@ const SpanishCompanyNetworkGraph = ({
           message={correctionsSnackbar?.message}
           action={
             <Button color="warning" size="small" onClick={undoCorrectionFromSnackbar}>
-              Deshacer
+              {text.undo}
             </Button>
           }
         />
@@ -7652,7 +8099,7 @@ const SpanishCompanyNetworkGraph = ({
           }}>
             <CircularProgress size={40} />
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Buscando {searchQuery}...
+              {text.searching(searchQuery)}
             </Typography>
           </Box>
         )}
@@ -7663,13 +8110,14 @@ const SpanishCompanyNetworkGraph = ({
           onClose={() => setDdCheckoutOpen(false)}
           companyName={ddCheckoutCompany}
           country="es"
+          language={uiLanguage}
         />
         <RelationshipReportModal
           open={relReportOpen}
           onClose={() => setRelReportOpen(false)}
           scope={relationshipDetailedScope}
           subjects={relSubjects}
-          lang="es"
+          lang={uiLanguage}
           onRemoveCompany={removeCompanyFromReport}
         />
       </Box>
@@ -7698,7 +8146,7 @@ const SpanishCompanyNetworkGraph = ({
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <NetworkIcon sx={{ mr: 1 }} />
-              <Typography variant="h6">Red de Empresas Españolas</Typography>
+              <Typography variant="h6">{text.graphTitle}</Typography>
             </Box>
             <IconButton onClick={onHide} size="small">
               <CloseIcon />
@@ -7721,7 +8169,7 @@ const SpanishCompanyNetworkGraph = ({
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={onHide}>Cerrar</Button>
+          <Button onClick={onHide}>{text.close}</Button>
         </DialogActions>
       </Dialog>
       {nodeManagementOverlays}
@@ -7730,13 +8178,14 @@ const SpanishCompanyNetworkGraph = ({
         onClose={() => setDdCheckoutOpen(false)}
         companyName={ddCheckoutCompany}
         country="es"
+        language={uiLanguage}
       />
       <RelationshipReportModal
         open={relReportOpen}
         onClose={() => setRelReportOpen(false)}
         scope={relScope}
         subjects={relSubjects}
-        lang="es"
+        lang={uiLanguage}
         onRemoveCompany={removeCompanyFromReport}
       />
     </>

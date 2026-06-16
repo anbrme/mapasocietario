@@ -46,6 +46,49 @@ const POSITION_PATTERNS = [
   [/^(SOCIO)/i, 'socio'],
 ];
 
+const TIMELINE_COPY = {
+  en: {
+    timeline: 'Timeline',
+    today: 'Today',
+    roleAtCompany: (role, company) => `${role} at ${company}`,
+    cessation: 'cessation',
+    active: 'Active',
+    appointment: 'Appointment',
+    copied: 'Copied',
+    copyForWord: 'Copy for Word',
+    mergedData: 'Combined data from merged nodes',
+    mergedWarning: 'If the names belong to different people, the timeline may mix unrelated data.',
+    bormeTimeline: count => `BORME timeline (${count} ${count === 1 ? 'movement' : 'movements'})`,
+    date: 'Date',
+    type: 'Type',
+    role: 'Role',
+    company: 'Company',
+    noData: 'No timeline data available.',
+    close: 'Close',
+    unknownCompany: 'Unknown',
+  },
+  es: {
+    timeline: 'Línea temporal',
+    today: 'Hoy',
+    roleAtCompany: (role, company) => `${role} en ${company}`,
+    cessation: 'cese',
+    active: 'Activo',
+    appointment: 'Nombramiento',
+    copied: 'Copiado',
+    copyForWord: 'Copiar para Word',
+    mergedData: 'Datos combinados de nodos fusionados',
+    mergedWarning: 'Si los nombres corresponden a personas distintas, la línea temporal puede mezclar datos no relacionados.',
+    bormeTimeline: count => `Cronología BORME (${count} movimientos)`,
+    date: 'Fecha',
+    type: 'Tipo',
+    role: 'Cargo',
+    company: 'Empresa',
+    noData: 'No hay datos de línea temporal disponibles.',
+    close: 'Cerrar',
+    unknownCompany: 'Desconocida',
+  },
+};
+
 const _colorCache = {};
 const getPositionColor = (role) => {
   if (_colorCache[role]) return _colorCache[role];
@@ -69,7 +112,8 @@ const parseDate = (str) => {
 };
 
 // ─── Gantt Timeline Component ────────────────────────────────────────────────
-const OfficerGanttTimeline = ({ companies }) => {
+const OfficerGanttTimeline = ({ companies, language = 'es' }) => {
+  const copy = TIMELINE_COPY[language === 'en' ? 'en' : 'es'];
   const spans = useMemo(() => {
     if (!companies?.length) return [];
     const result = [];
@@ -77,7 +121,7 @@ const OfficerGanttTimeline = ({ companies }) => {
       const positions = company.positions || [];
       const byRole = {};
       positions.forEach(pos => {
-        const role = pos.specific_role || pos.position || 'Cargo';
+        const role = pos.specific_role || pos.position || copy.role;
         if (!byRole[role]) byRole[role] = { appointments: [], cessations: [] };
         const isAppt = ['nombramientos', 'reelecciones', 'appointment', 'reelection'].includes(pos.event_type);
         const d = parseDate(pos.date);
@@ -122,7 +166,7 @@ const OfficerGanttTimeline = ({ companies }) => {
       });
     });
     return result;
-  }, [companies]);
+  }, [companies, copy.role]);
 
   if (!spans.length) return null;
 
@@ -169,7 +213,7 @@ const OfficerGanttTimeline = ({ companies }) => {
   return (
     <Box sx={{ py: 2 }}>
       <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700 }}>
-        Línea temporal
+        {copy.timeline}
       </Typography>
       <Box sx={{ position: 'relative', minHeight: rows.length * 36 + 32 }}>
         <Box sx={{ position: 'absolute', top: 0, left: 180, right: 0, bottom: 0 }}>
@@ -185,7 +229,7 @@ const OfficerGanttTimeline = ({ companies }) => {
         <Box sx={{ pt: 2 }}>
           {rows.map((row, rowIdx) => (
             <Box key={`${row.company}-${row.role}-${rowIdx}`} sx={{ display: 'flex', alignItems: 'center', height: 32, mb: 0.5 }}>
-              <Tooltip title={`${row.role} en ${row.company}`} placement="left" arrow>
+              <Tooltip title={copy.roleAtCompany(row.role, row.company)} placement="left" arrow>
                 <Box sx={{ width: 180, flexShrink: 0, pr: 1, overflow: 'hidden' }}>
                   <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.65rem', lineHeight: 1.2, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'text.primary' }}>
                     {row.company}
@@ -200,7 +244,7 @@ const OfficerGanttTimeline = ({ companies }) => {
                   if (span.unknownStart) {
                     const pos = toPercent(span.endDate) ?? 0;
                     return (
-                      <Tooltip key={sIdx} title={`${span.role}: ? → ${span.end} (cese)`} arrow>
+                      <Tooltip key={sIdx} title={`${span.role}: ? → ${span.end} (${copy.cessation})`} arrow>
                         <Box sx={{ position: 'absolute', left: `${pos}%`, top: 10, width: 12, height: 12, borderRadius: '50%', bgcolor: row.color, opacity: 0.65, transform: 'translateX(-6px)', border: '2px solid white', boxShadow: 1 }} />
                       </Tooltip>
                     );
@@ -209,7 +253,7 @@ const OfficerGanttTimeline = ({ companies }) => {
                   const endPct = span.endDate ? toPercent(span.endDate) : todayPct;
                   const width = Math.max(endPct - startPct, 0.5);
                   return (
-                    <Tooltip key={sIdx} title={`${span.role}: ${span.start || '?'} → ${span.end || 'Activo'}`} arrow>
+                    <Tooltip key={sIdx} title={`${span.role}: ${span.start || '?'} → ${span.end || copy.active}`} arrow>
                       <Box sx={{
                         position: 'absolute', left: `${startPct}%`, width: `${width}%`, top: 8, height: 16,
                         bgcolor: row.color, opacity: span.isActive ? 1 : 0.65, borderRadius: '3px', minWidth: 4,
@@ -237,7 +281,7 @@ const OfficerGanttTimeline = ({ companies }) => {
         ))}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1 }}>
           <Box sx={{ width: 12, height: 2, borderTop: '2px dashed', borderColor: 'warning.main', opacity: 0.6 }} />
-          <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>Hoy</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>{copy.today}</Typography>
         </Box>
       </Box>
     </Box>
@@ -245,15 +289,16 @@ const OfficerGanttTimeline = ({ companies }) => {
 };
 
 // ─── Main Dialog ─────────────────────────────────────────────────────────────
-const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants, onClose, container }) => {
+const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants, language = 'es', onClose, container }) => {
   const [copied, setCopied] = useState(false);
+  const copy = TIMELINE_COPY[language === 'en' ? 'en' : 'es'];
 
   // Transform flat officer records into the companies structure the Gantt expects
   const companies = useMemo(() => {
     if (!officerRecords?.length) return [];
     const byCompany = {};
     officerRecords.forEach(o => {
-      const name = o.company_name || o.company || 'Desconocida';
+      const name = o.company_name || o.company || copy.unknownCompany;
       if (!byCompany[name]) byCompany[name] = { name, positions: [] };
       byCompany[name].positions.push({
         date: o.date || o.event_date,
@@ -263,7 +308,7 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
       });
     });
     return Object.values(byCompany);
-  }, [officerRecords]);
+  }, [officerRecords, copy.unknownCompany]);
 
   // Flat timeline for the table
   const timeline = useMemo(() => {
@@ -272,20 +317,20 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
       .filter(o => o.date || o.event_date)
       .map(o => ({
         date: o.date || o.event_date,
-        company: o.company_name || o.company || 'Desconocida',
+        company: o.company_name || o.company || copy.unknownCompany,
         position: o.specific_role || o.position_normalized || o.role || o.position || '-',
         isAppointment: ['nombramientos', 'reelecciones'].includes((o.event_type || '').toLowerCase()),
       }))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [officerRecords]);
+  }, [officerRecords, copy.unknownCompany]);
 
   const handleCopy = () => {
     const rows = timeline.map(evt =>
-      `<tr><td style="padding:4px 8px;border:1px solid #ccc">${evt.date}</td><td style="padding:4px 8px;border:1px solid #ccc">${evt.isAppointment ? 'Nombramiento' : 'Cese'}</td><td style="padding:4px 8px;border:1px solid #ccc">${evt.position}</td><td style="padding:4px 8px;border:1px solid #ccc">${evt.company}</td></tr>`
+      `<tr><td style="padding:4px 8px;border:1px solid #ccc">${evt.date}</td><td style="padding:4px 8px;border:1px solid #ccc">${evt.isAppointment ? copy.appointment : copy.cessation}</td><td style="padding:4px 8px;border:1px solid #ccc">${evt.position}</td><td style="padding:4px 8px;border:1px solid #ccc">${evt.company}</td></tr>`
     ).join('');
-    const html = `<table style="border-collapse:collapse;font-family:Calibri,sans-serif;font-size:11pt"><thead><tr style="background:#7c3aed;color:white"><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">Fecha</th><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">Tipo</th><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">Cargo</th><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">Empresa</th></tr></thead><tbody>${rows}</tbody></table>`;
-    const plain = `Fecha\tTipo\tCargo\tEmpresa\n` +
-      timeline.map(evt => `${evt.date}\t${evt.isAppointment ? 'Nombramiento' : 'Cese'}\t${evt.position}\t${evt.company}`).join('\n');
+    const html = `<table style="border-collapse:collapse;font-family:Calibri,sans-serif;font-size:11pt"><thead><tr style="background:#7c3aed;color:white"><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">${copy.date}</th><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">${copy.type}</th><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">${copy.role}</th><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">${copy.company}</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const plain = `${copy.date}\t${copy.type}\t${copy.role}\t${copy.company}\n` +
+      timeline.map(evt => `${evt.date}\t${evt.isAppointment ? copy.appointment : copy.cessation}\t${evt.position}\t${evt.company}`).join('\n');
     navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([plain], { type: 'text/plain' }) })]);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -296,10 +341,10 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <TimelineIcon color="primary" />
-          <Typography variant="h6">Línea temporal — {officerName}</Typography>
+          <Typography variant="h6">{copy.timeline} — {officerName}</Typography>
         </Box>
         {timeline.length > 0 && (
-          <Tooltip title={copied ? 'Copiado' : 'Copiar para Word'}>
+          <Tooltip title={copied ? copy.copied : copy.copyForWord}>
             <IconButton size="small" onClick={handleCopy}>
               <CopyIcon fontSize="small" color={copied ? 'success' : 'inherit'} />
             </IconButton>
@@ -310,27 +355,27 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
         {nameVariants && nameVariants.length > 0 && (
           <Box sx={{ mb: 2, p: 1.5, bgcolor: 'info.50', border: '1px solid', borderColor: 'info.200', borderRadius: 1 }}>
             <Typography variant="caption" sx={{ fontWeight: 600, color: 'info.dark' }}>
-              Datos combinados de nodos fusionados: {nameVariants.join(' / ')}
+              {copy.mergedData}: {nameVariants.join(' / ')}
             </Typography>
             <Typography variant="caption" display="block" sx={{ color: 'text.secondary', mt: 0.25 }}>
-              Si los nombres corresponden a personas distintas, la línea temporal puede mezclar datos no relacionados.
+              {copy.mergedWarning}
             </Typography>
           </Box>
         )}
         {companies.length > 0 ? (
           <>
-            <OfficerGanttTimeline companies={companies} />
+            <OfficerGanttTimeline companies={companies} language={language} />
             {timeline.length > 0 && (
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 700 }}>
-                  Cronología BORME ({timeline.length} movimientos)
+                  {copy.bormeTimeline(timeline.length)}
                 </Typography>
                 <Box component="table" sx={{
                   width: '100%', borderCollapse: 'collapse',
                   '& th, & td': { px: 1.5, py: 0.75, border: '1px solid', borderColor: 'divider', fontSize: '0.8rem' },
                   '& th': { bgcolor: 'grey.100', fontWeight: 600, textAlign: 'left' },
                 }}>
-                  <thead><tr><th>Fecha</th><th>Tipo</th><th>Cargo</th><th>Empresa</th></tr></thead>
+                  <thead><tr><th>{copy.date}</th><th>{copy.type}</th><th>{copy.role}</th><th>{copy.company}</th></tr></thead>
                   <tbody>
                     {timeline.map((evt, idx) => (
                       <tr key={idx}>
@@ -340,7 +385,7 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
                             {evt.isAppointment
                               ? <ActiveIcon sx={{ fontSize: 14, color: 'success.main' }} />
                               : <InactiveIcon sx={{ fontSize: 14, color: 'error.main' }} />}
-                            {evt.isAppointment ? 'Nombramiento' : 'Cese'}
+                            {evt.isAppointment ? copy.appointment : copy.cessation}
                           </Box>
                         </td>
                         <td>{evt.position}</td>
@@ -353,11 +398,11 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
             )}
           </>
         ) : (
-          <Typography color="text.secondary">No hay datos de línea temporal disponibles.</Typography>
+          <Typography color="text.secondary">{copy.noData}</Typography>
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cerrar</Button>
+        <Button onClick={onClose}>{copy.close}</Button>
       </DialogActions>
     </Dialog>
   );
