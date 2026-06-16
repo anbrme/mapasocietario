@@ -1391,7 +1391,7 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, []);
 
-  const handleSearch = async (queryOverride = null, exactMatch = false, searchTypeOverride = null) => {
+  const handleSearch = async (queryOverride = null, exactMatch = false, searchTypeOverride = null, groupKeyOverride = null) => {
     if (DATA_MAINTENANCE.enabled) {
       setError(null);
       return;
@@ -1435,11 +1435,27 @@ const SpanishCompanyNetworkGraph = ({
         }
       } else {
         // Company search: use borme_companies_v3 (clean, pre-aggregated index with
-        // explicit officers_active/officers_resigned arrays)
-        const v3Data = await spanishCompaniesService.searchCompaniesV3(query, {
-          size: companiesPerSearch,
-          exact: exactMatch,
-        });
+        // explicit officers_active/officers_resigned arrays).
+        //
+        // When the selection carried a stable group_key (e.g. the autocomplete
+        // option's `id`), resolve+fetch the EXACT company doc by that key so an
+        // ambiguous name (e.g. "NAMISA") binds to the correct legal entity rather
+        // than whatever the fuzzy/exact-name search ranks first. resolveCompanyGroupKey
+        // prefers the explicit key and skips the directory lookup when present.
+        const groupKey = groupKeyOverride
+          ? await spanishCompaniesService.resolveCompanyGroupKey(query, groupKeyOverride)
+          : null;
+
+        let v3Data;
+        if (groupKey) {
+          const profile = await spanishCompaniesService.getCompanyProfileV3(query, { groupKey });
+          v3Data = { results: profile.company ? [profile.company] : [], total: profile.company ? 1 : 0 };
+        } else {
+          v3Data = await spanishCompaniesService.searchCompaniesV3(query, {
+            size: companiesPerSearch,
+            exact: exactMatch,
+          });
+        }
 
         const v3Results = v3Data.results || [];
         if (v3Results.length > 0) {
@@ -1448,7 +1464,10 @@ const SpanishCompanyNetworkGraph = ({
           // Check for name changes on ALL results before filtering,
           // so that old-name entries with has_new_name are discovered
           const { entries: withRelated, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
-          const filtered = filterCompanyMatches(withRelated, query);
+          // When we fetched the exact company by group_key, the result IS the
+          // right entity — skip the name-term filter (its current name may not
+          // contain the typed query terms, e.g. a renamed company).
+          const filtered = groupKey ? withRelated : filterCompanyMatches(withRelated, query);
           // Also include entries that didn't match the query but are linked via name change
           const aliasedEntries = aliasMap
             ? withRelated.filter(e => {
@@ -1464,11 +1483,24 @@ const SpanishCompanyNetworkGraph = ({
 
           if (merged.length > 0) {
             await addCompanyWithOfficersToGraph(merged, null, aliasMap);
+            const pinnedIds = [];
             merged.forEach(company => {
               const companyName = normalizeCompanyName(company.name || company.company_name || '');
               const companyId = companyNameToId(companyName);
+              pinnedIds.push(companyId);
               setPinnedNodeIds(prev => new Set([...prev, companyId]));
             });
+            // Stamp the resolved group_key onto the searched company node so a
+            // later preview/expand reuses it (step 1 of resolveCompanyGroupKey)
+            // instead of re-resolving the name.
+            if (groupKey && pinnedIds.length > 0) {
+              setGraphData(prev => ({
+                ...prev,
+                nodes: prev.nodes.map(n =>
+                  pinnedIds.includes(n.id) && !n.groupKey ? { ...n, groupKey } : n
+                ),
+              }));
+            }
             setLastSearchContext({
               query,
               searchType: 'company',
@@ -1591,6 +1623,21 @@ const SpanishCompanyNetworkGraph = ({
       console.debug('[OwnsCompanies]', entityName, { count: owned.length });
       if (!result?.success || owned.length === 0) return;
 
+      // Resolve a STABLE group_key per owned company so the new node binds to the
+      // correct legal entity when later expanded/previewed (the ownership payload
+      // today carries identifier: "" — no id — so an ambiguous name like "NAMISA"
+      // would otherwise fuzzy-resolve to the wrong company). resolveCompanyGroupKey
+      // prefers any group_key already on the record (forward-compatible: once the
+      // backend adds group_key here, the directory lookup is skipped), else falls
+      // back to the directory autocomplete.
+      const ownedGroupKeys = await Promise.all(
+        owned.map(c =>
+          spanishCompaniesService
+            .resolveCompanyGroupKey(c.name || c.company_name || '', c)
+            .catch(() => null)
+        )
+      );
+
       setGraphData(prev => {
         const entityNode = prev.nodes.find(n => n.id === entityId);
         if (!entityNode) return prev;
@@ -1613,6 +1660,7 @@ const SpanishCompanyNetworkGraph = ({
           );
           const resolvedId = existing ? existing.id : cId;
           if (resolvedId === entityId) return;
+          const ownedGroupKey = ownedGroupKeys[idx] || null;
 
           if (!existing) {
             const baseX = Number.isFinite(entityNode.x) ? entityNode.x : 0;
@@ -1625,6 +1673,8 @@ const SpanishCompanyNetworkGraph = ({
               id: resolvedId,
               name: cName,
               type: 'spanish-company-group',
+              // Stable group_key so expand/preview fetches bind to the right entity.
+              groupKey: ownedGroupKey,
               previousNames: [],
               companySummary: {
                 entries: [],
@@ -1637,6 +1687,9 @@ const SpanishCompanyNetworkGraph = ({
               fx: px,
               fy: py,
             });
+          } else if (ownedGroupKey && !existing.groupKey) {
+            // Backfill the group_key onto a pre-existing node that lacked one.
+            existing.groupKey = ownedGroupKey;
           }
 
           const linkId = `ownership-${entityId}-${resolvedId}`;
@@ -2898,8 +2951,14 @@ const SpanishCompanyNetworkGraph = ({
       try {
         const companyName = companyNode.name.trim();
         // Use borme_companies_v3 for clean, pre-aggregated officers with
-        // explicit active/resigned status
-        const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName);
+        // explicit active/resigned status. Resolve a stable group_key first
+        // (preferring one already on the node) so an ambiguous name binds to the
+        // correct entity rather than a fuzzy-name match.
+        const groupKey = await spanishCompaniesService.resolveCompanyGroupKey(
+          companyName,
+          companyNode.groupKey || null
+        );
+        const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName, { groupKey });
         if (v3.company) {
           const baseEntries = await v3DocsToCappedEntries([v3.company], officersPerCompany);
           const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
@@ -3553,10 +3612,20 @@ const SpanishCompanyNetworkGraph = ({
           setPreviewError('No se encontraron datos para este directivo.');
         }
       } else {
-        // Fetch both the company profile and events in parallel
+        // Resolve the company to a STABLE group_key before fetching so an
+        // ambiguous/short name (e.g. "NAMISA") binds to the correct legal entity
+        // rather than whatever working-search/exact-name ranks first. Prefer a
+        // group_key already on the node; otherwise resolve via the directory.
+        const groupKey = await spanishCompaniesService.resolveCompanyGroupKey(
+          name,
+          contextNode.groupKey || null
+        );
+
+        // Fetch both the company profile and events in parallel, scoped to the
+        // resolved group_key (the v3 endpoints query by group_key, not name).
         const [v3Result, eventsResult] = await Promise.allSettled([
-          spanishCompaniesService.getCompanyProfileV3(name),
-          spanishCompaniesService.getCompanyEventsV3(name, { size: 100 }),
+          spanishCompaniesService.getCompanyProfileV3(name, { groupKey }),
+          spanishCompaniesService.getCompanyEventsV3(name, { size: 100, groupKey }),
         ]);
 
         const v3 = v3Result.status === 'fulfilled' ? v3Result.value : null;
@@ -5157,7 +5226,9 @@ const SpanishCompanyNetworkGraph = ({
                 ? (value.original_name || value.value || displayName)
                 : (value.company_name_normalized || value.value || displayName);
               setSearchQuery(displayName);
-              handleSearch(searchKey, value.type === 'company');
+              // Thread the option's stable `id` (group_key) so the v3 fetch binds
+              // to the correct legal entity instead of relying on fuzzy/exact name.
+              handleSearch(searchKey, value.type === 'company', null, value.id || null);
             } else if (typeof value === 'string') {
               setSearchQuery(value);
               setSelectedAutocomplete(null);

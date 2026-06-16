@@ -396,10 +396,108 @@ class SpanishCompaniesService {
   }
 
   /**
+   * Does a value look like a v3 group_key (the canonical company-doc id)?
+   * group_keys are hoja/N: ids such as "H:M-396846" or "N:B12345678" — i.e. a
+   * single-letter prefix + ":" + an alphanumeric/hyphen identifier. Company
+   * names never match this shape, so this is a safe discriminator for deciding
+   * whether an already-available key can be used directly (vs. resolving a name).
+   */
+  static looksLikeGroupKey(value) {
+    return typeof value === 'string' && /^[A-Za-z]:[A-Za-z0-9.\- ]+$/.test(value.trim());
+  }
+
+  /**
+   * Resolve the STABLE group_key (v3 company-doc id, e.g. "H:M-396846") for a
+   * company, with a forward-compatible precedence:
+   *
+   *   1. If `explicitKey` is already a group_key (or an option/owned-company
+   *      object carrying id / identifier / group_key / company_name_normalized
+   *      that looks like one) → use it directly. No network call. This means
+   *      once ownership/search payloads start returning group_keys, the
+   *      directory fallback below is simply skipped.
+   *   2. Otherwise resolve the name via the directory autocomplete (which ranks
+   *      the correct renamed entity and returns a stable `id`). Prefer the
+   *      suggestion whose company_name_normalized (upper-cased) EXACTLY equals
+   *      the name; if none is exact, take the top-ranked suggestion.
+   *
+   * Returns the group_key string, or null when nothing confident is found
+   * (callers then fall back to name-based lookups).
+   *
+   * @param {string} name        - Company name (display or normalized).
+   * @param {string|object} [explicitKey] - A known group_key, or an object that
+   *        may carry one (e.g. an autocomplete option or owned-company record).
+   */
+  async resolveCompanyGroupKey(name, explicitKey = null) {
+    // Step 1: an explicit stable key, taken directly when present.
+    if (explicitKey) {
+      const candidates =
+        typeof explicitKey === 'string'
+          ? [explicitKey]
+          : [
+              explicitKey.group_key,
+              explicitKey.id,
+              explicitKey.identifier,
+              explicitKey.company_name_normalized,
+            ];
+      const direct = candidates.find(c => SpanishCompaniesService.looksLikeGroupKey(c));
+      if (direct) return direct.trim();
+    }
+
+    if (!name) return null;
+
+    // Step 2: resolve the name via directory autocomplete (stable `id`).
+    try {
+      const res = await this.autocompleteCompanies(name, { limit: 5 });
+      const suggestions = res.suggestions || [];
+      if (suggestions.length === 0) return null;
+      const wanted = name.trim().toUpperCase();
+      const exact = suggestions.find(
+        s => (s.company_name_normalized || s.name || '').trim().toUpperCase() === wanted
+      );
+      const chosen = exact || suggestions[0];
+      return chosen?.id || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Get a single company profile from borme_companies_v3.
    * Returns aggregate doc with officers_active, officers_resigned, history, etc.
+   *
+   * Options:
+   *   groupKey — when set, fetch the EXACT company doc by its stable group_key
+   *              (via v3 search) instead of resolving the path by name. This
+   *              avoids fuzzy/ambiguous-name mismatches (e.g. a node labelled
+   *              "NAMISA" binding to "NAMISA INVESTMENTS SL" instead of the
+   *              renamed "NAMISA INTERNATIONAL MINERIOS SL" = H:M-396846).
    */
-  async getCompanyProfileV3(companyName) {
+  async getCompanyProfileV3(companyName, options = {}) {
+    const { groupKey = null } = options;
+
+    if (groupKey) {
+      // The v3 search returns aggregate company docs carrying their group_key as
+      // `id`. Query by the group_key and select the doc whose id matches exactly,
+      // so we never depend on name ranking.
+      const wanted = groupKey.trim();
+      try {
+        // Search by NAME to get candidate docs, then select the one whose stable
+        // id matches the group_key — never depend on name ranking. The live v3
+        // search exposes the group_key as `_id`; `id`/`group_key` are added by a
+        // backend change, so accept all three.
+        const searchData = await this.searchCompaniesV3(companyName || wanted, { size: 10 });
+        const results = searchData.results || [];
+        const match = results.find(
+          r => (r._id || r.id || r.group_key || '').trim() === wanted
+        );
+        if (match) return { company: match };
+        // No exact group_key hit in search — fall through to the name path so the
+        // caller still gets best-effort data rather than nothing.
+      } catch {
+        // Search failed — fall through to name-based lookup.
+      }
+    }
+
     const response = await this.fetchWithRetry(
       `${this.baseUrl}/bormes/v3/company/${encodeURIComponent(companyName)}`,
       { method: 'GET' }
