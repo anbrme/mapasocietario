@@ -8,3 +8,4 @@ dist
 .env.local
 .env*.local
 .superpowers/
+.claude/worktrees/agent-ad36e71f8beb02e63/
