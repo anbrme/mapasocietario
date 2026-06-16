@@ -4267,20 +4267,64 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [relationshipDetailedScope, filteredGraphData, relationshipSubjectIds]);
 
-  // Remove a company from the report: unpin it and hide it from the graph, so
-  // the report scope (= pinned subjects) and the graph stay in sync.
+  // Remove a company from the report: hide it AND any officers/subsidiaries that
+  // were only attached to it, so no orphan nodes are left floating. Nodes still
+  // reachable from another visible company (e.g. a shared director) are kept.
+  // Then unpin everything hidden. The modal reads the live scope, so it updates.
   const removeCompanyFromReport = useCallback((companyName) => {
-    const node = filteredGraphData.nodes.find(
+    const node = graphData.nodes.find(
       n => (n.type === 'company' || n.type === 'spanish-company-group') && n.name === companyName);
     if (!node) return;
     const id = normalizeNodeId(node.id);
-    setPinnedNodeIds(prev => {
-      const next = new Set(prev); next.delete(id); return next;
+
+    const visible = new Set(
+      graphData.nodes.map(n => normalizeNodeId(n.id)).filter(nid => !hiddenNodeIds.has(nid)));
+    const adj = new Map();
+    graphData.links.forEach(l => {
+      const s = normalizeNodeId(getNodeIdFromRef(l.source));
+      const t = normalizeNodeId(getNodeIdFromRef(l.target));
+      if (!visible.has(s) || !visible.has(t)) return;
+      if (!adj.has(s)) adj.set(s, []);
+      if (!adj.has(t)) adj.set(t, []);
+      adj.get(s).push(t);
+      adj.get(t).push(s);
     });
-    setHiddenNodeIds(prev => new Set([...prev, id]));
-    setRelScope(extractVisibleScope(filteredGraphData, normalizeNodeId,
-      new Set([...relationshipSubjectIds].filter(x => x !== id))));
-  }, [filteredGraphData, relationshipSubjectIds]);
+
+    // Cluster of visible nodes connected to the removed company.
+    const cluster = new Set();
+    const cs = [id];
+    while (cs.length) {
+      const c = cs.pop();
+      if (cluster.has(c) || !visible.has(c)) continue;
+      cluster.add(c);
+      (adj.get(c) || []).forEach(nb => { if (!cluster.has(nb)) cs.push(nb); });
+    }
+
+    // Nodes reachable from ANOTHER visible company without passing through the
+    // removed one must stay (shared directors / jointly-owned subsidiaries).
+    const keep = new Set();
+    const ks = [];
+    graphData.nodes.forEach(n => {
+      const nid = normalizeNodeId(n.id);
+      if (nid === id || !visible.has(nid)) return;
+      if (n.type === 'company' || n.type === 'spanish-company-group') ks.push(nid);
+    });
+    while (ks.length) {
+      const c = ks.pop();
+      if (keep.has(c) || c === id || !visible.has(c)) continue;
+      keep.add(c);
+      (adj.get(c) || []).forEach(nb => { if (nb !== id && !keep.has(nb)) ks.push(nb); });
+    }
+
+    // Hide the company + its cluster members that aren't anchored elsewhere.
+    const toHide = new Set([id]);
+    cluster.forEach(c => { if (!keep.has(c)) toHide.add(c); });
+
+    setPinnedNodeIds(prev => {
+      const next = new Set(prev); toHide.forEach(x => next.delete(x)); return next;
+    });
+    setHiddenNodeIds(prev => new Set([...prev, ...toHide]));
+  }, [graphData, hiddenNodeIds]);
 
   // Connected Components / Clusters analysis for the active rendered graph.
   const clustersData = React.useMemo(() => {
@@ -7564,7 +7608,7 @@ const SpanishCompanyNetworkGraph = ({
         <RelationshipReportModal
           open={relReportOpen}
           onClose={() => setRelReportOpen(false)}
-          scope={relScope}
+          scope={relationshipDetailedScope}
           subjects={relSubjects}
           lang="es"
           onRemoveCompany={removeCompanyFromReport}
