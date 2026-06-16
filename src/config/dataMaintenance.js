@@ -1,8 +1,8 @@
 export const DATA_MAINTENANCE = Object.freeze({
-  enabled: false,
-  title: 'IMPORTANT - MAINTENANCE MODE RUNNING',
+  enabled: true,
+  title: 'Index upgrade in progress',
   message:
-    'Company and officers search is currently unavailable. It will be available again in a few hours. Thanks for your patience.',
+    'Company and officer search remains available while we upgrade the index in the background. Some results may be incomplete or briefly delayed during the upgrade.',
 });
 
 const INDEX_UNAVAILABLE_PATTERNS = [

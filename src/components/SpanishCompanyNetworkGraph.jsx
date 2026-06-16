@@ -1298,12 +1298,6 @@ const SpanishCompanyNetworkGraph = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleAutocomplete = useCallback(
     debounce(async value => {
-      if (DATA_MAINTENANCE.enabled) {
-        setAutocompleteOptions([]);
-        setAutocompleteLoading(false);
-        return;
-      }
-
       if (!value || value.length < 2) {
         setAutocompleteOptions([]);
         return;
@@ -1392,11 +1386,6 @@ const SpanishCompanyNetworkGraph = ({
   }, []);
 
   const handleSearch = async (queryOverride = null, exactMatch = false, searchTypeOverride = null, groupKeyOverride = null) => {
-    if (DATA_MAINTENANCE.enabled) {
-      setError(null);
-      return;
-    }
-
     const query = (queryOverride || searchQuery).trim();
     if (!query) {
       setError('Por favor, introduce un término de búsqueda');
@@ -5090,7 +5079,7 @@ const SpanishCompanyNetworkGraph = ({
 
   // Handle key down for search
   const handleKeyDown = e => {
-    if (e.key === 'Enter' && !DATA_MAINTENANCE.enabled) {
+    if (e.key === 'Enter') {
       handleSearch();
     }
   };
@@ -5172,7 +5161,6 @@ const SpanishCompanyNetworkGraph = ({
 
         <Autocomplete
           freeSolo
-          disabled={DATA_MAINTENANCE.enabled}
           options={autocompleteOptions}
           loading={autocompleteLoading}
           inputValue={searchQuery}
@@ -5371,7 +5359,7 @@ const SpanishCompanyNetworkGraph = ({
         <Button
           variant="contained"
           onClick={() => handleSearch()}
-          disabled={DATA_MAINTENANCE.enabled || isSearching || !searchQuery.trim()}
+          disabled={isSearching || !searchQuery.trim()}
           startIcon={isSearching ? <CircularProgress size={16} /> : <SearchIcon />}
         >
           Search
