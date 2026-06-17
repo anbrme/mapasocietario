@@ -378,12 +378,15 @@ class SpanishCompaniesService {
    * Returns company-level aggregate docs with officers_active/officers_resigned.
    */
   async searchCompaniesV3(query, options = {}) {
-    const { size = 20, exact = false } = options;
+    const { size = 20, exact = false, groupKey = null } = options;
     const params = new URLSearchParams({
-      query,
       size: size.toString(),
       exact: exact.toString(),
     });
+    // group_key is a direct, name-independent lookup (renamed companies are stored
+    // under their CURRENT name, so a historical name can't find the survivor doc).
+    if (groupKey) params.set('group_key', groupKey);
+    if (query) params.set('query', query);
     const response = await this.fetchWithRetry(
       `${this.baseUrl}/bormes/v3/search?${params}`,
       { method: 'GET' }
@@ -481,18 +484,19 @@ class SpanishCompaniesService {
       // so we never depend on name ranking.
       const wanted = groupKey.trim();
       try {
-        // Search by NAME to get candidate docs, then select the one whose stable
-        // id matches the group_key — never depend on name ranking. The live v3
-        // search exposes the group_key as `_id`; `id`/`group_key` are added by a
-        // backend change, so accept all three.
-        const searchData = await this.searchCompaniesV3(companyName || wanted, { size: 10 });
+        // Direct group_key lookup: the backend fetches the exact doc by its _id
+        // (= group_key), so a RENAMED company resolves to its current survivor doc
+        // regardless of which historical name was typed. We still match on the
+        // stable id and never depend on name ranking. The live v3 search exposes
+        // the group_key as `_id`; `id`/`group_key` are also returned.
+        const searchData = await this.searchCompaniesV3('', { size: 10, groupKey: wanted });
         const results = searchData.results || [];
         const match = results.find(
           r => (r._id || r.id || r.group_key || '').trim() === wanted
         );
         if (match) return { company: match };
-        // No exact group_key hit in search — fall through to the name path so the
-        // caller still gets best-effort data rather than nothing.
+        // No exact group_key hit — fall through to the name path so the caller
+        // still gets best-effort data rather than nothing.
       } catch {
         // Search failed — fall through to name-based lookup.
       }
