@@ -1,5 +1,5 @@
 export const DATA_MAINTENANCE = Object.freeze({
-  enabled: true,
+  enabled: false,
   title: 'Index upgrade in progress',
   message:
     'Company and officer search remains available while we upgrade the index in the background. Some results may be incomplete or briefly delayed during the upgrade.',
