@@ -828,6 +828,22 @@ const normalizeCategoryKey = category => {
   return 'nombramientos';
 };
 
+const isActiveLinkCategory = cat => {
+  const c = (cat || '').toLowerCase();
+  return c.includes('nombramiento') || c.includes('reeleccion') || c.includes('reelección');
+};
+
+const getLinkEffectiveCategory = link => {
+  if (!link || link.userAmended) return link?.category;
+  if (!Array.isArray(link.events) || link.events.length === 0) return link.category;
+  const latest = link.events
+    .slice()
+    .sort((a, b) => entryTimestamp(b) - entryTimestamp(a))[0];
+  return latest?.category || link.category;
+};
+
+const getOfficerLinkStatus = link => (isActiveLinkCategory(getLinkEffectiveCategory(link)) ? 'active' : 'ceased');
+
 // Resolve category for a v3 expand-officer entry. Prefer the explicit
 // `status` field (active/ceased) the backend copied from officers_active /
 // officers_resigned; fall back to `event_type` when status is absent.
@@ -3825,9 +3841,11 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [text]);
 
-  // Right-click on node to open actions menu (desktop), also called by single tap on touch devices
+  // Right-click on node to open actions menu (desktop), also called by single tap on touch devices.
+  // Table rows can pass a status category so the menu reflects the clicked row,
+  // not just the node's aggregate status across all loaded relationships.
   const handleNodeRightClick = useCallback(
-    (node, event) => {
+    (node, event, options = {}) => {
       event.preventDefault();
       closeHiddenNodesMenu();
       const nodeId = normalizeNodeId(node.id);
@@ -3878,6 +3896,7 @@ const SpanishCompanyNetworkGraph = ({
         mouseX: menuX,
         mouseY: menuY,
         nodeId,
+        statusCategory: options.statusCategory || null,
       });
     },
     [closeHiddenNodesMenu, containerEl]
@@ -4564,12 +4583,6 @@ const SpanishCompanyNetworkGraph = ({
       .filter(t => t.length > 0);
   }, [labelFilterText]);
 
-  // Classify link categories as active or ceased
-  const isActiveLinkCategory = cat => {
-    const c = (cat || '').toLowerCase();
-    return c.includes('nombramiento') || c.includes('reeleccion') || c.includes('reelección');
-  };
-
   // Facet counts for the chip row — each chip's count reflects the other
   // filter's state so users see how many items would remain if they picked it.
   // Position chip counts honour the vigentes/cesados toggle; status chip counts
@@ -4577,7 +4590,7 @@ const SpanishCompanyNetworkGraph = ({
   const linkPassesStatus = React.useCallback(link => {
     if (statusFilters.size === 0) return true;
     if (link.type && link.type !== 'officer-company') return true;
-    const active = isActiveLinkCategory(link.category);
+    const active = getOfficerLinkStatus(link) === 'active';
     const wantActive = statusFilters.has('active');
     const wantCeased = statusFilters.has('ceased');
     if (wantActive && !wantCeased && !active) return false;
@@ -4610,26 +4623,11 @@ const SpanishCompanyNetworkGraph = ({
     graphData.links.forEach(link => {
       if (link.type && link.type !== 'officer-company') return;
       if (!linkPassesPosition(link)) return;
-      if (isActiveLinkCategory(link.category)) active++;
+      if (getOfficerLinkStatus(link) === 'active') active++;
       else ceased++;
     });
     return { active, ceased };
   }, [graphData.links, linkPassesPosition]);
-
-  // Is the right-clicked officer currently active (has at least one active
-  // appointment link)? Drives the correction menu so a fully-ceased officer is
-  // offered "Marcar como activo" instead of a meaningless second "cesado".
-  const contextOfficerIsActive = React.useMemo(() => {
-    if (!contextNode || contextNode.type !== 'officer') return false;
-    const nodeId = normalizeNodeId(contextNode.id);
-    return graphData.links.some(l => {
-      if (l.type && l.type !== 'officer-company') return false;
-      const sid = normalizeNodeId(getNodeIdFromRef(l.source));
-      const tid = normalizeNodeId(getNodeIdFromRef(l.target));
-      if (sid !== nodeId && tid !== nodeId) return false;
-      return isActiveLinkCategory(l.category);
-    });
-  }, [contextNode, graphData.links]);
 
   // Record a "mark active" correction (reactivate a registry-ceased officer in
   // the Custom report) + recolor edges green. No date needed, so unlike
@@ -4682,7 +4680,7 @@ const SpanishCompanyNetworkGraph = ({
         if (link.type && link.type !== 'officer-company') return true;
 
         if (statusFilters.size > 0) {
-          const active = isActiveLinkCategory(link.category);
+          const active = getOfficerLinkStatus(link) === 'active';
           const wantActive = statusFilters.has('active');
           const wantCeased = statusFilters.has('ceased');
           if (wantActive && !wantCeased && !active) return false;
@@ -4812,6 +4810,43 @@ const SpanishCompanyNetworkGraph = ({
   ]);
 
   const simplifiedLowValueCount = filteredGraphData.simplifiedCount || 0;
+
+  const contextOfficerStatus = React.useMemo(() => {
+    if (!contextNode || contextNode.type !== 'officer') return 'unknown';
+
+    if (nodeContextMenu?.statusCategory) {
+      return isActiveLinkCategory(nodeContextMenu.statusCategory) ? 'active' : 'ceased';
+    }
+
+    const nodeId = normalizeNodeId(contextNode.id);
+    const matchingOfficerLinks = links =>
+      links.filter(link => {
+        if (link.type && link.type !== 'officer-company') return false;
+        const sid = normalizeNodeId(getNodeIdFromRef(link.source));
+        const tid = normalizeNodeId(getNodeIdFromRef(link.target));
+        return sid === nodeId || tid === nodeId;
+      });
+
+    const visibleLinks = matchingOfficerLinks(filteredGraphData.links);
+    const links = visibleLinks.length > 0 ? visibleLinks : matchingOfficerLinks(graphData.links);
+
+    let active = 0;
+    let ceased = 0;
+    links.forEach(link => {
+      if (getOfficerLinkStatus(link) === 'active') active++;
+      else ceased++;
+    });
+
+    if (active > 0 && ceased > 0) return 'mixed';
+    if (active > 0) return 'active';
+    if (ceased > 0) return 'ceased';
+    return 'unknown';
+  }, [contextNode, nodeContextMenu, filteredGraphData.links, graphData.links]);
+
+  const contextOfficerCanMarkCeased =
+    contextOfficerStatus === 'active' || contextOfficerStatus === 'mixed';
+  const contextOfficerCanMarkActive =
+    contextOfficerStatus === 'ceased' || contextOfficerStatus === 'mixed';
 
   // Relationship-report subjects = the companies the user explicitly added
   // (searched/expanded → pinned), NOT auto-pulled socio-único subsidiaries.
@@ -5222,7 +5257,7 @@ const SpanishCompanyNetworkGraph = ({
       }
 
       // Determine link color based on appointment category
-      const cat = (link.category || '').toLowerCase();
+      const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
       const isLinkInPath = shortestPathLinks.has(normalizeNodeId(link.id));
       const touchesShared = !!sharedHighlightIds && (
         sharedHighlightIds.has(normalizeNodeId(typeof start === 'object' ? start.id : start)) ||
@@ -6607,7 +6642,7 @@ const SpanishCompanyNetworkGraph = ({
             linkDirectionalArrowLength={4}
             linkDirectionalArrowRelPos={1}
             linkDirectionalArrowColor={link => {
-              const cat = (link.category || '').toLowerCase();
+              const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
               if (link.type === 'ownership') {
                 return cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d';
               }
@@ -6881,7 +6916,7 @@ const SpanishCompanyNetworkGraph = ({
                         <TableCell
                           onClick={
                             row.officerNode
-                              ? (e) => handleNodeRightClick(row.officerNode, e)
+                              ? (e) => handleNodeRightClick(row.officerNode, e, { statusCategory: row.category })
                               : undefined
                           }
                           sx={{
@@ -7230,7 +7265,7 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.timeline}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type === 'officer' && contextOfficerIsActive && (
+          {contextNode && contextNode.type === 'officer' && contextOfficerCanMarkCeased && (
             <MenuItem onClick={openMarkResignedDialog}>
               <ListItemIcon>
                 <EventBusyIcon fontSize="small" color="warning" />
@@ -7238,7 +7273,7 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.markResigned}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type === 'officer' && !contextOfficerIsActive && (
+          {contextNode && contextNode.type === 'officer' && contextOfficerCanMarkActive && (
             <MenuItem onClick={markContextOfficerActive}>
               <ListItemIcon>
                 <EventAvailableIcon fontSize="small" color="success" />
