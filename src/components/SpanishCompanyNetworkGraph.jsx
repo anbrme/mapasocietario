@@ -1864,7 +1864,9 @@ const SpanishCompanyNetworkGraph = ({
     try {
       if (effectiveSearchType === 'officer') {
         // Officer search: use borme_companies_v3 for explicit active/resigned status
-        const data = await spanishCompaniesService.expandOfficerV3(query);
+        const data = await spanishCompaniesService.expandOfficerV3(query, {
+          analyticsSource: 'officer',
+        });
 
         const fetchedCount = data.officers?.length || 0;
         if (data.success && fetchedCount > 0) {
@@ -1900,12 +1902,16 @@ const SpanishCompanyNetworkGraph = ({
 
         let v3Data;
         if (groupKey) {
-          const profile = await spanishCompaniesService.getCompanyProfileV3(query, { groupKey });
+          const profile = await spanishCompaniesService.getCompanyProfileV3(query, {
+            groupKey,
+            analyticsSource: 'company',
+          });
           v3Data = { results: profile.company ? [profile.company] : [], total: profile.company ? 1 : 0 };
         } else {
           v3Data = await spanishCompaniesService.searchCompaniesV3(query, {
             size: companiesPerSearch,
             exact: exactMatch,
+            analyticsSource: 'company',
           });
         }
 

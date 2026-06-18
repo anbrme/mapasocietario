@@ -378,7 +378,7 @@ class SpanishCompaniesService {
    * Returns company-level aggregate docs with officers_active/officers_resigned.
    */
   async searchCompaniesV3(query, options = {}) {
-    const { size = 20, exact = false, groupKey = null } = options;
+    const { size = 20, exact = false, groupKey = null, analyticsSource = null } = options;
     const params = new URLSearchParams({
       size: size.toString(),
       exact: exact.toString(),
@@ -389,7 +389,10 @@ class SpanishCompaniesService {
     if (query) params.set('query', query);
     const response = await this.fetchWithRetry(
       `${this.baseUrl}/bormes/v3/search?${params}`,
-      { method: 'GET' }
+      {
+        method: 'GET',
+        headers: analyticsSource ? { 'X-Mapasocietario-User-Search': analyticsSource } : undefined,
+      }
     );
     if (!response.ok) {
       const errorText = await response.text();
@@ -476,7 +479,7 @@ class SpanishCompaniesService {
    *              renamed "NAMISA INTERNATIONAL MINERIOS SL" = H:M-396846).
    */
   async getCompanyProfileV3(companyName, options = {}) {
-    const { groupKey = null } = options;
+    const { groupKey = null, analyticsSource = null } = options;
 
     if (groupKey) {
       // The v3 search returns aggregate company docs carrying their group_key as
@@ -489,7 +492,11 @@ class SpanishCompaniesService {
         // regardless of which historical name was typed. We still match on the
         // stable id and never depend on name ranking. The live v3 search exposes
         // the group_key as `_id`; `id`/`group_key` are also returned.
-        const searchData = await this.searchCompaniesV3('', { size: 10, groupKey: wanted });
+        const searchData = await this.searchCompaniesV3('', {
+          size: 10,
+          groupKey: wanted,
+          analyticsSource,
+        });
         const results = searchData.results || [];
         const match = results.find(
           r => (r._id || r.id || r.group_key || '').trim() === wanted
@@ -504,7 +511,10 @@ class SpanishCompaniesService {
 
     const response = await this.fetchWithRetry(
       `${this.baseUrl}/bormes/v3/company/${encodeURIComponent(companyName)}`,
-      { method: 'GET' }
+      {
+        method: 'GET',
+        headers: analyticsSource ? { 'X-Mapasocietario-User-Search': analyticsSource } : undefined,
+      }
     );
     if (!response.ok) {
       const errorText = await response.text();
@@ -546,14 +556,17 @@ class SpanishCompaniesService {
    * officer appears in officers_active or officers_resigned with explicit status.
    */
   async expandOfficerV3(officerName, options = {}) {
-    const { size = 200, exactMatch = true } = options;
+    const { size = 200, exactMatch = true, analyticsSource = null } = options;
     const params = new URLSearchParams({
       name: officerName,
       size: size.toString(),
     });
     const response = await this.fetchWithRetry(
       `${this.baseUrl}/bormes/v3/expand-officer?${params}`,
-      { method: 'GET' }
+      {
+        method: 'GET',
+        headers: analyticsSource ? { 'X-Mapasocietario-User-Search': analyticsSource } : undefined,
+      }
     );
     if (!response.ok) {
       const errorText = await response.text();
