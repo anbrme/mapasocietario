@@ -66,6 +66,7 @@ import {
   Info as InfoIcon,
   AltRoute as RouteIcon,
   EventBusy as EventBusyIcon,
+  EventAvailable as EventAvailableIcon,
   FactCheck as FactCheckIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
@@ -266,6 +267,7 @@ const SEARCH_COPY = {
     dataPreview: 'Data preview',
     timeline: 'Timeline',
     markResigned: 'Mark as ceased',
+    markActive: 'Mark as active',
     buyDueDiligence: 'Buy Due Diligence',
     hideNodeOnly: 'Hide this node only',
     hideNodeRelations: 'Hide node + connected',
@@ -365,6 +367,7 @@ const SEARCH_COPY = {
     correctionSaved: 'Correction saved',
     hiddenOfficerCorrection: name => `Officer hidden: ${name}`,
     resignedOfficerCorrection: name => `Marked as ceased: ${name}`,
+    activeOfficerCorrection: name => `Marked as active: ${name}`,
     mergedOfficerCorrection: (from, to) => `Merged: ${from} -> ${to}`,
     correctionSaveError: message => `Could not save the correction: ${message}`,
     correctionUndoError: message => `Could not undo the correction: ${message}`,
@@ -486,6 +489,7 @@ const SEARCH_COPY = {
     dataPreview: 'Vista previa de datos',
     timeline: 'Línea temporal',
     markResigned: 'Marcar como cesado',
+    markActive: 'Marcar como activo',
     buyDueDiligence: 'Comprar Due Diligence',
     hideNodeOnly: 'Ocultar solo nodo',
     hideNodeRelations: 'Ocultar nodo + conectados',
@@ -585,6 +589,7 @@ const SEARCH_COPY = {
     correctionSaved: 'Corrección guardada',
     hiddenOfficerCorrection: name => `Directivo ocultado: ${name}`,
     resignedOfficerCorrection: name => `Marcado como cesado: ${name}`,
+    activeOfficerCorrection: name => `Marcado como activo: ${name}`,
     mergedOfficerCorrection: (from, to) => `Fusionado: ${from} -> ${to}`,
     correctionSaveError: message => `No se pudo guardar la corrección: ${message}`,
     correctionUndoError: message => `No se pudo deshacer la corrección: ${message}`,
@@ -3988,17 +3993,51 @@ const SpanishCompanyNetworkGraph = ({
     closeNodeContextMenu();
   }, [contextNode, closeNodeContextMenu]);
 
+  // Optimistically recolor an officer's edges to reflect a status correction so
+  // the change is visible immediately (green = active/nombramiento, red =
+  // ceased/cese). Edge colour is derived from link.category, so we retag the
+  // officer's officer-company links. Returns an undo that restores the prior
+  // categories. Client-side only — registry data is never mutated.
+  const applyOfficerStatusToGraph = useCallback((officerNodeId, status) => {
+    const newCat = status === 'ceased' ? 'Ceses/Dimisiones' : 'Nombramientos';
+    const id = normalizeNodeId(officerNodeId);
+    const snapshot = [];
+    setGraphData(prev => ({
+      ...prev,
+      links: prev.links.map(l => {
+        if (l.type && l.type !== 'officer-company') return l;
+        const sid = normalizeNodeId(getNodeIdFromRef(l.source));
+        const tid = normalizeNodeId(getNodeIdFromRef(l.target));
+        if (sid !== id && tid !== id) return l;
+        snapshot.push({ id: l.id, category: l.category, relationship: l.relationship });
+        return { ...l, category: newCat, relationship: newCat, userAmended: true };
+      }),
+    }));
+    return () =>
+      setGraphData(prev => ({
+        ...prev,
+        links: prev.links.map(l => {
+          const s = snapshot.find(x => x.id === l.id);
+          return s
+            ? { ...l, category: s.category, relationship: s.relationship, userAmended: false }
+            : l;
+        }),
+      }));
+  }, []);
+
   const confirmMarkResigned = useCallback(() => {
     const node = markResignedNode;
     setMarkResignedNode(null);
     if (!node || !node.name) return;
+    const undoGraph = applyOfficerStatusToGraph(node.id, 'ceased');
     recordCorrection({
       action: 'mark_resigned',
       nameA: node.name,
       resignedDate: markResignedDate || undefined,
       label: text.resignedOfficerCorrection(node.name),
+      undoGraph,
     });
-  }, [markResignedNode, markResignedDate, recordCorrection, text]);
+  }, [markResignedNode, markResignedDate, recordCorrection, applyOfficerStatusToGraph, text]);
 
   // Data preview: fetch company or officer data and show in modal
   const openDataPreview = useCallback(async () => {
@@ -4576,6 +4615,37 @@ const SpanishCompanyNetworkGraph = ({
     });
     return { active, ceased };
   }, [graphData.links, linkPassesPosition]);
+
+  // Is the right-clicked officer currently active (has at least one active
+  // appointment link)? Drives the correction menu so a fully-ceased officer is
+  // offered "Marcar como activo" instead of a meaningless second "cesado".
+  const contextOfficerIsActive = React.useMemo(() => {
+    if (!contextNode || contextNode.type !== 'officer') return false;
+    const nodeId = normalizeNodeId(contextNode.id);
+    return graphData.links.some(l => {
+      if (l.type && l.type !== 'officer-company') return false;
+      const sid = normalizeNodeId(getNodeIdFromRef(l.source));
+      const tid = normalizeNodeId(getNodeIdFromRef(l.target));
+      if (sid !== nodeId && tid !== nodeId) return false;
+      return isActiveLinkCategory(l.category);
+    });
+  }, [contextNode, graphData.links]);
+
+  // Record a "mark active" correction (reactivate a registry-ceased officer in
+  // the Custom report) + recolor edges green. No date needed, so unlike
+  // mark-resigned it fires directly without a dialog.
+  const markContextOfficerActive = useCallback(() => {
+    const node = contextNode;
+    closeNodeContextMenu();
+    if (!node || !node.name) return;
+    const undoGraph = applyOfficerStatusToGraph(node.id, 'active');
+    recordCorrection({
+      action: 'mark_active',
+      nameA: node.name,
+      label: text.activeOfficerCorrection(node.name),
+      undoGraph,
+    });
+  }, [contextNode, closeNodeContextMenu, recordCorrection, applyOfficerStatusToGraph, text]);
 
   const hasChipFilters = statusFilters.size > 0 || positionFilters.size > 0;
   const selectedPositionFilterCount = positionFilters.size;
@@ -7160,12 +7230,20 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.timeline}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type === 'officer' && (
+          {contextNode && contextNode.type === 'officer' && contextOfficerIsActive && (
             <MenuItem onClick={openMarkResignedDialog}>
               <ListItemIcon>
                 <EventBusyIcon fontSize="small" color="warning" />
               </ListItemIcon>
               <ListItemText>{text.markResigned}</ListItemText>
+            </MenuItem>
+          )}
+          {contextNode && contextNode.type === 'officer' && !contextOfficerIsActive && (
+            <MenuItem onClick={markContextOfficerActive}>
+              <ListItemIcon>
+                <EventAvailableIcon fontSize="small" color="success" />
+              </ListItemIcon>
+              <ListItemText>{text.markActive}</ListItemText>
             </MenuItem>
           )}
           {contextNode && contextNode.type !== 'officer' && (
