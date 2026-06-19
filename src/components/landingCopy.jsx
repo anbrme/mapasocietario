@@ -1,18 +1,17 @@
-// User-visible copy for the (deliberately light) landing page, keyed by locale.
-// The homepage only needs a headline, a one-line value prop, a trust line, a
-// few link labels and the footer — all the detailed marketing/explanatory copy
-// now lives on the dedicated pages (about.html, /due-diligence, /pricing, the
-// /es SEO pages).
+// User-visible copy for the homepage, which is now a first-run how-to guide.
+// The page teaches the basics (search → graph → reports) and points users to
+// bookmark the real workspace at /app. Detailed reference material still lives
+// on the dedicated pages (about.html, /due-diligence, /pricing, /es).
 export const LANDING_COPY = {
   en: {
     meta: {
-      title: 'Mapa Societario | Spanish Company Search & Corporate Relationship Graph',
+      title: 'How Mapa Societario Works | Spanish Company Search & Due Diligence',
       description:
-        'Search Spanish companies and directors and explore their corporate relationships in an interactive graph based on official BORME data. Free to use; due diligence reports available.',
+        'A quick guide to Mapa Societario: search Spanish companies and directors, explore their relationships in an interactive BORME graph, and order due diligence reports. Free to use; no account.',
       ogDescription:
-        'Search Spanish companies and directors and explore their corporate relationships in an interactive BORME-based graph.',
+        'How to search Spanish companies and directors, explore the corporate graph, and order due diligence reports — based on official BORME data.',
       twitterDescription:
-        'Search Spanish companies and directors. Interactive BORME-based corporate relationship graph.',
+        'How Mapa Societario works: search Spanish companies, explore the BORME graph, order due diligence reports.',
       ogLocale: 'en_US',
     },
     topLinks: [
@@ -24,14 +23,68 @@ export const LANDING_COPY = {
       { label: 'Español', href: '/es', alignRight: true },
     ],
     hero: {
-      h1: 'Explore the corporate network of Spanish companies',
+      eyebrow: 'New here? Start in 30 seconds',
+      h1: 'How Mapa Societario works',
       subtitle:
-        'Search any Spanish company or director and see their relationships in an interactive graph, based on official BORME data.',
-      operatedBy: 'Operated by Nurnberg Consulting SL, Madrid, since 2013. Unofficial service based on public BOE/BORME data.',
-      searchCta: 'Search companies and officers',
-      listedCta: 'Publicly-traded companies (IBEX 35)',
-      statsCta: 'Spain company statistics',
+        'Search Spanish companies and directors, explore their relationships in an interactive graph, and order due diligence reports — all based on official BORME data.',
+      openCta: 'Open the search graph',
+      bookmarkTip: 'Tip: bookmark the search page so you can skip this guide next time.',
     },
+    howItWorks: {
+      heading: 'How it works',
+      sub: 'Three steps from a name to a full corporate picture.',
+      demoCaption: 'Real BORME data: the board and corporate connections of ACERINOX SA.',
+      demoCta: 'Open this graph live →',
+      demoAlt: 'Interactive BORME corporate relationship graph of a Spanish company: directors, officers and connected companies',
+      demoFallback: 'Interactive relationship graph',
+      steps: [
+        {
+          title: '1 · Search a company or officer',
+          desc: 'Type a company or a director’s name. Use the toggle to switch between company and officer search, then pick a suggestion to load it into the graph.',
+        },
+        {
+          title: '2 · Explore the graph',
+          desc: 'Double-click a node to expand it, right-click for actions (preview data, hide, buy a report), and scroll to zoom or drag to pan. The graph is free, with no account.',
+        },
+        {
+          title: '3 · See the data',
+          desc: 'Open a company’s data preview to read its current officers by seniority, address, share capital and corporate events — before deciding whether to buy a report.',
+        },
+      ],
+    },
+    reports: {
+      heading: 'Reports you can get',
+      sub: 'Two kinds of report — make sure you pick the right one.',
+      dd: {
+        title: 'Due Diligence report',
+        badge: 'Paid · EUR 22.50 · one company',
+        desc: 'A comprehensive PDF on a single company, with AI-powered analysis and official-source cross-checks.',
+        bullets: [
+          'AI analysis & risk score',
+          'Sanctions & PEP screening',
+          'Full officer history',
+          'Capital events & red flags',
+          'Optional financial statements (Cuentas Anuales)',
+          'Free BORME monitoring included',
+        ],
+        sampleCta: 'See a sample report (PDF)',
+        buyCta: 'Get a due diligence report',
+      },
+      rel: {
+        title: 'Relationship report',
+        badge: 'Free · two or more companies',
+        desc: 'When several companies are in the graph, generate a report of the links between them — shared directors and cross-company connections — at no cost.',
+      },
+      howToBuy: 'How to buy a Due Diligence report: search a company → open it in the graph → click the Due Diligence button.',
+    },
+    bookmark: {
+      heading: 'Bookmark the search page',
+      body: 'This page is just a quick guide. Your actual workspace is the interactive search graph — bookmark it so you can jump straight in next time:',
+      url: 'mapasocietario.es/app',
+      shortcut: 'Press ⌘/Ctrl + D to bookmark',
+      cta: 'Open the search graph',
+    },
+    operatedBy: 'Operated by Nurnberg Consulting SL, Madrid, since 2013. Unofficial service based on public BOE/BORME data.',
     proofItems: [
       'By Nurnberg Consulting SL (Madrid, since 2013)',
       'Based on official BORME publications',
@@ -55,13 +108,13 @@ export const LANDING_COPY = {
 
   es: {
     meta: {
-      title: 'Mapa Societario | Buscador de Empresas Españolas y Grafo de Relaciones Societarias',
+      title: 'Cómo funciona Mapa Societario | Buscador de Empresas y Due Diligence',
       description:
-        'Busca empresas y administradores españoles y explora sus relaciones societarias en un grafo interactivo basado en datos oficiales del BORME. Gratis; con informes due diligence disponibles.',
+        'Guía rápida de Mapa Societario: busca empresas y administradores españoles, explora sus relaciones en un grafo BORME interactivo y pide informes due diligence. Gratis; sin cuenta.',
       ogDescription:
-        'Busca empresas y administradores españoles y explora sus relaciones societarias en un grafo interactivo basado en el BORME.',
+        'Cómo buscar empresas y administradores españoles, explorar el grafo societario y pedir informes due diligence, con datos oficiales del BORME.',
       twitterDescription:
-        'Busca empresas y administradores españoles. Grafo interactivo de relaciones societarias basado en el BORME.',
+        'Cómo funciona Mapa Societario: busca empresas, explora el grafo del BORME, pide informes due diligence.',
       ogLocale: 'es_ES',
     },
     topLinks: [
@@ -73,14 +126,68 @@ export const LANDING_COPY = {
       { label: 'English', href: '/', alignRight: true },
     ],
     hero: {
-      h1: 'Explora la red societaria de las empresas españolas',
+      eyebrow: '¿Primera vez? Empieza en 30 segundos',
+      h1: 'Cómo funciona Mapa Societario',
       subtitle:
-        'Busca cualquier empresa o administrador español y ve sus relaciones en un grafo interactivo, basado en datos oficiales del BORME.',
-      operatedBy: 'Operado por Nurnberg Consulting SL, Madrid, desde 2013. Servicio no oficial basado en datos públicos del BOE/BORME.',
-      searchCta: 'Buscar empresas y administradores',
-      listedCta: 'Empresas cotizadas (IBEX 35)',
-      statsCta: 'Estadísticas de empresas en España',
+        'Busca empresas y administradores españoles, explora sus relaciones en un grafo interactivo y pide informes due diligence, todo con datos oficiales del BORME.',
+      openCta: 'Abrir el grafo de búsqueda',
+      bookmarkTip: 'Consejo: guarda la página de búsqueda en marcadores para saltarte esta guía la próxima vez.',
     },
+    howItWorks: {
+      heading: 'Cómo funciona',
+      sub: 'Tres pasos para pasar de un nombre a una visión societaria completa.',
+      demoCaption: 'Datos reales del BORME: el consejo y las conexiones societarias de ACERINOX SA.',
+      demoCta: 'Abrir este grafo en vivo →',
+      demoAlt: 'Grafo interactivo de relaciones societarias BORME de una empresa española: administradores, cargos y empresas conectadas',
+      demoFallback: 'Grafo de relaciones interactivo',
+      steps: [
+        {
+          title: '1 · Busca una empresa o administrador',
+          desc: 'Escribe el nombre de una empresa o de un administrador. Usa el conmutador para alternar entre búsqueda de empresas y de personas, y elige una sugerencia para cargarla en el grafo.',
+        },
+        {
+          title: '2 · Explora el grafo',
+          desc: 'Haz doble clic en un nodo para expandirlo, clic derecho para acciones (vista previa, ocultar, comprar un informe) y usa la rueda para acercar o arrastra para desplazarte. El grafo es gratis y sin cuenta.',
+        },
+        {
+          title: '3 · Consulta los datos',
+          desc: 'Abre la vista previa de una empresa para ver sus administradores por antigüedad, domicilio, capital social y eventos societarios, antes de decidir si compras un informe.',
+        },
+      ],
+    },
+    reports: {
+      heading: 'Informes que puedes obtener',
+      sub: 'Dos tipos de informe: asegúrate de elegir el correcto.',
+      dd: {
+        title: 'Informe due diligence',
+        badge: 'De pago · 22,50 € · una empresa',
+        desc: 'Un PDF completo sobre una sola empresa, con análisis por IA y cruces con fuentes oficiales.',
+        bullets: [
+          'Análisis por IA y puntuación de riesgo',
+          'Comprobación de sanciones y PEP',
+          'Historial completo de administradores',
+          'Eventos de capital y señales de alerta',
+          'Cuentas anuales opcionales',
+          'Monitorización BORME gratuita incluida',
+        ],
+        sampleCta: 'Ver un informe de ejemplo (PDF)',
+        buyCta: 'Pedir un informe due diligence',
+      },
+      rel: {
+        title: 'Informe de relaciones',
+        badge: 'Gratis · dos o más empresas',
+        desc: 'Cuando hay varias empresas en el grafo, genera un informe de los vínculos entre ellas (administradores compartidos y conexiones entre empresas) sin coste.',
+      },
+      howToBuy: 'Cómo comprar un informe due diligence: busca una empresa → ábrela en el grafo → pulsa el botón Due Diligence.',
+    },
+    bookmark: {
+      heading: 'Guarda la página de búsqueda',
+      body: 'Esta página es solo una guía rápida. Tu espacio de trabajo es el grafo de búsqueda interactivo: guárdalo en marcadores para entrar directamente la próxima vez:',
+      url: 'mapasocietario.es/app',
+      shortcut: 'Pulsa ⌘/Ctrl + D para guardar',
+      cta: 'Abrir el grafo de búsqueda',
+    },
+    operatedBy: 'Operado por Nurnberg Consulting SL, Madrid, desde 2013. Servicio no oficial basado en datos públicos del BOE/BORME.',
     proofItems: [
       'De Nurnberg Consulting SL (Madrid, desde 2013)',
       'Basado en publicaciones oficiales del BORME',

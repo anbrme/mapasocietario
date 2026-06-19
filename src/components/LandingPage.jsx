@@ -1,48 +1,61 @@
 import React from 'react';
-import { Box, Typography, Button, Link } from '@mui/material';
+import { Box, Typography, Button, Link, Paper, Chip } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import SearchIcon from '@mui/icons-material/Search';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import BarChartIcon from '@mui/icons-material/BarChart';
+import TouchAppIcon from '@mui/icons-material/TouchApp';
+import PreviewIcon from '@mui/icons-material/Preview';
 import DescriptionIcon from '@mui/icons-material/Description';
+import HubIcon from '@mui/icons-material/Hub';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
-import { isNativeApp, openListedCompanies } from '../services/listedCompaniesNav';
 import { LANDING_COPY } from './landingCopy';
 
 const SITE_URL = 'https://mapasocietario.es';
 
-// Quiet text-link styling for the secondary homepage actions. The homepage is
-// intentionally light: one primary action (search → graph) and a few low-key
-// links into the pages that hold the detail (reports, listed companies, stats).
-const secondaryLinkSx = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 0.5,
-  cursor: 'pointer',
-  fontSize: '0.82rem',
-  fontWeight: 600,
-  color: 'text.secondary',
-  textDecoration: 'none',
-  border: 'none',
-  background: 'none',
-  p: 0,
-  '&:hover': { color: 'primary.light', textDecoration: 'underline' },
-};
+// Company shown in the demo frame. Must match whatever is captured in
+// public/graph-demo.png so the click-through lands on the same graph.
+const DEMO_COMPANY = 'ACERINOX SA';
 
-// Deliberately minimal homepage.
-//
-// The product's real surface is the interactive graph (/app), which already
-// hosts the full company/officer search. The homepage's only job is to look
-// calm and trustworthy and get the visitor into the graph in one click — all
-// the explanatory detail lives on dedicated pages (about.html, /due-diligence,
-// /pricing, the /es SEO pages), reachable from the header and footer.
+const STEP_ICONS = [<SearchIcon />, <TouchAppIcon />, <PreviewIcon />];
+
+const Section = ({ children, sx = {}, ...props }) => (
+  <Box
+    component="section"
+    sx={{ width: '100%', maxWidth: 920, mx: 'auto', px: { xs: 2.5, sm: 4 }, py: { xs: 5, sm: 6.5 }, ...sx }}
+    {...props}
+  >
+    {children}
+  </Box>
+);
+
+const SectionHeading = ({ heading, sub }) => (
+  <Box sx={{ mb: 4 }}>
+    <Typography variant="h5" component="h2" sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
+      {heading}
+    </Typography>
+    {sub && (
+      <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.75, maxWidth: 560 }}>
+        {sub}
+      </Typography>
+    )}
+  </Box>
+);
+
+// The homepage is a first-run how-to guide. It teaches search → graph →
+// reports and nudges the visitor to bookmark the real workspace at /app.
 export default function LandingPage({ lang = 'en' }) {
   const copy = LANDING_COPY[lang];
   const navigate = useNavigate();
 
+  // Never render a broken image: if public/graph-demo.png is missing, fall
+  // back to a tasteful placeholder that still links into the live graph.
+  const [demoImgOk, setDemoImgOk] = React.useState(true);
+
   const canonical = lang === 'es' ? `${SITE_URL}/es/` : `${SITE_URL}/`;
+  const openGraph = () => navigate('/app');
 
   return (
     <>
@@ -64,32 +77,15 @@ export default function LandingPage({ lang = 'en' }) {
         <meta name="twitter:description" content={copy.meta.twitterDescription} />
       </Helmet>
 
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          minHeight: '100vh',
-          bgcolor: '#0a0e1a',
-        }}
-      >
-        {/* ---------------------------------------------------------------
-            HEADER NAV — the way to the distributed detail pages
-        --------------------------------------------------------------- */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', bgcolor: '#0a0e1a' }}>
+        {/* ---- HEADER NAV ---- */}
         <Box
           component="nav"
           aria-label="Site"
           sx={{
-            width: '100%',
-            maxWidth: 960,
-            mx: 'auto',
-            px: { xs: 2.5, sm: 4 },
-            pt: { xs: 2, sm: 2.5 },
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: { xs: 'center', sm: 'flex-start' },
-            flexWrap: 'wrap',
-            gap: { xs: 1.25, sm: 2.25 },
+            width: '100%', maxWidth: 920, mx: 'auto', px: { xs: 2.5, sm: 4 }, pt: { xs: 2, sm: 2.5 },
+            display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' },
+            flexWrap: 'wrap', gap: { xs: 1.25, sm: 2.25 },
           }}
         >
           {copy.topLinks.map((link) => (
@@ -101,9 +97,7 @@ export default function LandingPage({ lang = 'en' }) {
               variant="caption"
               sx={{
                 color: link.href === '/spanish-company-due-diligence' ? 'warning.light' : 'text.secondary',
-                fontWeight: 650,
-                fontSize: '0.72rem',
-                textDecoration: 'none',
+                fontWeight: 650, fontSize: '0.72rem', textDecoration: 'none',
                 ...(link.alignRight && { ml: { sm: 'auto' } }),
                 '&:hover': { color: 'primary.light', textDecoration: 'underline' },
               }}
@@ -113,216 +107,219 @@ export default function LandingPage({ lang = 'en' }) {
           ))}
         </Box>
 
-        {/* ---------------------------------------------------------------
-            HERO — name, one-line value prop, trust, one primary action
-        --------------------------------------------------------------- */}
-        <Box
-          component="section"
-          sx={{
-            width: '100%',
-            maxWidth: 680,
-            mx: 'auto',
-            px: { xs: 2.5, sm: 4 },
-            py: { xs: 9, sm: 14 },
-            textAlign: 'center',
-            flexGrow: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-          }}
-        >
+        {/* ---- HERO ---- */}
+        <Section sx={{ textAlign: 'center', py: { xs: 6, sm: 9 } }}>
           <AccountTreeIcon
-            sx={{
-              fontSize: 56,
-              color: 'primary.main',
-              opacity: 0.7,
-              mb: 2.5,
-              mx: 'auto',
-              filter: 'drop-shadow(0 0 20px rgba(25,118,210,0.35))',
-            }}
+            sx={{ fontSize: 52, color: 'primary.main', opacity: 0.7, mb: 2, filter: 'drop-shadow(0 0 20px rgba(25,118,210,0.35))' }}
           />
+          <Typography variant="overline" sx={{ display: 'block', color: 'primary.light', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.68rem', mb: 1 }}>
+            {copy.hero.eyebrow}
+          </Typography>
           <Typography
             variant="h3"
             component="h1"
-            sx={{
-              fontWeight: 700,
-              letterSpacing: '-0.03em',
-              lineHeight: 1.15,
-              mb: 2,
-              fontSize: { xs: '1.75rem', sm: '2.5rem', md: '2.85rem' },
-              maxWidth: 620,
-              mx: 'auto',
-            }}
+            sx={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, mb: 2, fontSize: { xs: '1.8rem', sm: '2.5rem' }, maxWidth: 640, mx: 'auto' }}
           >
             {copy.hero.h1}
           </Typography>
-          <Typography
-            variant="body1"
-            sx={{
-              color: 'text.secondary',
-              maxWidth: 520,
-              mx: 'auto',
-              lineHeight: 1.6,
-              fontSize: { xs: '0.92rem', sm: '1.02rem' },
-              mb: 4,
-            }}
-          >
+          <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 560, mx: 'auto', lineHeight: 1.6, fontSize: { xs: '0.92rem', sm: '1.02rem' }, mb: 3.5 }}>
             {copy.hero.subtitle}
           </Typography>
-
-          <Box>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<SearchIcon />}
-              onClick={() => navigate('/app')}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 4.5,
-                py: 1.5,
-                fontSize: '1.05rem',
-                borderRadius: 2,
-                bgcolor: 'primary.main',
-                '&:hover': { bgcolor: '#1565c0' },
-              }}
-            >
-              {copy.hero.searchCta}
-            </Button>
-          </Box>
-
-          {/* Quiet links into the distributed detail pages */}
-          <Box
-            sx={{
-              display: 'flex',
-              gap: { xs: 1.75, sm: 3 },
-              justifyContent: 'center',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              mt: 3,
-            }}
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<SearchIcon />}
+            onClick={openGraph}
+            sx={{ textTransform: 'none', fontWeight: 600, px: 4.5, py: 1.5, fontSize: '1.05rem', borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#1565c0' } }}
           >
-            <Link component="button" type="button" onClick={() => navigate('/due-diligence')} sx={{ ...secondaryLinkSx, color: 'warning.light' }}>
-              <DescriptionIcon sx={{ fontSize: 15 }} /> {copy.footer.ddReports}
-            </Link>
-            {/* Real anchor (full page load) so the Cloudflare Pages Function
-                serves /empresas-cotizadas rather than the SPA fallback. In the
-                native app there is no server for that route, so we intercept
-                and open the live page in an in-app Custom Tab instead. */}
-            <Link
-              component="a"
-              href="/empresas-cotizadas"
-              onClick={(e) => {
-                if (isNativeApp()) {
-                  e.preventDefault();
-                  openListedCompanies();
-                }
-              }}
-              sx={secondaryLinkSx}
-            >
-              <TrendingUpIcon sx={{ fontSize: 15 }} /> {copy.hero.listedCta}
-            </Link>
-            <Link component="button" type="button" onClick={() => navigate('/dashboard')} sx={secondaryLinkSx}>
-              <BarChartIcon sx={{ fontSize: 15 }} /> {copy.hero.statsCta}
-            </Link>
-          </Box>
-
-          <Typography
-            variant="caption"
-            sx={{ color: 'text.disabled', display: 'block', maxWidth: 560, mx: 'auto', mt: 4, lineHeight: 1.6 }}
-          >
-            {copy.hero.operatedBy}
+            {copy.hero.openCta}
+          </Button>
+          <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: 'text.disabled', mt: 2 }}>
+            <BookmarkBorderIcon sx={{ fontSize: 15 }} /> {copy.hero.bookmarkTip}
           </Typography>
+        </Section>
 
-          <LegalDisclaimer dense language={lang} sx={{ mt: 3, maxWidth: 620, mx: 'auto' }} />
+        {/* ---- HOW IT WORKS ---- */}
+        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(255,255,255,0.015)' }}>
+          <Section>
+            <SectionHeading heading={copy.howItWorks.heading} sub={copy.howItWorks.sub} />
+
+            {/* Demo frame (with graceful fallback) */}
+            <Box sx={{ mb: 4 }}>
+              <Box sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', bgcolor: '#0d1220' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
+                    <Box key={c} sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c, opacity: 0.8 }} />
+                  ))}
+                  <Typography variant="caption" sx={{ ml: 1, color: 'text.disabled', fontSize: '0.68rem' }}>
+                    mapasocietario.es/app
+                  </Typography>
+                </Box>
+                <Box component="a" href={`/app?search=${encodeURIComponent(DEMO_COMPANY)}`} sx={{ display: 'block' }}>
+                  {demoImgOk ? (
+                    <Box
+                      component="img"
+                      src="/graph-demo.png"
+                      alt={copy.howItWorks.demoAlt}
+                      onError={() => setDemoImgOk(false)}
+                      sx={{ display: 'block', width: '100%', height: 'auto', aspectRatio: '16 / 9', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5,
+                        aspectRatio: '16 / 9', width: '100%',
+                        background: 'radial-gradient(ellipse 60% 60% at 50% 45%, rgba(25,118,210,0.18) 0%, transparent 70%)',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      <AccountTreeIcon sx={{ fontSize: 48, color: 'primary.main', opacity: 0.8 }} />
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{copy.howItWorks.demoFallback}</Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>{copy.howItWorks.demoCaption}</Typography>
+                <Link href={`/app?search=${encodeURIComponent(DEMO_COMPANY)}`} variant="caption" sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                  {copy.howItWorks.demoCta}
+                </Link>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 2 }}>
+              {copy.howItWorks.steps.map((step, i) => (
+                <Box key={i} sx={{ p: 2.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.07)', bgcolor: 'rgba(255,255,255,0.02)' }}>
+                  <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'rgba(25,118,210,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 19 } }}>
+                    {STEP_ICONS[i]}
+                  </Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{step.title}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.55 }}>{step.desc}</Typography>
+                </Box>
+              ))}
+            </Box>
+          </Section>
         </Box>
 
-        {/* ---------------------------------------------------------------
-            PROOF STRIP — a few quiet trust signals
-        --------------------------------------------------------------- */}
-        <Box
-          sx={{
-            width: '100%',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            bgcolor: 'rgba(255,255,255,0.015)',
-          }}
-        >
-          <Box
-            sx={{
-              maxWidth: 960,
-              mx: 'auto',
-              px: { xs: 2.5, sm: 4 },
-              py: { xs: 2, sm: 2.5 },
-              display: 'flex',
-              justifyContent: 'center',
-              flexWrap: 'wrap',
-              gap: { xs: 2, sm: 5 },
-            }}
-          >
+        {/* ---- REPORTS ---- */}
+        <Section>
+          <SectionHeading heading={copy.reports.heading} sub={copy.reports.sub} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5, alignItems: 'start' }}>
+            {/* Due Diligence (paid) */}
+            <Paper elevation={0} sx={{ p: 3, bgcolor: 'rgba(255,167,38,0.05)', border: '1px solid rgba(255,167,38,0.3)', borderRadius: 2, height: '100%' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <DescriptionIcon sx={{ color: 'warning.main' }} />
+                <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.dd.title}</Typography>
+              </Box>
+              <Chip label={copy.reports.dd.badge} size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(255,167,38,0.15)', color: 'warning.light', mb: 1.5 }} />
+              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.6, mb: 1.5 }}>
+                {copy.reports.dd.desc}
+              </Typography>
+              <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, mb: 2 }}>
+                {copy.reports.dd.bullets.map((b) => (
+                  <Box component="li" key={b} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 0.75 }}>
+                    <CheckCircleOutlineIcon sx={{ fontSize: 16, color: 'success.light', mt: '2px', flexShrink: 0 }} />
+                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>{b}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<DescriptionIcon />}
+                  onClick={() => navigate('/due-diligence')}
+                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, bgcolor: 'warning.main', color: '#1a1205', '&:hover': { bgcolor: 'warning.dark' } }}
+                >
+                  {copy.reports.dd.buyCta}
+                </Button>
+                <Link href="/sample-dd-report.pdf" target="_blank" rel="noopener" variant="caption" sx={{ color: 'warning.light', fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                  {copy.reports.dd.sampleCta}
+                </Link>
+              </Box>
+            </Paper>
+
+            {/* Relationship report (free) */}
+            <Paper elevation={0} sx={{ p: 3, bgcolor: 'rgba(25,118,210,0.05)', border: '1px solid rgba(25,118,210,0.25)', borderRadius: 2, height: '100%' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <HubIcon sx={{ color: 'primary.light' }} />
+                <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.rel.title}</Typography>
+              </Box>
+              <Chip label={copy.reports.rel.badge} size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(25,118,210,0.15)', color: 'primary.light', mb: 1.5 }} />
+              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.6 }}>
+                {copy.reports.rel.desc}
+              </Typography>
+            </Paper>
+          </Box>
+          <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', mt: 2.5, lineHeight: 1.6 }}>
+            {copy.reports.howToBuy}
+          </Typography>
+        </Section>
+
+        {/* ---- BOOKMARK CALLOUT ---- */}
+        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(25,118,210,0.08) 0%, transparent 70%)' }}>
+          <Section sx={{ textAlign: 'center' }}>
+            <BookmarkBorderIcon sx={{ fontSize: 36, color: 'primary.light', mb: 1.5 }} />
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1.5, letterSpacing: '-0.02em' }}>
+              {copy.bookmark.heading}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 520, mx: 'auto', mb: 2.5, lineHeight: 1.6 }}>
+              {copy.bookmark.body}
+            </Typography>
+            <Chip
+              label={copy.bookmark.url}
+              sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.85rem', bgcolor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', mb: 2.5 }}
+            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.25 }}>
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<SearchIcon />}
+                onClick={openGraph}
+                sx={{ textTransform: 'none', fontWeight: 600, px: 4, py: 1.5, borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#1565c0' } }}
+              >
+                {copy.bookmark.cta}
+              </Button>
+              <Typography variant="caption" sx={{ color: 'text.disabled' }}>{copy.bookmark.shortcut}</Typography>
+            </Box>
+          </Section>
+        </Box>
+
+        {/* ---- TRUST + PROOF STRIP ---- */}
+        <Section sx={{ textAlign: 'center', py: { xs: 4, sm: 5 } }}>
+          <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', maxWidth: 620, mx: 'auto', lineHeight: 1.6, mb: 2.5 }}>
+            {copy.operatedBy}
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: { xs: 2, sm: 4 } }}>
             {copy.proofItems.map((item) => (
               <Typography
                 key={item}
                 variant="caption"
                 sx={{
-                  color: 'text.secondary',
-                  fontWeight: 500,
-                  fontSize: '0.75rem',
-                  letterSpacing: '0.02em',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.75,
-                  '&::before': {
-                    content: '""',
-                    display: 'inline-block',
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    bgcolor: 'primary.main',
-                    opacity: 0.5,
-                  },
+                  color: 'text.secondary', fontWeight: 500, fontSize: '0.75rem', letterSpacing: '0.02em',
+                  display: 'flex', alignItems: 'center', gap: 0.75,
+                  '&::before': { content: '""', display: 'inline-block', width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', opacity: 0.5 },
                 }}
               >
                 {item}
               </Typography>
             ))}
           </Box>
-        </Box>
+          <LegalDisclaimer dense language={lang} sx={{ mt: 3, maxWidth: 620, mx: 'auto', textAlign: 'left' }} />
+        </Section>
 
-        {/* ---------------------------------------------------------------
-            FOOTER
-        --------------------------------------------------------------- */}
-        <Box
-          sx={{
-            width: '100%',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            py: 3,
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1,
-            alignItems: 'center',
-          }}
-        >
+        {/* ---- FOOTER ---- */}
+        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', py: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
           <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem', lineHeight: 1.5 }}>
             &copy; {new Date().getFullYear()} Mapa Societario &middot; {copy.footer.productOf}{' '}
-            <Link
-              href="https://nurnbergconsulting.com"
-              target="_blank"
-              rel="noopener"
-              sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-            >
+            <Link href="https://nurnbergconsulting.com" target="_blank" rel="noopener" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               Nurnberg Consulting SL
             </Link>
             {copy.footer.productOfSuffix}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem', lineHeight: 1.5, maxWidth: 760, px: 2 }}>
             {copy.footer.basedOnPrefix}
-            <Link
-              href="https://www.boe.es"
-              target="_blank"
-              rel="noopener"
-              sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-            >
+            <Link href="https://www.boe.es" target="_blank" rel="noopener" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               Agencia Estatal Boletín Oficial del Estado
             </Link>
             {copy.footer.basedOnSuffix}
