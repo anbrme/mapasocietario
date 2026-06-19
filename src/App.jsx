@@ -1,8 +1,8 @@
 import React from 'react';
-import { Box, ToggleButton, ToggleButtonGroup, Typography, IconButton, Tooltip } from '@mui/material';
+import { Box, ToggleButton, ToggleButtonGroup, Typography, IconButton, Tooltip, Menu, MenuItem, Divider } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TranslateIcon from '@mui/icons-material/Translate';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import MenuIcon from '@mui/icons-material/Menu';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
@@ -20,7 +20,16 @@ const APP_COPY = {
       'Search Spanish companies and officers. Explore corporate relationships in an interactive network graph based on official BORME data.',
     breadcrumb: 'Search',
     languageLabel: 'Language',
-    guideTooltip: 'How it works',
+    menu: {
+      tooltip: 'Menu',
+      guide: 'How it works',
+      reports: 'Due Diligence reports',
+      pricing: 'Pricing',
+      about: 'About',
+      faq: 'FAQ',
+      terms: 'Terms',
+      privacy: 'Privacy',
+    },
   },
   es: {
     title: 'Buscar | Mapa Societario',
@@ -28,7 +37,16 @@ const APP_COPY = {
       'Busca empresas y administradores españoles. Explora relaciones societarias en un grafo interactivo basado en datos oficiales del BORME.',
     breadcrumb: 'Buscar',
     languageLabel: 'Idioma',
-    guideTooltip: 'Cómo funciona',
+    menu: {
+      tooltip: 'Menú',
+      guide: 'Cómo funciona',
+      reports: 'Informes due diligence',
+      pricing: 'Precios',
+      about: 'Acerca de',
+      faq: 'Preguntas frecuentes',
+      terms: 'Términos',
+      privacy: 'Privacidad',
+    },
   },
 };
 
@@ -45,7 +63,24 @@ const getInitialLanguage = () => {
 export default function App() {
   const navigate = useNavigate();
   const [language, setLanguage] = React.useState(getInitialLanguage);
+  const [menuAnchor, setMenuAnchor] = React.useState(null);
   const copy = APP_COPY[language] || APP_COPY.en;
+
+  // Secondary navigation for the workspace, so /app is self-sufficient: a
+  // returning visitor (redirected past the guide) can still reach the guide,
+  // reports, pricing, FAQ and the legal pages without leaving the graph.
+  // SPA routes use navigate(); the static .html pages open in a new tab.
+  const navItems = [
+    { label: copy.menu.guide, action: () => navigate('/?guide=1') },
+    { label: copy.menu.reports, action: () => navigate('/due-diligence') },
+    { label: copy.menu.pricing, action: () => navigate('/pricing') },
+    null,
+    { label: copy.menu.about, action: () => window.open('/about.html', '_blank', 'noopener') },
+    { label: copy.menu.faq, action: () => window.open('/about.html#faq', '_blank', 'noopener') },
+    null,
+    { label: copy.menu.terms, action: () => window.open('/terms.html', '_blank', 'noopener') },
+    { label: copy.menu.privacy, action: () => window.open('/privacy.html', '_blank', 'noopener') },
+  ];
 
   // /empresa pages and the landing demo link here as /app?search=<company>.
   // Read once on mount; the graph auto-searches via initialCompanyName.
@@ -132,16 +167,31 @@ export default function App() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
-          <Tooltip title={copy.guideTooltip}>
+          <Tooltip title={copy.menu.tooltip}>
             <IconButton
               size="small"
-              onClick={() => navigate('/?guide=1')}
-              aria-label={copy.guideTooltip}
+              onClick={(e) => setMenuAnchor(e.currentTarget)}
+              aria-label={copy.menu.tooltip}
               sx={{ color: 'text.secondary', '&:hover': { color: 'primary.light' } }}
             >
-              <HelpOutlineIcon sx={{ fontSize: 19 }} />
+              <MenuIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Tooltip>
+          <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
+            {navItems.map((item, i) =>
+              item === null ? (
+                <Divider key={`div-${i}`} />
+              ) : (
+                <MenuItem
+                  key={item.label}
+                  onClick={() => { setMenuAnchor(null); item.action(); }}
+                  sx={{ fontSize: '0.85rem' }}
+                >
+                  {item.label}
+                </MenuItem>
+              ),
+            )}
+          </Menu>
           <TranslateIcon sx={{ fontSize: 17, color: 'text.secondary' }} />
           <ToggleButtonGroup
             value={language}
