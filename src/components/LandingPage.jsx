@@ -36,6 +36,7 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
+import HeroCompanySearch from './HeroCompanySearch';
 import { isNativeApp, openListedCompanies } from '../services/listedCompaniesNav';
 import { LANDING_COPY } from './landingCopy';
 
@@ -69,20 +70,22 @@ const PROFESSIONAL_META = [
 // same graph the visitor just saw.
 const DEMO_COMPANY = 'ACERINOX SA';
 
-// Quiet styling shared by the two secondary hero buttons so they never drift.
-const secondaryHeroButtonSx = {
-  textTransform: 'none',
+// Quiet styling for the demoted secondary hero actions (free graph, IBEX,
+// stats). These deliberately read as low-emphasis text links so they never
+// compete with the primary search-to-buy box.
+const heroSecondaryLinkSx = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 0.5,
+  cursor: 'pointer',
+  fontSize: '0.8rem',
   fontWeight: 600,
-  px: 2.5,
-  py: 1,
-  borderRadius: 2,
-  borderColor: 'rgba(255,255,255,0.23)',
   color: 'text.secondary',
-  '&:hover': {
-    borderColor: 'rgba(255,255,255,0.4)',
-    bgcolor: 'rgba(255,255,255,0.05)',
-    color: 'text.primary',
-  },
+  textDecoration: 'none',
+  border: 'none',
+  background: 'none',
+  p: 0,
+  '&:hover': { color: 'primary.light', textDecoration: 'underline' },
 };
 
 // Shared section wrapper for consistent vertical rhythm
@@ -258,32 +261,32 @@ export default function LandingPage({ lang = 'en' }) {
             >
               {copy.hero.operatedBy}
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<SearchIcon />}
-                onClick={() => navigate('/app')}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: '1rem',
-                  borderRadius: 2,
-                  bgcolor: 'primary.main',
-                  '&:hover': { bgcolor: '#1565c0' },
-                }}
-              >
-                {copy.hero.searchCta}
-              </Button>
+            {/* PRIMARY ACTION — direct search-to-buy. A visitor goes straight
+                from a company name to checkout (price shown), without first
+                having to learn the interactive graph. */}
+            <HeroCompanySearch lang={lang} />
+
+            {/* Secondary, demoted actions. The free graph, listed companies and
+                stats stay one quiet tap away but no longer compete with the
+                primary action above. */}
+            <Box
+              sx={{
+                display: 'flex',
+                gap: { xs: 1.75, sm: 3 },
+                justifyContent: 'center',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                mt: 3,
+              }}
+            >
+              <Link component="button" type="button" onClick={() => navigate('/app')} sx={heroSecondaryLinkSx}>
+                <SearchIcon sx={{ fontSize: 15 }} /> {copy.hero.searchCta}
+              </Link>
               {/* Real anchor (full page load) so the Cloudflare Pages Function
                   serves /empresas-cotizadas rather than the SPA fallback. In the
                   native app there is no server for that route, so we intercept
                   and open the live page in an in-app Custom Tab instead. */}
-              <Button
-                variant="outlined"
-                size="medium"
+              <Link
                 component="a"
                 href="/empresas-cotizadas"
                 onClick={(e) => {
@@ -292,20 +295,13 @@ export default function LandingPage({ lang = 'en' }) {
                     openListedCompanies();
                   }
                 }}
-                startIcon={<TrendingUpIcon />}
-                sx={secondaryHeroButtonSx}
+                sx={heroSecondaryLinkSx}
               >
-                {copy.hero.listedCta}
-              </Button>
-              <Button
-                variant="outlined"
-                size="medium"
-                startIcon={<BarChartIcon />}
-                onClick={() => navigate('/dashboard')}
-                sx={secondaryHeroButtonSx}
-              >
-                {copy.hero.statsCta}
-              </Button>
+                <TrendingUpIcon sx={{ fontSize: 15 }} /> {copy.hero.listedCta}
+              </Link>
+              <Link component="button" type="button" onClick={() => navigate('/dashboard')} sx={heroSecondaryLinkSx}>
+                <BarChartIcon sx={{ fontSize: 15 }} /> {copy.hero.statsCta}
+              </Link>
             </Box>
             {/* Trust row — the two signals that most reduce buyer hesitation
                 (see what you get + money-back), moved up to first impression
