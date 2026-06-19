@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { Box, ToggleButton, ToggleButtonGroup, Typography, IconButton, Tooltip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TranslateIcon from '@mui/icons-material/Translate';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
@@ -19,6 +20,7 @@ const APP_COPY = {
       'Search Spanish companies and officers. Explore corporate relationships in an interactive network graph based on official BORME data.',
     breadcrumb: 'Search',
     languageLabel: 'Language',
+    guideTooltip: 'How it works',
   },
   es: {
     title: 'Buscar | Mapa Societario',
@@ -26,6 +28,7 @@ const APP_COPY = {
       'Busca empresas y administradores españoles. Explora relaciones societarias en un grafo interactivo basado en datos oficiales del BORME.',
     breadcrumb: 'Buscar',
     languageLabel: 'Idioma',
+    guideTooltip: 'Cómo funciona',
   },
 };
 
@@ -129,6 +132,16 @@ export default function App() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+          <Tooltip title={copy.guideTooltip}>
+            <IconButton
+              size="small"
+              onClick={() => navigate('/?guide=1')}
+              aria-label={copy.guideTooltip}
+              sx={{ color: 'text.secondary', '&:hover': { color: 'primary.light' } }}
+            >
+              <HelpOutlineIcon sx={{ fontSize: 19 }} />
+            </IconButton>
+          </Tooltip>
           <TranslateIcon sx={{ fontSize: 17, color: 'text.secondary' }} />
           <ToggleButtonGroup
             value={language}

@@ -46,9 +46,42 @@ const SectionHeading = ({ heading, sub }) => (
 
 // The homepage is a first-run how-to guide. It teaches search → graph →
 // reports and nudges the visitor to bookmark the real workspace at /app.
+const GUIDE_SEEN_KEY = 'ms_seen_guide';
+
+// True when the visitor has seen the guide before AND isn't explicitly asking
+// for it via ?guide=1. Computed synchronously so we never flash the guide
+// before redirecting a returning visitor to the workspace.
+function shouldRedirectReturning() {
+  if (typeof window === 'undefined') return false;
+  if (new URLSearchParams(window.location.search).get('guide') === '1') return false;
+  try {
+    return localStorage.getItem(GUIDE_SEEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function LandingPage({ lang = 'en' }) {
   const copy = LANDING_COPY[lang];
   const navigate = useNavigate();
+
+  // Returning visitors skip the first-run guide and land straight in /app.
+  // First-timers (and crawlers, which have no localStorage) see the guide, so
+  // SEO and first impressions are untouched. The /app header "How it works"
+  // icon and /?guide=1 always bring the guide back.
+  const [redirecting] = React.useState(shouldRedirectReturning);
+
+  React.useEffect(() => {
+    if (redirecting) {
+      navigate(lang === 'es' ? '/app?lang=es' : '/app', { replace: true });
+      return;
+    }
+    try {
+      localStorage.setItem(GUIDE_SEEN_KEY, '1');
+    } catch {
+      /* storage unavailable (private mode, etc.) — just show the guide */
+    }
+  }, [redirecting, navigate, lang]);
 
   // Never render a broken image: if public/graph-demo.png is missing, fall
   // back to a tasteful placeholder that still links into the live graph.
@@ -56,6 +89,9 @@ export default function LandingPage({ lang = 'en' }) {
 
   const canonical = lang === 'es' ? `${SITE_URL}/es/` : `${SITE_URL}/`;
   const openGraph = () => navigate('/app');
+
+  // Returning visitor: render nothing while the effect redirects to /app.
+  if (redirecting) return null;
 
   return (
     <>
