@@ -196,6 +196,10 @@ const T = {
     ctaText: (name) =>
       `Explora la red de participaciones, administradores compartidos y filiales de ${name}.`,
     ctaBtn: 'Abrir mapa interactivo →',
+    ddCtaTitle: 'Informe due diligence completo',
+    ddCtaText: (name) =>
+      `Descarga un PDF con análisis por IA, comprobación de sanciones, señales de alerta e historial mercantil completo de ${name}.`,
+    ddCtaBtn: 'Descargar informe · 22,50 €',
     footer: (d) =>
       `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial.`,
     renamedTo: (href, name) =>
@@ -310,6 +314,10 @@ const T = {
     thCapital: 'Capital',
     recentHistory: 'Recent history (BORME)',
     registryAct: 'Registry act',
+    ddCtaTitle: 'Full due diligence report',
+    ddCtaText: (name) =>
+      `Download a PDF with AI analysis, sanctions screening, red flags and the full commercial-registry history of ${name}.`,
+    ddCtaBtn: 'Download report · €22.50',
     ctaTitle: 'View the interactive ownership map',
     ctaText: (name) =>
       `Explore the ownership network, shared directors and subsidiaries of ${name}.`,
@@ -550,7 +558,10 @@ const STYLE = `<style>
   .cta{margin:36px 0 0;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border-radius:16px;padding:28px;text-align:center}
   .cta h2{border:0;color:#fff;margin:0 0 8px;padding:0}
   .cta p{margin:0 0 18px;opacity:.9}
-  .cta a{display:inline-block;background:#fff;color:#1e3a8a;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:10px}
+  .cta-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .cta a{display:inline-block;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:10px}
+  .cta-primary{background:#fff;color:#1e3a8a}
+  .cta-secondary{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.55)}
   footer{margin-top:48px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
   section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:18px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
   section h2{margin-top:0;border-top:0;padding-top:0}
@@ -837,9 +848,12 @@ ${STYLE}
   ${eventsBlock(events, t, lang)}
 
   <div class="cta">
-    <h2>${t.ctaTitle}</h2>
-    <p>${esc(t.ctaText(name))}</p>
-    <a href="/app?search=${encodeURIComponent(name)}">${t.ctaBtn}</a>
+    <h2>${t.ddCtaTitle}</h2>
+    <p>${esc(t.ddCtaText(name))}</p>
+    <div class="cta-actions">
+      <a class="cta-primary" href="/due-diligence?company=${encodeURIComponent(name)}">${t.ddCtaBtn}</a>
+      <a class="cta-secondary" href="/app?search=${encodeURIComponent(name)}">${t.ctaBtn}</a>
+    </div>
   </div>
 
   <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}</footer>

@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import {
   Box,
   Typography,
@@ -24,9 +24,10 @@ import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import HubIcon from '@mui/icons-material/Hub';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 const SampleReportViewer = lazy(() => import('./SampleReportViewer'));
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
+import DDCheckoutDialog from './DDCheckoutDialog';
 
 const FEATURES = [
   { icon: <AccountTreeIcon />, title: 'Corporate Structure', desc: 'Full mapping of officers, shareholders, and subsidiaries extracted from official BORME filings.' },
@@ -39,6 +40,12 @@ const FEATURES = [
 
 export default function DueDiligencePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // When arriving from the hero search box or an /empresa SEO page, the target
+  // company is passed as ?company=. We show a company-scoped buy banner and let
+  // the visitor open checkout on click (never auto-open — that reads as a trap).
+  const company = (searchParams.get('company') || '').trim();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   return (
     <>
@@ -64,6 +71,73 @@ export default function DueDiligencePage() {
           gap: 4,
         }}
       >
+        {/* Company-scoped buy banner — shown when a visitor arrives from the
+            hero search box or an /empresa SEO page via ?company=. Two clear
+            choices (buy vs explore free), with sample + price visible first. */}
+        {company && (
+          <Paper
+            elevation={0}
+            sx={{
+              width: '100%',
+              p: { xs: 2.5, sm: 3 },
+              bgcolor: 'rgba(255,167,38,0.06)',
+              border: '1px solid rgba(255,167,38,0.3)',
+              borderRadius: 2,
+              textAlign: 'center',
+            }}
+          >
+            <Typography
+              variant="overline"
+              sx={{ display: 'block', color: 'warning.light', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.65rem' }}
+            >
+              Due Diligence report
+            </Typography>
+            <Typography variant="h5" component="p" sx={{ fontWeight: 700, mb: 1 }}>
+              {company}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, maxWidth: 520, mx: 'auto', lineHeight: 1.6 }}>
+              Comprehensive PDF with AI analysis, sanctions screening, red flags and full corporate
+              history — EUR 22.50, no account needed.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                startIcon={<DescriptionIcon />}
+                onClick={() => setCheckoutOpen(true)}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  px: 3,
+                  borderRadius: 2,
+                  bgcolor: 'warning.main',
+                  color: '#000',
+                  '&:hover': { bgcolor: 'warning.dark' },
+                }}
+              >
+                Get the report · EUR 22.50
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<AccountTreeIcon />}
+                onClick={() => navigate(`/app?search=${encodeURIComponent(company)}`)}
+                sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+              >
+                Explore the free graph
+              </Button>
+            </Box>
+            <Box sx={{ mt: 1.5 }}>
+              <Link
+                href="/sample-dd-report.pdf"
+                target="_blank"
+                rel="noopener"
+                sx={{ fontSize: '0.8rem', color: 'warning.light', fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+              >
+                See a sample report (PDF)
+              </Link>
+            </Box>
+          </Paper>
+        )}
+
         {/* Hero */}
         <Box sx={{ textAlign: 'center' }}>
           <DescriptionIcon sx={{ fontSize: 48, color: 'warning.main', mb: 1, opacity: 0.8 }} />
@@ -540,6 +614,14 @@ export default function DueDiligencePage() {
             Contact
           </Link>
         </Box>
+
+        <DDCheckoutDialog
+          open={checkoutOpen}
+          onClose={() => setCheckoutOpen(false)}
+          companyName={company}
+          country="es"
+          language="en"
+        />
       </Box>
     </>
   );

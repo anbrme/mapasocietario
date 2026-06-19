@@ -9,16 +9,22 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DescriptionIcon from '@mui/icons-material/Description';
+import { useNavigate } from 'react-router-dom';
 import { spanishCompaniesService } from '../services/spanishCompaniesService';
-import DDCheckoutDialog from './DDCheckoutDialog';
 
-// Direct search-to-buy entry point for the landing hero.
+// Direct search-to-report entry point for the landing hero.
 //
 // Rationale: the paid Due Diligence report was previously only reachable
 // AFTER a visitor searched a company, waited for the force-graph to render,
 // and found the small toolbar button. This box lets a visitor go straight
-// from "type a company name" to the checkout dialog (with the price shown),
-// without ever touching the graph.
+// from "type a company name" to a trust-first report page (/due-diligence)
+// pre-scoped to that company, where they can buy or explore the free graph —
+// without ever having to learn the interactive graph first.
+//
+// We deliberately route to /due-diligence?company= rather than opening the
+// checkout dialog immediately: an instant payment dialog reads as a paywall
+// trap, whereas the report page shows what's included, a sample, and the
+// money-back guarantee before asking for a card.
 //
 // Copy lives here (not in landingCopy.jsx) so the component stays a single
 // self-contained drop-in. Keep both locales in sync if you edit it.
@@ -45,13 +51,11 @@ const DEBOUNCE_MS = 220;
 
 export default function HeroCompanySearch({ lang = 'en' }) {
   const copy = COPY[lang] || COPY.en;
+  const navigate = useNavigate();
 
   const [inputValue, setInputValue] = React.useState('');
   const [options, setOptions] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
-
-  const [checkoutOpen, setCheckoutOpen] = React.useState(false);
-  const [checkoutCompany, setCheckoutCompany] = React.useState('');
 
   // Guards against out-of-order responses overwriting newer results.
   const requestSeq = React.useRef(0);
@@ -86,8 +90,9 @@ export default function HeroCompanySearch({ lang = 'en' }) {
     if (!option || typeof option === 'string') return;
     const name = (option.name || option.label || '').trim();
     if (!name) return;
-    setCheckoutCompany(name);
-    setCheckoutOpen(true);
+    // Trust-first: land on the company's report page (shows what's included,
+    // sample, guarantee) where the buyer chooses to checkout or explore free.
+    navigate(`/due-diligence?company=${encodeURIComponent(name)}`);
   };
 
   const trimmed = inputValue.trim();
@@ -167,14 +172,6 @@ export default function HeroCompanySearch({ lang = 'en' }) {
       >
         {copy.helper}
       </Typography>
-
-      <DDCheckoutDialog
-        open={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-        companyName={checkoutCompany}
-        country="es"
-        language={lang}
-      />
     </Box>
   );
 }
