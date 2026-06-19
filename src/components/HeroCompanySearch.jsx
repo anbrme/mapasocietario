@@ -8,42 +8,38 @@ import {
   CircularProgress,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import DescriptionIcon from '@mui/icons-material/Description';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useNavigate } from 'react-router-dom';
 import { spanishCompaniesService } from '../services/spanishCompaniesService';
 
-// Direct search-to-report entry point for the landing hero.
+// Search-to-explore entry point for the landing hero.
 //
-// Rationale: the paid Due Diligence report was previously only reachable
-// AFTER a visitor searched a company, waited for the force-graph to render,
-// and found the small toolbar button. This box lets a visitor go straight
-// from "type a company name" to a trust-first report page (/due-diligence)
-// pre-scoped to that company, where they can buy or explore the free graph —
-// without ever having to learn the interactive graph first.
-//
-// We deliberately route to /due-diligence?company= rather than opening the
-// checkout dialog immediately: an instant payment dialog reads as a paywall
-// trap, whereas the report page shows what's included, a sample, and the
-// money-back guarantee before asking for a card.
+// The graph is the free, value-first exploration step: a visitor searches a
+// company, lands in the interactive graph, SEES everything (directors,
+// connections, history), and only THEN decides — buy a Due Diligence report on
+// that company, or build a free relationship report when several companies are
+// in view. So this box routes to /app?search= (the graph), never straight to a
+// checkout or a sales page: you can't ask someone to buy a report on a company
+// they haven't seen yet.
 //
 // Copy lives here (not in landingCopy.jsx) so the component stays a single
 // self-contained drop-in. Keep both locales in sync if you edit it.
 const COPY = {
   en: {
-    label: 'Get a due diligence report',
+    label: 'Explore a Spanish company',
     placeholder: 'Search a Spanish company by name…',
-    helper: 'Pick a company, see the price, get your PDF — €22.50, no account needed.',
+    helper:
+      'See its directors, connections and history in a free interactive graph — then buy a due diligence report or build a relationship report when you’re ready.',
     noOptions2: 'Type at least 2 letters…',
     noOptionsEmpty: 'No companies found',
-    reportFor: (name) => `Due diligence report · ${name}`,
   },
   es: {
-    label: 'Consigue un informe due diligence',
+    label: 'Explora una empresa española',
     placeholder: 'Busca una empresa española por nombre…',
-    helper: 'Elige una empresa, mira el precio y recibe tu PDF: 22,50 €, sin cuenta.',
+    helper:
+      'Consulta sus administradores, conexiones e historial en un grafo interactivo gratuito; después compra un informe due diligence o crea un informe de relaciones cuando quieras.',
     noOptions2: 'Escribe al menos 2 letras…',
     noOptionsEmpty: 'No se encontraron empresas',
-    reportFor: (name) => `Informe due diligence · ${name}`,
   },
 };
 
@@ -90,9 +86,10 @@ export default function HeroCompanySearch({ lang = 'en' }) {
     if (!option || typeof option === 'string') return;
     const name = (option.name || option.label || '').trim();
     if (!name) return;
-    // Trust-first: land on the company's report page (shows what's included,
-    // sample, guarantee) where the buyer chooses to checkout or explore free.
-    navigate(`/due-diligence?company=${encodeURIComponent(name)}`);
+    // Explore first: land in the free interactive graph for this company. The
+    // buy / relationship-report decisions live there, after the visitor has
+    // actually seen the data.
+    navigate(`/app?search=${encodeURIComponent(name)}`);
   };
 
   const trimmed = inputValue.trim();
@@ -107,7 +104,7 @@ export default function HeroCompanySearch({ lang = 'en' }) {
           fontSize: '0.65rem',
           fontWeight: 700,
           letterSpacing: '0.12em',
-          color: 'warning.light',
+          color: 'primary.light',
           mb: 1,
         }}
       >
@@ -127,7 +124,7 @@ export default function HeroCompanySearch({ lang = 'en' }) {
         noOptionsText={noOptionsText}
         renderOption={(props, option) => (
           <Box component="li" {...props} key={option.id || option.name}>
-            <DescriptionIcon sx={{ fontSize: 16, color: 'warning.light', mr: 1, flexShrink: 0 }} />
+            <AccountTreeIcon sx={{ fontSize: 16, color: 'primary.light', mr: 1, flexShrink: 0 }} />
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
               {option.label || option.name}
             </Typography>
@@ -142,7 +139,7 @@ export default function HeroCompanySearch({ lang = 'en' }) {
               ...params.InputProps,
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: 'warning.light' }} />
+                  <SearchIcon sx={{ color: 'primary.light' }} />
                 </InputAdornment>
               ),
               endAdornment: (
@@ -157,9 +154,9 @@ export default function HeroCompanySearch({ lang = 'en' }) {
                 bgcolor: 'rgba(255,255,255,0.04)',
                 borderRadius: 2,
                 fontSize: '1rem',
-                '& fieldset': { borderColor: 'rgba(255,167,38,0.5)' },
-                '&:hover fieldset': { borderColor: 'warning.light' },
-                '&.Mui-focused fieldset': { borderColor: 'warning.main', borderWidth: 2 },
+                '& fieldset': { borderColor: 'rgba(25,118,210,0.5)' },
+                '&:hover fieldset': { borderColor: 'primary.light' },
+                '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 2 },
               },
             }}
           />

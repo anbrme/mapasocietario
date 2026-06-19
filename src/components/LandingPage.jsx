@@ -261,14 +261,15 @@ export default function LandingPage({ lang = 'en' }) {
             >
               {copy.hero.operatedBy}
             </Typography>
-            {/* PRIMARY ACTION — direct search-to-buy. A visitor goes straight
-                from a company name to checkout (price shown), without first
-                having to learn the interactive graph. */}
+            {/* PRIMARY ACTION — search a company and land in the free graph to
+                explore it. The buy / relationship-report decisions live in the
+                graph, after the visitor has actually seen the company's data. */}
             <HeroCompanySearch lang={lang} />
 
-            {/* Secondary, demoted actions. The free graph, listed companies and
-                stats stay one quiet tap away but no longer compete with the
-                primary action above. */}
+            {/* Secondary, demoted actions. Listed companies and stats stay one
+                quiet tap away but no longer compete with the primary action.
+                (The plain "search" link is gone — the box above already does
+                exactly that.) */}
             <Box
               sx={{
                 display: 'flex',
@@ -279,9 +280,6 @@ export default function LandingPage({ lang = 'en' }) {
                 mt: 3,
               }}
             >
-              <Link component="button" type="button" onClick={() => navigate('/app')} sx={heroSecondaryLinkSx}>
-                <SearchIcon sx={{ fontSize: 15 }} /> {copy.hero.searchCta}
-              </Link>
               {/* Real anchor (full page load) so the Cloudflare Pages Function
                   serves /empresas-cotizadas rather than the SPA fallback. In the
                   native app there is no server for that route, so we intercept

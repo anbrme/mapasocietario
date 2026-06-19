@@ -5939,11 +5939,17 @@ const SpanishCompanyNetworkGraph = ({
         {graphData.nodes.length > 0 &&
           (searchType === 'company' || (primarySubject && correctionsCount > 0)) && (
           <Button
-            variant="outlined"
+            variant="contained"
             color="warning"
             size="small"
             startIcon={<DescriptionIcon />}
-            sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              color: '#1a1205',
+              boxShadow: '0 2px 10px rgba(255,167,38,0.35)',
+            }}
             onClick={() => {
               // Prefer the sticky subject when it has corrections, so the Custom
               // option is offered; otherwise fall back to the latest search.
@@ -5966,10 +5972,10 @@ const SpanishCompanyNetworkGraph = ({
               <Badge badgeContent={visibleCompanyCount} color="primary"
                 sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
                 <Button
-                  variant="outlined" color="primary" size="small"
+                  variant="contained" color="primary" size="small"
                   startIcon={relResolving ? <CircularProgress size={14} /> : <AccountTreeIcon />}
                   disabled={relResolving}
-                  sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+                  sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(25,118,210,0.35)' }}
                   onClick={openRelationshipReport}>
                   {text.relationshipReport}
                 </Button>
