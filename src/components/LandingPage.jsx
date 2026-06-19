@@ -211,7 +211,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <DescriptionIcon sx={{ color: 'warning.main' }} />
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.dd.title}</Typography>
               </Box>
-              <Chip label={copy.reports.dd.badge} size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(255,167,38,0.15)', color: 'warning.light', mb: 1.5 }} />
+              <Chip label={copy.reports.dd.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'warning.main', color: '#1a1205', mb: 1.5 }} />
               <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.6, mb: 1.5 }}>
                 {copy.reports.dd.desc}
               </Typography>
@@ -245,7 +245,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <HubIcon sx={{ color: 'primary.light' }} />
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.rel.title}</Typography>
               </Box>
-              <Chip label={copy.reports.rel.badge} size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(25,118,210,0.15)', color: 'primary.light', mb: 1.5 }} />
+              <Chip label={copy.reports.rel.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'primary.main', color: '#fff', mb: 1.5 }} />
               <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.6 }}>
                 {copy.reports.rel.desc}
               </Typography>
