@@ -25,7 +25,7 @@ const STEP_ICONS = [<SearchIcon />, <TouchAppIcon />, <PreviewIcon />];
 const Section = ({ children, sx = {}, ...props }) => (
   <Box
     component="section"
-    sx={{ width: '100%', maxWidth: 920, mx: 'auto', px: { xs: 2.5, sm: 4 }, py: { xs: 5, sm: 6.5 }, ...sx }}
+    sx={{ width: '100%', maxWidth: 1120, mx: 'auto', px: { xs: 2.5, sm: 4 }, py: { xs: 5, sm: 6.5 }, ...sx }}
     {...props}
   >
     {children}
@@ -123,7 +123,7 @@ export default function LandingPage({ lang = 'en' }) {
           component="nav"
           aria-label="Site"
           sx={{
-            width: '100%', maxWidth: 920, mx: 'auto', px: { xs: 2.5, sm: 4 }, pt: { xs: 2, sm: 2.5 },
+            width: '100%', maxWidth: 1120, mx: 'auto', px: { xs: 2.5, sm: 4 }, pt: { xs: 2, sm: 2.5 },
             display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' },
             flexWrap: 'wrap', gap: { xs: 1.25, sm: 2.25 },
           }}
