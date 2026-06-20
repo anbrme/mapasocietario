@@ -187,14 +187,6 @@ export default function LandingPage({ lang = 'en' }) {
             {/* Right: live graph demo (graceful fallback until graph-demo.png exists) */}
             <Box>
               <Box sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', bgcolor: '#0d1220', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
-                    <Box key={c} sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c, opacity: 0.8 }} />
-                  ))}
-                  <Typography variant="caption" sx={{ ml: 1, color: 'text.disabled', fontSize: '0.68rem' }}>
-                    mapasocietario.es/app
-                  </Typography>
-                </Box>
                 <Box component="a" href={demoHref} sx={{ display: 'block' }}>
                   {demoImgOk ? (
                     <Box
