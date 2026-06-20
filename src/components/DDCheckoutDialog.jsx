@@ -16,6 +16,8 @@ import {
   Alert,
   ToggleButton,
   ToggleButtonGroup,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -227,6 +229,8 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   const androidDisplayPrice = selectedAndroidProduct?.formattedPrice || `EUR ${subtotal.toFixed(2)}`;
   const financialStatementYearOptions = buildFinancialStatementYearOptions();
   const copy = DD_COPY[lang === 'es' ? 'es' : 'en'];
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     if (open) setLang(language === 'es' ? 'es' : 'en');
@@ -477,11 +481,12 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       onClose={loading ? undefined : onClose}
       maxWidth="sm"
       fullWidth
+      fullScreen={fullScreen}
       PaperProps={{
         sx: {
           bgcolor: '#121828',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 2,
+          border: fullScreen ? 'none' : '1px solid rgba(255,255,255,0.1)',
+          borderRadius: fullScreen ? 0 : 2,
         },
       }}
     >
@@ -546,7 +551,30 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 1 }}>
+      <DialogContent sx={{ pt: 2 }}>
+        {/* Email field — first so it's always visible, especially on small Android screens */}
+        <TextField
+          fullWidth
+          size="small"
+          label={copy.emailLabel}
+          placeholder="your@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          InputProps={{
+            startAdornment: <EmailIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 1 }} />,
+          }}
+          sx={{
+            mb: 0.75,
+            '& .MuiOutlinedInput-root': {
+              fontSize: '0.85rem',
+              bgcolor: 'rgba(255,255,255,0.03)',
+            },
+          }}
+        />
+        <Typography variant="caption" sx={{ display: 'block', mb: 2, px: 0.5, color: 'text.disabled', fontSize: '0.7rem', lineHeight: 1.45 }}>
+          {copy.emailHelp}
+        </Typography>
+
         {/* Report mode selector — only when the user has graph corrections for this
             company. Company-based = registry as-is; Custom = applies your corrections. */}
         {correctionsCount > 0 && (
@@ -784,29 +812,6 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           </Box>
         )}
 
-        {/* Email field */}
-        <TextField
-          fullWidth
-          size="small"
-          label={copy.emailLabel}
-          placeholder="your@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          InputProps={{
-            startAdornment: <EmailIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 1 }} />,
-          }}
-          sx={{
-            mt: 2,
-            '& .MuiOutlinedInput-root': {
-              fontSize: '0.85rem',
-              bgcolor: 'rgba(255,255,255,0.03)',
-            },
-          }}
-        />
-        <Typography variant="caption" sx={{ display: 'block', mt: 0.75, px: 0.5, color: 'text.disabled', fontSize: '0.7rem', lineHeight: 1.45 }}>
-          {copy.emailHelp}
-        </Typography>
-
         {error && (
           <Alert severity="error" sx={{ mt: 2, fontSize: '0.75rem' }}>
             {error}
@@ -817,11 +822,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             {copy.androidInfo}
           </Alert>
         )}
-      </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, flexDirection: 'column', gap: 1 }}>
-        {/* Price breakdown */}
-        <Box sx={{ width: '100%', mb: 0.5 }}>
+        {/* Price breakdown — inside scrollable content so it doesn't steal viewport on mobile */}
+        <Box sx={{ mt: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {isAndroidApp ? copy.googlePlayPrice : copy.basePrice}
@@ -842,44 +845,12 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               {isAndroidApp ? androidDisplayPrice : copy.shownAtStripe}
             </Typography>
           </Box>
-          <Typography
-            variant="caption"
-            sx={{
-              display: 'block',
-              mt: 1,
-              px: 1,
-              color: 'text.disabled',
-              fontSize: '0.68rem',
-              lineHeight: 1.45,
-            }}
-          >
-            {copy.invoice}{' '}
-            {isAndroidApp ? copy.androidPayments : copy.stripePayments}{' '}
-            {copy.accept}{' '}
-            <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{copy.terms}</a>{' '}
-            {copy.and}{' '}
-            <a href="/privacy.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{copy.privacy}</a>.
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{
-              display: 'block',
-              mt: 0.75,
-              px: 1,
-              color: 'text.secondary',
-              fontSize: '0.72rem',
-              lineHeight: 1.5,
-            }}
-          >
-            {copy.questions}{' '}
-            <a href="mailto:app@ncdata.eu" style={{ color: '#8bc5ff', textDecoration: 'none' }}>app@ncdata.eu</a>
-            {' '}— {copy.reply}
-          </Typography>
         </Box>
-        {/* Data-quality guarantee — the real refund promise, surfaced at the moment of maximum doubt. */}
+
+        {/* Data-quality guarantee */}
         <Box
           sx={{
-            width: '100%',
+            mt: 1.5,
             display: 'flex',
             alignItems: 'flex-start',
             gap: 1,
@@ -894,6 +865,45 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             <strong>{copy.guaranteeTitle}</strong> {copy.guarantee}
           </Typography>
         </Box>
+
+        {/* Legal fine print */}
+        <Typography
+          variant="caption"
+          sx={{
+            display: 'block',
+            mt: 1.5,
+            px: 1,
+            color: 'text.disabled',
+            fontSize: '0.68rem',
+            lineHeight: 1.45,
+          }}
+        >
+          {copy.invoice}{' '}
+          {isAndroidApp ? copy.androidPayments : copy.stripePayments}{' '}
+          {copy.accept}{' '}
+          <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{copy.terms}</a>{' '}
+          {copy.and}{' '}
+          <a href="/privacy.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{copy.privacy}</a>.
+        </Typography>
+        <Typography
+          variant="caption"
+          sx={{
+            display: 'block',
+            mt: 0.75,
+            px: 1,
+            pb: 1,
+            color: 'text.secondary',
+            fontSize: '0.72rem',
+            lineHeight: 1.5,
+          }}
+        >
+          {copy.questions}{' '}
+          <a href="mailto:app@ncdata.eu" style={{ color: '#8bc5ff', textDecoration: 'none' }}>app@ncdata.eu</a>
+          {' '}— {copy.reply}
+        </Typography>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, flexDirection: 'column', gap: 0.5 }}>
         <Button
           variant="contained"
           fullWidth
