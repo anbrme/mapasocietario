@@ -147,45 +147,46 @@ export default function LandingPage({ lang = 'en' }) {
         </Box>
 
         {/* ---- HERO ---- */}
-        <Section sx={{ textAlign: 'center', py: { xs: 5, sm: 7 } }}>
-          <AccountTreeIcon
-            sx={{ fontSize: 52, color: 'primary.main', opacity: 0.7, mb: 2, filter: 'drop-shadow(0 0 20px rgba(25,118,210,0.35))' }}
-          />
-          <Typography variant="overline" sx={{ display: 'block', color: 'primary.light', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.68rem', mb: 1 }}>
-            {copy.hero.eyebrow}
-          </Typography>
-          <Typography
-            variant="h3"
-            component="h1"
-            sx={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, mb: 2, fontSize: { xs: '1.9rem', sm: '2.75rem' }, maxWidth: 780, mx: 'auto' }}
-          >
-            {copy.hero.h1}
-          </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 680, mx: 'auto', lineHeight: 1.6, fontSize: { xs: '0.95rem', sm: '1.1rem' }, mb: 3.5 }}>
-            {copy.hero.subtitle}
-          </Typography>
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<SearchIcon />}
-            onClick={openGraph}
-            sx={{ textTransform: 'none', fontWeight: 600, px: 4.5, py: 1.5, fontSize: '1.05rem', borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#1565c0' } }}
-          >
-            {copy.hero.openCta}
-          </Button>
-          <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: 'text.disabled', mt: 2 }}>
-            <BookmarkBorderIcon sx={{ fontSize: 15 }} /> {copy.hero.bookmarkTip}
-          </Typography>
-        </Section>
+        {/* ---- HERO (two-column on desktop: text left, live graph right) ---- */}
+        <Section sx={{ py: { xs: 5, sm: 7 } }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1.15fr' }, gap: { xs: 4, md: 5 }, alignItems: 'center' }}>
+            {/* Left: headline + CTA */}
+            <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+              <Typography variant="overline" sx={{ display: 'block', color: 'primary.light', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.68rem', mb: 1 }}>
+                {copy.hero.eyebrow}
+              </Typography>
+              <Typography
+                variant="h3"
+                component="h1"
+                sx={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.12, mb: 2, fontSize: { xs: '1.9rem', sm: '2.6rem', md: '2.9rem' } }}
+              >
+                {copy.hero.h1}
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: { xs: '0.95rem', sm: '1.1rem' }, mb: 3.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
+              >
+                {copy.hero.subtitle}
+              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<SearchIcon />}
+                  onClick={openGraph}
+                  sx={{ textTransform: 'none', fontWeight: 600, px: 4.5, py: 1.5, fontSize: '1.05rem', borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#1565c0' } }}
+                >
+                  {copy.hero.openCta}
+                </Button>
+              </Box>
+              <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, gap: 0.5, color: 'text.disabled', mt: 2 }}>
+                <BookmarkBorderIcon sx={{ fontSize: 15 }} /> {copy.hero.bookmarkTip}
+              </Typography>
+            </Box>
 
-        {/* ---- HOW IT WORKS ---- */}
-        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(255,255,255,0.015)' }}>
-          <Section>
-            <SectionHeading heading={copy.howItWorks.heading} sub={copy.howItWorks.sub} />
-
-            {/* Demo frame (with graceful fallback) */}
-            <Box sx={{ mb: 4 }}>
-              <Box sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', bgcolor: '#0d1220' }}>
+            {/* Right: live graph demo (graceful fallback until graph-demo.png exists) */}
+            <Box>
+              <Box sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', bgcolor: '#0d1220', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
                     <Box key={c} sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c, opacity: 0.8 }} />
@@ -225,6 +226,13 @@ export default function LandingPage({ lang = 'en' }) {
                 </Link>
               </Box>
             </Box>
+          </Box>
+        </Section>
+
+        {/* ---- HOW IT WORKS ---- */}
+        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(255,255,255,0.015)' }}>
+          <Section>
+            <SectionHeading heading={copy.howItWorks.heading} sub={copy.howItWorks.sub} />
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 2 }}>
               {copy.howItWorks.steps.map((step, i) => (
