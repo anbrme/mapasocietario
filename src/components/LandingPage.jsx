@@ -25,7 +25,7 @@ const STEP_ICONS = [<SearchIcon />, <TouchAppIcon />, <PreviewIcon />];
 const Section = ({ children, sx = {}, ...props }) => (
   <Box
     component="section"
-    sx={{ width: '100%', maxWidth: 1120, mx: 'auto', px: { xs: 2.5, sm: 4 }, py: { xs: 5, sm: 6.5 }, ...sx }}
+    sx={{ width: '100%', maxWidth: 1200, mx: 'auto', px: { xs: 2.5, sm: 4 }, py: { xs: 5, sm: 6.5 }, ...sx }}
     {...props}
   >
     {children}
@@ -123,9 +123,9 @@ export default function LandingPage({ lang = 'en' }) {
           component="nav"
           aria-label="Site"
           sx={{
-            width: '100%', maxWidth: 1120, mx: 'auto', px: { xs: 2.5, sm: 4 }, pt: { xs: 2, sm: 2.5 },
+            width: '100%', maxWidth: 1200, mx: 'auto', px: { xs: 2.5, sm: 4 }, pt: { xs: 2, sm: 3 },
             display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' },
-            flexWrap: 'wrap', gap: { xs: 1.25, sm: 2.25 },
+            flexWrap: 'wrap', gap: { xs: 1.5, sm: 3 },
           }}
         >
           {copy.topLinks.map((link) => (
@@ -134,10 +134,9 @@ export default function LandingPage({ lang = 'en' }) {
               href={link.href}
               target={link.external ? '_blank' : undefined}
               rel={link.external ? 'noopener' : undefined}
-              variant="caption"
               sx={{
                 color: link.href === '/spanish-company-due-diligence' ? 'warning.light' : 'text.secondary',
-                fontWeight: 650, fontSize: '0.72rem', textDecoration: 'none',
+                fontWeight: 600, fontSize: { xs: '0.82rem', sm: '0.95rem' }, textDecoration: 'none',
                 ...(link.alignRight && { ml: { sm: 'auto' } }),
                 '&:hover': { color: 'primary.light', textDecoration: 'underline' },
               }}
@@ -148,7 +147,7 @@ export default function LandingPage({ lang = 'en' }) {
         </Box>
 
         {/* ---- HERO ---- */}
-        <Section sx={{ textAlign: 'center', py: { xs: 6, sm: 9 } }}>
+        <Section sx={{ textAlign: 'center', py: { xs: 5, sm: 7 } }}>
           <AccountTreeIcon
             sx={{ fontSize: 52, color: 'primary.main', opacity: 0.7, mb: 2, filter: 'drop-shadow(0 0 20px rgba(25,118,210,0.35))' }}
           />
@@ -158,11 +157,11 @@ export default function LandingPage({ lang = 'en' }) {
           <Typography
             variant="h3"
             component="h1"
-            sx={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, mb: 2, fontSize: { xs: '1.8rem', sm: '2.5rem' }, maxWidth: 640, mx: 'auto' }}
+            sx={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.15, mb: 2, fontSize: { xs: '1.9rem', sm: '2.75rem' }, maxWidth: 780, mx: 'auto' }}
           >
             {copy.hero.h1}
           </Typography>
-          <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 560, mx: 'auto', lineHeight: 1.6, fontSize: { xs: '0.92rem', sm: '1.02rem' }, mb: 3.5 }}>
+          <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 680, mx: 'auto', lineHeight: 1.6, fontSize: { xs: '0.95rem', sm: '1.1rem' }, mb: 3.5 }}>
             {copy.hero.subtitle}
           </Typography>
           <Button
