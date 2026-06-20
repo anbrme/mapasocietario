@@ -13,10 +13,9 @@ export function siteNav(lang = 'en') {
   return {
     home: es ? '/es' : '/',
     guide: es ? '/es?guide=1' : '/?guide=1',
-    // Due Diligence: the EN product page is /due-diligence; the Spanish-language
-    // counterpart is the /es SEO page (the /spanish-company-due-diligence page
-    // is English-targeted, so it is NOT the ES destination).
-    reports: es ? '/es/informes-due-diligence-empresas' : '/due-diligence',
+    // Due Diligence product page is bilingual (?lang=es). The English-targeted
+    // /spanish-company-due-diligence SEO page is NOT the ES destination.
+    reports: es ? '/due-diligence?lang=es' : '/due-diligence',
     // Pricing is a single bilingual SPA page driven by ?lang.
     pricing: es ? '/pricing?lang=es' : '/pricing',
     dashboard: '/dashboard',
