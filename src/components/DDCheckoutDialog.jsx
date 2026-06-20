@@ -486,7 +486,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         sx: {
           bgcolor: '#121828',
           border: fullScreen ? 'none' : '1px solid rgba(255,255,255,0.1)',
-          borderRadius: fullScreen ? 0 : 2,
+          borderRadius: fullScreen ? 0 : 5,
         },
       }}
     >
@@ -565,6 +565,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           }}
           sx={{
             mb: 0.75,
+            mt: 1,
             '& .MuiOutlinedInput-root': {
               fontSize: '0.85rem',
               bgcolor: 'rgba(255,255,255,0.03)',
