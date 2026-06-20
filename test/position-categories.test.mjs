@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   positionCategoryFor,
+  sameRoleCategory,
   SIMPLIFIED_EXCLUDED_CATEGORIES,
   POSITION_CATEGORY_ORDER,
 } from '../src/utils/positionCategories.js';
@@ -68,6 +69,24 @@ test('Art. 143 RRM organic permanent reps map to Representante 143 RRM', () => {
   for (const pos of ['REPR.143 RRM', 'Repr.143 Rrm', 'R.L.C.PERMA.', 'R.L.C.PER.S.', 'R.L.C.PER.M.', 'REPR.PERMAN.']) {
     assert.equal(positionCategoryFor(pos), 'Representante 143 RRM', pos);
   }
+});
+
+test('sameRoleCategory keeps different-category roles apart (active CONSEJERO vs ceased APODERADO)', () => {
+  // Regression: when an officer holds an active CONSEJERO seat AND a later-revoked
+  // APODERADO power at the same company (e.g. AGENCIA EUROPA PRESS SA, MARTIN
+  // GUTIERREZ DE CABIEDES), enrichment must NOT attach the APODERADO revocation
+  // event to the CONSEJERO link — otherwise the active seat is mislabeled ceased
+  // and the company vanishes under an active-only filter.
+  assert.equal(sameRoleCategory('CONSEJERO', 'APODERADO'), false);
+  assert.equal(sameRoleCategory('Consejero', 'Apoderado'), false);
+  // Same category despite wildly different BORME abbreviations must still match,
+  // so an APODERADO link still collects its own Apo.Man.Soli / APO.MANC. events.
+  assert.equal(sameRoleCategory('APODERADO', 'Apo.Man.Soli'), true);
+  assert.equal(sameRoleCategory('CONSEJERO', 'CON.IND.'), true);
+  // Empty / unknown roles are conservatively treated as "Otros" and only match
+  // other unknowns, never a known category.
+  assert.equal(sameRoleCategory('', 'CONSEJERO'), false);
+  assert.equal(sameRoleCategory('', ''), true);
 });
 
 test('generic / voluntary representatives are NOT reclassified as 143 RRM', () => {

@@ -83,8 +83,10 @@ import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms'
 import {
   POSITION_CATEGORY_ORDER,
   positionCategoryFor,
+  sameRoleCategory,
   SIMPLIFIED_EXCLUDED_CATEGORIES,
 } from '../utils/positionCategories';
+import { isActiveCategory, effectiveCategoryFromEvents } from '../utils/officerLinkStatus';
 import { useTerms } from '../hooks/useTerms';
 import { spanishCompaniesService, SpanishCompaniesService } from '../services/spanishCompaniesService';
 import {
@@ -828,18 +830,14 @@ const normalizeCategoryKey = category => {
   return 'nombramientos';
 };
 
-const isActiveLinkCategory = cat => {
-  const c = (cat || '').toLowerCase();
-  return c.includes('nombramiento') || c.includes('reeleccion') || c.includes('reelección');
-};
+const isActiveLinkCategory = isActiveCategory;
 
 const getLinkEffectiveCategory = link => {
   if (!link || link.userAmended) return link?.category;
-  if (!Array.isArray(link.events) || link.events.length === 0) return link.category;
-  const latest = link.events
-    .slice()
-    .sort((a, b) => entryTimestamp(b) - entryTimestamp(a))[0];
-  return latest?.category || link.category;
+  // link.events are role-filtered at enrichment time; effectiveCategoryFromEvents
+  // picks the latest, preferring an appointment over a cessation on a same-date
+  // board renewal so a still-active seat is not mislabeled ceased.
+  return effectiveCategoryFromEvents(link.events, link.category);
 };
 
 const getOfficerLinkStatus = link => (isActiveLinkCategory(getLinkEffectiveCategory(link)) ? 'active' : 'ceased');
@@ -2400,11 +2398,19 @@ const SpanishCompanyNetworkGraph = ({
 
         const officerUpper = (officerNode.name || '').toUpperCase();
         const companyUpper = (companyNode.name || '').toUpperCase();
+        // Only attach events for THIS link's role. An officer can hold several
+        // roles at one company with independent active/ceased status (e.g. an
+        // active CONSEJERO and a later-revoked APODERADO); without this filter
+        // every role-link inherits the company's latest event, so a still-active
+        // seat is mislabeled ceased and the company disappears under an
+        // active-only filter. See sameRoleCategory.
+        const linkRole = link.relationship || '';
         const events = [];
         ['nombramientos', 'ceses_dimisiones', 'reelecciones', 'revocaciones'].forEach(cat => {
           const entries = eventMap.get(`${officerUpper}|${companyUpper}|${cat}`);
           if (entries) {
             entries.forEach(({ date, position }) => {
+              if (!sameRoleCategory(position, linkRole)) return;
               events.push({ category: cat, date, position });
             });
           }

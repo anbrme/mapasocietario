@@ -78,6 +78,16 @@ export const positionCategoryFor = pos => {
   return 'Otros';
 };
 
+// True when two raw position strings denote the same kind of post (same
+// canonical category). Used to attach borme_events_v3 events to the correct
+// officer→company link: one officer can hold several roles at one company with
+// independent active/ceased status (e.g. an active CONSEJERO and a later-revoked
+// APODERADO), so a role's events must never bleed onto another role's link.
+// Matching is at category granularity because the two data sources format the
+// same role differently (expand-officer "CONS. DELEG." vs events "CON.DELEGADO").
+export const sameRoleCategory = (roleA, roleB) =>
+  positionCategoryFor(roleA) === positionCategoryFor(roleB);
+
 // Simplified mode ("Simplificar" chip) hides ONLY these categories. This is an
 // exclusion list, NOT an admission list: unknown or unmapped positions must
 // stay visible, otherwise legitimate roles disappear from the graph (e.g.
