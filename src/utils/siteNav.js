@@ -13,14 +13,16 @@ export function siteNav(lang = 'en') {
   return {
     home: es ? '/es' : '/',
     guide: es ? '/es?guide=1' : '/?guide=1',
-    // Due Diligence explainer — exists in both languages.
-    reports: es ? '/spanish-company-due-diligence' : '/due-diligence',
+    // Due Diligence: the EN product page is /due-diligence; the Spanish-language
+    // counterpart is the /es SEO page (the /spanish-company-due-diligence page
+    // is English-targeted, so it is NOT the ES destination).
+    reports: es ? '/es/informes-due-diligence-empresas' : '/due-diligence',
     // Pricing is a single bilingual SPA page driven by ?lang.
     pricing: es ? '/pricing?lang=es' : '/pricing',
     dashboard: '/dashboard',
-    // About + its FAQ exist as two static pages, one per language.
+    // About exists per language; the FAQ is its own top-of-page static page.
     about: es ? '/about-es.html' : '/about.html',
-    faq: es ? '/about-es.html#faq' : '/about.html#faq',
+    faq: es ? '/faq-es.html' : '/faq.html',
     // Legal pages currently exist in Spanish only. English versions await real
     // (non-machine) translations, so both languages use the Spanish page for now.
     terms: '/terms.html',

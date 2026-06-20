@@ -71,6 +71,11 @@ export default function DueDiligencePage() {
           gap: 4,
         }}
       >
+        <Box sx={{ width: '100%', textAlign: 'left' }}>
+          <Link href="/" sx={{ color: 'text.secondary', fontSize: '0.85rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            &larr; Mapa Societario
+          </Link>
+        </Box>
         {/* Company-scoped buy banner — shown when a visitor arrives from the
             hero search box or an /empresa SEO page via ?company=. Two clear
             choices (buy vs explore free), with sample + price visible first. */}

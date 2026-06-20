@@ -118,7 +118,7 @@ export const LANDING_COPY = {
       ogLocale: 'es_ES',
     },
     topLinks: [
-      { label: 'Due diligence de empresas españolas', href: '/spanish-company-due-diligence' },
+      { label: 'Due diligence de empresas españolas', href: '/es/informes-due-diligence-empresas' },
       { label: 'Precios', href: '/pricing?lang=es' },
       { label: 'Acerca de', href: '/about-es.html' },
       { label: 'Términos', href: '/terms.html' },
