@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Acerca de | Mapa Societario</title>
+    <meta
+      name="description"
+      content="Cómo funciona Mapa Societario: fuentes de datos, metodología, cobertura y la tecnología tras el grafo de relaciones societarias de España."
+    />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://mapasocietario.es/about-es.html" />
+    <link rel="alternate" hreflang="es" href="https://mapasocietario.es/about-es.html" />
+    <link rel="alternate" hreflang="en" href="https://mapasocietario.es/about.html" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        margin: 0;
+        background: #0a0e1a;
+        color: #e6edf7;
+        font-family: Inter, Arial, sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 2.25rem 1.25rem 3rem;
+      }
+      h1, h2, h3 {
+        color: #ffffff;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      a {
+        color: #8bc5ff;
+      }
+      .muted {
+        color: #a9b8cf;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        font-size: 0.85rem;
+      }
+      footer {
+        margin-top: 2.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.85rem;
+        color: #a9b8cf;
+      }
+      footer a {
+        margin-right: 1.5rem;
+      }
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "inLanguage": "es",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "¿Qué es el BORME?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "El BORME (Boletín Oficial del Registro Mercantil) es el boletín oficial de España para los anuncios del registro mercantil. Publicado a diario por el Estado, recoge hechos societarios como constituciones de empresas, nombramientos y ceses de cargos, fusiones, cambios de capital y disoluciones. Es la fuente pública de referencia de los asientos mercantiles españoles."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Con qué frecuencia se actualizan los datos?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Procesamos las nuevas publicaciones del BORME a medida que se publican, normalmente en días laborables. El índice de búsqueda se reconstruye periódicamente para incorporar los datos más recientes."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Los datos son precisos?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Los datos proceden de publicaciones oficiales del BORME y se extraen mediante procesos automatizados. Aunque procuramos la máxima exactitud, el análisis automático del texto del boletín puede producir errores ocasionales. El servicio no es oficial y se ofrece tal cual. Contrasta siempre con el BORME oficial y, para decisiones críticas, obtén información actualizada directamente del Registro Mercantil."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Necesito una cuenta para usarlo?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Mapa Societario es completamente gratuito y no requiere registro ni inicio de sesión. Los informes due diligence son una función de pago opcional que se compra por empresa."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Puedo acceder a los datos por API?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sí. Ofrecemos una API pública para desarrolladores e investigadores. La documentación y los ejemplos están disponibles en github.com/anbrme/borme-public-api."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Qué tipos de empresas se incluyen?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "La base de datos incluye cualquier entidad que se inscriba en el Registro Mercantil español y aparezca en el BORME. Cubre principalmente Sociedades Limitadas (S.L.), Sociedades Anónimas (S.A.) y otros tipos de entidades registradas."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Puedo buscar por nombre de administrador?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sí. Usa el conmutador de la parte superior de la búsqueda para alternar entre búsqueda de empresas y de personas. La búsqueda de personas te permite encontrar a alguien y ver todas las empresas con las que está vinculado."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Quién ha creado esto?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Mapa Societario está creado y operado por Nurnberg Consulting SL (NIF B86829538), una consultora de inteligencia corporativa con sede en Madrid y activa desde 2013. El mismo equipo opera también NC Data, una plataforma de investigación multipaís más amplia. Mapa Societario es un producto independiente y no está afiliado ni avalado por ningún organismo público."
+            }
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <main>
+      <div class="topbar">
+        <a href="/es">&larr; Mapa Societario</a>
+        <a href="/about.html" hreflang="en" lang="en">English</a>
+      </div>
+
+      <h1>Acerca de Mapa Societario</h1>
+      <p class="muted">Una herramienta libre y abierta para explorar la red societaria de España</p>
+
+      <h2>¿Qué es Mapa Societario?</h2>
+      <p>
+        Mapa Societario es una herramienta de visualización interactiva que mapea las relaciones entre
+        las empresas españolas y sus administradores, apoderados y representantes legales. Al buscar
+        cualquier empresa o cargo, los usuarios pueden ver al instante un grafo de red que muestra
+        cómo se conectan las entidades a través de administraciones compartidas, nombramientos y cargos.
+      </p>
+      <p>
+        La herramienta está pensada para periodistas, investigadores, inversores, profesionales del
+        derecho y cualquier persona interesada en entender la estructura de las redes societarias
+        españolas. Convierte datos densos del registro público en un grafo intuitivo y explorable. El
+        objetivo principal es poner esta información al alcance de todos, sin muros de pago ni registro,
+        y ofrecer una forma potente de descubrir conexiones entre las empresas y las personas que las dirigen.
+      </p>
+
+      <h2>¿De dónde proceden los datos?</h2>
+      <p>
+        Todos los datos proceden del <strong>BORME</strong> (Boletín Oficial del Registro Mercantil),
+        el boletín oficial del registro mercantil de España, publicado por la
+        <a href="https://www.boe.es/diario_borme/" target="_blank" rel="noopener">Agencia Estatal
+        Boletín Oficial del Estado</a>. El BORME publica a diario las constituciones de empresas,
+        los nombramientos y ceses de cargos, las fusiones, los cambios de domicilio, las modificaciones
+        de capital y otros asientos societarios legalmente obligatorios.
+      </p>
+      <p>
+        Analizamos cada publicación diaria del BORME, extraemos datos estructurados sobre las empresas
+        y sus cargos, y construimos una base de datos de grafo consultable con los resultados. Esto
+        significa que los datos que ves en Mapa Societario reflejan el registro público oficial de la
+        actividad mercantil española. Los datos se alojan en nuestro servidor en un centro de datos en Europa.
+      </p>
+      <p>
+        <strong>Atribución de la fuente:</strong> Mapa Societario se basa en datos de la
+        <a href="https://www.boe.es" target="_blank" rel="noopener">Agencia Estatal Boletín Oficial del Estado</a>,
+        reutilizados conforme a sus
+        <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion" target="_blank" rel="noopener">condiciones de reutilización</a>.
+        Transformamos, extraemos, reordenamos, combinamos y analizamos las publicaciones del BOE/BORME
+        para crear un servicio de búsqueda y grafo con valor añadido.
+      </p>
+
+      <h2>Información no oficial y verificación</h2>
+      <p>
+        Mapa Societario no es un servicio oficial, no está afiliado a la Agencia Estatal Boletín
+        Oficial del Estado y no está avalado ni supervisado por ningún organismo público. La
+        información mostrada se ofrece <strong>tal cual</strong>. Puede contener errores, omisiones,
+        confusiones de coincidencia, problemas de análisis o retrasos, ya que se genera a partir de
+        documentos de fuente pública mediante procesos automatizados.
+      </p>
+      <p>
+        Para cualquier asunto con relevancia jurídica, financiera o comercial, verifica siempre la
+        información en la edición oficial del <a href="https://www.boe.es/diario_borme/" target="_blank" rel="noopener">BORME</a>
+        y, cuando proceda, solicita certificaciones actualizadas, cuentas anuales u otros documentos
+        oficiales directamente al <strong>Registro Mercantil</strong> correspondiente.
+      </p>
+
+      <h2>¿Cómo funciona?</h2>
+      <p>
+        El proceso tras Mapa Societario consta de varias fases:
+      </p>
+      <ol>
+        <li>
+          <strong>Recopilación de datos</strong> &mdash; las publicaciones del BORME se obtienen a diario
+          del boletín oficial. Cada publicación contiene cientos de asientos societarios individuales
+          (los <em>actos</em>) organizados por provincia.
+        </li>
+        <li>
+          <strong>Análisis y extracción</strong> &mdash; usamos analizadores propios para extraer
+          información estructurada de cada asiento: nombres de empresas, nombres de cargos, tipos de
+          cargo (administrador, administrador único, consejero, secretario, etc.) y la naturaleza del
+          acto (nombramiento, cese, constitución, etc.).
+        </li>
+        <li>
+          <strong>Construcción del grafo</strong> &mdash; las entidades extraídas se enlazan en un grafo
+          donde empresas y cargos son nodos, y los cargos societarios forman las aristas que los conectan.
+          Esto permite recorrer la red: de una empresa a sus administradores, y de un administrador a
+          todas las empresas con las que está vinculado.
+        </li>
+        <li>
+          <strong>Indexación de búsqueda</strong> &mdash; los nombres de empresas y cargos se indexan
+          para un autocompletado rápido y una búsqueda aproximada, de modo que puedas encontrar
+          entidades incluso con consultas parciales o aproximadas.
+        </li>
+        <li>
+          <strong>Visualización</strong> &mdash; el front-end renderiza el grafo con un diseño dirigido
+          por fuerzas en tiempo real, permitiéndote expandir nodos, explorar conexiones y navegar la
+          red de forma interactiva.
+        </li>
+      </ol>
+
+      <h2>¿Qué puedes descubrir?</h2>
+      <p>
+        Mapa Societario ayuda a responder preguntas como:
+      </p>
+      <ul>
+        <li>¿Quiénes son los administradores y apoderados de una empresa concreta?</li>
+        <li>¿Qué otras empresas gestiona o administra un cargo determinado?</li>
+        <li>¿Están dos empresas aparentemente no relacionadas conectadas por administradores comunes?</li>
+        <li>¿Qué tamaño tiene la red societaria en torno a una persona o entidad concreta?</li>
+        <li>¿Qué cargos (administrador único, consejero, secretario, etc.) ostenta una persona?</li>
+      </ul>
+      <p>
+        Este tipo de análisis, a veces llamado mapeo de redes societarias o investigación de titularidad
+        real, se utiliza en due diligence, periodismo de investigación, lucha contra la corrupción e
+        investigación académica sobre gobierno corporativo.
+      </p>
+
+      <h2>Cobertura y limitaciones</h2>
+      <p>
+        La base de datos cubre empresas y cargos publicados en el BORME. Esto incluye la mayoría de las
+        sociedades españolas (<em>Sociedades Limitadas</em> y <em>Sociedades Anónimas</em>), así como
+        otros tipos de entidades que se inscriben en el registro mercantil.
+      </p>
+      <p>
+        Limitaciones importantes a tener en cuenta:
+      </p>
+      <ul>
+        <li>
+          Los datos reflejan lo publicado en el BORME. Puede haber un retraso entre un hecho societario
+          y su aparición en el boletín.
+        </li>
+        <li>
+          El análisis del texto del boletín público es intrínsecamente imperfecto. Aunque mejoramos los
+          analizadores de forma continua, pueden producirse errores ocasionales en la extracción de
+          entidades o en la clasificación de cargos.
+        </li>
+        <li>
+          La coincidencia de nombres de cargos entre asientos se basa en la normalización de cadenas.
+          En casos raros, dos personas distintas con nombres idénticos pueden confundirse, o la misma
+          persona puede aparecer con variantes ligeramente distintas del nombre. Además, ten en cuenta
+          que, si bien los nombres de empresa en España son únicos, los de las personas no lo son.
+          Hemos hecho todo lo posible por asignar correctamente cada cargo a su empresa exacta, pero la
+          falta de un identificador de persona en el boletín español hace que esto deba tenerse siempre presente.
+        </li>
+        <li>
+          La herramienta muestra relaciones extraídas de asientos públicos. No indica el estado actual:
+          un cargo que figura como nombrado puede haber cesado mediante un asiento que aún no hayamos procesado.
+        </li>
+      </ul>
+      <p>
+        Para información societaria autorizada y actualizada, consulta siempre el
+        <a href="https://www.boe.es/diario_borme/" target="_blank" rel="noopener">BORME oficial</a>
+        o el registro mercantil provincial correspondiente directamente.
+      </p>
+
+      <h2>Tecnología</h2>
+      <p>
+        Mapa Societario está construido con React y usa un motor de grafo dirigido por fuerzas para la
+        visualización de redes en tiempo real. La API del back-end sirve datos del grafo y sugerencias
+        de autocompletado desde un índice específico de asientos del BORME analizados. Todo el front-end
+        es transparente sobre sus fuentes de datos, y la documentación de la API pública está disponible en
+        <a href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener">GitHub</a>.
+      </p>
+
+      <h2>Libre y abierto</h2>
+      <p>
+        Mapa Societario es de uso gratuito, sin registro, sin cuenta y sin muro de pago. Creemos que los
+        datos del registro público deben ser accesibles y explorables por todo el mundo. Si te resulta
+        útil, puedes apoyar su desarrollo
+        <a href="https://buymeacoffee.com/anbrme" target="_blank" rel="noopener">invitándonos a un café</a>.
+      </p>
+
+      <h2>¿Quién gestiona Mapa Societario?</h2>
+      <p>
+        Mapa Societario es un producto de
+        <a href="https://nurnbergconsulting.com" target="_blank" rel="noopener"><strong>Nurnberg Consulting SL</strong></a>,
+        una consultora de inteligencia corporativa e investigación empresarial con sede en Madrid (España)
+        y activa desde 2013. La empresa (NIF B86829538) es la entidad legal tras este servicio y la que
+        factura a los clientes los productos de pago, como los informes due diligence.
+      </p>
+      <p>
+        Más allá de Mapa Societario, Nurnberg Consulting SL opera también
+        <a href="https://ncdata.eu" target="_blank" rel="noopener"><strong>NC Data</strong></a>,
+        una plataforma de investigación completa pensada para usuarios profesionales. NC Data cubre
+        empresas de España, Reino Unido, Francia, Suiza e Italia, y ofrece resolución de entidades más
+        profunda, vinculación transfronteriza y flujos de due diligence avanzados. Además, NC Data no se
+        limita a la due diligence corporativa: incluye herramientas de investigación únicas y de
+        vanguardia como <strong>Document Studio</strong>, que permite ajustar la IA para el análisis
+        sofisticado de documentos complejos y con mucho contexto, desde contratos y escritos judiciales
+        hasta informes de cientos de páginas. Si necesitas investigaciones más allá de los datos del
+        registro español, o un análisis documental asistido por IA más profundo, NC Data es la herramienta adecuada.
+      </p>
+      <p>
+        Mapa Societario es deliberadamente ligero y específico: es la mejor forma de explorar rápidamente
+        el registro mercantil español y de pedir informes due diligence económicos y sueltos sobre
+        empresas españolas, sin suscripciones ni creación de cuenta. Empresa real, profesionales reales,
+        responsabilidad real.
+      </p>
+
+      <h2 id="faq">Preguntas frecuentes</h2>
+
+      <h3>¿Qué es el BORME?</h3>
+      <p>
+        El BORME (Boletín Oficial del Registro Mercantil) es el boletín oficial de España para los
+        anuncios del registro mercantil. Publicado a diario por el Estado, recoge hechos societarios
+        como constituciones de empresas, nombramientos y ceses de cargos, fusiones, cambios de capital
+        y disoluciones. Es la fuente pública de referencia de los asientos mercantiles españoles.
+      </p>
+
+      <h3>¿Con qué frecuencia se actualizan los datos?</h3>
+      <p>
+        Procesamos las nuevas publicaciones del BORME a medida que se publican, normalmente en días
+        laborables. El índice de búsqueda se reconstruye periódicamente para incorporar los datos más recientes.
+      </p>
+
+      <h3>¿Los datos son precisos?</h3>
+      <p>
+        Los datos proceden de publicaciones oficiales del BORME y se extraen mediante procesos
+        automatizados. Aunque procuramos la máxima exactitud, el análisis automático del texto del
+        boletín puede producir errores ocasionales. El servicio no es oficial y se ofrece tal cual.
+        Contrasta siempre con el BORME oficial y, para decisiones críticas, obtén información
+        actualizada directamente del Registro Mercantil.
+      </p>
+
+      <h3>¿Necesito una cuenta para usarlo?</h3>
+      <p>
+        No. Mapa Societario es completamente gratuito y no requiere registro ni inicio de sesión.
+      </p>
+
+      <h3>¿Puedo acceder a los datos por API?</h3>
+      <p>
+        Sí. Ofrecemos una API pública para desarrolladores e investigadores. La documentación y los
+        ejemplos están disponibles en
+        <a href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener">github.com/anbrme/borme-public-api</a>.
+      </p>
+
+      <h3>¿Qué tipos de empresas se incluyen?</h3>
+      <p>
+        La base de datos incluye cualquier entidad que se inscriba en el registro mercantil español y
+        aparezca en el BORME. Cubre principalmente Sociedades Limitadas (S.L.), Sociedades Anónimas (S.A.)
+        y otros tipos de entidades registradas.
+      </p>
+
+      <h3>¿Qué significan las conexiones del grafo?</h3>
+      <p>
+        Cada conexión (arista) del grafo representa un cargo societario que vincula a una persona con una
+        empresa. Los cargos incluyen administrador único, administrador solidario o mancomunado,
+        consejero, secretario, presidente y otros, tal y como se publican en el BORME.
+      </p>
+
+      <h3>¿Puedo buscar por nombre de administrador?</h3>
+      <p>
+        Sí. Usa el conmutador de la parte superior de la búsqueda para alternar entre búsqueda de
+        empresas y de personas. La búsqueda de personas te permite encontrar a alguien y ver todas las
+        empresas con las que está vinculado.
+      </p>
+
+      <h3>¿Por qué una empresa o persona podría no aparecer en los resultados?</h3>
+      <p>
+        Si una entidad no aparece, puede que aún no esté en nuestro conjunto de datos analizado, o que el
+        nombre esté escrito de forma distinta en el asiento del BORME. Prueba con grafías alternativas o
+        términos de búsqueda más cortos. El índice de búsqueda se reconstruye periódicamente para
+        incluir nuevos datos.
+      </p>
+
+      <h3>¿Quién ha creado esto?</h3>
+      <p>
+        Mapa Societario está creado y operado por
+        <a href="https://nurnbergconsulting.com" target="_blank" rel="noopener">Nurnberg Consulting SL</a>
+        (NIF B86829538), una consultora de inteligencia corporativa con sede en Madrid y activa desde 2013.
+        El mismo equipo opera también <a href="https://ncdata.eu" target="_blank" rel="noopener">NC Data</a>,
+        una plataforma de investigación multipaís más amplia. Mapa Societario es un producto independiente
+        y no está afiliado ni avalado por ningún organismo público.
+      </p>
+
+      <footer>
+        <p style="margin: 0 0 0.75rem 0;">
+          <a href="/es">Volver a Mapa Societario</a>
+          <a href="/privacy.html">Privacidad y cookies</a>
+          <a href="/terms.html">Términos</a>
+          <a href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener">Documentación API</a>
+          <a href="https://ncdata.eu" target="_blank" rel="noopener">NC Data</a>
+        </p>
+        <p style="margin: 0; font-size: 0.78rem; color: #7a8599;">
+          &copy; <script>document.write(new Date().getFullYear());</script> Mapa Societario &middot; Un producto de
+          <a href="https://nurnbergconsulting.com" target="_blank" rel="noopener">Nurnberg Consulting SL</a>
+          &middot; NIF B86829538 &middot; Madrid, España
+        </p>
+        <p style="margin: 0.75rem 0 0; font-size: 0.78rem; color: #7a8599;">
+          Basado en datos de la
+          <a href="https://www.boe.es" target="_blank" rel="noopener">Agencia Estatal Boletín Oficial del Estado</a>.
+          Este servicio no es oficial ni está avalado por la AEBOE.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

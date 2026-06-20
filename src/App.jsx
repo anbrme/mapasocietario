@@ -6,6 +6,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
+import { siteNav, isHtmlNav } from './utils/siteNav';
 import {
   getBrowserLanguage,
   getStoredSearchLanguage,
@@ -69,17 +70,24 @@ export default function App() {
   // Secondary navigation for the workspace, so /app is self-sufficient: a
   // returning visitor (redirected past the guide) can still reach the guide,
   // reports, pricing, FAQ and the legal pages without leaving the graph.
-  // SPA routes use navigate(); the static .html pages open in a new tab.
+  // Links are language-aware (siteNav) and all open in the SAME tab — SPA
+  // routes via navigate(), static .html pages via a full-page load.
+  const nav = siteNav(language);
+  const go = (url) => {
+    setMenuAnchor(null);
+    if (isHtmlNav(url)) window.location.assign(url);
+    else navigate(url);
+  };
   const navItems = [
-    { label: copy.menu.guide, action: () => navigate('/?guide=1') },
-    { label: copy.menu.reports, action: () => navigate('/due-diligence') },
-    { label: copy.menu.pricing, action: () => navigate('/pricing') },
+    { label: copy.menu.guide, url: nav.guide },
+    { label: copy.menu.reports, url: nav.reports },
+    { label: copy.menu.pricing, url: nav.pricing },
     null,
-    { label: copy.menu.about, action: () => window.open('/about.html', '_blank', 'noopener') },
-    { label: copy.menu.faq, action: () => window.open('/about.html#faq', '_blank', 'noopener') },
+    { label: copy.menu.about, url: nav.about },
+    { label: copy.menu.faq, url: nav.faq },
     null,
-    { label: copy.menu.terms, action: () => window.open('/terms.html', '_blank', 'noopener') },
-    { label: copy.menu.privacy, action: () => window.open('/privacy.html', '_blank', 'noopener') },
+    { label: copy.menu.terms, url: nav.terms },
+    { label: copy.menu.privacy, url: nav.privacy },
   ];
 
   // /empresa pages and the landing demo link here as /app?search=<company>.
@@ -184,7 +192,7 @@ export default function App() {
               ) : (
                 <MenuItem
                   key={item.label}
-                  onClick={() => { setMenuAnchor(null); item.action(); }}
+                  onClick={() => go(item.url)}
                   sx={{ fontSize: '0.85rem' }}
                 >
                   {item.label}

@@ -119,8 +119,8 @@ export const LANDING_COPY = {
     },
     topLinks: [
       { label: 'Due diligence de empresas españolas', href: '/spanish-company-due-diligence' },
-      { label: 'Precios', href: '/pricing' },
-      { label: 'Acerca de', href: '/about.html' },
+      { label: 'Precios', href: '/pricing?lang=es' },
+      { label: 'Acerca de', href: '/about-es.html' },
       { label: 'Términos', href: '/terms.html' },
       { label: 'Privacidad', href: '/privacy.html' },
       { label: 'English', href: '/', alignRight: true },

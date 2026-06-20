@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
 import { LANDING_COPY } from './landingCopy';
+import { siteNav } from '../utils/siteNav';
 
 const SITE_URL = 'https://mapasocietario.es';
 
@@ -88,7 +89,10 @@ export default function LandingPage({ lang = 'en' }) {
   const [demoImgOk, setDemoImgOk] = React.useState(true);
 
   const canonical = lang === 'es' ? `${SITE_URL}/es/` : `${SITE_URL}/`;
-  const openGraph = () => navigate('/app');
+  const nav = siteNav(lang);
+  const appHref = lang === 'es' ? '/app?lang=es' : '/app';
+  const demoHref = `/app?search=${encodeURIComponent(DEMO_COMPANY)}${lang === 'es' ? '&lang=es' : ''}`;
+  const openGraph = () => navigate(appHref);
 
   // Returning visitor: render nothing while the effect redirects to /app.
   if (redirecting) return null;
@@ -191,7 +195,7 @@ export default function LandingPage({ lang = 'en' }) {
                     mapasocietario.es/app
                   </Typography>
                 </Box>
-                <Box component="a" href={`/app?search=${encodeURIComponent(DEMO_COMPANY)}`} sx={{ display: 'block' }}>
+                <Box component="a" href={demoHref} sx={{ display: 'block' }}>
                   {demoImgOk ? (
                     <Box
                       component="img"
@@ -217,7 +221,7 @@ export default function LandingPage({ lang = 'en' }) {
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                 <Typography variant="caption" sx={{ color: 'text.disabled' }}>{copy.howItWorks.demoCaption}</Typography>
-                <Link href={`/app?search=${encodeURIComponent(DEMO_COMPANY)}`} variant="caption" sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                <Link href={demoHref} variant="caption" sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
                   {copy.howItWorks.demoCta}
                 </Link>
               </Box>
@@ -264,7 +268,7 @@ export default function LandingPage({ lang = 'en' }) {
                   variant="contained"
                   size="small"
                   startIcon={<DescriptionIcon />}
-                  onClick={() => navigate('/due-diligence')}
+                  onClick={() => navigate(nav.reports)}
                   sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, bgcolor: 'warning.main', color: '#1a1205', '&:hover': { bgcolor: 'warning.dark' } }}
                 >
                   {copy.reports.dd.buyCta}
@@ -361,13 +365,13 @@ export default function LandingPage({ lang = 'en' }) {
             {copy.footer.basedOnSuffix}
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Link href="/due-diligence" variant="caption" sx={{ fontSize: '0.65rem', color: 'warning.light', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.reports} variant="caption" sx={{ fontSize: '0.65rem', color: 'warning.light', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.ddReports}
             </Link>
-            <Link href="/dashboard" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.dashboard} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.dashboard}
             </Link>
-            <Link href="/about.html" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.about} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.about}
             </Link>
             <Link href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
@@ -376,10 +380,10 @@ export default function LandingPage({ lang = 'en' }) {
             <Link href="https://ncdata.eu" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.ncdata}
             </Link>
-            <Link href="/privacy.html" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.privacy} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.privacy}
             </Link>
-            <Link href="/terms.html" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.terms} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.terms}
             </Link>
           </Box>
