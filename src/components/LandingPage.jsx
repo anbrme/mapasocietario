@@ -194,7 +194,7 @@ export default function LandingPage({ lang = 'en' }) {
                       src="/graph-demo.png"
                       alt={copy.howItWorks.demoAlt}
                       onError={() => setDemoImgOk(false)}
-                      sx={{ display: 'block', width: '100%', height: 'auto', aspectRatio: '16 / 9', objectFit: 'cover' }}
+                      sx={{ display: 'block', width: '100%', height: 'auto' }}
                     />
                   ) : (
                     <Box
