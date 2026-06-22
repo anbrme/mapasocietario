@@ -38,7 +38,7 @@ const COPY = {
     lineItems: [
       {
         label: 'Company due diligence report',
-        sub: 'AI analysis, corporate structure, full officer history, capital events, BOE sanctions checks, red flags. Delivered as a PDF.',
+        sub: 'AI analysis, corporate structure, full officer history, capital events, traceability of address and registry changes, BOE sanctions checks, red flags. Delivered as a PDF.',
         price: '€22.50',
       },
       {
@@ -81,7 +81,7 @@ const COPY = {
     lineItems: [
       {
         label: 'Informe due diligence de empresa',
-        sub: 'Análisis por IA, estructura societaria, historial completo de administradores, eventos de capital, comprobación de sanciones del BOE y señales de alerta. Entregado en PDF.',
+        sub: 'Análisis por IA, estructura societaria, historial completo de administradores, trazabilidad de cambios de domicilio y registro, eventos de capital, comprobación de sanciones del BOE y señales de alerta. Entregado en PDF.',
         price: '22,50 €',
       },
       {

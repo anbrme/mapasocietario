@@ -13,8 +13,31 @@ import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
 import { LANDING_COPY } from './landingCopy';
 import { siteNav } from '../utils/siteNav';
+import { statsService } from '../services/statsService';
 
 const SITE_URL = 'https://mapasocietario.es';
+
+// Maps the copy item keys to /bormes/stats/overview fields.
+const STAT_FIELD = {
+  companies: 'total_companies',
+  events: 'total_events',
+  officerChanges: 'officer_changes',
+  formations: 'constitutions',
+};
+
+// Static fallback so the band renders instantly (and survives an API outage)
+// with values consistent with the homepage structured data. Refined live on
+// mount. Sourced from /bormes/stats/overview.
+const STAT_FALLBACK = {
+  total_companies: 3130331,
+  total_events: 9478088,
+  officer_changes: 6363610,
+  constitutions: 1711862,
+};
+
+// Floor to one decimal in millions — matches the "3.1M / 9.4M" rounding used in
+// the structured data and prerendered content, so the figures never disagree.
+const fmtMillions = (n) => `${(Math.floor(n / 1e5) / 10).toFixed(1)}M`;
 
 // Company shown in the demo frame. Must match whatever is captured in
 // public/graph-demo.png so the click-through lands on the same graph.
@@ -87,6 +110,17 @@ export default function LandingPage({ lang = 'en' }) {
   // Never render a broken image: if public/graph-demo.png is missing, fall
   // back to a tasteful placeholder that still links into the live graph.
   const [demoImgOk, setDemoImgOk] = React.useState(true);
+
+  // Live coverage figures — start from the static fallback (instant render, no
+  // layout shift) and refine from the overview endpoint when it resolves.
+  const [stats, setStats] = React.useState(STAT_FALLBACK);
+  React.useEffect(() => {
+    let alive = true;
+    statsService.getOverview()
+      .then((d) => { if (alive && d) setStats((prev) => ({ ...prev, ...d })); })
+      .catch(() => { /* keep the static fallback */ });
+    return () => { alive = false; };
+  }, []);
 
   const canonical = lang === 'es' ? `${SITE_URL}/es/` : `${SITE_URL}/`;
   const nav = siteNav(lang);
@@ -220,6 +254,29 @@ export default function LandingPage({ lang = 'en' }) {
             </Box>
           </Box>
         </Section>
+
+        {/* ---- STATS / BY THE NUMBERS ---- */}
+        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(25,118,210,0.04)' }}>
+          <Section sx={{ py: { xs: 4, sm: 5 } }}>
+            <SectionHeading heading={copy.stats.heading} sub={copy.stats.sub} />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' }, gap: { xs: 2.5, sm: 2 } }}>
+              {copy.stats.items.map((item) => (
+                <Box key={item.key} sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                  <Typography component="div" sx={{ fontWeight: 700, letterSpacing: '-0.02em', color: 'primary.light', fontSize: { xs: '1.85rem', sm: '2.25rem' }, lineHeight: 1.05 }}>
+                    {fmtMillions(stats[STAT_FIELD[item.key]] ?? STAT_FALLBACK[STAT_FIELD[item.key]])}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4, display: 'block', mt: 0.5 }}>
+                    {item.label}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+            <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', mt: 3, letterSpacing: '0.02em' }}>
+              {copy.stats.sinceLabel}{' '}
+              <Box component="span" sx={{ color: 'text.secondary', fontWeight: 700 }}>{copy.stats.sinceValue}</Box>
+            </Typography>
+          </Section>
+        </Box>
 
         {/* ---- HOW IT WORKS ---- */}
         <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(255,255,255,0.015)' }}>
