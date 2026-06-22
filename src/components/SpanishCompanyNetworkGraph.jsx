@@ -68,6 +68,8 @@ import {
   EventBusy as EventBusyIcon,
   EventAvailable as EventAvailableIcon,
   FactCheck as FactCheckIcon,
+  PictureAsPdf as PictureAsPdfIcon,
+  VerifiedUser as VerifiedUserIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import HubIcon from '@mui/icons-material/Hub';
@@ -271,6 +273,10 @@ const SEARCH_COPY = {
     markResigned: 'Mark as ceased',
     markActive: 'Mark as active',
     buyDueDiligence: 'Buy Due Diligence',
+    buyDueDiligencePriced: 'Get the full report · EUR 22.50',
+    fullReportAdds: 'The full report adds an AI risk score, sanctions & PEP screening, full officer history and red-flag analysis.',
+    previewSeeSample: 'See a sample report (PDF)',
+    previewGuarantee: 'Data-quality guarantee — if anything is wrong, we re-issue it free or refund you within 7 days.',
     hideNodeOnly: 'Hide this node only',
     hideNodeRelations: 'Hide node + connected',
     deleteNode: 'Delete node',
@@ -493,6 +499,10 @@ const SEARCH_COPY = {
     markResigned: 'Marcar como cesado',
     markActive: 'Marcar como activo',
     buyDueDiligence: 'Comprar Due Diligence',
+    buyDueDiligencePriced: 'Obtener el informe completo · 22,50 €',
+    fullReportAdds: 'El informe completo añade una puntuación de riesgo por IA, cruce de sanciones y PEP, historial completo de administradores y análisis de señales de alerta.',
+    previewSeeSample: 'Ver un informe de ejemplo (PDF)',
+    previewGuarantee: 'Garantía de calidad de datos: si algo es incorrecto, lo reemitimos gratis o te reembolsamos en un plazo de 7 días.',
     hideNodeOnly: 'Ocultar solo nodo',
     hideNodeRelations: 'Ocultar nodo + conectados',
     deleteNode: 'Eliminar nodo',
@@ -8044,23 +8054,65 @@ const SpanishCompanyNetworkGraph = ({
               );
             })()}
           </DialogContent>
-          <DialogActions>
-            {previewData?.type === 'company' && (
-              <Button
-                variant="outlined"
-                color="primary"
-                startIcon={<DescriptionIcon />}
-                onClick={() => {
-                  setPreviewOpen(false);
-                  setDdCheckoutCompany(previewNodeName);
-                  setDdCheckoutOpen(true);
+          {previewData?.type === 'company' ? (
+            <Box sx={{ px: 3, pb: 2, pt: 1 }}>
+              {/* What the paid report adds over this preview — the value gap, stated plainly. */}
+              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.5, mb: 1 }}>
+                {text.fullReportAdds}
+              </Typography>
+              {/* Data-quality guarantee — surfaced here, at the decision point, not only at checkout. */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 1,
+                  p: 1.25,
+                  mb: 1.5,
+                  borderRadius: 1.5,
+                  bgcolor: 'rgba(102,187,106,0.08)',
+                  border: '1px solid rgba(102,187,106,0.25)',
                 }}
               >
-                {text.buyDueDiligence}
-              </Button>
-            )}
-            <Button onClick={() => setPreviewOpen(false)}>{text.close}</Button>
-          </DialogActions>
+                <VerifiedUserIcon sx={{ fontSize: 18, color: 'success.light', mt: '1px', flexShrink: 0 }} />
+                <Typography variant="caption" sx={{ color: 'success.light', fontSize: '0.74rem', lineHeight: 1.45 }}>
+                  {text.previewGuarantee}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  startIcon={<DescriptionIcon />}
+                  onClick={() => {
+                    setPreviewOpen(false);
+                    setDdCheckoutCompany(previewNodeName);
+                    setDdCheckoutOpen(true);
+                  }}
+                  sx={{ textTransform: 'none', fontWeight: 700, color: '#000' }}
+                >
+                  {text.buyDueDiligencePriced}
+                </Button>
+                {/* Let buyers see exactly what they're paying for before they commit. */}
+                <Button
+                  component="a"
+                  href="/sample-dd-report.pdf"
+                  target="_blank"
+                  rel="noopener"
+                  startIcon={<PictureAsPdfIcon />}
+                  sx={{ textTransform: 'none', color: 'text.secondary' }}
+                >
+                  {text.previewSeeSample}
+                </Button>
+                <Button onClick={() => setPreviewOpen(false)} sx={{ ml: { xs: 0, sm: 'auto' } }}>
+                  {text.close}
+                </Button>
+              </Box>
+            </Box>
+          ) : (
+            <DialogActions>
+              <Button onClick={() => setPreviewOpen(false)}>{text.close}</Button>
+            </DialogActions>
+          )}
         </Dialog>
 
         {/* Officer Timeline Dialog */}
