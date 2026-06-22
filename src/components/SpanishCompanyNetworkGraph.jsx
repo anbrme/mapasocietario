@@ -174,6 +174,7 @@ const SEARCH_COPY = {
     officersPerCompany: 'Officers/company',
     searchCompanyPlaceholder: 'Search company...',
     searchOfficerPlaceholder: 'Search officer...',
+    searchUnifiedPlaceholder: 'Search a company or person…',
     search: 'Search',
     dueDiligence: 'Due Diligence',
     relationshipReportTooltip: 'Relationship report for visible companies (free)',
@@ -400,6 +401,7 @@ const SEARCH_COPY = {
     officersPerCompany: 'Cargos/empresa',
     searchCompanyPlaceholder: 'Buscar empresa...',
     searchOfficerPlaceholder: 'Buscar directivo...',
+    searchUnifiedPlaceholder: 'Busca una empresa o persona…',
     search: 'Buscar',
     dueDiligence: 'Due Diligence',
     relationshipReportTooltip: 'Informe de relaciones sobre las empresas visibles (gratis)',
@@ -1795,42 +1797,40 @@ const SpanishCompanyNetworkGraph = ({
         return;
       }
 
-      const currentSearchType = searchTypeRef.current;
       setAutocompleteLoading(true);
       try {
-        let results = [];
+        // Unified search: query companies AND people at once so the user never
+        // has to pre-declare which they want. Each suggestion already carries its
+        // own `type` (company / officer / sole_shareholder), so the dropdown and
+        // the dispatch can route per-item. Failures on one side don't sink the other.
+        const [companyResults, officerResults] = await Promise.all([
+          spanishCompaniesService.autocompleteCompanies(value, { limit: 20 }).catch(() => ({ suggestions: [] })),
+          spanishCompaniesService.autocompleteOfficers(value, { limit: 8 }).catch(() => ({ suggestions: [] })),
+        ]);
 
-        if (currentSearchType === 'company') {
-          const companyResults = await spanishCompaniesService.autocompleteCompanies(value, {
-            limit: 10,
-          });
-          // Guard against stale results if searchType changed during await
-          if (searchTypeRef.current !== currentSearchType) return;
-          const suggestions = companyResults.suggestions || [];
-          results = suggestions.map(c => ({
-            label: c.label || c.name || c.company_name,
-            value: c.value || c.name || c.company_name,
-            name: c.name || c.company_name,
-            type: 'company',
-            cif: c.cif,
-            ...c,
-          }));
-        } else {
-          const officerResults = await spanishCompaniesService.autocompleteOfficers(value, {
-            limit: 10,
-          });
-          // Guard against stale results if searchType changed during await
-          if (searchTypeRef.current !== currentSearchType) return;
-          const suggestions = officerResults.suggestions || [];
-          results = suggestions.map(o => ({
-            label: o.label || o.name,
-            value: o.value || o.name,
-            name: o.name,
-            type: 'officer',
-            company_count: o.company_count,
-            ...o,
-          }));
-        }
+        const companySuggestions = companyResults.suggestions || [];
+
+        const companyItems = companySuggestions.map(c => ({
+          label: c.label || c.name || c.company_name,
+          value: c.value || c.name || c.company_name,
+          name: c.name || c.company_name,
+          type: 'company',
+          cif: c.cif,
+          ...c,
+        }));
+        const officerItems = (officerResults.suggestions || []).map(o => ({
+          label: o.label || o.name,
+          value: o.value || o.name,
+          name: o.name,
+          type: 'officer',
+          company_count: o.company_count,
+          ...o,
+        }));
+
+        // Keep both modalities visible: cap each side so a flood of company
+        // matches can't bury the people (and vice-versa). Companies lead since
+        // they're the more common intent.
+        const results = [...companyItems.slice(0, 14), ...officerItems.slice(0, 6)];
 
         setAutocompleteOptions(results);
 
@@ -1840,7 +1840,6 @@ const SpanishCompanyNetworkGraph = ({
           const matches = await Promise.all(
             officerOptions.map(o => findDeputyMatch(o.name).catch(() => null))
           );
-          if (searchTypeRef.current !== currentSearchType) return;
           setAutocompleteOptions(prev => {
             if (prev !== results) return prev;
             return prev.map(opt => {
@@ -1856,7 +1855,7 @@ const SpanishCompanyNetworkGraph = ({
         setAutocompleteLoading(false);
       }
     }, 300),
-    [] // No deps needed - uses ref for searchType
+    [] // No deps needed
   );
 
   // Clean up debounce on unmount
@@ -5665,11 +5664,53 @@ const SpanishCompanyNetworkGraph = ({
     document.addEventListener('mouseup', handleUp, true);
   }, []);
 
-  // Handle key down for search
-  const handleKeyDown = e => {
-    if (e.key === 'Enter') {
-      handleSearch();
+  // Apply a chosen autocomplete suggestion. Search is selection-only: we always
+  // act on a real, specific database entity here, never a free-text query (which
+  // used to dump an arbitrary relevance-capped slice of companies onto the graph).
+  // Each option carries its own `type`, so we route per-item — companies, people
+  // and sole-shareholders all dispatch correctly without a mode toggle.
+  const applySelectedOption = value => {
+    if (!value || typeof value !== 'object') return;
+    setSelectedAutocomplete(value);
+    // Display: new/current name; Search: canonical key (original_name for aliases).
+    // The profile is stored under the ORIGINAL name when the company was renamed,
+    // so downstream lookups must use that (e.g. "CACTUS CAPITAL" → search
+    // "EJEVAERN CONSULTING" to find the actual profile).
+    const displayName = value.name || value.company_name || value.value || '';
+
+    // Sole shareholder selection: plot the shareholder node and stage its
+    // participadas behind a confirmation pill. Avoids N silent parallel v3
+    // lookups on every selection, and shows the true total.
+    const isSoleShareholderCorporate = value.type === 'sole_shareholder';
+    const isSoleShareholderIndividual =
+      value.type === 'officer_sole_shareholder' || value.is_sole_shareholder;
+    if (
+      (isSoleShareholderCorporate || isSoleShareholderIndividual) &&
+      (value.owns_total > 0 || (Array.isArray(value.owns) && value.owns.length > 0))
+    ) {
+      const entityKind = isSoleShareholderCorporate ? 'company' : 'person';
+      const entityId = plotBareShareholderNode(displayName, entityKind);
+      const total = value.owns_total || value.owns?.length || 0;
+      setPendingSubsidiaries({ entityName: displayName, entityId, entityKind, count: total });
+      setSearchQuery('');
+      return;
     }
+
+    // Person selection → officer search (find every company they're linked to).
+    if (value.type === 'officer') {
+      const officerName = value.value || value.name || displayName;
+      setSearchQuery(displayName);
+      handleSearch(officerName, false, 'officer', null);
+      return;
+    }
+
+    // Company selection → bind to the exact legal entity via its stable id
+    // (group_key) so an ambiguous name resolves to the right doc.
+    const searchKey = value.is_alias
+      ? (value.original_name || value.value || displayName)
+      : (value.company_name_normalized || value.value || displayName);
+    setSearchQuery(displayName);
+    handleSearch(searchKey, true, 'company', value.id || null);
   };
 
   // Shared search panel content
@@ -5690,33 +5731,9 @@ const SpanishCompanyNetworkGraph = ({
         </Alert>
       )}
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>{text.type}</InputLabel>
-          <Select
-            value={searchType}
-            onChange={e => {
-              setSearchType(e.target.value);
-              setAutocompleteOptions([]);
-              setSelectedAutocomplete(null);
-              setLastSearchContext(null);
-            }}
-            label={text.type}
-          >
-            <MenuItem value="company">
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <BusinessIcon sx={{ mr: 1, fontSize: 16 }} />
-                {text.company}
-              </Box>
-            </MenuItem>
-            <MenuItem value="officer">
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <PersonIcon sx={{ mr: 1, fontSize: 16 }} />
-                {text.officer}
-              </Box>
-            </MenuItem>
-          </Select>
-        </FormControl>
- 
+        {/* Company/officer toggle removed: the unified autocomplete returns both,
+            so there's nothing to pre-select. Search is driven entirely by picking
+            a real suggestion. */}
         <FormControl size="small" sx={{ minWidth: 110 }}>
           <InputLabel>{text.companies}</InputLabel>
           <Select
@@ -5749,6 +5766,7 @@ const SpanishCompanyNetworkGraph = ({
 
         <Autocomplete
           freeSolo
+          autoHighlight
           options={autocompleteOptions}
           loading={autocompleteLoading}
           inputValue={searchQuery}
@@ -5767,45 +5785,9 @@ const SpanishCompanyNetworkGraph = ({
           }}
           onChange={(event, value) => {
             if (value && typeof value === 'object') {
-              setSelectedAutocomplete(value);
-              // Display: new/current name; Search: canonical key (original_name for aliases).
-              // The profile is stored under the ORIGINAL name when the company was renamed,
-              // so downstream lookups must use that (e.g. "CACTUS CAPITAL" → search
-              // "EJEVAERN CONSULTING" to find the actual profile).
-              const displayName = value.name || value.company_name || value.value || '';
-
-              // Sole shareholder selection: plot the shareholder node and stage
-              // its participadas behind a confirmation pill. Avoids N silent
-              // parallel v3 lookups on every selection, and shows the true total
-              // (not just the autocomplete-capped sample in value.owns).
-              const isSoleShareholderCorporate = value.type === 'sole_shareholder';
-              const isSoleShareholderIndividual =
-                value.type === 'officer_sole_shareholder' || value.is_sole_shareholder;
-              if (
-                (isSoleShareholderCorporate || isSoleShareholderIndividual) &&
-                (value.owns_total > 0 || (Array.isArray(value.owns) && value.owns.length > 0))
-              ) {
-                const entityKind = isSoleShareholderCorporate ? 'company' : 'person';
-                const entityId = plotBareShareholderNode(displayName, entityKind);
-                const total = value.owns_total || value.owns?.length || 0;
-                setPendingSubsidiaries({
-                  entityName: displayName,
-                  entityId,
-                  entityKind,
-                  count: total,
-                });
-                setSearchQuery('');
-                return;
-              }
-
-              const searchKey = value.is_alias
-                ? (value.original_name || value.value || displayName)
-                : (value.company_name_normalized || value.value || displayName);
-              setSearchQuery(displayName);
-              // Thread the option's stable `id` (group_key) so the v3 fetch binds
-              // to the correct legal entity instead of relying on fuzzy/exact name.
-              handleSearch(searchKey, value.type === 'company', null, value.id || null);
+              applySelectedOption(value);
             } else if (typeof value === 'string') {
+              // Free-typed text (freeSolo) is not a real entity — never search it.
               setSearchQuery(value);
               setSelectedAutocomplete(null);
             }
@@ -5921,8 +5903,7 @@ const SpanishCompanyNetworkGraph = ({
             <TextField
               {...params}
               size="small"
-              placeholder={searchType === 'company' ? text.searchCompanyPlaceholder : text.searchOfficerPlaceholder}
-              onKeyDown={handleKeyDown}
+              placeholder={text.searchUnifiedPlaceholder}
               InputProps={{
                 ...params.InputProps,
                 startAdornment: (
@@ -5946,14 +5927,13 @@ const SpanishCompanyNetworkGraph = ({
 
         <Button
           variant="contained"
-          onClick={() => handleSearch()}
-          disabled={isSearching || !searchQuery.trim()}
+          onClick={() => autocompleteOptions.length > 0 && applySelectedOption(autocompleteOptions[0])}
+          disabled={isSearching || autocompleteOptions.length === 0}
           startIcon={isSearching ? <CircularProgress size={16} /> : <SearchIcon />}
         >
           {text.search}
         </Button>
-        {graphData.nodes.length > 0 &&
-          (searchType === 'company' || (primarySubject && correctionsCount > 0)) && (
+        {graphData.nodes.some(n => n.type === 'company' || n.type === 'spanish-company-group') && (
           <Button
             variant="contained"
             color="warning"
@@ -5967,12 +5947,15 @@ const SpanishCompanyNetworkGraph = ({
               boxShadow: '0 2px 10px rgba(255,167,38,0.35)',
             }}
             onClick={() => {
-              // Prefer the sticky subject when it has corrections, so the Custom
-              // option is offered; otherwise fall back to the latest search.
+              // DD is per-company. Prefer the sticky subject (always a company,
+              // and may carry corrections for the Custom option); fall back to the
+              // latest company search — never an officer query.
+              const lastCompanyQuery =
+                lastSearchContext?.searchType === 'company' ? lastSearchContext.query : '';
               const name = (
                 (correctionsCount > 0 && primarySubject)
                   ? primarySubject
-                  : (lastSearchContext?.query || searchQuery || primarySubject || '')
+                  : (primarySubject || lastCompanyQuery || '')
               ).trim();
               if (!name) return;
               setDdCheckoutCompany(name);
