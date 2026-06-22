@@ -1,5 +1,8 @@
 import React from 'react';
-import { Box, Typography, Button, Link, Paper, Chip } from '@mui/material';
+import { Box, Typography, Button, Link, Paper, Chip, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ApartmentIcon from '@mui/icons-material/Apartment';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import SearchIcon from '@mui/icons-material/Search';
 import TouchAppIcon from '@mui/icons-material/TouchApp';
@@ -14,6 +17,7 @@ import LegalDisclaimer from './LegalDisclaimer';
 import { LANDING_COPY } from './landingCopy';
 import { siteNav } from '../utils/siteNav';
 import { statsService } from '../services/statsService';
+import { openListedCompanies } from '../services/listedCompaniesNav';
 
 const SITE_URL = 'https://mapasocietario.es';
 
@@ -213,6 +217,27 @@ export default function LandingPage({ lang = 'en' }) {
                   {copy.hero.openCta}
                 </Button>
               </Box>
+              {/* Secondary destinations that the search-first redesign had buried —
+                  prominent under the CTA but not competing with it. */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, flexWrap: 'wrap', columnGap: 1.5, rowGap: 0.5, mt: 2.5 }}>
+                <Link
+                  component="button"
+                  type="button"
+                  onClick={() => openListedCompanies(lang)}
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.92rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  <ApartmentIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.listed}
+                </Link>
+                <Box component="span" sx={{ color: 'text.disabled', display: { xs: 'none', sm: 'inline' } }}>·</Box>
+                <Link
+                  component="button"
+                  type="button"
+                  onClick={() => navigate(nav.dashboard)}
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.92rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  <BarChartIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.dashboard}
+                </Link>
+              </Box>
               <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, gap: 0.5, color: 'text.disabled', mt: 2 }}>
                 <BookmarkBorderIcon sx={{ fontSize: 15 }} /> {copy.hero.bookmarkTip}
               </Typography>
@@ -350,6 +375,35 @@ export default function LandingPage({ lang = 'en' }) {
           <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', mt: 2.5, lineHeight: 1.6 }}>
             {copy.reports.howToBuy}
           </Typography>
+        </Section>
+
+        {/* ---- FAQ ---- */}
+        {/* Visible Q&A that backs the homepage FAQPage structured data (the schema
+            text matches these answers), so it stays valid after React hydration. */}
+        <Section>
+          <SectionHeading heading={copy.faq.heading} />
+          <Box sx={{ maxWidth: 820 }}>
+            {copy.faq.items.map((item, i) => (
+              <Accordion
+                key={i}
+                disableGutters
+                elevation={0}
+                sx={{
+                  bgcolor: 'transparent',
+                  borderTop: '1px solid rgba(255,255,255,0.07)',
+                  '&:last-of-type': { borderBottom: '1px solid rgba(255,255,255,0.07)' },
+                  '&:before': { display: 'none' },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'text.secondary' }} />} sx={{ px: 0 }}>
+                  <Typography variant="body1" component="h3" sx={{ fontWeight: 600, fontSize: '1rem' }}>{item.q}</Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: 0, pt: 0 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>{item.a}</Typography>
+                </AccordionDetails>
+              </Accordion>
+            ))}
+          </Box>
         </Section>
 
         {/* ---- BOOKMARK CALLOUT ---- */}

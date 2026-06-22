@@ -30,6 +30,10 @@ export const LANDING_COPY = {
       openCta: 'Open the search graph',
       bookmarkTip: 'Tip: bookmark the search page so you can skip this guide next time.',
     },
+    quickLinks: {
+      listed: 'Browse IBEX 35 companies',
+      dashboard: 'Activity dashboard',
+    },
     howItWorks: {
       heading: 'How it works',
       sub: 'Three steps from a name to a full corporate picture.',
@@ -97,6 +101,31 @@ export const LANDING_COPY = {
         { key: 'formations', label: 'Company formations' },
       ],
     },
+    faq: {
+      heading: 'Frequently asked questions',
+      items: [
+        {
+          q: 'What is Mapa Societario?',
+          a: 'Mapa Societario is a free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional AI-powered due diligence reports from EUR 22.50.',
+        },
+        {
+          q: 'Do I need an account to use this?',
+          a: 'No. Mapa Societario is completely free to use without any registration or login. Due Diligence reports are an optional paid feature purchased per company from EUR 22.50.',
+        },
+        {
+          q: 'Can I search by officer name?',
+          a: 'Yes. Use the toggle at the top of the search to switch between company and officer search modes. Officer search lets you find a person and see all the companies they are linked to across 6.3 million recorded officer changes.',
+        },
+        {
+          q: 'Is the data accurate and official?',
+          a: 'The data originates from official BORME publications and is extracted using automated parsers. The service is unofficial and provided as is; automated parsing can produce occasional errors. Always cross-reference the official BORME and, for critical decisions, obtain current information directly from the Registro Mercantil.',
+        },
+        {
+          q: 'Who built Mapa Societario?',
+          a: 'Mapa Societario is built and operated by Nurnberg Consulting SL (NIF B86829538), a Madrid-based corporate intelligence consultancy active since 2013. The same team also runs NC Data, a broader multi-country investigative platform. It is independent and not affiliated with, or endorsed by, any government body.',
+        },
+      ],
+    },
     operatedBy: 'Operated by Nurnberg Consulting SL, Madrid, since 2013. Unofficial service based on public BOE/BORME data.',
     proofItems: [
       'By Nurnberg Consulting SL (Madrid, since 2013)',
@@ -145,6 +174,10 @@ export const LANDING_COPY = {
         'Busca empresas y administradores españoles, explora sus relaciones en un grafo interactivo y pide informes due diligence, todo con datos oficiales del BORME.',
       openCta: 'Abrir el grafo de búsqueda',
       bookmarkTip: 'Consejo: guarda la página de búsqueda en marcadores para saltarte esta guía la próxima vez.',
+    },
+    quickLinks: {
+      listed: 'Ver empresas del IBEX 35',
+      dashboard: 'Panel de actividad',
     },
     howItWorks: {
       heading: 'Cómo funciona',
@@ -211,6 +244,31 @@ export const LANDING_COPY = {
         { key: 'events', label: 'Publicaciones BORME' },
         { key: 'officerChanges', label: 'Cambios de administradores' },
         { key: 'formations', label: 'Constituciones de empresas' },
+      ],
+    },
+    faq: {
+      heading: 'Preguntas frecuentes',
+      items: [
+        {
+          q: '¿Qué es Mapa Societario?',
+          a: 'Mapa Societario es un buscador gratuito de empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales con IA desde 22,50 EUR.',
+        },
+        {
+          q: '¿Necesito una cuenta para usarlo?',
+          a: 'No. Mapa Societario es completamente gratuito, sin registro ni inicio de sesión. Los informes due diligence son una función de pago opcional que se compra por empresa desde 22,50 EUR.',
+        },
+        {
+          q: '¿Puedo buscar por nombre de administrador?',
+          a: 'Sí. Usa el conmutador en la parte superior de la búsqueda para alternar entre búsqueda por empresa y por administrador. La búsqueda por persona te permite encontrar a alguien y ver todas las empresas a las que está vinculado, a partir de 6,3 millones de cambios de administradores registrados.',
+        },
+        {
+          q: '¿Los datos son precisos y oficiales?',
+          a: 'Los datos proceden de publicaciones oficiales del BORME y se extraen mediante analizadores automáticos. El servicio es no oficial y se ofrece tal cual; el análisis automático puede contener errores ocasionales. Contrasta siempre con el BORME oficial y, para decisiones importantes, obtén información actualizada directamente del Registro Mercantil.',
+        },
+        {
+          q: '¿Quién ha creado Mapa Societario?',
+          a: 'Mapa Societario está creado y operado por Nurnberg Consulting SL (NIF B86829538), una consultora de inteligencia corporativa con sede en Madrid y activa desde 2013. El mismo equipo gestiona NC Data, una plataforma de investigación multinacional más amplia. Es independiente y no está afiliado ni avalado por ningún organismo público.',
+        },
       ],
     },
     operatedBy: 'Operado por Nurnberg Consulting SL, Madrid, desde 2013. Servicio no oficial basado en datos públicos del BOE/BORME.',

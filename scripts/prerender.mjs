@@ -62,7 +62,44 @@ const homepageFaqSchema = `    <script type="application/ld+json">
         {
           "@type": "Question",
           "name": "Who built Mapa Societario?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is built and operated by Nurnberg Consulting SL (NIF B86829538), a Madrid-based corporate intelligence consultancy active since 2013. The same team also runs NC Data, a broader multi-country investigative platform. It is independent and not affiliated with or endorsed by any government body." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is built and operated by Nurnberg Consulting SL (NIF B86829538), a Madrid-based corporate intelligence consultancy active since 2013. The same team also runs NC Data, a broader multi-country investigative platform. It is independent and not affiliated with, or endorsed by, any government body." }
+        }
+      ]
+    }
+    </script>`;
+
+// Spanish FAQPage for the /es homepage — mirrors homepageFaqSchema; the /es
+// React page renders the matching Spanish Q&As visibly.
+const homepageFaqSchemaEs = `    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "inLanguage": "es",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "¿Qué es Mapa Societario?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario es un buscador gratuito de empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales con IA desde 22,50 EUR." }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Necesito una cuenta para usarlo?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Mapa Societario es completamente gratuito, sin registro ni inicio de sesión. Los informes due diligence son una función de pago opcional que se compra por empresa desde 22,50 EUR." }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Puedo buscar por nombre de administrador?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Sí. Usa el conmutador en la parte superior de la búsqueda para alternar entre búsqueda por empresa y por administrador. La búsqueda por persona te permite encontrar a alguien y ver todas las empresas a las que está vinculado, a partir de 6,3 millones de cambios de administradores registrados." }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Los datos son precisos y oficiales?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Los datos proceden de publicaciones oficiales del BORME y se extraen mediante analizadores automáticos. El servicio es no oficial y se ofrece tal cual; el análisis automático puede contener errores ocasionales. Contrasta siempre con el BORME oficial y, para decisiones importantes, obtén información actualizada directamente del Registro Mercantil." }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Quién ha creado Mapa Societario?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario está creado y operado por Nurnberg Consulting SL (NIF B86829538), una consultora de inteligencia corporativa con sede en Madrid y activa desde 2013. El mismo equipo gestiona NC Data, una plataforma de investigación multinacional más amplia. Es independiente y no está afiliado ni avalado por ningún organismo público." }
         }
       ]
     }
@@ -473,10 +510,12 @@ for (const route of routes) {
   html = replaceMetaTag(html, 'name', 'twitter:title', route.title);
   html = replaceMetaTag(html, 'name', 'twitter:description', route.description);
 
-  // FAQPage schema: homepage only — it is the sole route whose static content
-  // renders the matching Q&As visibly (Google FAQ guidelines).
+  // FAQPage schema: the EN (/) and ES (/es) homepages only — the sole routes
+  // whose React page renders the matching Q&As visibly (Google FAQ guidelines).
   if (route.path === '/') {
     html = injectHeadLinks(html, homepageFaqSchema);
+  } else if (route.path === '/es') {
+    html = injectHeadLinks(html, homepageFaqSchemaEs);
   }
 
   // Product/Offer schema: only on routes that describe/sell the report.

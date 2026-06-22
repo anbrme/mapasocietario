@@ -7,6 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
 import { siteNav, isHtmlNav } from './utils/siteNav';
+import { openListedCompanies } from './services/listedCompaniesNav';
 import {
   getBrowserLanguage,
   getStoredSearchLanguage,
@@ -24,6 +25,8 @@ const APP_COPY = {
     menu: {
       tooltip: 'Menu',
       guide: 'How it works',
+      listed: 'IBEX 35 companies',
+      dashboard: 'Activity dashboard',
       reports: 'Due Diligence reports',
       pricing: 'Pricing',
       about: 'About',
@@ -44,6 +47,8 @@ const APP_COPY = {
       reports: 'Informes due diligence',
       pricing: 'Precios',
       about: 'Acerca de',
+      listed: 'Empresas del IBEX 35',
+      dashboard: 'Panel de actividad',
       faq: 'Preguntas frecuentes',
       terms: 'Términos',
       privacy: 'Privacidad',
@@ -75,11 +80,17 @@ export default function App() {
   const nav = siteNav(language);
   const go = (url) => {
     setMenuAnchor(null);
+    // The IBEX 35 hub is an SSR page, not a SPA route — open it via the helper
+    // (full-page load on web, in-app Custom Tab on native), never client-route.
+    if (url === nav.listed) { openListedCompanies(language); return; }
     if (isHtmlNav(url)) window.location.assign(url);
     else navigate(url);
   };
   const navItems = [
     { label: copy.menu.guide, url: nav.guide },
+    { label: copy.menu.listed, url: nav.listed },
+    { label: copy.menu.dashboard, url: nav.dashboard },
+    null,
     { label: copy.menu.reports, url: nav.reports },
     { label: copy.menu.pricing, url: nav.pricing },
     null,

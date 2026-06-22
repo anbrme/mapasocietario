@@ -19,6 +19,10 @@ export function siteNav(lang = 'en') {
     // Pricing is a single bilingual SPA page driven by ?lang.
     pricing: es ? '/pricing?lang=es' : '/pricing',
     dashboard: '/dashboard',
+    // IBEX 35 listed-companies hub — server-rendered (Cloudflare Pages Function),
+    // NOT a SPA route, so callers must full-page load (web) or open a Custom Tab
+    // (native) via openListedCompanies(); never client-route to it.
+    listed: es ? '/empresas-cotizadas' : '/en/listed-companies',
     // About exists per language; the FAQ is its own top-of-page static page.
     about: es ? '/about-es.html' : '/about.html',
     faq: es ? '/faq-es.html' : '/faq.html',
