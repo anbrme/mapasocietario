@@ -37,6 +37,9 @@ html, body, #root {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Branded header/footer shown only in the printed (Save-as-PDF) relationship report. */
+.rel-report-print-only { display: none; }
+
 /* Relationship report: print only the report body when Save-as-PDF is used. */
 @media print {
   body * { visibility: hidden !important; }
@@ -45,6 +48,38 @@ html, body, #root {
     position: absolute; left: 0; top: 0; width: 100%;
     max-height: none !important; overflow: visible !important;
     color: #000; background: #fff;
+    padding: 0 8px !important;
+    font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
   }
   .rel-report-no-print { display: none !important; }
+
+  .rel-report-print-only { display: block !important; }
+
+  /* Force the collapsed "Officers per company" accordion open so it prints. */
+  #relationship-report-print .MuiCollapse-root {
+    height: auto !important; min-height: 0 !important; visibility: visible !important;
+  }
+
+  .rel-report-print-header {
+    border-bottom: 2px solid #1976d2;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+  }
+  .rel-report-brand {
+    font-size: 20px; font-weight: 800; letter-spacing: 0.3px; color: #102a43;
+  }
+  .rel-report-brand span { color: #1976d2; }
+  .rel-report-doc-title {
+    font-size: 16px; font-weight: 700; margin-top: 4px; color: #102a43;
+  }
+  .rel-report-meta {
+    font-size: 10px; color: #555; margin-top: 4px;
+  }
+  .rel-report-print-footer {
+    margin-top: 24px; padding-top: 8px;
+    border-top: 1px solid #ccc;
+    font-size: 9px; color: #777; text-align: center;
+  }
+
+  @page { margin: 16mm; }
 }
