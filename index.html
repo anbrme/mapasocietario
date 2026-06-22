@@ -53,75 +53,38 @@
         if (ogUrlTag) ogUrlTag.content = pageUrl;
         if (ogImageTag) ogImageTag.content = imageUrl;
         if (twitterImageTag) twitterImageTag.content = imageUrl;
-
-        const jsonLd = {
-          '@context': 'https://schema.org',
-          '@graph': [
-            {
-              '@type': 'WebSite',
-              name: 'Mapa Societario',
-              url: `${siteUrl}/`,
-              inLanguage: 'en',
-              description: 'Search and visualize corporate relationships between Spanish companies and directors using official BORME registry data.',
-            },
-            {
-              '@type': 'Organization',
-              name: 'Mapa Societario',
-              url: `${siteUrl}/`,
-              description: 'Corporate intelligence and due diligence reports for Spanish companies.',
-              contactPoint: {
-                '@type': 'ContactPoint',
-                email: 'app@ncdata.eu',
-                contactType: 'customer service',
-              },
-            },
-            {
-              '@type': 'Product',
-              name: 'Due Diligence Report',
-              description: 'AI-powered corporate due diligence report for Spanish companies, including sanctions screening, officer history, capital events, and risk analysis.',
-              image: `${siteUrl}/og-image.png`,
-              url: `${siteUrl}/due-diligence`,
-              brand: { '@type': 'Brand', name: 'Mapa Societario' },
-              offers: {
-                '@type': 'Offer',
-                price: '22.50',
-                priceCurrency: 'EUR',
-                availability: 'https://schema.org/InStock',
-                url: `${siteUrl}/due-diligence`,
-                seller: { '@type': 'Organization', name: 'Mapa Societario' },
-                shippingDetails: {
-                  '@type': 'OfferShippingDetails',
-                  shippingRate: {
-                    '@type': 'MonetaryAmount',
-                    value: '0',
-                    currency: 'EUR',
-                  },
-                  deliveryTime: {
-                    '@type': 'ShippingDeliveryTime',
-                    handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 0, unitCode: 'DAY' },
-                    transitTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 0, unitCode: 'DAY' },
-                  },
-                  shippingDestination: {
-                    '@type': 'DefinedRegion',
-                    addressCountry: 'ES',
-                  },
-                },
-                hasMerchantReturnPolicy: {
-                  '@type': 'MerchantReturnPolicy',
-                  applicableCountry: 'ES',
-                  returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
-                  returnFees: 'https://schema.org/FreeReturn',
-                },
-              },
-            },
-          ],
-        };
-
-        const script = document.createElement('script');
-        script.type = 'application/ld+json';
-        script.textContent = JSON.stringify(jsonLd);
-        document.head.appendChild(script);
       })();
+    </script>
+    <!-- Site-wide structured data (WebSite + Organization), emitted statically so
+         non-JS AI crawlers (Perplexity, Bing AI, brandioz-style audits) can read it.
+         Product/Offer and FAQPage are injected per-route by scripts/prerender.mjs,
+         only on the pages where they genuinely apply (Google placement guidelines).
+         Figures sourced from the live /bormes/stats/overview endpoint. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "name": "Mapa Societario",
+          "url": "https://mapasocietario.es/",
+          "inLanguage": "en",
+          "description": "Search and visualize corporate relationships between Spanish companies and directors using official BORME registry data covering 3.1 million companies since 2009."
+        },
+        {
+          "@type": "Organization",
+          "name": "Mapa Societario",
+          "url": "https://mapasocietario.es/",
+          "description": "Corporate intelligence and due diligence reports for Spanish companies, built on 9.4 million official BORME registry filings.",
+          "parentOrganization": { "@type": "Organization", "name": "Nurnberg Consulting SL" },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "app@ncdata.eu",
+            "contactType": "customer service"
+          }
+        }
+      ]
+    }
     </script>
     <!-- Google Analytics 4 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>

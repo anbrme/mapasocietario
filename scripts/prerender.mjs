@@ -30,6 +30,90 @@ const disclaimerHtmlEn = `
           <p style="margin:0"><strong>Unofficial information.</strong> Based on data from the <a href="https://www.boe.es">Agencia Estatal Boletín Oficial del Estado</a>, reused under its <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion">reuse conditions</a>. Mapa Societario transforms, combines, and analyzes BOE/BORME publications through automated processes; it is not official and is not endorsed by the AEBOE. The information is provided as is and may contain errors, omissions, or delays. For any material decision, always verify the official <a href="https://www.boe.es/diario_borme/">BORME</a> edition and, where appropriate, obtain current documents directly from the Registro Mercantil.</p>
         </section>`;
 
+// FAQPage structured data — injected ONLY on the homepage, the single route
+// whose prerendered content actually renders these Q&As visibly. Per Google's
+// FAQ structured-data guidelines, FAQPage must not appear on pages where the
+// FAQ content is not present, so it lives here rather than in the shared head.
+const homepageFaqSchema = `    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Mapa Societario?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is a free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional AI-powered due diligence reports from EUR 22.50." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need an account to use this?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Mapa Societario is completely free to use without any registration or login. Due Diligence reports are an optional paid feature purchased per company from EUR 22.50." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I search by officer name?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Use the toggle at the top of the search to switch between company and officer search modes. Officer search lets you find a person and see all the companies they are linked to across 6.3 million recorded officer changes." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the data accurate and official?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The data originates from official BORME publications and is extracted using automated parsers. The service is unofficial and provided as is; automated parsing can produce occasional errors. Always cross-reference the official BORME and, for critical decisions, obtain current information directly from the Registro Mercantil." }
+        },
+        {
+          "@type": "Question",
+          "name": "Who built Mapa Societario?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is built and operated by Nurnberg Consulting SL (NIF B86829538), a Madrid-based corporate intelligence consultancy active since 2013. The same team also runs NC Data, a broader multi-country investigative platform. It is independent and not affiliated with or endorsed by any government body." }
+        }
+      ]
+    }
+    </script>`;
+
+// Product/Offer structured data — injected ONLY on routes that describe and
+// sell the Due Diligence report. Per Google's product structured-data
+// guidelines, Product markup should represent a specific product present on the
+// page, so it is kept off the homepage, /app, /dashboard, etc.
+const PRODUCT_ROUTES = new Set([
+  '/due-diligence',
+  '/spanish-company-due-diligence',
+  '/pricing',
+  '/es/informes-due-diligence-empresas',
+]);
+const productSchema = `    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "Due Diligence Report",
+      "description": "AI-powered corporate due diligence report for Spanish companies, including sanctions screening, officer history, capital events, and risk analysis.",
+      "image": "${siteUrl}/og-image.png",
+      "url": "${siteUrl}/due-diligence",
+      "brand": { "@type": "Brand", "name": "Mapa Societario" },
+      "offers": {
+        "@type": "Offer",
+        "price": "22.50",
+        "priceCurrency": "EUR",
+        "availability": "https://schema.org/InStock",
+        "url": "${siteUrl}/due-diligence",
+        "seller": { "@type": "Organization", "name": "Mapa Societario" },
+        "shippingDetails": {
+          "@type": "OfferShippingDetails",
+          "shippingRate": { "@type": "MonetaryAmount", "value": "0", "currency": "EUR" },
+          "deliveryTime": {
+            "@type": "ShippingDeliveryTime",
+            "handlingTime": { "@type": "QuantitativeValue", "minValue": 0, "maxValue": 0, "unitCode": "DAY" },
+            "transitTime": { "@type": "QuantitativeValue", "minValue": 0, "maxValue": 0, "unitCode": "DAY" }
+          },
+          "shippingDestination": { "@type": "DefinedRegion", "addressCountry": "ES" }
+        },
+        "hasMerchantReturnPolicy": {
+          "@type": "MerchantReturnPolicy",
+          "applicableCountry": "ES",
+          "returnPolicyCategory": "https://schema.org/MerchantReturnNotPermitted",
+          "returnFees": "https://schema.org/FreeReturn"
+        }
+      }
+    }
+    </script>`;
+
 // Read the built index.html as base template
 const baseHtml = readFileSync(path.join(distDir, 'index.html'), 'utf8');
 
@@ -54,6 +138,29 @@ const routes = [
         <h1>Mapa Societario &mdash; Spanish Company &amp; Director Search</h1>
         <p>Explore corporate relationships between Spanish companies and their directors using official BORME (Registro Mercantil) data, and generate due-diligence reports.</p>
         ${disclaimerHtmlEn}
+        <h2>Coverage by the numbers</h2>
+        <ul>
+          <li><strong>3.1 million</strong> Spanish companies indexed</li>
+          <li><strong>9.4 million</strong> official BORME registry filings</li>
+          <li><strong>6.3 million</strong> director and officer changes tracked</li>
+          <li><strong>1.7 million</strong> company formations recorded</li>
+          <li>Continuous coverage <strong>since January 2009</strong>, updated on business days</li>
+        </ul>
+        <h2>Free search vs. Due Diligence report</h2>
+        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+          <thead>
+            <tr><th align="left">Feature</th><th>Free search</th><th>Due Diligence report (from &euro;22.50)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Company &amp; officer search</td><td align="center">Yes</td><td align="center">Yes</td></tr>
+            <tr><td>Interactive relationship graph</td><td align="center">Yes</td><td align="center">Yes</td></tr>
+            <tr><td>Officer history timeline</td><td align="center">Yes</td><td align="center">Yes</td></tr>
+            <tr><td>Sanctions &amp; PEP screening</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
+            <tr><td>AI risk analysis &amp; red flags</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
+            <tr><td>Capital-events summary</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
+            <tr><td>Downloadable PDF report</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
+          </tbody>
+        </table>
         <h2>Explore</h2>
         <ul>
           <li><a href="/app">Search companies &amp; directors (interactive graph)</a></li>
@@ -63,6 +170,17 @@ const routes = [
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
           <li><a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></li>
         </ul>
+        <h2>Frequently asked questions</h2>
+        <h3>What is Mapa Societario?</h3>
+        <p>A free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Registro Mercantil) data &mdash; 3.1 million companies and 9.4 million registry filings since 2009 &mdash; and generates optional AI-powered due-diligence reports from &euro;22.50.</p>
+        <h3>Do I need an account?</h3>
+        <p>No. Mapa Societario is completely free to use without registration or login. Due Diligence reports are an optional paid feature purchased per company.</p>
+        <h3>Can I search by officer name?</h3>
+        <p>Yes. Toggle between company and officer search at the top of the search. Officer search finds a person and shows every company they are linked to across 6.3 million recorded officer changes.</p>
+        <h3>Is the data official?</h3>
+        <p>The data originates from official BORME publications and is extracted with automated parsers. The service is unofficial and provided as is; always cross-reference the official BORME for critical decisions.</p>
+        <h3>Who built it?</h3>
+        <p>Mapa Societario is built and operated by Nurnberg Consulting SL (NIF B86829538), a Madrid-based corporate intelligence consultancy active since 2013. It is independent and not endorsed by any government body. <a href="/faq">More questions &rarr;</a></p>
       </main>`,
   },
   {
@@ -354,6 +472,17 @@ for (const route of routes) {
   // Twitter
   html = replaceMetaTag(html, 'name', 'twitter:title', route.title);
   html = replaceMetaTag(html, 'name', 'twitter:description', route.description);
+
+  // FAQPage schema: homepage only — it is the sole route whose static content
+  // renders the matching Q&As visibly (Google FAQ guidelines).
+  if (route.path === '/') {
+    html = injectHeadLinks(html, homepageFaqSchema);
+  }
+
+  // Product/Offer schema: only on routes that describe/sell the report.
+  if (PRODUCT_ROUTES.has(route.path)) {
+    html = injectHeadLinks(html, productSchema);
+  }
 
   // Inject static content into <div id="root"> for crawlers
   // React will replace this on hydration
