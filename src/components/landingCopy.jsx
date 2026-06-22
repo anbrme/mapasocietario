@@ -73,7 +73,7 @@ export const LANDING_COPY = {
       rel: {
         title: 'Relationship report',
         badge: 'Free · two or more companies',
-        desc: 'When several companies are in the graph, generate a report of the links between them — shared directors and cross-company connections — at no cost.',
+        desc: 'When several companies are in the graph, generate a report of the links between them — shared directors and cross-company connections — at no cost. To activate the relationship report option, you must search for at least two companies.',
       },
       howToBuy: 'How to buy a Due Diligence report: search a company → open it in the graph → click the Due Diligence button.',
     },
@@ -176,7 +176,7 @@ export const LANDING_COPY = {
       rel: {
         title: 'Informe de relaciones',
         badge: 'Gratis · dos o más empresas',
-        desc: 'Cuando hay varias empresas en el grafo, genera un informe de los vínculos entre ellas (administradores compartidos y conexiones entre empresas) sin coste.',
+        desc: 'Cuando hay varias empresas en el grafo, genera un informe de los vínculos entre ellas (administradores compartidos y conexiones entre empresas) sin coste. Para que se active la opción de informe de relaciones, hay que buscar al menos dos empresas.',
       },
       howToBuy: 'Cómo comprar un informe due diligence: busca una empresa → ábrela en el grafo → pulsa el botón Due Diligence.',
     },
