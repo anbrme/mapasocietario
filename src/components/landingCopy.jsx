@@ -177,7 +177,7 @@ export const LANDING_COPY = {
     },
     quickLinks: {
       listed: 'Ver empresas del IBEX 35',
-      dashboard: 'Panel de actividad',
+      dashboard: 'Panel estadístico',
     },
     howItWorks: {
       heading: 'Cómo funciona',

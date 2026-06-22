@@ -48,7 +48,7 @@ const APP_COPY = {
       pricing: 'Precios',
       about: 'Acerca de',
       listed: 'Empresas del IBEX 35',
-      dashboard: 'Panel de actividad',
+      dashboard: 'Panel estadístico',
       faq: 'Preguntas frecuentes',
       terms: 'Términos',
       privacy: 'Privacidad',
