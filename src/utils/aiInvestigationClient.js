@@ -20,3 +20,7 @@ export function buildInvestigateHeaders(token) {
     Authorization: `Bearer ${token}`,
   };
 }
+
+export function buildCodeForSessionBody(sessionId) {
+  return { sessionId: String(sessionId || '') };
+}

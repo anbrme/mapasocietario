@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isTokenValid, buildRedeemBody, buildInvestigateHeaders } from '../src/utils/aiInvestigationClient.js';
+import { isTokenValid, buildRedeemBody, buildInvestigateHeaders, buildCodeForSessionBody } from '../src/utils/aiInvestigationClient.js';
 
 test('isTokenValid: valid when not expired', () => {
   assert.equal(isTokenValid({ token: 'x', expiresAt: 2000 }, 1000), true);
@@ -31,4 +31,7 @@ test('buildInvestigateHeaders sets bearer + content-type', () => {
     'Content-Type': 'application/json',
     Authorization: 'Bearer jwt123',
   });
+});
+test('buildCodeForSessionBody wraps the sessionId', () => {
+  assert.deepEqual(buildCodeForSessionBody('cs_test_x'), { sessionId: 'cs_test_x' });
 });

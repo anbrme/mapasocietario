@@ -30,11 +30,12 @@ const COPY = {
   },
 };
 
-export default function AIInvestigationGate({ open, onClose, language = 'es', prefillEmail = '' }) {
+export default function AIInvestigationGate({ open, onClose, language = 'es', prefillEmail = '', prefillCode = '' }) {
   const t = COPY[language === 'en' ? 'en' : 'es'];
   const [email, setEmail] = useState(prefillEmail);
   useEffect(() => { setEmail(prefillEmail); }, [prefillEmail]);
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(prefillCode);
+  useEffect(() => { if (prefillCode) setCode(prefillCode); }, [prefillCode]);
   const [session, setSession] = useState(null); // { token, expiresAt }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

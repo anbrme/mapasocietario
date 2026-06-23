@@ -20,7 +20,8 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { Helmet } from 'react-helmet-async';
 import { isAndroidNativeApp } from '../services/playBillingService';
-import { API_URL, PAYMENTS_API } from '../config';
+import { API_URL, PAYMENTS_API, AI_INVESTIGATION_API } from '../config';
+import { buildCodeForSessionBody } from '../utils/aiInvestigationClient';
 import AIInvestigationGate from './AIInvestigationGate';
 
 const POLL_INTERVAL = 15_000; // 15 seconds
@@ -54,6 +55,8 @@ export default function OrderStatusPage() {
   // here after paying, and this card offers them free alerts on the
   // company they just bought a report on. Consent event = button click.
   const [aiGateOpen, setAiGateOpen] = useState(false);
+
+  const [aiCode, setAiCode] = useState(null);
 
   const [monitorState, setMonitorState] = useState('idle'); // idle | loading | success | error
   const [monitorError, setMonitorError] = useState('');
@@ -223,6 +226,25 @@ export default function OrderStatusPage() {
     poll(); // immediate first check
     const interval = setInterval(poll, POLL_INTERVAL);
     return () => clearInterval(interval);
+  }, [status, sessionId]);
+
+  // Fetch the AI Investigation redemption code once the order is confirmed paid.
+  useEffect(() => {
+    if (status !== 'ready' || !sessionId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${AI_INVESTIGATION_API}/code-for-session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildCodeForSessionBody(sessionId)),
+        });
+        if (!res.ok) return; // 404 (older order) / 403 → just don't show the code block
+        const data = await res.json();
+        if (!cancelled) setAiCode(data.code || null);
+      } catch { /* network — silently skip the code block */ }
+    })();
+    return () => { cancelled = true; };
   }, [status, sessionId]);
 
   const downloadFile = useCallback(async (type) => {
@@ -554,6 +576,14 @@ export default function OrderStatusPage() {
                 {/* AI Investigation — available to DD buyers for 2 days from purchase.
                     OrderStatusPage has no language prop/detection; defaulting to 'es'
                     matches the primary audience (Spanish companies). */}
+                {aiCode && (
+                  <Box sx={{ mt: 2, p: 2, borderRadius: 1, bgcolor: 'rgba(25,118,210,0.08)', border: '1px solid rgba(25,118,210,0.3)' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Tu código de Investigación por IA (válido 2 días):
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontFamily: 'monospace', letterSpacing: 1 }}>{aiCode}</Typography>
+                  </Box>
+                )}
                 <Button variant="outlined" sx={{ mt: 2 }} onClick={() => setAiGateOpen(true)}>
                   Abrir Investigación por IA (2 días)
                 </Button>
@@ -562,6 +592,7 @@ export default function OrderStatusPage() {
                   onClose={() => setAiGateOpen(false)}
                   language="es"
                   prefillEmail={orderData?.customerEmail || ''}
+                  prefillCode={aiCode || ''}
                 />
               </Box>
             </Box>
