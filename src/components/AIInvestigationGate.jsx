@@ -6,8 +6,8 @@ import {
 import { AI_INVESTIGATION_API } from '../config';
 import { buildRedeemBody, buildInvestigateHeaders, isTokenValid } from '../utils/aiInvestigationClient';
 
-// Cloudflare Turnstile sitekey for the ai-investigation widget (from Task 6).
-const TURNSTILE_SITEKEY = '1x00000000000000000000AA'; // REPLACE with the real sitekey
+// Cloudflare Turnstile sitekey for the ai-investigation widget.
+const TURNSTILE_SITEKEY = '0x4AAAAAADp3WnZGNiZai_32';
 
 const COPY = {
   en: {
