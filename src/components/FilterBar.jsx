@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Autocomplete,
@@ -12,7 +12,7 @@ import {
   ButtonGroup,
 } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
-import { useFilters } from '../contexts/FilterProvider';
+import { useFilters, TODAY } from '../contexts/FilterProvider';
 
 function datePresets() {
   const now = new Date();
@@ -21,11 +21,11 @@ function datePresets() {
   const q = Math.floor(now.getMonth() / 3);
   const qStart = String(q * 3 + 1).padStart(2, '0');
   return [
-    { label: `${y}`, from: `${y}-01-01`, to: '' },
+    { label: `${y}`, from: `${y}-01-01`, to: TODAY },
     { label: `${y - 1}`, from: `${y - 1}-01-01`, to: `${y - 1}-12-31` },
-    { label: '12m', from: `${y - 1}-${m}-01`, to: '' },
-    { label: `T${q + 1}`, from: `${y}-${qStart}-01`, to: '' },
-    { label: '5a', from: `${y - 5}-01-01`, to: '' },
+    { label: '12m', from: `${y - 1}-${m}-01`, to: TODAY },
+    { label: `T${q + 1}`, from: `${y}-${qStart}-01`, to: TODAY },
+    { label: '5a', from: `${y - 5}-01-01`, to: TODAY },
   ];
 }
 
@@ -40,6 +40,33 @@ export default function FilterBar() {
     hasActiveFilters,
     clearAll,
   } = useFilters();
+
+  // Local (uncommitted) values for the date inputs. A native <input type="date">
+  // fires onChange on every edit of the year segment, so binding the fetch
+  // directly to it would refetch for absurd partial years (0002, 0020, …).
+  // We hold the in-progress value here and only commit to the filter context
+  // (which triggers the fetch) on blur / Enter, with a sane range guard.
+  const [localFrom, setLocalFrom] = useState(dateFrom);
+  const [localTo, setLocalTo] = useState(dateTo);
+
+  // Re-sync when the committed value changes elsewhere (presets, clear all).
+  useEffect(() => { setLocalFrom(dateFrom); }, [dateFrom]);
+  useEffect(() => { setLocalTo(dateTo); }, [dateTo]);
+
+  const MIN_DATE = '2009-01-01';
+  const MAX_DATE = `${new Date().getFullYear() + 1}-12-31`;
+  // ISO date strings compare correctly as plain strings.
+  const isCommittable = (v) => v === '' || (v >= MIN_DATE && v <= MAX_DATE);
+
+  const commitFrom = () => {
+    if (localFrom !== dateFrom && isCommittable(localFrom)) setDateFrom(localFrom);
+    else setLocalFrom(dateFrom); // revert an invalid / partial entry
+  };
+  const commitTo = () => {
+    if (localTo !== dateTo && isCommittable(localTo)) setDateTo(localTo);
+    else setLocalTo(dateTo);
+  };
+  const commitOnEnter = (e) => { if (e.key === 'Enter') e.target.blur(); };
 
   return (
     <Box
@@ -57,18 +84,24 @@ export default function FilterBar() {
         type="date"
         size="small"
         label="Desde"
-        value={dateFrom}
-        onChange={(e) => setDateFrom(e.target.value)}
+        value={localFrom}
+        onChange={(e) => setLocalFrom(e.target.value)}
+        onBlur={commitFrom}
+        onKeyDown={commitOnEnter}
         InputLabelProps={{ shrink: true }}
+        inputProps={{ min: MIN_DATE, max: MAX_DATE }}
         sx={{ width: 145, '& input': { fontSize: '0.8rem' } }}
       />
       <TextField
         type="date"
         size="small"
         label="Hasta"
-        value={dateTo}
-        onChange={(e) => setDateTo(e.target.value)}
+        value={localTo}
+        onChange={(e) => setLocalTo(e.target.value)}
+        onBlur={commitTo}
+        onKeyDown={commitOnEnter}
         InputLabelProps={{ shrink: true }}
+        inputProps={{ min: MIN_DATE, max: MAX_DATE }}
         sx={{ width: 145, '& input': { fontSize: '0.8rem' } }}
       />
 

@@ -4,6 +4,15 @@ import { statsService } from '../services/statsService';
 
 const FilterContext = createContext(null);
 
+const DEFAULT_FROM = '2009-01-01';
+// Local (not UTC) today, so the "Hasta" date input is pre-filled and editable
+// segment-by-segment like "Desde" — an empty native date input can't be filled
+// partially. Semantically "today" == open-ended, since there are no future records.
+export const TODAY = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+})();
+
 export function useFilters() {
   return useContext(FilterContext);
 }
@@ -12,8 +21,8 @@ export function FilterProvider({ children }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Parse initial state from URL
-  const [dateFrom, setDateFrom] = useState(searchParams.get('from') || '2009-01-01');
-  const [dateTo, setDateTo] = useState(searchParams.get('to') || '');
+  const [dateFrom, setDateFrom] = useState(searchParams.get('from') || DEFAULT_FROM);
+  const [dateTo, setDateTo] = useState(searchParams.get('to') || TODAY);
   const [interval, setInterval] = useState(searchParams.get('interval') || 'month');
   const [provinces, setProvinces] = useState(() => searchParams.getAll('province'));
   const [companyTypes, setCompanyTypes] = useState(() => searchParams.getAll('company_type'));
@@ -30,8 +39,8 @@ export function FilterProvider({ children }) {
   // Sync state to URL
   useEffect(() => {
     const params = new URLSearchParams();
-    if (dateFrom && dateFrom !== '2009-01-01') params.set('from', dateFrom);
-    if (dateTo) params.set('to', dateTo);
+    if (dateFrom && dateFrom !== DEFAULT_FROM) params.set('from', dateFrom);
+    if (dateTo && dateTo !== TODAY) params.set('to', dateTo);
     if (interval !== 'month') params.set('interval', interval);
     provinces.forEach((p) => params.append('province', p));
     companyTypes.forEach((t) => params.append('company_type', t));
@@ -58,11 +67,11 @@ export function FilterProvider({ children }) {
   );
 
   const hasActiveFilters = provinces.length > 0 || companyTypes.length > 0 || eventCategories.length > 0 ||
-    (dateFrom && dateFrom !== '2009-01-01') || dateTo;
+    (dateFrom && dateFrom !== DEFAULT_FROM) || (dateTo && dateTo !== TODAY);
 
   const clearAll = useCallback(() => {
-    setDateFrom('2009-01-01');
-    setDateTo('');
+    setDateFrom(DEFAULT_FROM);
+    setDateTo(TODAY);
     setProvinces([]);
     setCompanyTypes([]);
     setEventCategories([]);
