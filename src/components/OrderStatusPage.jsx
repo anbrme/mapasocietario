@@ -21,6 +21,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { Helmet } from 'react-helmet-async';
 import { isAndroidNativeApp } from '../services/playBillingService';
 import { API_URL, PAYMENTS_API } from '../config';
+import AIInvestigationGate from './AIInvestigationGate';
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 // Flask backend hosting the anonymous alert endpoint. Lives on rag.ncdata.eu
@@ -52,6 +53,8 @@ export default function OrderStatusPage() {
   // Mapasocietario.es has no user accounts — anonymous DD buyers land
   // here after paying, and this card offers them free alerts on the
   // company they just bought a report on. Consent event = button click.
+  const [aiGateOpen, setAiGateOpen] = useState(false);
+
   const [monitorState, setMonitorState] = useState('idle'); // idle | loading | success | error
   const [monitorError, setMonitorError] = useState('');
   const [monitorAlert, setMonitorAlert] = useState(null);
@@ -547,6 +550,19 @@ export default function OrderStatusPage() {
                 >
                   Search another company
                 </Button>
+
+                {/* AI Investigation — available to DD buyers for 2 days from purchase.
+                    OrderStatusPage has no language prop/detection; defaulting to 'es'
+                    matches the primary audience (Spanish companies). */}
+                <Button variant="outlined" sx={{ mt: 2 }} onClick={() => setAiGateOpen(true)}>
+                  Abrir Investigación por IA (2 días)
+                </Button>
+                <AIInvestigationGate
+                  open={aiGateOpen}
+                  onClose={() => setAiGateOpen(false)}
+                  language="es"
+                  prefillEmail={orderData?.customerEmail || ''}
+                />
               </Box>
             </Box>
           )}

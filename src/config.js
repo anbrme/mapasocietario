@@ -14,3 +14,7 @@
 //                  `${API_URL}/bormes/dd-report/company` directly and skip it.
 export const API_URL = import.meta.env.VITE_API_URL ?? 'https://api.ncdata.eu';
 export const PAYMENTS_API = import.meta.env.VITE_PAYMENTS_API ?? 'https://payments.ncdata.eu';
+
+// `AI_INVESTIGATION_API` → the ai-investigation worker (redeem + investigate).
+export const AI_INVESTIGATION_API =
+  import.meta.env.VITE_AI_INVESTIGATION_API ?? 'https://ai-investigation.anurnberg.workers.dev';
