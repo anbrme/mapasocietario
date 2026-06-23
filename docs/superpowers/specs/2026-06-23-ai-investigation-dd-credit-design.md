@@ -13,7 +13,7 @@ into a single synthesized answer with **clear provenance labels** (registry vs w
 
 ## Goals
 
-1. **Drive DD purchases (acquisition).** Advertise "every DD includes 2 days of AI investigation" as part of the paid product's value.
+1. **Drive DD purchases (acquisition).** Advertise "every DD includes 2 days of AI investigation" as part of the paid product's value.  
 2. **Retain & cross-sell (engagement).** Exploring a company's network surfaces *new* entities worth investigating → the user buys another DD. The AI investigation is the engine of that loop.
 
 Both are served by anchoring on mapasocietario's unique asset — the **network graph** — rather than a commodity search.
