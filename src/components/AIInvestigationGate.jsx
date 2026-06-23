@@ -17,6 +17,7 @@ const COPY = {
     ask: 'Ask about this company or network…', send: 'Ask', close: 'Close',
     invalid: 'Could not unlock. Check your email and code.',
     rateLimited: 'You have hit the rate limit. Try again shortly.',
+    expired: 'Your session expired. Please redeem again.',
   },
   es: {
     title: 'Investigación por IA',
@@ -25,12 +26,14 @@ const COPY = {
     ask: 'Pregunta sobre esta empresa o red…', send: 'Preguntar', close: 'Cerrar',
     invalid: 'No se pudo desbloquear. Revisa tu email y código.',
     rateLimited: 'Has alcanzado el límite. Inténtalo en un momento.',
+    expired: 'Tu sesión ha expirado. Vuelve a canjear.',
   },
 };
 
 export default function AIInvestigationGate({ open, onClose, language = 'es', prefillEmail = '' }) {
   const t = COPY[language === 'en' ? 'en' : 'es'];
   const [email, setEmail] = useState(prefillEmail);
+  useEffect(() => { setEmail(prefillEmail); }, [prefillEmail]);
   const [code, setCode] = useState('');
   const [session, setSession] = useState(null); // { token, expiresAt }
   const [busy, setBusy] = useState(false);
@@ -62,18 +65,23 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildRedeemBody(email, code, turnstileToken)),
       });
-      if (!res.ok) { setError(t.invalid); return; }
+      if (!res.ok) {
+        setError(t.invalid);
+        if (window.turnstile && widgetId.current != null) window.turnstile.reset(widgetId.current);
+        return;
+      }
       const data = await res.json();
       setSession({ token: data.token, expiresAt: data.expires_at });
     } catch {
       setError(t.invalid);
+      if (window.turnstile && widgetId.current != null) window.turnstile.reset(widgetId.current);
     } finally {
       setBusy(false);
     }
   }, [email, code, t]);
 
   const ask = useCallback(async () => {
-    if (!isTokenValid(session, Math.floor(Date.now() / 1000))) { setSession(null); return; }
+    if (!isTokenValid(session, Math.floor(Date.now() / 1000))) { setSession(null); setError(t.expired); return; }
     setBusy(true); setError(''); setAnswer(null);
     try {
       const res = await fetch(`${AI_INVESTIGATION_API}/investigate`, {
