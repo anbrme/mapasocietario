@@ -770,7 +770,9 @@ import { verifyJWT } from "../src/jwt.js";
 // Cloudflare always-pass Turnstile test secret.
 const testEnv = { ...env, JWT_SIGNING_SECRET: "test-secret", TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA" };
 const db = () => env.ENTITLEMENTS_DB;
-const PAID_AT = 1_700_000_000;
+// Seed "paid now" so the +2d window is live at test time (a fixed past
+// epoch would make the entitlement already-expired and 403 every redeem).
+const PAID_AT = Math.floor(Date.now() / 1000);
 
 async function call(path, { body, headers } = {}) {
   const ctx = createExecutionContext();
