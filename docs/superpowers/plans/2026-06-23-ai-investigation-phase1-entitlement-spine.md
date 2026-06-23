@@ -58,12 +58,14 @@ CREATE TABLE IF NOT EXISTS entitlements (
   status            TEXT NOT NULL DEFAULT 'active'  -- 'active' | 'revoked'
 );
 
--- One row per AI call, for rate-window + spend accounting.
+-- One row per AI call, for rate-window + spend accounting. Surrogate PK
+-- (not (code, ts)) so two calls in the same second don't collide; the
+-- (code, ts) index serves the window-count queries.
 CREATE TABLE IF NOT EXISTS usage (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
   code            TEXT NOT NULL,
   ts              INTEGER NOT NULL,          -- epoch seconds
-  est_cost_micros INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (code, ts)
+  est_cost_micros INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_usage_code_ts ON usage (code, ts);
 ```
@@ -1107,9 +1109,10 @@ CREATE TABLE IF NOT EXISTS entitlements (
   bound_email TEXT, first_redeemed_at INTEGER, status TEXT NOT NULL DEFAULT 'active'
 );
 CREATE TABLE IF NOT EXISTS usage (
-  code TEXT NOT NULL, ts INTEGER NOT NULL, est_cost_micros INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (code, ts)
-);`;
+  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, ts INTEGER NOT NULL,
+  est_cost_micros INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_usage_code_ts ON usage (code, ts);`;
 
 export async function applyMigrations() {
   for (const stmt of SCHEMA.split(";").map((s) => s.trim()).filter(Boolean)) {
