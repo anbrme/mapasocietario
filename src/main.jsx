@@ -68,6 +68,22 @@ if (isNativeApp() && window.location.pathname === '/') {
   window.history.replaceState(null, '', '/app');
 }
 
+// A lazily-imported route chunk (DueDiligence, Pricing, OrderStatus, …) can
+// 404 when a new deploy replaces the content-hashed filenames while this tab is
+// still open. With Suspense fallback={null} and no error boundary, that renders
+// a blank page until the user manually refreshes (which also picks up the
+// trailing-slash directory redirect, so it "works on refresh"). Vite fires
+// `vite:preloadError` in exactly this case — reload once to fetch the new asset
+// manifest. The timestamp guard stops a genuinely-missing chunk from looping:
+// if the reload still fails within 10s we stop trying.
+window.addEventListener('vite:preloadError', () => {
+  const KEY = 'spa-chunk-reloaded-at';
+  const last = Number(sessionStorage.getItem(KEY) || 0);
+  if (Date.now() - last < 10000) return;
+  sessionStorage.setItem(KEY, String(Date.now()));
+  window.location.reload();
+});
+
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',

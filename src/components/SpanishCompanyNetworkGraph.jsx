@@ -6778,6 +6778,15 @@ const SpanishCompanyNetworkGraph = ({
                 variant={count > 0 ? 'contained' : 'outlined'}
                 startIcon={<PsychologyIcon />}
                 disabled={!launch.canLaunch}
+                // Empty-state launcher is an enabled CTA (focuses the primary
+                // company), but the default outlined primary blue (#1976d2) is
+                // near-invisible on the dark rgba(18,24,40,.9) Paper. Brighten
+                // to blue[200] with a visible border so it reads on dark.
+                sx={count > 0 ? undefined : {
+                  color: '#90caf9',
+                  borderColor: 'rgba(144,202,249,0.7)',
+                  '&:hover': { borderColor: '#90caf9', backgroundColor: 'rgba(144,202,249,0.12)' },
+                }}
                 onClick={() => {
                   const primary = graphData.nodes.find((n) => isSameNodeId(n.id, activeNodeId))
                     || graphData.nodes.find((n) => typeof primarySubject === 'string' && n.name && n.name.toUpperCase() === primarySubject.toUpperCase())
