@@ -144,11 +144,47 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
             <Button variant="contained" onClick={ask} disabled={busy || !question}>
               {busy ? <CircularProgress size={20} /> : t.send}
             </Button>
-            {answer && (
-              <Alert severity={answer.stub ? 'info' : 'success'}>
-                {answer.answer}
-              </Alert>
-            )}
+            {answer && (typeof answer.answer === 'object' && answer.answer !== null ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {answer.answer.summary && (
+                  <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>{answer.answer.summary}</Typography>
+                )}
+                {answer.answer.registry && (
+                  <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(25,118,210,0.08)', border: '1px solid rgba(25,118,210,0.3)' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#90caf9' }}>
+                      {language === 'en' ? 'From the registry (BORME)' : 'Del registro (BORME)'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 0.5 }}>{answer.answer.registry}</Typography>
+                  </Box>
+                )}
+                {answer.answer.web && (
+                  <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(255,167,38,0.08)', border: '1px solid rgba(255,167,38,0.3)' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#ffb74d' }}>
+                      {language === 'en' ? 'Web / Press' : 'Web / Prensa'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 0.5 }}>{answer.answer.web}</Typography>
+                  </Box>
+                )}
+                {Array.isArray(answer.citations) && answer.citations.length > 0 && (
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                      {language === 'en' ? 'Sources' : 'Fuentes'}
+                    </Typography>
+                    <Box component="ol" sx={{ pl: 2, m: 0.5 }}>
+                      {answer.citations.map((c) => (
+                        <li key={c.n}>
+                          <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: '#90caf9' }}>
+                            {c.title || c.url}
+                          </a>
+                        </li>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            ) : (
+              <Alert severity="info">{answer.answer}</Alert>
+            ))}
           </Box>
         )}
       </DialogContent>
