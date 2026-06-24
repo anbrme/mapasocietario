@@ -228,24 +228,34 @@ export default function OrderStatusPage() {
     return () => clearInterval(interval);
   }, [status, sessionId]);
 
-  // Fetch the AI Investigation redemption code once the order is confirmed paid.
+  // Fetch the AI Investigation redemption code as soon as the payment is
+  // verified — the buyer waits on THIS page while the report generates, so the
+  // code should appear here directly, not require opening the receipt email
+  // (which only links back to this same page). The code is minted during Stripe
+  // fulfillment; if it isn't queryable in the first moment, retry briefly.
   useEffect(() => {
-    if (status !== 'ready' || !sessionId) return;
+    if (!sessionId || !orderData?.paid || aiCode) return;
     let cancelled = false;
-    (async () => {
+    let attempts = 0;
+    const fetchCode = async () => {
+      attempts += 1;
       try {
         const res = await fetch(`${AI_INVESTIGATION_API}/code-for-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(buildCodeForSessionBody(sessionId)),
         });
-        if (!res.ok) return; // 404 (older order) / 403 → just don't show the code block
-        const data = await res.json();
-        if (!cancelled) setAiCode(data.code || null);
-      } catch { /* network — silently skip the code block */ }
-    })();
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && data.code) { setAiCode(data.code); return; }
+        }
+        // 404 (older order) / 403 / not-yet-minted → fall through to retry.
+      } catch { /* network — fall through to retry */ }
+      if (!cancelled && attempts < 5) setTimeout(fetchCode, 3000);
+    };
+    fetchCode();
     return () => { cancelled = true; };
-  }, [status, sessionId]);
+  }, [sessionId, orderData?.paid, aiCode]);
 
   const downloadFile = useCallback(async (type) => {
     const baseUrl = type === 'financial-statements'
@@ -326,6 +336,21 @@ export default function OrderStatusPage() {
     orderData &&
     (orderData.country || '').toLowerCase() === 'es' &&
     (status === 'ready' || status === 'processing');
+
+  // The 2-day AI Investigation code, shown in every post-payment state
+  // (generating / processing / ready) so the waiting buyer sees it here and
+  // never has to dig it out of the receipt email (which only links back here).
+  const aiCodeBlock = aiCode ? (
+    <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'rgba(25,118,210,0.08)', border: '1px solid rgba(25,118,210,0.3)' }}>
+      <Typography variant="body2" color="text.secondary">
+        Tu código de Investigación por IA (válido 2 días):
+      </Typography>
+      <Typography variant="h6" sx={{ fontFamily: 'monospace', letterSpacing: 1 }}>{aiCode}</Typography>
+      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+        Guárdalo: es el mismo código disponible desde esta página durante los próximos 2 días.
+      </Typography>
+    </Box>
+  ) : null;
 
   return (
     <>
@@ -437,6 +462,7 @@ export default function OrderStatusPage() {
                   {' '}with your order reference and we'll look into it.
                 </Typography>
               </Box>
+              {aiCodeBlock}
             </Box>
           )}
 
@@ -500,6 +526,7 @@ export default function OrderStatusPage() {
                   {' '}with your order reference — we usually reply within a few hours on business days.
                 </Typography>
               </Box>
+              {aiCodeBlock}
             </Box>
           )}
 
@@ -576,14 +603,7 @@ export default function OrderStatusPage() {
                 {/* AI Investigation — available to DD buyers for 2 days from purchase.
                     OrderStatusPage has no language prop/detection; defaulting to 'es'
                     matches the primary audience (Spanish companies). */}
-                {aiCode && (
-                  <Box sx={{ mt: 2, p: 2, borderRadius: 1, bgcolor: 'rgba(25,118,210,0.08)', border: '1px solid rgba(25,118,210,0.3)' }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Tu código de Investigación por IA (válido 2 días):
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontFamily: 'monospace', letterSpacing: 1 }}>{aiCode}</Typography>
-                  </Box>
-                )}
+                {aiCodeBlock && <Box sx={{ mt: 1 }}>{aiCodeBlock}</Box>}
                 <Button variant="outlined" sx={{ mt: 2 }} onClick={() => setAiGateOpen(true)}>
                   Abrir Investigación por IA (2 días)
                 </Button>
