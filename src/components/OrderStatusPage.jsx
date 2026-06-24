@@ -22,12 +22,144 @@ import { Helmet } from 'react-helmet-async';
 import { isAndroidNativeApp } from '../services/playBillingService';
 import { API_URL, PAYMENTS_API, AI_INVESTIGATION_API } from '../config';
 import { buildCodeForSessionBody } from '../utils/aiInvestigationClient';
+import {
+  getBrowserLanguage,
+  getStoredSearchLanguage,
+  normalizeLanguage,
+} from '../utils/language';
 import AIInvestigationGate from './AIInvestigationGate';
 
 const POLL_INTERVAL = 15_000; // 15 seconds
 // Flask backend hosting the anonymous alert endpoint. Lives on rag.ncdata.eu
 // behind the Nginx /bormes/* location block.
 const ALERTS_API = 'https://rag.ncdata.eu/bormes/v3/alerts';
+
+const SUPPORT_EMAIL = 'mapasocietario@ncdata.eu';
+
+// Bilingual copy for the order/download page. The buyer reaches this page
+// straight from checkout (and from the receipt-email link), so it follows the
+// same language the visitor was using: ?lang → stored search language →
+// browser → English. Keep keys in sync between en and es.
+const ORDER_COPY = {
+  en: {
+    pageTitle: 'Order Status | Mapa Societario',
+    heading: 'Order Status',
+    verifying: 'Verifying your payment…',
+    invalidSession: 'Invalid session ID.',
+    contactPre: 'Please contact',
+    contactPost: 'for assistance.',
+    copyLink: 'Copy order link',
+    copied: 'Copied!',
+    generating: {
+      title: 'Generating your Due Diligence report',
+      sub: 'This may take up to 60 seconds. Please do not close this page.',
+      saveLink: 'You can save this page link to come back anytime within 7 days to re-download your report.',
+      longerPre: 'Taking longer than 2 minutes? Email',
+      longerPost: "with your order reference and we'll look into it.",
+    },
+    processing: {
+      title: 'Your report is being prepared',
+      fsSub: (year, fallback) =>
+        `We are manually retrieving the ${year} financial statements from the Registro Mercantil. This usually takes 30-45 minutes. If they are unavailable, your preference is: ${fallback}.`,
+      ddSub: 'Your report is being generated. This page will update automatically.',
+      ddItemLabel: 'Due Diligence Report',
+      ddItemDescFs: 'Includes LLM-powered financial analysis',
+      ddItemDesc: 'AI-powered corporate analysis',
+      fsItemLabel: 'Financial Statements (Cuentas Anuales)',
+      fsItemDesc: (year) => `Official document from Registro Mercantil · ${year}`,
+      emailNotice: 'We will send you an email when your report is ready. If the requested accounts are not available, we will contact you and handle the refund and tax adjustment according to your preference.',
+      anyQuestionPre: 'Any question or concern? Email',
+      anyQuestionPost: 'with your order reference — we usually reply within a few hours on business days.',
+    },
+    ready: {
+      title: 'Your report is ready!',
+      sub: 'Download links are available for 7 days.',
+      downloadDd: 'Download Due Diligence Report',
+      downloadFs: (year) => `Download Financial Statements (${year})`,
+      searchAnother: 'Search another company',
+      openAi: 'Open AI Investigation (2 days)',
+    },
+    aiCode: {
+      label: 'Your AI Investigation code (valid 2 days):',
+      hint: 'Keep it: this is the same code available from this page for the next 2 days.',
+    },
+    monitor: {
+      activated: 'Monitoring activated',
+      activatedPre: "We'll email you when there's new BORME corporate activity or a global regulator warning (IOSCO) for ",
+      unsubscribe: 'One-click unsubscribe in every email. Free for as long as you stay subscribed.',
+      titlePre: 'Monitor ',
+      titlePost: ' for free',
+      body: 'Get email alerts when BORME publishes corporate events (officer changes, capital moves, insolvency, dissolution, name changes) or when a global regulator flags the company via IOSCO.',
+      start: 'Start free monitoring',
+      enabling: 'Enabling…',
+      sentTo: 'Sent to the email you used at checkout. One-click unsubscribe in every message.',
+    },
+    orderRef: 'Order reference:',
+    footer: { home: 'Home', search: 'Search companies', contact: 'Contact support' },
+    fsYearLatest: 'latest available',
+    fallbackFullRefund: 'full refund if the accounts are unavailable',
+    fallbackKeep: 'keep the Due Diligence report and refund the financial statements part',
+  },
+  es: {
+    pageTitle: 'Estado del pedido | Mapa Societario',
+    heading: 'Estado del pedido',
+    verifying: 'Verificando tu pago…',
+    invalidSession: 'ID de sesión no válido.',
+    contactPre: 'Ponte en contacto con',
+    contactPost: 'para obtener ayuda.',
+    copyLink: 'Copiar enlace del pedido',
+    copied: '¡Copiado!',
+    generating: {
+      title: 'Generando tu informe de Due Diligence',
+      sub: 'Esto puede tardar hasta 60 segundos. Por favor, no cierres esta página.',
+      saveLink: 'Puedes guardar el enlace de esta página para volver cuando quieras durante 7 días y descargar de nuevo tu informe.',
+      longerPre: '¿Tarda más de 2 minutos? Escribe a',
+      longerPost: 'con la referencia de tu pedido y lo revisaremos.',
+    },
+    processing: {
+      title: 'Tu informe se está preparando',
+      fsSub: (year, fallback) =>
+        `Estamos recuperando manualmente las cuentas anuales de ${year} del Registro Mercantil. Esto suele tardar entre 30 y 45 minutos. Si no están disponibles, tu preferencia es: ${fallback}.`,
+      ddSub: 'Tu informe se está generando. Esta página se actualizará automáticamente.',
+      ddItemLabel: 'Informe de Due Diligence',
+      ddItemDescFs: 'Incluye análisis financiero con IA',
+      ddItemDesc: 'Análisis societario con IA',
+      fsItemLabel: 'Cuentas Anuales',
+      fsItemDesc: (year) => `Documento oficial del Registro Mercantil · ${year}`,
+      emailNotice: 'Te enviaremos un email cuando tu informe esté listo. Si las cuentas solicitadas no están disponibles, te contactaremos y gestionaremos el reembolso y el ajuste fiscal según tu preferencia.',
+      anyQuestionPre: '¿Alguna pregunta o duda? Escribe a',
+      anyQuestionPost: 'con la referencia de tu pedido — solemos responder en unas horas en días laborables.',
+    },
+    ready: {
+      title: '¡Tu informe está listo!',
+      sub: 'Los enlaces de descarga están disponibles durante 7 días.',
+      downloadDd: 'Descargar informe de Due Diligence',
+      downloadFs: (year) => `Descargar Cuentas Anuales (${year})`,
+      searchAnother: 'Buscar otra empresa',
+      openAi: 'Abrir Investigación por IA (2 días)',
+    },
+    aiCode: {
+      label: 'Tu código de Investigación por IA (válido 2 días):',
+      hint: 'Guárdalo: es el mismo código disponible desde esta página durante los próximos 2 días.',
+    },
+    monitor: {
+      activated: 'Monitorización activada',
+      activatedPre: 'Te avisaremos por email cuando haya nueva actividad societaria en el BORME o una alerta de un regulador global (IOSCO) para ',
+      unsubscribe: 'Cancela la suscripción con un clic en cada email. Gratis mientras sigas suscrito.',
+      titlePre: 'Monitoriza ',
+      titlePost: ' gratis',
+      body: 'Recibe alertas por email cuando el BORME publique eventos societarios (cambios de administradores, movimientos de capital, concurso, disolución, cambios de nombre) o cuando un regulador global señale la empresa vía IOSCO.',
+      start: 'Activar monitorización gratis',
+      enabling: 'Activando…',
+      sentTo: 'Se envía al email que usaste en el pago. Cancela la suscripción con un clic en cada mensaje.',
+    },
+    orderRef: 'Referencia del pedido:',
+    footer: { home: 'Inicio', search: 'Buscar empresas', contact: 'Contacto' },
+    fsYearLatest: 'las últimas disponibles',
+    fallbackFullRefund: 'reembolso completo si las cuentas no están disponibles',
+    fallbackKeep: 'conservar el informe de Due Diligence y reembolsar la parte de las cuentas anuales',
+  },
+};
 
 /**
  * Possible order states:
@@ -41,6 +173,19 @@ const ALERTS_API = 'https://rag.ncdata.eu/bormes/v3/alerts';
 export default function OrderStatusPage() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
+
+  // Match the visitor's language the same way the rest of the site does. There
+  // is no toggle here (transactional page) — we detect once on mount.
+  const [language] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      normalizeLanguage(params.get('lang')) ||
+      getStoredSearchLanguage() ||
+      getBrowserLanguage() ||
+      'en'
+    );
+  });
+  const copy = ORDER_COPY[language] || ORDER_COPY.en;
 
   const [status, setStatus] = useState('verifying'); // verifying | generating | processing | ready | error
   const [errorMsg, setErrorMsg] = useState('');
@@ -64,10 +209,12 @@ export default function OrderStatusPage() {
 
   const hasFinancialStatements = orderData?.options?.financialStatements === true;
   const financialStatementsYearLabel = formatFinancialStatementsYear(
-    orderData?.options?.financialStatementsYear
+    orderData?.options?.financialStatementsYear,
+    copy
   );
   const financialStatementsFallbackLabel = formatFinancialStatementsFallback(
-    orderData?.options?.financialStatementsFallback
+    orderData?.options?.financialStatementsFallback,
+    copy
   );
 
   // Generate DD report, store in R2, then mark ready
@@ -148,7 +295,7 @@ export default function OrderStatusPage() {
   useEffect(() => {
     if (!sessionId || !/^cs_(test|live|free)_[A-Za-z0-9_]{10,}$/.test(sessionId)) {
       setStatus('error');
-      setErrorMsg('Invalid session ID.');
+      setErrorMsg(copy.invalidSession);
       return;
     }
 
@@ -184,7 +331,7 @@ export default function OrderStatusPage() {
         setErrorMsg(err.message);
       }
     })();
-  }, [sessionId, generateReport]);
+  }, [sessionId, generateReport, copy.invalidSession]);
 
   // Poll for readiness when processing (FS orders only)
   useEffect(() => {
@@ -343,11 +490,11 @@ export default function OrderStatusPage() {
   const aiCodeBlock = aiCode ? (
     <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'rgba(25,118,210,0.08)', border: '1px solid rgba(25,118,210,0.3)' }}>
       <Typography variant="body2" color="text.secondary">
-        Tu código de Investigación por IA (válido 2 días):
+        {copy.aiCode.label}
       </Typography>
       <Typography variant="h6" sx={{ fontFamily: 'monospace', letterSpacing: 1 }}>{aiCode}</Typography>
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        Guárdalo: es el mismo código disponible desde esta página durante los próximos 2 días.
+        {copy.aiCode.hint}
       </Typography>
     </Box>
   ) : null;
@@ -355,7 +502,7 @@ export default function OrderStatusPage() {
   return (
     <>
       <Helmet>
-        <title>Order Status | Mapa Societario</title>
+        <title>{copy.pageTitle}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <Box
@@ -375,7 +522,7 @@ export default function OrderStatusPage() {
         <Box sx={{ textAlign: 'center' }}>
           <DescriptionIcon sx={{ fontSize: 44, color: 'warning.main', mb: 1, opacity: 0.8 }} />
           <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-            Order Status
+            {copy.heading}
           </Typography>
           {companyLabel && (
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -400,7 +547,7 @@ export default function OrderStatusPage() {
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <CircularProgress size={36} sx={{ mb: 2 }} />
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Verifying your payment...
+                {copy.verifying}
               </Typography>
             </Box>
           )}
@@ -413,11 +560,11 @@ export default function OrderStatusPage() {
                 {errorMsg}
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Please contact{' '}
-                <Link href="mailto:mapasocietario@ncdata.eu" sx={{ color: 'primary.main' }}>
-                  mapasocietario@ncdata.eu
+                {copy.contactPre}{' '}
+                <Link href={`mailto:${SUPPORT_EMAIL}`} sx={{ color: 'primary.main' }}>
+                  {SUPPORT_EMAIL}
                 </Link>{' '}
-                for assistance.
+                {copy.contactPost}
               </Typography>
             </Box>
           )}
@@ -429,10 +576,10 @@ export default function OrderStatusPage() {
                 <HourglassTopIcon sx={{ color: 'warning.main', fontSize: 28 }} />
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    Generating your Due Diligence report
+                    {copy.generating.title}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    This may take up to 60 seconds. Please do not close this page.
+                    {copy.generating.sub}
                   </Typography>
                 </Box>
               </Box>
@@ -441,7 +588,7 @@ export default function OrderStatusPage() {
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
-                  You can save this page link to come back anytime within 7 days to re-download your report.
+                  {copy.generating.saveLink}
                 </Alert>
                 <Button
                   size="small"
@@ -454,12 +601,12 @@ export default function OrderStatusPage() {
                   }}
                   sx={{ textTransform: 'none', fontSize: '0.75rem', alignSelf: 'flex-start' }}
                 >
-                  {copied ? 'Copied!' : 'Copy order link'}
+                  {copied ? copy.copied : copy.copyLink}
                 </Button>
                 <Typography variant="caption" sx={{ color: 'text.disabled', mt: 0.5 }}>
-                  Taking longer than 2 minutes? Email{' '}
-                  <Link href="mailto:mapasocietario@ncdata.eu" sx={{ color: 'text.secondary' }}>mapasocietario@ncdata.eu</Link>
-                  {' '}with your order reference and we'll look into it.
+                  {copy.generating.longerPre}{' '}
+                  <Link href={`mailto:${SUPPORT_EMAIL}`} sx={{ color: 'text.secondary' }}>{SUPPORT_EMAIL}</Link>
+                  {' '}{copy.generating.longerPost}
                 </Typography>
               </Box>
               {aiCodeBlock}
@@ -473,12 +620,12 @@ export default function OrderStatusPage() {
                 <HourglassTopIcon sx={{ color: 'warning.main', fontSize: 28 }} />
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    Your report is being prepared
+                    {copy.processing.title}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {hasFinancialStatements
-                      ? `We are manually retrieving the ${financialStatementsYearLabel} financial statements from the Registro Mercantil. This usually takes 30-45 minutes. If they are unavailable, your preference is: ${financialStatementsFallbackLabel}.`
-                      : 'Your report is being generated. This page will update automatically.'}
+                      ? copy.processing.fsSub(financialStatementsYearLabel, financialStatementsFallbackLabel)
+                      : copy.processing.ddSub}
                   </Typography>
                 </Box>
               </Box>
@@ -486,26 +633,26 @@ export default function OrderStatusPage() {
               {/* Progress items */}
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pl: 1 }}>
                 <StatusItem
-                  label="Due Diligence Report"
+                  label={copy.processing.ddItemLabel}
                   icon={<DescriptionIcon sx={{ fontSize: 18 }} />}
                   ready={ddReportReady}
                   description={hasFinancialStatements
-                    ? 'Includes LLM-powered financial analysis'
-                    : 'AI-powered corporate analysis'}
+                    ? copy.processing.ddItemDescFs
+                    : copy.processing.ddItemDesc}
                 />
                 {hasFinancialStatements && (
                   <StatusItem
-                    label="Financial Statements (Cuentas Anuales)"
+                    label={copy.processing.fsItemLabel}
                     icon={<AccountBalanceIcon sx={{ fontSize: 18 }} />}
                     ready={financialStatementsReady}
-                    description={`Official document from Registro Mercantil · ${financialStatementsYearLabel}`}
+                    description={copy.processing.fsItemDesc(financialStatementsYearLabel)}
                   />
                 )}
               </Box>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
                 <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
-                  We will send you an email when your report is ready. If the requested accounts are not available, we will contact you and handle the refund and tax adjustment according to your preference.
+                  {copy.processing.emailNotice}
                 </Alert>
                 <Button
                   size="small"
@@ -518,12 +665,12 @@ export default function OrderStatusPage() {
                   }}
                   sx={{ textTransform: 'none', fontSize: '0.75rem', alignSelf: 'flex-start' }}
                 >
-                  {copied ? 'Copied!' : 'Copy order link'}
+                  {copied ? copy.copied : copy.copyLink}
                 </Button>
                 <Typography variant="caption" sx={{ color: 'text.disabled', mt: 0.5 }}>
-                  Any question or concern? Email{' '}
-                  <Link href="mailto:mapasocietario@ncdata.eu" sx={{ color: 'text.secondary' }}>mapasocietario@ncdata.eu</Link>
-                  {' '}with your order reference — we usually reply within a few hours on business days.
+                  {copy.processing.anyQuestionPre}{' '}
+                  <Link href={`mailto:${SUPPORT_EMAIL}`} sx={{ color: 'text.secondary' }}>{SUPPORT_EMAIL}</Link>
+                  {' '}{copy.processing.anyQuestionPost}
                 </Typography>
               </Box>
               {aiCodeBlock}
@@ -537,10 +684,10 @@ export default function OrderStatusPage() {
                 <CheckCircleIcon sx={{ color: 'success.main', fontSize: 28 }} />
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    Your report is ready!
+                    {copy.ready.title}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    Download links are available for 7 days.
+                    {copy.ready.sub}
                   </Typography>
                 </Box>
               </Box>
@@ -560,7 +707,7 @@ export default function OrderStatusPage() {
                     '&:hover': { bgcolor: 'warning.dark' },
                   }}
                 >
-                  Download Due Diligence Report
+                  {copy.ready.downloadDd}
                 </Button>
 
                 {hasFinancialStatements && (
@@ -581,7 +728,7 @@ export default function OrderStatusPage() {
                       },
                     }}
                   >
-                    Download Financial Statements ({financialStatementsYearLabel})
+                    {copy.ready.downloadFs(financialStatementsYearLabel)}
                   </Button>
                 )}
 
@@ -597,20 +744,18 @@ export default function OrderStatusPage() {
                     '&:hover': { color: 'text.primary' },
                   }}
                 >
-                  Search another company
+                  {copy.ready.searchAnother}
                 </Button>
 
-                {/* AI Investigation — available to DD buyers for 2 days from purchase.
-                    OrderStatusPage has no language prop/detection; defaulting to 'es'
-                    matches the primary audience (Spanish companies). */}
+                {/* AI Investigation — available to DD buyers for 2 days from purchase. */}
                 {aiCodeBlock && <Box sx={{ mt: 1 }}>{aiCodeBlock}</Box>}
                 <Button variant="outlined" sx={{ mt: 2 }} onClick={() => setAiGateOpen(true)}>
-                  Abrir Investigación por IA (2 días)
+                  {copy.ready.openAi}
                 </Button>
                 <AIInvestigationGate
                   open={aiGateOpen}
                   onClose={() => setAiGateOpen(false)}
-                  language="es"
+                  language={language}
                   prefillEmail={orderData?.customerEmail || ''}
                   prefillCode={aiCode || ''}
                 />
@@ -649,11 +794,10 @@ export default function OrderStatusPage() {
                   <CheckCircleIcon sx={{ color: 'success.main', fontSize: 28 }} />
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      Monitoring activated
+                      {copy.monitor.activated}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      We'll email you when there's new BORME corporate
-                      activity or a global regulator warning (IOSCO) for{' '}
+                      {copy.monitor.activatedPre}
                       <strong>{monitorAlert?.entity_name || companyLabel}</strong>.
                     </Typography>
                   </Box>
@@ -662,8 +806,7 @@ export default function OrderStatusPage() {
                   variant="caption"
                   sx={{ color: 'text.secondary', mt: 0.5 }}
                 >
-                  One-click unsubscribe in every email. Free for as long
-                  as you stay subscribed.
+                  {copy.monitor.unsubscribe}
                 </Typography>
               </Box>
             ) : (
@@ -674,13 +817,10 @@ export default function OrderStatusPage() {
                   />
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      Monitor {companyLabel} for free
+                      {copy.monitor.titlePre}{companyLabel}{copy.monitor.titlePost}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      Get email alerts when BORME publishes corporate
-                      events (officer changes, capital moves, insolvency,
-                      dissolution, name changes) or when a global
-                      regulator flags the company via IOSCO.
+                      {copy.monitor.body}
                     </Typography>
                   </Box>
                 </Box>
@@ -716,16 +856,15 @@ export default function OrderStatusPage() {
                   }}
                 >
                   {monitorState === 'loading'
-                    ? 'Enabling…'
-                    : 'Start free monitoring'}
+                    ? copy.monitor.enabling
+                    : copy.monitor.start}
                 </Button>
 
                 <Typography
                   variant="caption"
                   sx={{ color: 'text.disabled', textAlign: 'center' }}
                 >
-                  Sent to the email you used at checkout. One-click
-                  unsubscribe in every message.
+                  {copy.monitor.sentTo}
                 </Typography>
               </Box>
             )}
@@ -735,7 +874,7 @@ export default function OrderStatusPage() {
         {/* Order reference */}
         {sessionId && (
           <Typography variant="caption" sx={{ color: 'text.disabled', textAlign: 'center' }}>
-            Order reference: {sessionId.slice(-12)}
+            {copy.orderRef} {sessionId.slice(-12)}
           </Typography>
         )}
 
@@ -746,21 +885,21 @@ export default function OrderStatusPage() {
             variant="caption"
             sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
-            Home
+            {copy.footer.home}
           </Link>
           <Link
             href="/app"
             variant="caption"
             sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
-            Search companies
+            {copy.footer.search}
           </Link>
           <Link
-            href="mailto:mapasocietario@ncdata.eu"
+            href={`mailto:${SUPPORT_EMAIL}`}
             variant="caption"
             sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
-            Contact support
+            {copy.footer.contact}
           </Link>
         </Box>
       </Box>
@@ -768,16 +907,16 @@ export default function OrderStatusPage() {
   );
 }
 
-function formatFinancialStatementsYear(year) {
-  if (!year || year === 'latest') return 'latest available';
+function formatFinancialStatementsYear(year, copy) {
+  if (!year || year === 'latest') return copy.fsYearLatest;
   return String(year);
 }
 
-function formatFinancialStatementsFallback(fallback) {
+function formatFinancialStatementsFallback(fallback, copy) {
   if (fallback === 'full_refund') {
-    return 'full refund if the accounts are unavailable';
+    return copy.fallbackFullRefund;
   }
-  return 'keep the Due Diligence report and refund the financial statements part';
+  return copy.fallbackKeep;
 }
 
 function StatusItem({ label, icon, ready, description }) {
