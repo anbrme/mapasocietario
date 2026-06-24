@@ -80,7 +80,10 @@ import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } fr
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 import LegalDisclaimer from './LegalDisclaimer';
 import TimelineIcon from '@mui/icons-material/Timeline';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import ForceGraph2D from 'react-force-graph-2d';
+import AIInvestigationGate from './AIInvestigationGate';
+import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import {
   POSITION_CATEGORY_ORDER,
@@ -391,6 +394,10 @@ const SEARCH_COPY = {
       'I could not reliably identify at least 2 visible companies. Try searching for them by exact name.',
     relationshipPrepareError: message => `Could not prepare the relationship report: ${message}`,
     copyTableError: 'Could not copy the table to the clipboard.',
+    investigationAdd: 'Add to AI investigation',
+    investigationRemove: 'Remove from AI investigation',
+    investigateSelection: 'Investigate selection',
+    investigationOverCap: `Reduce the selection to ${INVESTIGATION_CAP} entities`,
   },
   es: {
     type: 'Tipo',
@@ -618,6 +625,10 @@ const SEARCH_COPY = {
       'No pude identificar con seguridad al menos 2 de las empresas visibles. Prueba a buscarlas por su nombre exacto.',
     relationshipPrepareError: message => `No se pudo preparar el informe de relaciones: ${message}`,
     copyTableError: 'No se pudo copiar la tabla al portapapeles.',
+    investigationAdd: 'Añadir a investigación por IA',
+    investigationRemove: 'Quitar de la investigación por IA',
+    investigateSelection: 'Investigar selección',
+    investigationOverCap: `Reduce la selección a ${INVESTIGATION_CAP} entidades`,
   },
 };
 
@@ -1124,6 +1135,11 @@ const SpanishCompanyNetworkGraph = ({
   const [hiddenNodesMenuAnchorEl, setHiddenNodesMenuAnchorEl] = useState(null);
   const [activeNodeId, setActiveNodeId] = useState(null);
   const [nodeContextMenu, setNodeContextMenu] = useState(null); // { mouseX, mouseY, nodeId }
+  const [investigationSet, setInvestigationSet] = useState(() => new Set());
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiPanelContext, setAiPanelContext] = useState(null);
+  // Re-render the chip as the entitlement ticks; loadToken() is read at render.
+  const [entitlementTick, setEntitlementTick] = useState(0);
   const [isEditNodeDialogOpen, setIsEditNodeDialogOpen] = useState(false);
   const [isMergeNodeDialogOpen, setIsMergeNodeDialogOpen] = useState(false);
   const [isDeleteNodeDialogOpen, setIsDeleteNodeDialogOpen] = useState(false);
@@ -3917,12 +3933,28 @@ const SpanishCompanyNetworkGraph = ({
     [closeHiddenNodesMenu, containerEl]
   );
 
+  const toggleInvestigationNode = useCallback((rawId) => {
+    const id = normalizeNodeId(rawId);
+    setInvestigationSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
   // Click/tap handler — desktop: double-click expands; mobile: single tap opens context menu, double tap expands
   const handleNodeClick = useCallback(
     (node, event) => {
       const now = Date.now();
       const last = lastClickRef.current;
       const nodeId = normalizeNodeId(node.id);
+
+      if (event && (event.shiftKey || event.metaKey || event.ctrlKey)) {
+        event.preventDefault?.();
+        toggleInvestigationNode(nodeId);
+        return;
+      }
+
       const threshold = embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS;
       const browserDoubleClick = Number(event?.detail) >= 2;
 
@@ -3955,7 +3987,7 @@ const SpanishCompanyNetworkGraph = ({
         lastClickRef.current = { nodeId, time: now };
       }
     },
-    [expandNode, embedded, isFullscreen, handleNodeRightClick]
+    [expandNode, embedded, isFullscreen, handleNodeRightClick, toggleInvestigationNode]
   );
 
   const openEditNodeDialog = useCallback(() => {
@@ -5248,9 +5280,20 @@ const SpanishCompanyNetworkGraph = ({
         }
       }
 
+      if (investigationSet.has(normalizeNodeId(node.id))) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius + 2.5, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#7c4dff'; // distinct from status colors
+        ctx.lineWidth = 2 / globalScale;
+        ctx.setLineDash([]);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       ctx.globalAlpha = 1.0;
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet]
   );
 
   const linkCanvasObject = useCallback(
@@ -6675,6 +6718,38 @@ const SpanishCompanyNetworkGraph = ({
           />
         )}
 
+        {/* Floating AI Investigation Launcher */}
+        {(() => {
+          const count = investigationSet.size;
+          const launch = investigationLaunchState(count);
+          const stored = loadToken();
+          const nowSec = Math.floor(Date.now() / 1000);
+          const label = count > 0
+            ? `${text.investigateSelection} (${count})`
+            : entitlementChipLabel(stored, nowSec, uiLanguage);
+          return (
+            <Paper sx={{ position: 'absolute', top: 12, left: 12, zIndex: 20, p: 0.5, display: 'flex', gap: 1, alignItems: 'center', bgcolor: 'rgba(18,24,40,0.9)' }}>
+              <Button
+                size="small"
+                variant={count > 0 ? 'contained' : 'outlined'}
+                startIcon={<PsychologyIcon />}
+                disabled={!launch.canLaunch}
+                onClick={() => {
+                  const primary = graphData.nodes.find((n) => isSameNodeId(n.id, activeNodeId))
+                    || graphData.nodes.find((n) => typeof primarySubject === 'string' && n.name && n.name.toUpperCase() === primarySubject.toUpperCase())
+                    || null;
+                  setAiPanelContext(
+                    buildInvestigationContext(Array.from(investigationSet), graphData.nodes, graphData.links, primary)
+                  );
+                  setAiPanelOpen(true);
+                }}
+              >
+                {launch.mode === 'over_cap' ? text.investigationOverCap : label}
+              </Button>
+            </Paper>
+          );
+        })()}
+
         {/* Floating Data Table */}
         <Paper
           data-floating-table
@@ -7188,6 +7263,14 @@ const SpanishCompanyNetworkGraph = ({
             </Box>
           )}
           <Divider />
+          <MenuItem onClick={() => { if (contextNode) toggleInvestigationNode(contextNode.id); closeNodeContextMenu(); }}>
+            <ListItemIcon><PsychologyIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>
+              {investigationSet.has(normalizeNodeId(contextNode?.id))
+                ? text.investigationRemove
+                : text.investigationAdd}
+            </ListItemText>
+          </MenuItem>
           <MenuItem onClick={() => { closeNodeContextMenu(); if (contextNode) expandNode(contextNode); }}>
             <ListItemIcon>
               <NetworkIcon fontSize="small" color="primary" />
@@ -8286,6 +8369,12 @@ const SpanishCompanyNetworkGraph = ({
           lang={uiLanguage}
           onRemoveCompany={removeCompanyFromReport}
         />
+        <AIInvestigationGate
+          open={aiPanelOpen}
+          onClose={() => { setAiPanelOpen(false); setEntitlementTick((t) => t + 1); }}
+          language={uiLanguage}
+          context={aiPanelContext}
+        />
       </Box>
     );
   }
@@ -8353,6 +8442,12 @@ const SpanishCompanyNetworkGraph = ({
         subjects={relSubjects}
         lang={uiLanguage}
         onRemoveCompany={removeCompanyFromReport}
+      />
+      <AIInvestigationGate
+        open={aiPanelOpen}
+        onClose={() => { setAiPanelOpen(false); setEntitlementTick((t) => t + 1); }}
+        language={uiLanguage}
+        context={aiPanelContext}
       />
     </>
   );
