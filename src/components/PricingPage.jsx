@@ -239,7 +239,7 @@ export default function PricingPage() {
                 {t.volumeBody}
               </Typography>
               <Button
-                href={`mailto:app@ncdata.eu?subject=${encodeURIComponent(t.volumeSubject)}`}
+                href={`mailto:mapasocietario@ncdata.eu?subject=${encodeURIComponent(t.volumeSubject)}`}
                 variant="contained"
                 startIcon={<AssessmentIcon />}
                 sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}

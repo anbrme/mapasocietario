@@ -153,7 +153,7 @@ export default function SpanishCompanyDueDiligencePage() {
             </Typography>
             <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap' }}>
               <Button
-                href="mailto:app@ncdata.eu?subject=NC%20Data%20Spanish%20API"
+                href="mailto:mapasocietario@ncdata.eu?subject=NC%20Data%20Spanish%20API"
                 variant="outlined"
                 size="small"
                 sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}

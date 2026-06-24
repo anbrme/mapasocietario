@@ -53,9 +53,9 @@ const DD_COPY = {
       `We could not find "${companyName}" in our Spanish corporate registry. ` +
       'This usually means it is a foreign entity that appears only as a shareholder of Spanish companies. ' +
       'We do not hold a corporate profile for it, so a Due Diligence report cannot be generated. ' +
-      'If you believe this is wrong, please email app@ncdata.eu.',
+      'If you believe this is wrong, please email mapasocietario@ncdata.eu.',
     fulfillFailed:
-      'Google Play purchase was paid, but report fulfillment failed. Please contact app@ncdata.eu.',
+      'Google Play purchase was paid, but report fulfillment failed. Please contact mapasocietario@ncdata.eu.',
     emailRequired: 'Email is required to receive your report.',
     googlePlayConnecting:
       'Google Play checkout is being connected for Android. Stripe checkout is disabled in the Android app.',
@@ -129,9 +129,9 @@ const DD_COPY = {
       `No hemos encontrado "${companyName}" en nuestro registro societario español. ` +
       'Normalmente esto significa que es una entidad extranjera que solo aparece como accionista de sociedades españolas. ' +
       'No tenemos un perfil societario propio para ella, por lo que no se puede generar un informe Due Diligence. ' +
-      'Si crees que es un error, escríbenos a app@ncdata.eu.',
+      'Si crees que es un error, escríbenos a mapasocietario@ncdata.eu.',
     fulfillFailed:
-      'La compra en Google Play se ha pagado, pero no se pudo preparar el informe. Contacta con app@ncdata.eu.',
+      'La compra en Google Play se ha pagado, pero no se pudo preparar el informe. Contacta con mapasocietario@ncdata.eu.',
     emailRequired: 'El email es obligatorio para recibir el informe.',
     googlePlayConnecting:
       'Estamos conectando Google Play para Android. Stripe está desactivado dentro de la app Android.',
@@ -904,7 +904,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           }}
         >
           {copy.questions}{' '}
-          <a href="mailto:app@ncdata.eu" style={{ color: '#8bc5ff', textDecoration: 'none' }}>app@ncdata.eu</a>
+          <a href="mailto:mapasocietario@ncdata.eu" style={{ color: '#8bc5ff', textDecoration: 'none' }}>mapasocietario@ncdata.eu</a>
           {' '}— {copy.reply}
         </Typography>
       </DialogContent>

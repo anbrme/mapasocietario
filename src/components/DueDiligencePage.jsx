@@ -249,7 +249,7 @@ export default function DueDiligencePage() {
 
   const ladderLinks = [
     appHref,
-    'mailto:app@ncdata.eu?subject=NC%20Data%20Spanish%20API',
+    'mailto:mapasocietario@ncdata.eu?subject=NC%20Data%20Spanish%20API',
     'https://nurnbergconsulting.com',
     'https://ncdata.eu',
   ];
@@ -529,7 +529,7 @@ export default function DueDiligencePage() {
           <Box component="ul" sx={{ pl: 2.5, my: 0, '& li': { mb: 0.75 } }}>
             <Typography component="li" variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, display: 'list-item' }}>
               <strong>{t.commitment.realPeopleStrong}</strong> {t.commitment.realPeopleText}{' '}
-              <Link href="mailto:app@ncdata.eu" sx={{ color: 'primary.light', fontWeight: 600 }}>app@ncdata.eu</Link>
+              <Link href="mailto:mapasocietario@ncdata.eu" sx={{ color: 'primary.light', fontWeight: 600 }}>mapasocietario@ncdata.eu</Link>
               {' '}{t.commitment.realPeopleText2}
             </Typography>
             <Typography component="li" variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, display: 'list-item' }}>
@@ -566,7 +566,7 @@ export default function DueDiligencePage() {
           <Link href={nav.about} variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.about}</Link>
           <Link href={nav.terms} variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.terms}</Link>
           <Link href={nav.privacy} variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.privacy}</Link>
-          <Link href="mailto:app@ncdata.eu" variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.contact}</Link>
+          <Link href="mailto:mapasocietario@ncdata.eu" variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.contact}</Link>
         </Box>
 
         <DDCheckoutDialog

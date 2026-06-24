@@ -389,8 +389,8 @@ export default function OrderStatusPage() {
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 Please contact{' '}
-                <Link href="mailto:app@ncdata.eu" sx={{ color: 'primary.main' }}>
-                  app@ncdata.eu
+                <Link href="mailto:mapasocietario@ncdata.eu" sx={{ color: 'primary.main' }}>
+                  mapasocietario@ncdata.eu
                 </Link>{' '}
                 for assistance.
               </Typography>
@@ -433,7 +433,7 @@ export default function OrderStatusPage() {
                 </Button>
                 <Typography variant="caption" sx={{ color: 'text.disabled', mt: 0.5 }}>
                   Taking longer than 2 minutes? Email{' '}
-                  <Link href="mailto:app@ncdata.eu" sx={{ color: 'text.secondary' }}>app@ncdata.eu</Link>
+                  <Link href="mailto:mapasocietario@ncdata.eu" sx={{ color: 'text.secondary' }}>mapasocietario@ncdata.eu</Link>
                   {' '}with your order reference and we'll look into it.
                 </Typography>
               </Box>
@@ -496,7 +496,7 @@ export default function OrderStatusPage() {
                 </Button>
                 <Typography variant="caption" sx={{ color: 'text.disabled', mt: 0.5 }}>
                   Any question or concern? Email{' '}
-                  <Link href="mailto:app@ncdata.eu" sx={{ color: 'text.secondary' }}>app@ncdata.eu</Link>
+                  <Link href="mailto:mapasocietario@ncdata.eu" sx={{ color: 'text.secondary' }}>mapasocietario@ncdata.eu</Link>
                   {' '}with your order reference — we usually reply within a few hours on business days.
                 </Typography>
               </Box>
@@ -736,7 +736,7 @@ export default function OrderStatusPage() {
             Search companies
           </Link>
           <Link
-            href="mailto:app@ncdata.eu"
+            href="mailto:mapasocietario@ncdata.eu"
             variant="caption"
             sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >
