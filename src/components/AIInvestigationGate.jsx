@@ -4,7 +4,10 @@ import {
   Button, TextField, Box, Typography, Alert, CircularProgress,
 } from '@mui/material';
 import { AI_INVESTIGATION_API } from '../config';
-import { buildRedeemBody, buildInvestigateHeaders, isTokenValid } from '../utils/aiInvestigationClient';
+import {
+  buildRedeemBody, buildInvestigateHeaders, isTokenValid,
+  buildInvestigatePayload, loadToken, saveToken,
+} from '../utils/aiInvestigationClient';
 
 // Cloudflare Turnstile sitekey for the ai-investigation widget.
 const TURNSTILE_SITEKEY = '0x4AAAAAADp3WnZGNiZai_32';
@@ -30,13 +33,24 @@ const COPY = {
   },
 };
 
-export default function AIInvestigationGate({ open, onClose, language = 'es', prefillEmail = '', prefillCode = '' }) {
+export default function AIInvestigationGate({ open, onClose, language = 'es', prefillEmail = '', prefillCode = '', context = null }) {
   const t = COPY[language === 'en' ? 'en' : 'es'];
   const [email, setEmail] = useState(prefillEmail);
   useEffect(() => { setEmail(prefillEmail); }, [prefillEmail]);
   const [code, setCode] = useState(prefillCode);
   useEffect(() => { if (prefillCode) setCode(prefillCode); }, [prefillCode]);
-  const [session, setSession] = useState(null); // { token, expiresAt }
+  const [session, setSession] = useState(() => {
+    const t = loadToken();
+    return isTokenValid(t, Math.floor(Date.now() / 1000)) ? t : null;
+  });
+
+  // When the dialog (re)opens, refresh session from storage so a token
+  // redeemed elsewhere (e.g. the order page) authorizes this instance.
+  useEffect(() => {
+    if (!open) return;
+    const t = loadToken();
+    if (isTokenValid(t, Math.floor(Date.now() / 1000))) setSession(t);
+  }, [open]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [question, setQuestion] = useState('');
@@ -72,7 +86,9 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
         return;
       }
       const data = await res.json();
-      setSession({ token: data.token, expiresAt: data.expires_at });
+      const stored = { token: data.token, expiresAt: data.expires_at };
+      saveToken(stored);
+      setSession(stored);
     } catch {
       setError(t.invalid);
       if (window.turnstile && widgetId.current != null) window.turnstile.reset(widgetId.current);
@@ -88,7 +104,12 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
       const res = await fetch(`${AI_INVESTIGATION_API}/investigate`, {
         method: 'POST',
         headers: buildInvestigateHeaders(session.token),
-        body: JSON.stringify({ question }),
+        body: JSON.stringify(buildInvestigatePayload({
+          question,
+          focus: context?.focus ?? null,
+          entities: context?.entities ?? [],
+          edges: context?.edges ?? [],
+        })),
       });
       if (res.status === 429) { setError(t.rateLimited); return; }
       if (!res.ok) { setError(t.invalid); return; }
@@ -98,7 +119,7 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
     } finally {
       setBusy(false);
     }
-  }, [session, question, t]);
+  }, [session, question, context, t]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
