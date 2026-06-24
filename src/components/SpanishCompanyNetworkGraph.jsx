@@ -864,7 +864,15 @@ const getLinkEffectiveCategory = link => {
   return effectiveCategoryFromEvents(link.events, link.category);
 };
 
-const getOfficerLinkStatus = link => (isActiveLinkCategory(getLinkEffectiveCategory(link)) ? 'active' : 'ceased');
+// A dissolved company can't have current officers — a dissolution implies
+// cessation even if BORME never inscribed individual ceses. When
+// enrichLinksWithEventDates stamps link.companyDissolved = true (by reading
+// the company node's isDissolved flag), we treat the link as ceased regardless
+// of its event-derived category.
+const getOfficerLinkStatus = link => {
+  if (link.companyDissolved) return 'ceased';
+  return isActiveLinkCategory(getLinkEffectiveCategory(link)) ? 'active' : 'ceased';
+};
 
 // Resolve category for a v3 expand-officer entry. Prefer the explicit
 // `status` field (active/ceased) the backend copied from officers_active /
@@ -1993,10 +2001,30 @@ const SpanishCompanyNetworkGraph = ({
               pinnedIds.push(companyId);
               setPinnedNodeIds(prev => new Set([...prev, companyId]));
             });
-            // Stamp the resolved group_key onto the searched company node so a
-            // later preview/expand reuses it (step 1 of resolveCompanyGroupKey)
-            // instead of re-resolving the name.
-            if (groupKey && pinnedIds.length > 0) {
+            // Build a map of nodeId→isDissolved from the raw v3 results so we can
+            // stamp the dissolved flag on company graph nodes. This is the only
+            // point in the search path where is_dissolved is available without an
+            // extra API call; enrichLinksWithEventDates reads it back from
+            // companyNode.isDissolved when marking links as companyDissolved.
+            const dissolvedIds = new Set(
+              v3Results
+                .filter(c => c.is_dissolved)
+                .map(c => companyNameToId(normalizeCompanyName(c.company_name || c.name || '')))
+            );
+            if (dissolvedIds.size > 0 || groupKey) {
+              setGraphData(prev => ({
+                ...prev,
+                nodes: prev.nodes.map(n => {
+                  const updates = {};
+                  if (dissolvedIds.has(n.id)) updates.isDissolved = true;
+                  if (groupKey && pinnedIds.includes(n.id) && !n.groupKey) updates.groupKey = groupKey;
+                  return Object.keys(updates).length > 0 ? { ...n, ...updates } : n;
+                }),
+              }));
+            } else if (groupKey && pinnedIds.length > 0) {
+              // Stamp the resolved group_key onto the searched company node so a
+              // later preview/expand reuses it (step 1 of resolveCompanyGroupKey)
+              // instead of re-resolving the name.
               setGraphData(prev => ({
                 ...prev,
                 nodes: prev.nodes.map(n =>
@@ -2424,6 +2452,12 @@ const SpanishCompanyNetworkGraph = ({
 
         const officerUpper = (officerNode.name || '').toUpperCase();
         const companyUpper = (companyNode.name || '').toUpperCase();
+
+        // If the company node is marked dissolved, every officer-company link
+        // for this company is implicitly ceased — dissolution implies cessation
+        // even when individual cese events were never inscribed in BORME.
+        const companyDissolved = !!companyNode.isDissolved;
+
         // Only attach events for THIS link's role. An officer can hold several
         // roles at one company with independent active/ceased status (e.g. an
         // active CONSEJERO and a later-revoked APODERADO); without this filter
@@ -2442,8 +2476,12 @@ const SpanishCompanyNetworkGraph = ({
           }
         });
 
-        if (events.length === 0) return link;
-        return { ...link, events };
+        if (events.length === 0 && !companyDissolved) return link;
+        return {
+          ...link,
+          ...(events.length > 0 && { events }),
+          ...(companyDissolved && { companyDissolved: true }),
+        };
       });
       return { nodes: prev.nodes, links: newLinks };
     });
@@ -3474,6 +3512,17 @@ const SpanishCompanyNetworkGraph = ({
           const baseEntries = await v3DocsToCappedEntries([v3.company], officersPerCompany);
           const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
           await addCompanyWithOfficersToGraph(entries, companyNode, aliasMap);
+          // Stamp isDissolved on the company node so enrichLinksWithEventDates can
+          // mark its officer links as companyDissolved (mirrors handleSearch path).
+          if (v3.company.is_dissolved) {
+            const nodeId = companyNode.id;
+            setGraphData(prev => ({
+              ...prev,
+              nodes: prev.nodes.map(n =>
+                n.id === nodeId && !n.isDissolved ? { ...n, isDissolved: true } : n
+              ),
+            }));
+          }
           return true;
         }
         return false;
