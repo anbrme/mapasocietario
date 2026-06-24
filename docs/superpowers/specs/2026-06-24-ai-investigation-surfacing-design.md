@@ -45,7 +45,9 @@ Additive copy in the existing feature-chip/list layout; no new components.
 
 ### C. Checkout dialog reassurance line
 
-- `DDCheckoutDialog`: one line in the order summary near the price — *"Includes 2 days of AI investigation on this company's network"* — reaffirming the value at the moment of payment. Reuses the existing summary-row layout.
+- `DDCheckoutDialog`: one line in the order summary **near the price (below the email field)** — *"Includes 2 days of AI investigation on this company's network"* — reaffirming the value at the moment of payment. Reuses the existing summary-row layout.
+
+**Mobile / Android constraint (binding).** The dialog already renders `fullScreen` at the `sm` breakpoint with the email field first in the content — keep it that way. The added line MUST go in the order summary near the price, **never above the email field**, and be a single compact row (no banner) so it cannot push the email field down or behind the soft keyboard. The checkout is used in the Capacitor Android app on a constrained viewport, so: the email field must stay visible and usable with the keyboard open, the content must remain scrollable, and the addition must not reduce readability. Verify at a narrow viewport (≤ `sm`) with the keyboard open — email reachable, nothing clipped.
 
 ## Components / files (frontend only)
 
@@ -61,3 +63,4 @@ Additive copy in the existing feature-chip/list layout; no new components.
 - The DD page, pricing page, and checkout each state the included 2-day AI investigation factually and bilingually.
 - Copy contains no fabricated social proof, urgency, or superlatives.
 - No backend/entitlement/engine change; existing redeem flow for buyers is unchanged.
+- On a constrained viewport / the Android Capacitor app, the checkout dialog stays readable and the email field remains visible and usable with the keyboard open — the surface-C line does not crowd or hide it.
