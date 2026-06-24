@@ -10,6 +10,7 @@ import {
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import DescriptionIcon from '@mui/icons-material/Description';
 import GavelIcon from '@mui/icons-material/Gavel';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import SearchIcon from '@mui/icons-material/Search';
 import SecurityIcon from '@mui/icons-material/Security';
 import VerifiedIcon from '@mui/icons-material/Verified';
@@ -46,6 +47,7 @@ const FEATURES = [
   { icon: <GavelIcon />, title: 'BORME event history', text: 'Review appointments, resignations, capital events, changes, and relevant registry publications.' },
   { icon: <SecurityIcon />, title: 'Risk checks', text: 'Includes sanctions-oriented checks and Congress deputy matches where available.' },
   { icon: <DescriptionIcon />, title: 'PDF report', text: 'A practical report for compliance files, supplier reviews, investor screening, and internal records.' },
+  { icon: <PsychologyIcon />, title: '2-day AI investigation', text: 'Every report includes 2 days of AI investigation: ask questions about the company\'s network and get answers that cite live web sources and separate registry facts from press reports.' },
 ];
 
 export default function SpanishCompanyDueDiligencePage() {
@@ -83,7 +85,7 @@ export default function SpanishCompanyDueDiligencePage() {
             sole-shareholder and fully-owned participation checks, BOE sanctions checks, and downloadable PDF reports.
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-            {['BORME registry data', 'Officer history', 'BOE sanctions checks', 'PDF report', 'No subscription'].map((chip) => (
+            {['BORME registry data', 'Officer history', 'BOE sanctions checks', 'PDF report', '2-day AI investigation', 'No subscription'].map((chip) => (
               <Chip key={chip} label={chip} size="small" variant="outlined" sx={{ borderColor: 'rgba(255,255,255,0.18)' }} />
             ))}
           </Box>
