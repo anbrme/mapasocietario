@@ -118,6 +118,7 @@ const DD_COPY = {
     googlePlaySoon: 'Google Play checkout coming soon',
     continueStripe: subtotal => `Continue to Stripe · from EUR ${subtotal.toFixed(2)}`,
     cancel: 'Cancel',
+    aiIncluded: 'Includes 2 days of AI investigation on this company’s network',
   },
   es: {
     androidVatNote:
@@ -194,6 +195,7 @@ const DD_COPY = {
     googlePlaySoon: 'Pago con Google Play próximamente',
     continueStripe: subtotal => `Continuar a Stripe · desde EUR ${subtotal.toFixed(2)}`,
     cancel: 'Cancelar',
+    aiIncluded: 'Incluye 2 días de investigación por IA sobre la red de esta empresa',
   },
 };
 
@@ -846,6 +848,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               {isAndroidApp ? androidDisplayPrice : copy.shownAtStripe}
             </Typography>
           </Box>
+          <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 0.5, px: 1 }}>
+            {copy.aiIncluded}
+          </Typography>
         </Box>
 
         {/* Data-quality guarantee */}
