@@ -109,6 +109,7 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
           focus: context?.focus ?? null,
           entities: context?.entities ?? [],
           edges: context?.edges ?? [],
+          lang: language,
         })),
       });
       if (res.status === 429) { setError(t.rateLimited); return; }

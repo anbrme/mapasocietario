@@ -95,13 +95,21 @@ test('buildInvestigationContext: handles links whose source/target are node obje
   assert.deepEqual(ctx.edges, [{ source: 'company-a', target: 'officer-b', type: 'apoderado' }]);
 });
 
-test('buildInvestigatePayload: assembles the request body', () => {
+test('buildInvestigatePayload: assembles the request body with lang', () => {
   const payload = buildInvestigatePayload({
     question: 'q', focus: { id: 'company-a', name: 'A', type: 'company' },
     entities: [{ id: 'company-a', name: 'A', type: 'company' }], edges: [],
+    lang: 'en',
   });
   assert.deepEqual(payload, {
     question: 'q', focus: { id: 'company-a', name: 'A', type: 'company' },
     entities: [{ id: 'company-a', name: 'A', type: 'company' }], edges: [],
+    lang: 'en',
   });
+});
+test('buildInvestigatePayload: defaults lang to es when omitted', () => {
+  const payload = buildInvestigatePayload({
+    question: 'q', focus: null, entities: [], edges: [],
+  });
+  assert.equal(payload.lang, 'es');
 });

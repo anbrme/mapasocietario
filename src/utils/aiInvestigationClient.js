@@ -89,6 +89,6 @@ export function buildInvestigationContext(selectedIds, nodes, links, primarySubj
   return { focus, entities, edges };
 }
 
-export function buildInvestigatePayload({ question, focus, entities, edges }) {
-  return { question, focus, entities, edges };
+export function buildInvestigatePayload({ question, focus, entities, edges, lang }) {
+  return { question, focus, entities, edges, lang: lang || 'es' };
 }
