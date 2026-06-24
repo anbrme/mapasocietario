@@ -21,6 +21,9 @@ const COPY = {
     invalid: 'Could not unlock. Check your email and code.',
     rateLimited: 'You have hit the rate limit. Try again shortly.',
     expired: 'Your session expired. Please redeem again.',
+    buyTitle: 'Don\'t have a Due Diligence report yet?',
+    buyBody: 'AI Investigation is included with every Due Diligence report: ask questions about this network and get cited answers that separate registry facts from press. 2 days of access per report.',
+    buyCta: company => company ? `Get the Due Diligence report for ${company}` : 'Get a Due Diligence report',
   },
   es: {
     title: 'Investigación por IA',
@@ -30,10 +33,13 @@ const COPY = {
     invalid: 'No se pudo desbloquear. Revisa tu email y código.',
     rateLimited: 'Has alcanzado el límite. Inténtalo en un momento.',
     expired: 'Tu sesión ha expirado. Vuelve a canjear.',
+    buyTitle: '¿Aún no tienes un informe de Due Diligence?',
+    buyBody: 'La Investigación por IA se incluye con cada informe de Due Diligence: pregunta sobre esta red y obtén respuestas citadas que separan los hechos registrales de la prensa. 2 días de acceso por informe.',
+    buyCta: company => company ? `Obtener el informe de Due Diligence de ${company}` : 'Obtener un informe de Due Diligence',
   },
 };
 
-export default function AIInvestigationGate({ open, onClose, language = 'es', prefillEmail = '', prefillCode = '', context = null }) {
+export default function AIInvestigationGate({ open, onClose, language = 'es', prefillEmail = '', prefillCode = '', context = null, onBuy = null, focusCompany = '' }) {
   const t = COPY[language === 'en' ? 'en' : 'es'];
   const [email, setEmail] = useState(prefillEmail);
   useEffect(() => { setEmail(prefillEmail); }, [prefillEmail]);
@@ -137,6 +143,15 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
             <Button variant="contained" onClick={redeem} disabled={busy || !email || !code}>
               {busy ? <CircularProgress size={20} /> : t.unlock}
             </Button>
+            {onBuy && (
+              <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.12)', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>{t.buyTitle}</Typography>
+                <Typography variant="body2" color="text.secondary">{t.buyBody}</Typography>
+                <Button variant="contained" color="warning" onClick={() => { onClose?.(); onBuy(focusCompany); }}>
+                  {t.buyCta(focusCompany)}
+                </Button>
+              </Box>
+            )}
           </Box>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

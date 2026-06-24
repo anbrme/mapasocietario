@@ -8445,6 +8445,13 @@ const SpanishCompanyNetworkGraph = ({
           onClose={() => { setAiPanelOpen(false); setEntitlementTick((t) => t + 1); }}
           language={uiLanguage}
           context={aiPanelContext}
+          focusCompany={primarySubject || ''}
+          onBuy={(name) => {
+            const company = (name || primarySubject || '').trim();
+            if (!company) return;
+            setDdCheckoutCompany(company);
+            setDdCheckoutOpen(true);
+          }}
         />
       </Box>
     );
@@ -8519,6 +8526,13 @@ const SpanishCompanyNetworkGraph = ({
         onClose={() => { setAiPanelOpen(false); setEntitlementTick((t) => t + 1); }}
         language={uiLanguage}
         context={aiPanelContext}
+        focusCompany={primarySubject || ''}
+        onBuy={(name) => {
+          const company = (name || primarySubject || '').trim();
+          if (!company) return;
+          setDdCheckoutCompany(company);
+          setDdCheckoutOpen(true);
+        }}
       />
     </>
   );
