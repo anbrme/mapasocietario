@@ -143,7 +143,7 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
             <Button variant="contained" onClick={redeem} disabled={busy || !email || !code}>
               {busy ? <CircularProgress size={20} /> : t.unlock}
             </Button>
-            {onBuy && (
+            {onBuy && focusCompany && (
               <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.12)', display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>{t.buyTitle}</Typography>
                 <Typography variant="body2" color="text.secondary">{t.buyBody}</Typography>
