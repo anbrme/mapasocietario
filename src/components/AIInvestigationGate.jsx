@@ -171,13 +171,21 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
                       {language === 'en' ? 'Sources' : 'Fuentes'}
                     </Typography>
                     <Box component="ol" sx={{ pl: 2, m: 0.5 }}>
-                      {answer.citations.map((c) => (
-                        <li key={c.n}>
-                          <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: '#90caf9' }}>
-                            {c.title || c.url}
-                          </a>
-                        </li>
-                      ))}
+                      {answer.citations.map((c, i) => {
+                        let safeUrl = null;
+                        try {
+                          const u = new URL(c.url);
+                          if (u.protocol === 'https:' || u.protocol === 'http:') safeUrl = u.toString();
+                        } catch { /* invalid URL → no link */ }
+                        const label = c.title || c.url || '';
+                        return (
+                          <li key={c.url || c.n || i}>
+                            {safeUrl
+                              ? <a href={safeUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#90caf9' }}>{label}</a>
+                              : <span style={{ color: '#9aa4b2' }}>{label}</span>}
+                          </li>
+                        );
+                      })}
                     </Box>
                   </Box>
                 )}
