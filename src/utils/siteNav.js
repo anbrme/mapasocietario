@@ -18,6 +18,8 @@ export function siteNav(lang = 'en') {
     reports: es ? '/due-diligence?lang=es' : '/due-diligence',
     // Pricing is a single bilingual SPA page driven by ?lang.
     pricing: es ? '/pricing?lang=es' : '/pricing',
+    // "Use in Claude" connector page — bilingual SPA route per language.
+    connectClaude: es ? '/es/conectar-claude' : '/connect-claude',
     dashboard: '/dashboard',
     // IBEX 35 listed-companies hub — server-rendered (Cloudflare Pages Function),
     // NOT a SPA route, so callers must full-page load (web) or open a Custom Tab

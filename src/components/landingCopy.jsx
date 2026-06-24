@@ -32,7 +32,7 @@ export const LANDING_COPY = {
     },
     quickLinks: {
       listed: 'Browse IBEX 35 companies',
-      dashboard: 'Activity dashboard',
+      dashboard: 'Stats dashboard',
     },
     howItWorks: {
       heading: 'How it works',
@@ -142,6 +142,7 @@ export const LANDING_COPY = {
       dashboard: 'Dashboard',
       about: 'About',
       apiDocs: 'Public API docs',
+      connectClaude: 'Use in Claude',
       ncdata: 'NC Data (multi-country)',
       privacy: 'Privacy & Cookies',
       terms: 'Terms',
@@ -287,6 +288,7 @@ export const LANDING_COPY = {
       dashboard: 'Panel de estadísticas',
       about: 'Acerca de',
       apiDocs: 'Documentación API pública',
+      connectClaude: 'Usar en Claude',
       ncdata: 'NC Data (multipaís)',
       privacy: 'Privacidad y cookies',
       terms: 'Términos',

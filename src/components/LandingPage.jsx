@@ -487,6 +487,9 @@ export default function LandingPage({ lang = 'en' }) {
             <Link href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.apiDocs}
             </Link>
+            <Link href={nav.connectClaude} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+              {copy.footer.connectClaude}
+            </Link>
             <Link href="https://ncdata.eu" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.ncdata}
             </Link>

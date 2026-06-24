@@ -11,6 +11,7 @@ const DueDiligencePage = lazy(() => import('./components/DueDiligencePage'));
 const SpanishCompanyDueDiligencePage = lazy(() => import('./components/SpanishCompanyDueDiligencePage'));
 const PricingPage = lazy(() => import('./components/PricingPage'));
 const SpanishSeoPage = lazy(() => import('./components/SpanishSeoPage'));
+const ConnectClaudePage = lazy(() => import('./components/ConnectClaudePage'));
 const OrderStatusPage = lazy(() => import('./components/OrderStatusPage'));
 const AdminPage = lazy(() => import('./components/AdminPage'));
 import { FilterProvider } from './contexts/FilterProvider';
@@ -26,6 +27,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/es" element={<LandingPage lang="es" />} />
+      <Route path="/connect-claude" element={<Suspense fallback={null}><ConnectClaudePage lang="en" /></Suspense>} />
+      <Route path="/es/conectar-claude" element={<Suspense fallback={null}><ConnectClaudePage lang="es" /></Suspense>} />
       <Route path="/es/:slug" element={<Suspense fallback={null}><SpanishSeoPage /></Suspense>} />
       <Route path="/app" element={<App />} />
       <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
