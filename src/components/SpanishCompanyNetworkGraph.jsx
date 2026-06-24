@@ -2428,7 +2428,11 @@ const SpanishCompanyNetworkGraph = ({
       });
     });
 
-    if (eventMap.size === 0) return;
+    // Do NOT early-return when eventMap is empty: a dissolved company that has
+    // no events in the v3 index still needs its officer links stamped
+    // companyDissolved=true.  The setGraphData pass below already skips links
+    // where events.length===0 && !companyDissolved (line ~2479), so the
+    // non-dissolved / no-event path is unaffected.
 
     setGraphData(prev => {
       const nodesById = new Map(prev.nodes.map(n => [n.id, n]));
