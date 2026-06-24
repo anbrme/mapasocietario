@@ -37,6 +37,7 @@ import {
   FormControlLabel,
   Snackbar,
   Badge,
+  Checkbox,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -6901,6 +6902,17 @@ const SpanishCompanyNetworkGraph = ({
                         py: 0.5,
                         bgcolor: '#f5f5f5',
                         color: '#1565c0',
+                        width: 32,
+                        px: 0.5,
+                      }}
+                    />
+                    <TableCell
+                      sx={{
+                        fontWeight: 'bold',
+                        fontSize: '0.7rem',
+                        py: 0.5,
+                        bgcolor: '#f5f5f5',
+                        color: '#1565c0',
                       }}
                     >
                       {text.tableCompany}
@@ -6954,7 +6966,7 @@ const SpanishCompanyNetworkGraph = ({
                 <TableBody>
                   {visibleTableRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 3, color: '#4b5563' }}>
+                      <TableCell colSpan={6} align="center" sx={{ py: 3, color: '#4b5563' }}>
                         <Typography variant="caption" sx={{ color: '#4b5563' }}>
                           {text.emptyTable}
                         </Typography>
@@ -6970,6 +6982,22 @@ const SpanishCompanyNetworkGraph = ({
                           '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.08)' },
                         }}
                       >
+                        <TableCell sx={{ py: 0.25, px: 0.5, width: 32 }}>
+                          {(row.officerNode || row.companyNode) && (() => {
+                            const toggleNode = row.officerNode || row.companyNode;
+                            const inSet = investigationSet.has(normalizeNodeId(toggleNode.id));
+                            return (
+                              <Checkbox
+                                size="small"
+                                checked={inSet}
+                                onChange={() => toggleInvestigationNode(toggleNode.id)}
+                                title={inSet ? text.investigationRemove : text.investigationAdd}
+                                sx={{ p: 0 }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell
                           onClick={
                             row.companyNode
