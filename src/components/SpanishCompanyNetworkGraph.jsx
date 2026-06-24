@@ -3793,31 +3793,18 @@ const SpanishCompanyNetworkGraph = ({
     [subjectCompanyName, resolveSubjectGroupKey, text]
   );
 
-  // Keep the "Mis correcciones (N)" counter in sync with the loaded company.
+  // Registry-faithful by default: do NOT auto-load/show the per-browser
+  // corrections overlay when a company loads. The old behavior silently
+  // restored prior edits (scoped to this browser's client_id) and surfaced the
+  // "My corrections (N)" chip — misleading, because those corrections are not
+  // applied to the rendered (registry-faithful) graph. We only reset the
+  // counter when the loaded company changes; corrections made in THIS session
+  // still increment it (see recordCorrection) and surface the chip + panel.
+  // An explicit "view saved corrections" / amended view is the dd_two_modes
+  // follow-on, not a silent default.
   useEffect(() => {
-    if (!subjectCompanyName) {
-      setCorrectionsCount(0);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const gk = await resolveSubjectGroupKey(subjectCompanyName);
-      if (cancelled) return;
-      if (!gk) {
-        setCorrectionsCount(0);
-        return;
-      }
-      try {
-        const list = await listCorrections(gk);
-        if (!cancelled) setCorrectionsCount(list.length);
-      } catch {
-        /* count is best-effort */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [subjectCompanyName, resolveSubjectGroupKey]);
+    setCorrectionsCount(0);
+  }, [subjectCompanyName]);
 
   // Undo from the toast: delete the persisted correction and revert the graph
   // for reversible actions (hide). Merge/mark-resigned only remove the overlay row.
