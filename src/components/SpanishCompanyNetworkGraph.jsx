@@ -5369,6 +5369,8 @@ const SpanishCompanyNetworkGraph = ({
         linkColor = PATH_HIGHLIGHT_COLOR;
       } else if (link.type === 'ownership') {
         linkColor = cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d'; // Gold — sole shareholder
+      } else if (link.companyDissolved) {
+        linkColor = '#e53935'; // Red — officer link to a DISSOLVED company is not current
       } else if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
         linkColor = '#43a047'; // Green — appointments and re-elections
       } else if (
@@ -6735,6 +6737,7 @@ const SpanishCompanyNetworkGraph = ({
               if (link.type === 'ownership') {
                 return cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d';
               }
+              if (link.companyDissolved) return '#e53935'; // DISSOLVED company → officer link not current
               if (
                 cat.includes('nombramiento') ||
                 cat.includes('reeleccion') ||
