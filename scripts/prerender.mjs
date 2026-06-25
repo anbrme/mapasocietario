@@ -42,7 +42,7 @@ const homepageFaqSchema = `    <script type="application/ld+json">
         {
           "@type": "Question",
           "name": "What is Mapa Societario?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is a free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional AI-powered due diligence reports from EUR 22.50." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is a free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional AI-powered due diligence reports from EUR 22.50." }
         },
         {
           "@type": "Question",
@@ -79,7 +79,7 @@ const homepageFaqSchemaEs = `    <script type="application/ld+json">
         {
           "@type": "Question",
           "name": "¿Qué es Mapa Societario?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario es un buscador gratuito de empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales con IA desde 22,50 EUR." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario es un buscador gratuito de empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales con IA desde 22,50 EUR." }
         },
         {
           "@type": "Question",
@@ -168,12 +168,12 @@ const routes = [
     path: '/',
     title: 'Mapa Societario | Spanish Company Search & Corporate Relationship Graph',
     description:
-      'Search Spanish companies and directors and explore their corporate relationships in an interactive graph built from official BORME (Registro Mercantil) data. Due diligence reports from EUR 22.50.',
+      'Search Spanish companies and directors and explore their corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data. Due diligence reports from EUR 22.50.',
     ogType: 'website',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa Societario &mdash; Spanish Company &amp; Director Search</h1>
-        <p>Explore corporate relationships between Spanish companies and their directors using official BORME (Registro Mercantil) data, and generate due-diligence reports.</p>
+        <p>Explore corporate relationships between Spanish companies and their directors using official BORME (Boletín Oficial del Registro Mercantil) data, and generate due-diligence reports.</p>
         ${disclaimerHtmlEn}
         <h2>Coverage by the numbers</h2>
         <ul>
@@ -209,7 +209,7 @@ const routes = [
         </ul>
         <h2>Frequently asked questions</h2>
         <h3>What is Mapa Societario?</h3>
-        <p>A free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Registro Mercantil) data &mdash; 3.1 million companies and 9.4 million registry filings since 2009 &mdash; and generates optional AI-powered due-diligence reports from &euro;22.50.</p>
+        <p>A free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data &mdash; 3.1 million companies and 9.4 million registry filings since 2009 &mdash; and generates optional AI-powered due-diligence reports from &euro;22.50.</p>
         <h3>Do I need an account?</h3>
         <p>No. Mapa Societario is completely free to use without registration or login. Due Diligence reports are an optional paid feature purchased per company.</p>
         <h3>Can I search by officer name?</h3>
@@ -321,7 +321,7 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Spanish Corporate Stats Dashboard</h1>
-        <p>Real-time statistics on company formations, dissolutions, and officer changes across Spain, sourced from BORME (Registro Mercantil).</p>
+        <p>Real-time statistics on company formations, dissolutions, and officer changes across Spain, sourced from BORME (Boletín Oficial del Registro Mercantil).</p>
         ${disclaimerHtmlEn}
         <ul>
           <li>Company formations and dissolutions over time</li>
@@ -342,7 +342,7 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa Societario &mdash; Due diligence de empresas y administradores españoles</h1>
-        <p>Explora relaciones societarias entre empresas españolas y sus administradores con un grafo interactivo basado en publicaciones oficiales del BORME (Registro Mercantil), y genera informes due diligence desde 22,50 EUR.</p>
+        <p>Explora relaciones societarias entre empresas españolas y sus administradores con un grafo interactivo basado en publicaciones oficiales del BORME (Boletín Oficial del Registro Mercantil), y genera informes due diligence desde 22,50 EUR.</p>
         ${disclaimerHtmlEs}
         <h2>Explorar</h2>
         <ul>
@@ -438,7 +438,7 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Get Spanish Company Data in Claude</h1>
-        <p>Mapa Societario is available as a connector for Claude. Add it once, then ask about Spanish companies, officers and corporate relationships in plain language &mdash; answers come from official BORME (Registro Mercantil) data, each with a link to cite.</p>
+        <p>Mapa Societario is available as a connector for Claude. Add it once, then ask about Spanish companies, officers and corporate relationships in plain language &mdash; answers come from official BORME (Boletín Oficial del Registro Mercantil) data, each with a link to cite.</p>
         ${disclaimerHtmlEn}
         <h2>Add it in three steps</h2>
         <ol>
@@ -460,7 +460,7 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Consulta datos de empresas españolas dentro de Claude</h1>
-        <p>Mapa Societario está disponible como conector para Claude. Añádelo una vez y pregunta sobre empresas, administradores y relaciones societarias en lenguaje natural &mdash; las respuestas proceden de datos oficiales del BORME (Registro Mercantil), cada una con un enlace para citar.</p>
+        <p>Mapa Societario está disponible como conector para Claude. Añádelo una vez y pregunta sobre empresas, administradores y relaciones societarias en lenguaje natural &mdash; las respuestas proceden de datos oficiales del BORME (Boletín Oficial del Registro Mercantil), cada una con un enlace para citar.</p>
         ${disclaimerHtmlEs}
         <h2>Añádelo en tres pasos</h2>
         <ol>

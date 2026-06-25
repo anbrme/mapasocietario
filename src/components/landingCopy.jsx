@@ -106,7 +106,7 @@ export const LANDING_COPY = {
       items: [
         {
           q: 'What is Mapa Societario?',
-          a: 'Mapa Societario is a free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional AI-powered due diligence reports from EUR 22.50.',
+          a: 'Mapa Societario is a free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional AI-powered due diligence reports from EUR 22.50.',
         },
         {
           q: 'Do I need an account to use this?',
@@ -135,7 +135,7 @@ export const LANDING_COPY = {
     ],
     footer: {
       productOf: 'A product of',
-      productOfSuffix: ' (Madrid, Spain) · Data sourced from BORME (Registro Mercantil)',
+      productOfSuffix: ' (Madrid, Spain) · Data sourced from BORME (Boletín Oficial del Registro Mercantil)',
       basedOnPrefix: 'Based on data from the ',
       basedOnSuffix: '. This service is unofficial and is not endorsed by the AEBOE.',
       ddReports: 'Due Diligence Reports',
@@ -252,7 +252,7 @@ export const LANDING_COPY = {
       items: [
         {
           q: '¿Qué es Mapa Societario?',
-          a: 'Mapa Societario es un buscador gratuito de empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales con IA desde 22,50 EUR.',
+          a: 'Mapa Societario es un buscador gratuito de empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales con IA desde 22,50 EUR.',
         },
         {
           q: '¿Necesito una cuenta para usarlo?',

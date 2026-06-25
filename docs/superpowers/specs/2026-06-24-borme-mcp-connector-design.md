@@ -43,7 +43,7 @@ A new Worker **`borme-mcp`** in `standalone_rag/local-rag/workers/borme-mcp/`, a
 
 ## Tools (v1)
 
-All tools return concise structured JSON (LLM token-budget aware). Every company object carries `empresa_url` (`https://mapasocietario.es/empresa/<slug>`) and the company-level results carry a `source_note` (`"Unofficial; derived from BORME (Registro Mercantil) publications."`). Inputs are validated; unknown/empty inputs return a clear tool error, not a 500.
+All tools return concise structured JSON (LLM token-budget aware). Every company object carries `empresa_url` (`https://mapasocietario.es/empresa/<slug>`) and the company-level results carry a `source_note` (`"Unofficial; derived from BORME (Boletín Oficial del Registro Mercantil) publications."`). Inputs are validated; unknown/empty inputs return a clear tool error, not a 500.
 
 ### 1. `search_companies`
 - **Input:** `{ query: string (required), limit?: number (default 10, max 25) }`

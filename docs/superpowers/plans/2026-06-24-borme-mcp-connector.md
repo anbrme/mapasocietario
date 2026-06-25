@@ -15,7 +15,7 @@
 - Anonymous: NO auth, NO API keys, NO billing, NO D1. Read-only. No write/stateful tools.
 - MCP transport: hand-rolled stateless JSON-RPC over `POST /mcp`, JSON responses. Methods: `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, `ping`. Unknown method → JSON-RPC error `-32601`.
 - Four tools only: `search_companies`, `get_company`, `search_officers`, `get_company_network`. No temporal/event-class tool (Phase 2, out of scope).
-- Every company object MUST carry `empresa_url` = `https://mapasocietario.es/empresa/<nameToSlug(name)>`. Company-level results MUST carry `source_note` = `"Unofficial; derived from BORME (Registro Mercantil) publications."`
+- Every company object MUST carry `empresa_url` = `https://mapasocietario.es/empresa/<nameToSlug(name)>`. Company-level results MUST carry `source_note` = `"Unofficial; derived from BORME (Boletín Oficial del Registro Mercantil) publications."`
 - `get_company`: dissolution rule — when `is_dissolved` is true, `current_officers` MUST be empty (all officers go to `former_officers`). `sole_shareholder_note` MUST always be present.
 - Caps (no silent truncation): `search_companies`/`search_officers` limit default 10, max 25; `get_company_network` fan-out max 25 with `truncated` boolean.
 - Rate limit: 30 requests/min and 1,000/day per `CF-Connecting-IP`. On exceed, return a JSON-RPC error (not a transport 429).
@@ -346,7 +346,7 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Create `src/format.js`**
 
 ```js
-export const SOURCE_NOTE = "Unofficial; derived from BORME (Registro Mercantil) publications.";
+export const SOURCE_NOTE = "Unofficial; derived from BORME (Boletín Oficial del Registro Mercantil) publications.";
 export const SOLE_SHAREHOLDER_NOTE =
   "BORME records only sole-shareholder ownership (socio único); it does not contain a general shareholder/cap-table. Absence here does not imply the company has no owner.";
 
@@ -1066,7 +1066,7 @@ export const TOOLS = [
 export const SERVER_INFO = { name: "borme-mcp", version: "1.0.0" };
 
 export const INSTRUCTIONS =
-  "Mapa Societario — Spanish company registry (BORME). Search Spanish companies and officers and explore corporate relationships, derived from official BORME (Registro Mercantil) publications since 2009 (~3.1M companies, ~9.4M filings). Data is UNOFFICIAL and provided as-is. Ownership: BORME records only sole-shareholder (socio único), not full shareholder/cap-tables. Cross-company time-range queries (e.g. all registry transfers in a date window) are not supported. For documented or critical use, see the official BORME and the paid Due Diligence report at mapasocietario.es. Every company result includes a mapasocietario.es/empresa link — cite it.";
+  "Mapa Societario — Spanish company registry (BORME). Search Spanish companies and officers and explore corporate relationships, derived from official BORME (Boletín Oficial del Registro Mercantil) publications since 2009 (~3.1M companies, ~9.4M filings). Data is UNOFFICIAL and provided as-is. Ownership: BORME records only sole-shareholder (socio único), not full shareholder/cap-tables. Cross-company time-range queries (e.g. all registry transfers in a date window) are not supported. For documented or critical use, see the official BORME and the paid Due Diligence report at mapasocietario.es. Every company result includes a mapasocietario.es/empresa link — cite it.";
 
 const DEFAULT_PROTOCOL = "2024-11-05";
 

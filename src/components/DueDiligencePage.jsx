@@ -127,7 +127,7 @@ const COPY = {
       privacyPolicy: 'privacy policy',
     },
     trust: {
-      sourcedPre: 'Data sourced from official BORME (Registro Mercantil) filings. Payments securely processed by ',
+      sourcedPre: 'Data sourced from official BORME (Boletín Oficial del Registro Mercantil) filings. Payments securely processed by ',
       sourcedPost: '. Reports available for re-download for 7 days after purchase.',
       invoicedPre: 'Service provided and invoiced by ',
       invoicedPost: ' · Madrid, Spain · Operating since 2013',
@@ -222,7 +222,7 @@ const COPY = {
       privacyPolicy: 'política de privacidad',
     },
     trust: {
-      sourcedPre: 'Datos procedentes de publicaciones oficiales del BORME (Registro Mercantil). Pagos procesados de forma segura por ',
+      sourcedPre: 'Datos procedentes de publicaciones oficiales del BORME (Boletín Oficial del Registro Mercantil). Pagos procesados de forma segura por ',
       sourcedPost: '. Los informes pueden volver a descargarse durante 7 días tras la compra.',
       invoicedPre: 'Servicio prestado y facturado por ',
       invoicedPost: ' · Madrid, España · En activo desde 2013',

@@ -21,7 +21,7 @@ const COPY = {
     meta: {
       title: 'Get Spanish Company Data in Claude | Mapa Societario',
       description:
-        'Connect Mapa Societario to Claude as a custom MCP connector and query the Spanish company registry (BORME) in plain language: search companies and officers, read profiles, and map corporate relationships. Free, no account.',
+        'Connect Mapa Societario to Claude as a custom MCP connector and query the Spanish company registry gazette(BORME) in plain language: search companies and officers, read profiles, and map corporate relationships. Free, no account.',
       ogDescription:
         'Add the Mapa Societario connector to Claude and ask about Spanish companies, officers and corporate relationships in plain language. Free, no login.',
     },
@@ -29,7 +29,7 @@ const COPY = {
     eyebrow: 'Claude connector',
     title: 'Get Spanish Company Data in Claude',
     subtitle:
-      'Mapa Societario is available as a connector for Claude. Add it once, then ask about Spanish companies, officers and corporate relationships in plain language — answers come from official BORME (Registro Mercantil) data, each with a link to cite.',
+      'Mapa Societario is available as a connector for Claude. Add it once, then ask about Spanish companies, officers and corporate relationships in plain language — answers come from official BORME (Boletín Oficial del Registro Mercantil) data, each with a link to cite.',
     urlLabel: 'Connector URL',
     copy: 'Copy',
     copied: 'Copied',
@@ -76,7 +76,7 @@ const COPY = {
     eyebrow: 'Conector de Claude',
     title: 'Consulta datos de empresas españolas dentro de Claude',
     subtitle:
-      'Mapa Societario está disponible como conector para Claude. Añádelo una vez y pregunta sobre empresas, administradores y relaciones societarias en lenguaje natural — las respuestas proceden de datos oficiales del BORME (Registro Mercantil), cada una con un enlace para citar.',
+      'Mapa Societario está disponible como conector para Claude. Añádelo una vez y pregunta sobre empresas, administradores y relaciones societarias en lenguaje natural — las respuestas proceden de datos oficiales del BORME (Boletín Oficial del Registro Mercantil), cada una con un enlace para citar.',
     urlLabel: 'URL del conector',
     copy: 'Copiar',
     copied: 'Copiado',
