@@ -7,6 +7,7 @@ const STRINGS = {
     viewProfile: 'View full profile on mapasocietario.es',
     statusActive: 'Active', statusDissolved: 'Dissolved',
     formerly: 'formerly',
+    hiddenRoles: 'non-board roles hidden',
   },
   es: {
     matchesHeading: 'Coincidencias', noMatches: 'No se encontró ninguna empresa española para esta selección.',
@@ -16,6 +17,7 @@ const STRINGS = {
     viewProfile: 'Ver perfil completo en mapasocietario.es',
     statusActive: 'Activa', statusDissolved: 'Disuelta',
     formerly: 'antes',
+    hiddenRoles: 'cargos no ejecutivos ocultos',
   },
 };
 

@@ -50,7 +50,7 @@ export default function App({ sendImpl = sendToWorker, initialSelection = null }
       {view.state === 'company' && (
         <>
           <CompanyCard company={view.company} locale={locale} />
-          <CompanyGraph company={view.company} />
+          <CompanyGraph company={view.company} locale={locale} />
         </>
       )}
     </div>

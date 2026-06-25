@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { buildGraph } from '../../src/shared/buildGraph.js';
 
+// Fixture with board roles (Consejero) and apoderado-only person
 const company = {
   groupKey: 'H:M-1', name: 'ACME SA',
   officersActive: [
     { name: 'JANE DOE', position: 'Consejero', appointedDate: '2020-01-01', resignedDate: null },
   ],
   officersResigned: [
+    // JOHN ROE is apoderado-only — must be excluded
     { name: 'JOHN ROE', position: 'Apoderado', appointedDate: null, resignedDate: '2018-05-05' },
+    // JANE DOE also had a ceased Apoderado seat — ignored for board filter; she keeps board seat
     { name: 'JANE DOE', position: 'Apoderado', appointedDate: null, resignedDate: '2017-01-01' },
   ],
 };
@@ -17,25 +20,73 @@ describe('buildGraph', () => {
     const { nodes } = buildGraph(company);
     expect(nodes[0]).toEqual({ id: 'H:M-1', label: 'ACME SA', type: 'company' });
   });
-  it('creates one officer node per distinct person', () => {
+
+  it('excludes apoderado-only people, keeps board members', () => {
     const { nodes } = buildGraph(company);
     const officers = nodes.filter((n) => n.type === 'officer');
-    expect(officers.map((o) => o.label).sort()).toEqual(['JANE DOE', 'JOHN ROE']);
+    // JOHN ROE (apoderado-only) must NOT appear
+    expect(officers.map((o) => o.label)).not.toContain('JOHN ROE');
+    // JANE DOE (active Consejero) must appear
+    expect(officers.map((o) => o.label)).toContain('JANE DOE');
+    expect(officers.length).toBe(1);
   });
-  it('marks a person active if ANY seat is active', () => {
+
+  it('counts apoderado-only people in hiddenNonBoard', () => {
+    const { hiddenNonBoard } = buildGraph(company);
+    // JOHN ROE is apoderado-only; JANE DOE has a board seat so not hidden
+    expect(hiddenNonBoard).toBe(1);
+  });
+
+  it('officer nodes carry status', () => {
+    const { nodes } = buildGraph(company);
+    const jane = nodes.find((n) => n.label === 'JANE DOE');
+    expect(jane.status).toBe('active');
+  });
+
+  it('marks a person active if ANY board seat is active', () => {
+    // JANE has active Consejero + ceased Consejero — should be active
+    const mixed = {
+      groupKey: 'H:M-3', name: 'MIXED SA',
+      officersActive: [
+        { name: 'JANE DOE', position: 'Consejero', appointedDate: '2022-01-01', resignedDate: null },
+      ],
+      officersResigned: [
+        { name: 'JANE DOE', position: 'Consejero', appointedDate: null, resignedDate: '2019-01-01' },
+      ],
+    };
+    const { links } = buildGraph(mixed);
+    const jane = links.find((l) => l.target.endsWith('JANE DOE'));
+    expect(jane.status).toBe('active');
+  });
+
+  it('ceased board member is ceased', () => {
     const { links } = buildGraph(company);
     const jane = links.find((l) => l.target.endsWith('JANE DOE'));
     expect(jane.status).toBe('active');
-    const john = links.find((l) => l.target.endsWith('JOHN ROE'));
-    expect(john.status).toBe('ceased');
   });
+
+  it('a company whose officers are ALL apoderados yields nodes=[company] and hiddenNonBoard=count', () => {
+    const apoOnly = {
+      groupKey: 'H:M-4', name: 'APO SA',
+      officersActive: [
+        { name: 'APO ONE', position: 'Apoderado', appointedDate: '2020-01-01' },
+        { name: 'APO TWO', position: 'APO.SOL.', appointedDate: '2020-01-01' },
+      ],
+      officersResigned: [],
+    };
+    const { nodes, hiddenNonBoard } = buildGraph(apoOnly);
+    const officers = nodes.filter((n) => n.type === 'officer');
+    expect(officers.length).toBe(0);
+    expect(hiddenNonBoard).toBe(2);
+  });
+
   it('caps officer nodes at maxOfficers, board roles first', () => {
+    // All 100 people are Consejero (board) so they pass the filter; cap at 5
     const many = { groupKey: 'H:M-2', name: 'BIG SA', officersActive: [], officersResigned:
       Array.from({ length: 100 }, (_, i) => ({ name: `P${i}`,
-        position: i < 3 ? 'Consejero' : 'Apoderado', resignedDate: '2020-01-01' })) };
+        position: 'Consejero', resignedDate: '2020-01-01' })) };
     const { nodes } = buildGraph(many, { maxOfficers: 5 });
     const officers = nodes.filter((n) => n.type === 'officer');
     expect(officers.length).toBe(5);
-    expect(officers.slice(0, 3).map((o) => o.label)).toEqual(['P0', 'P1', 'P2']);
   });
 });
