@@ -44,9 +44,9 @@ const COPY = {
     meta: {
       title: 'Spanish Company Due Diligence Reports | Mapa Societario',
       description:
-        'Spanish company due diligence reports with BORME registry data, officer history, corporate relationship graphs, BOE sanctions checks, risk analysis, and PDF delivery from EUR 22.50.',
+        'Turn Spanish corporate relationship intelligence into due diligence reports with BORME registry data, officer history, relationship graphs, BOE sanctions checks, risk analysis, and PDF delivery from EUR 22.50.',
       ogDescription:
-        'Spanish company due diligence with BORME registry data, sanctions checks, risk analysis, officer history, and PDF delivery. From EUR 22.50.',
+        'Graph-first Spanish company due diligence with BORME registry data, sanctions checks, risk analysis, officer history, and PDF delivery. From EUR 22.50.',
     },
     banner: {
       eyebrow: 'Due Diligence report',
@@ -57,7 +57,7 @@ const COPY = {
     },
     heroTitle: 'Spanish Company Due Diligence Reports',
     heroSub:
-      'AI-powered corporate intelligence for Spanish companies. Get a comprehensive PDF report with sanctions screening, risk analysis, and full corporate history — based on official BORME data.',
+      'Start from the relationship graph, then document what matters. Get a comprehensive PDF report with sanctions screening, risk analysis, and corporate history based on official BORME data.',
     chips: {
       from: 'From EUR 22.50',
       instant: 'Instant delivery',
@@ -65,10 +65,10 @@ const COPY = {
       monitoring: '+ Free monitoring',
       sample: 'See a sample report (PDF)',
     },
-    ctaSearch: 'Search a company to get started',
+    ctaSearch: 'Start with the relationship graph',
     includedHeading: "What's included",
     features: [
-      { title: 'Corporate Structure', desc: 'Full mapping of officers, shareholders, and subsidiaries extracted from official BORME filings.' },
+      { title: 'Corporate Structure', desc: 'Relationship mapping of officers, shareholders, and subsidiaries extracted from official BORME filings.' },
       { title: 'Officer History', desc: 'Complete timeline of appointments, resignations, and role changes for every director and administrator.' },
       { title: 'Sanctions Screening', desc: 'Automated cross-check against international sanctions lists and PEP databases.' },
       { title: 'Red Flags & Risk Score', desc: 'AI-powered analysis highlighting unusual patterns, frequent changes, and potential compliance risks.' },
@@ -97,7 +97,7 @@ const COPY = {
     ladder: {
       heading: 'Choose the right level of work',
       items: [
-        { title: 'Self-serve report', text: 'Instant Spanish company due diligence PDF with graph context, BORME history, BOE sanctions checks, and monitoring.', action: 'Start with search' },
+        { title: 'Self-serve report', text: 'Instant Spanish company due diligence PDF with graph context, BORME history, BOE sanctions checks, and monitoring.', action: 'Start with the graph' },
         { title: 'NC Data API', text: 'Spanish registry intelligence for third-party platforms, compliance products, and data integrations through NC Data.', action: 'Discuss API access' },
         { title: 'Human-led investigation', text: 'For higher-stakes cases, Nurnberg Consulting adds analyst work, source retrieval, document review, and bespoke conclusions.', action: 'Visit Nurnberg Consulting' },
         { title: 'Multi-country platform', text: 'NC Data supports broader investigations beyond Spain, including other European jurisdictions and advanced document workflows.', action: 'Visit NC Data' },
@@ -106,7 +106,7 @@ const COPY = {
     howItWorks: {
       heading: 'How it works',
       steps: [
-        'Search for a company on the home page',
+        'Open the relationship graph and search for a company',
         'Click the "Due Diligence" button in the toolbar',
         'Choose your options and complete payment via Stripe',
         'Your PDF report is generated and downloaded automatically',
@@ -139,9 +139,9 @@ const COPY = {
     meta: {
       title: 'Informes due diligence de empresas españolas | Mapa Societario',
       description:
-        'Informes due diligence de empresas españolas con datos del BORME, historial de administradores, grafos de relaciones societarias, comprobación de sanciones del BOE, análisis de riesgo y entrega en PDF desde 22,50 €.',
+        'Convierte inteligencia de relaciones societarias en informes due diligence con datos del BORME, historial de administradores, grafos societarios, sanciones BOE, análisis de riesgo y PDF desde 22,50 €.',
       ogDescription:
-        'Due diligence de empresas españolas con datos del BORME, comprobación de sanciones, análisis de riesgo, historial de administradores y entrega en PDF. Desde 22,50 €.',
+        'Due diligence de empresas españolas partiendo del grafo societario: datos BORME, sanciones, riesgo, historial de administradores y PDF. Desde 22,50 €.',
     },
     banner: {
       eyebrow: 'Informe due diligence',
@@ -152,7 +152,7 @@ const COPY = {
     },
     heroTitle: 'Informes due diligence de empresas españolas',
     heroSub:
-      'Inteligencia corporativa por IA para empresas españolas. Obtén un PDF completo con comprobación de sanciones, análisis de riesgo e historial societario completo, basado en datos oficiales del BORME.',
+      'Empieza en el grafo de relaciones y documenta lo importante. Obtén un PDF completo con comprobación de sanciones, análisis de riesgo e historial societario basado en datos oficiales del BORME.',
     chips: {
       from: 'Desde 22,50 €',
       instant: 'Entrega instantánea',
@@ -160,10 +160,10 @@ const COPY = {
       monitoring: '+ Monitorización gratis',
       sample: 'Ver un informe de ejemplo (PDF)',
     },
-    ctaSearch: 'Busca una empresa para empezar',
+    ctaSearch: 'Empieza por el grafo de relaciones',
     includedHeading: 'Qué incluye',
     features: [
-      { title: 'Estructura societaria', desc: 'Mapeo completo de administradores, socios y filiales extraído de publicaciones oficiales del BORME.' },
+      { title: 'Estructura societaria', desc: 'Mapeo de relaciones entre administradores, socios y filiales extraído de publicaciones oficiales del BORME.' },
       { title: 'Historial de administradores', desc: 'Cronología completa de nombramientos, ceses y cambios de cargo de cada administrador.' },
       { title: 'Comprobación de sanciones', desc: 'Cruce automático con listas internacionales de sanciones y bases de datos de PEP.' },
       { title: 'Señales de alerta y riesgo', desc: 'Análisis por IA que destaca patrones inusuales, cambios frecuentes y posibles riesgos de compliance.' },
@@ -192,7 +192,7 @@ const COPY = {
     ladder: {
       heading: 'Elige el nivel de trabajo adecuado',
       items: [
-        { title: 'Informe autoservicio', text: 'PDF de due diligence de empresa española al instante, con contexto del grafo, historial BORME, comprobación de sanciones del BOE y monitorización.', action: 'Empezar con la búsqueda' },
+        { title: 'Informe autoservicio', text: 'PDF de due diligence de empresa española al instante, con contexto del grafo, historial BORME, comprobación de sanciones del BOE y monitorización.', action: 'Empezar por el grafo' },
         { title: 'API NC Data', text: 'Inteligencia del registro español para plataformas de terceros, productos de compliance e integraciones de datos a través de NC Data.', action: 'Consultar acceso a la API' },
         { title: 'Investigación con analistas', text: 'Para casos de mayor exigencia, Nurnberg Consulting añade trabajo de analista, obtención de fuentes, revisión documental y conclusiones a medida.', action: 'Visitar Nurnberg Consulting' },
         { title: 'Plataforma multipaís', text: 'NC Data permite investigaciones más amplias más allá de España, incluidas otras jurisdicciones europeas y flujos documentales avanzados.', action: 'Visitar NC Data' },
@@ -201,7 +201,7 @@ const COPY = {
     howItWorks: {
       heading: 'Cómo funciona',
       steps: [
-        'Busca una empresa en la página de inicio',
+        'Abre el grafo de relaciones y busca una empresa',
         'Pulsa el botón "Due Diligence" en la barra de herramientas',
         'Elige tus opciones y completa el pago con Stripe',
         'Tu informe en PDF se genera y se descarga automáticamente',

@@ -17,10 +17,10 @@ import {
 
 const APP_COPY = {
   en: {
-    title: 'Search | Mapa Societario',
+    title: 'Relationship Graph | Mapa Societario',
     description:
-      'Search Spanish companies and officers. Explore corporate relationships in an interactive network graph based on official BORME data.',
-    breadcrumb: 'Search',
+      'Search Spanish companies and officers to see who is connected to whom in an interactive relationship graph based on official BORME data.',
+    breadcrumb: 'Relationship graph',
     languageLabel: 'Language',
     menu: {
       tooltip: 'Menu',
@@ -37,10 +37,10 @@ const APP_COPY = {
     },
   },
   es: {
-    title: 'Buscar | Mapa Societario',
+    title: 'Grafo de Relaciones | Mapa Societario',
     description:
-      'Busca empresas y administradores españoles. Explora relaciones societarias en un grafo interactivo basado en datos oficiales del BORME.',
-    breadcrumb: 'Buscar',
+      'Busca empresas y administradores españoles para entender quién está conectado con quién en un grafo de relaciones basado en datos oficiales del BORME.',
+    breadcrumb: 'Grafo de relaciones',
     languageLabel: 'Idioma',
     menu: {
       tooltip: 'Menú',

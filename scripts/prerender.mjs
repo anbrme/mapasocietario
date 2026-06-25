@@ -42,7 +42,7 @@ const homepageFaqSchema = `    <script type="application/ld+json">
         {
           "@type": "Question",
           "name": "What is Mapa Societario?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is a free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional AI-powered due diligence reports from EUR 22.50." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional due diligence reports from EUR 22.50." }
         },
         {
           "@type": "Question",
@@ -79,7 +79,7 @@ const homepageFaqSchemaEs = `    <script type="application/ld+json">
         {
           "@type": "Question",
           "name": "¿Qué es Mapa Societario?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario es un buscador gratuito de empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales con IA desde 22,50 EUR." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario es una herramienta de inteligencia de relaciones societarias para empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales desde 22,50 EUR." }
         },
         {
           "@type": "Question",
@@ -166,14 +166,14 @@ const routes = [
     // content. Prerender real content + crawlable links into #root; React
     // replaces it on hydration. Writes dist/index.html (path.join collapses '/').
     path: '/',
-    title: 'Mapa Societario | Spanish Company Search & Corporate Relationship Graph',
+    title: 'Mapa Societario | Relationship Intelligence for Spanish Companies',
     description:
-      'Search Spanish companies and directors and explore their corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data. Due diligence reports from EUR 22.50.',
+      'See who is connected to whom in Spanish companies. Explore corporate relationships in an interactive BORME graph, then order due diligence reports when you need documentation.',
     ogType: 'website',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Mapa Societario &mdash; Spanish Company &amp; Director Search</h1>
-        <p>Explore corporate relationships between Spanish companies and their directors using official BORME (Boletín Oficial del Registro Mercantil) data, and generate due-diligence reports.</p>
+        <h1>Mapa Societario &mdash; Relationship Intelligence for Spain</h1>
+        <p>Search a Spanish company or director and see who is connected to whom in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data.</p>
         ${disclaimerHtmlEn}
         <h2>Coverage by the numbers</h2>
         <ul>
@@ -183,10 +183,10 @@ const routes = [
           <li><strong>1.7 million</strong> company formations recorded</li>
           <li>Continuous coverage <strong>since January 2009</strong>, updated on business days</li>
         </ul>
-        <h2>Free search vs. Due Diligence report</h2>
+        <h2>Relationship graph vs. Due Diligence report</h2>
         <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
           <thead>
-            <tr><th align="left">Feature</th><th>Free search</th><th>Due Diligence report (from &euro;22.50)</th></tr>
+            <tr><th align="left">Feature</th><th>Free relationship graph</th><th>Due Diligence report (from &euro;22.50)</th></tr>
           </thead>
           <tbody>
             <tr><td>Company &amp; officer search</td><td align="center">Yes</td><td align="center">Yes</td></tr>
@@ -200,7 +200,7 @@ const routes = [
         </table>
         <h2>Explore</h2>
         <ul>
-          <li><a href="/app">Search companies &amp; directors (interactive graph)</a></li>
+          <li><a href="/app">Open the Spanish company relationship graph</a></li>
           <li><a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a> &middot; <a href="/en/listed-companies">IBEX 35 listed companies</a></li>
           <li><a href="/es/">Mapa societario de empresas espa&ntilde;olas</a></li>
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
@@ -209,7 +209,7 @@ const routes = [
         </ul>
         <h2>Frequently asked questions</h2>
         <h3>What is Mapa Societario?</h3>
-        <p>A free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data &mdash; 3.1 million companies and 9.4 million registry filings since 2009 &mdash; and generates optional AI-powered due-diligence reports from &euro;22.50.</p>
+        <p>A relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data &mdash; 3.1 million companies and 9.4 million registry filings since 2009 &mdash; and generates optional due-diligence reports from &euro;22.50.</p>
         <h3>Do I need an account?</h3>
         <p>No. Mapa Societario is completely free to use without registration or login. Due Diligence reports are an optional paid feature purchased per company.</p>
         <h3>Can I search by officer name?</h3>
@@ -222,19 +222,19 @@ const routes = [
   },
   {
     path: '/app',
-    title: 'Search | Mapa Societario',
+    title: 'Relationship Graph | Mapa Societario',
     description:
-      'Search Spanish companies and officers by name. Explore corporate relationships in an interactive network graph based on official BORME data.',
+      'Search Spanish companies and officers to see who is connected to whom in an interactive relationship graph based on official BORME data.',
     ogType: 'website',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Mapa Societario &mdash; Company &amp; Officer Search</h1>
-        <p>Search for any Spanish company or officer and explore their corporate relationships in an interactive network graph.</p>
+        <h1>Mapa Societario &mdash; Spanish Company Relationship Graph</h1>
+        <p>Search for any Spanish company or officer and understand who is connected to whom in an interactive network graph.</p>
         ${disclaimerHtmlEn}
         <ul>
           <li>Search by company name (e.g. Inditex, Repsol)</li>
           <li>Search by officer name (e.g. Amancio Ortega)</li>
-          <li>Visualize corporate connections in real time</li>
+          <li>Visualize corporate relationships in real time</li>
           <li>Purchase Due Diligence reports from the search toolbar</li>
         </ul>
         <p><a href="/">Back to Mapa Societario</a></p>
@@ -244,12 +244,12 @@ const routes = [
     path: '/due-diligence',
     title: 'Spanish Company Due Diligence Reports | Mapa Societario',
     description:
-      'Spanish company due diligence reports with BORME registry data, officer history, corporate relationship graphs, BOE sanctions checks, risk analysis, and PDF delivery from EUR 22.50.',
+      'Turn Spanish corporate relationship intelligence into due diligence reports with BORME registry data, officer history, relationship graphs, BOE sanctions checks, risk analysis, and PDF delivery from EUR 22.50.',
     ogType: 'product',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Spanish Company Due Diligence Reports</h1>
-        <p>Comprehensive, AI-powered due diligence reports for any Spanish company. From <strong>EUR&nbsp;22.50</strong> per report.</p>
+        <p>Start with the relationship graph, then generate a documented due diligence PDF for any Spanish company. From <strong>EUR&nbsp;22.50</strong> per report.</p>
         ${disclaimerHtmlEn}
         <h2>What's included</h2>
         <ul>
@@ -267,12 +267,12 @@ const routes = [
     path: '/spanish-company-due-diligence',
     title: 'Spanish Company Due Diligence Reports | Mapa Societario',
     description:
-      'Spanish company due diligence reports using BORME registry data, corporate relationship graphs, officer history, BOE sanctions checks, sole shareholders, and fully-owned participations.',
+      'Spanish company due diligence reports that start from BORME relationship intelligence: corporate graphs, officer history, BOE sanctions checks, sole shareholders, and fully-owned participations.',
     ogType: 'article',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Spanish company due diligence reports</h1>
-        <p>Investigate Spanish companies with registry-based corporate relationship mapping, officer history, sole-shareholder and fully-owned participation checks, BOE sanctions checks, and downloadable PDF reports.</p>
+        <p>Start from registry-based corporate relationship mapping, then document the company with officer history, sole-shareholder and fully-owned participation checks, BOE sanctions checks, and downloadable PDF reports.</p>
         ${disclaimerHtmlEn}
         <h2>What a Spanish company due diligence report covers</h2>
         <ul>
@@ -286,7 +286,7 @@ const routes = [
         <h2>API access and higher-touch investigations</h2>
         <p>The self-serve report is the fast mid-tier option. For third-party data integrations, Spanish registry intelligence is available through NC Data API access and data feeds. For higher-stakes matters, Nurnberg Consulting SL can add human analyst work, source retrieval, document review, and bespoke conclusions.</p>
         <p><a href="mailto:mapasocietario@ncdata.eu?subject=NC%20Data%20Spanish%20API">Discuss NC Data API access</a> | <a href="https://nurnbergconsulting.com">Human-led investigations</a></p>
-        <p><a href="/app">Search a Spanish company</a> | <a href="/due-diligence">See report details</a></p>
+        <p><a href="/app">Open the relationship graph</a> | <a href="/due-diligence">See report details</a></p>
       </main>`,
   },
   {
@@ -334,19 +334,19 @@ const routes = [
   },
   {
     path: '/es',
-    title: 'Mapa Societario | Buscador de Empresas Españolas y Grafo de Relaciones Societarias',
+    title: 'Mapa Societario | Inteligencia de Relaciones Societarias en España',
     description:
-      'Due diligence de empresas y administradores españoles al instante. Grafo interactivo de relaciones societarias basado en BORME, historial de administradores e informes due diligence por IA desde 22,50 EUR.',
+      'Entiende quién está conectado con quién en empresas españolas. Grafo interactivo de relaciones societarias basado en BORME e informes due diligence desde 22,50 EUR.',
     ogType: 'website',
     lang: 'es',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Mapa Societario &mdash; Due diligence de empresas y administradores españoles</h1>
-        <p>Explora relaciones societarias entre empresas españolas y sus administradores con un grafo interactivo basado en publicaciones oficiales del BORME (Boletín Oficial del Registro Mercantil), y genera informes due diligence desde 22,50 EUR.</p>
+        <h1>Mapa Societario &mdash; Inteligencia de relaciones societarias en España</h1>
+        <p>Busca una empresa o administrador y entiende quién está conectado con quién mediante un grafo interactivo basado en publicaciones oficiales del BORME (Boletín Oficial del Registro Mercantil). Genera informes due diligence cuando necesites documentación.</p>
         ${disclaimerHtmlEs}
         <h2>Explorar</h2>
         <ul>
-          <li><a href="/app">Buscar empresas y administradores (grafo interactivo)</a></li>
+          <li><a href="/app">Abrir el grafo de relaciones societarias</a></li>
           <li><a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></li>
           <li><a href="/due-diligence">Informes due diligence</a></li>
           <li><a href="/es/informes-due-diligence-empresas/">Informes due diligence de empresas</a></li>

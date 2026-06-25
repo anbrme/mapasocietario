@@ -5,13 +5,13 @@
 export const LANDING_COPY = {
   en: {
     meta: {
-      title: 'How Mapa Societario Works | Spanish Company Search & Due Diligence',
+      title: 'Relationship Intelligence for Spain | Mapa Societario',
       description:
-        'A quick guide to Mapa Societario: search Spanish companies and directors, explore their relationships in an interactive BORME graph, and order due diligence reports. Free to use; no account.',
+        'See who is connected to whom in Spanish companies. Explore corporate relationships in an interactive BORME graph, then order due diligence reports when you need documentation. Free to use; no account.',
       ogDescription:
-        'How to search Spanish companies and directors, explore the corporate graph, and order due diligence reports — based on official BORME data.',
+        'Search Spanish companies and directors, explore who is connected to whom, and turn BORME filings into actionable corporate intelligence.',
       twitterDescription:
-        'How Mapa Societario works: search Spanish companies, explore the BORME graph, order due diligence reports.',
+        'Relationship intelligence for Spain: search companies, explore the BORME graph, order reports when needed.',
       ogLocale: 'en_US',
     },
     topLinks: [
@@ -23,12 +23,12 @@ export const LANDING_COPY = {
       { label: 'Español', href: '/es', alignRight: true },
     ],
     hero: {
-      eyebrow: 'New here? Start in 30 seconds',
-      h1: 'How Mapa Societario works',
+      eyebrow: 'Corporate relationships, not just records',
+      h1: 'Relationship intelligence for Spanish companies',
       subtitle:
-        'Search Spanish companies and directors, explore their relationships in an interactive graph, and order due diligence reports — all based on official BORME data.',
-      openCta: 'Open the search graph',
-      bookmarkTip: 'Tip: bookmark the search page so you can skip this guide next time.',
+        'Search a company or officer and see who is connected to whom in an interactive BORME graph. Turn findings into due diligence reports when you need documentation.',
+      openCta: 'Open the relationship graph',
+      bookmarkTip: 'Tip: bookmark the graph so you can jump straight into relationship analysis next time.',
     },
     quickLinks: {
       listed: 'Browse IBEX 35 companies',
@@ -36,29 +36,29 @@ export const LANDING_COPY = {
     },
     howItWorks: {
       heading: 'How it works',
-      sub: 'Three steps from a name to a full corporate picture.',
+      sub: 'Three steps from a name to a connected corporate picture.',
       demoCaption: 'Real BORME data: the board and corporate connections of ACERINOX SA.',
       demoCta: 'Open this graph live →',
       demoAlt: 'Interactive BORME corporate relationship graph of a Spanish company: directors, officers and connected companies',
       demoFallback: 'Interactive relationship graph',
       steps: [
         {
-          title: '1 · Search a company or officer',
+          title: '1 · Start with a company or officer',
           desc: 'Type a company or a director’s name. Use the toggle to switch between company and officer search, then pick a suggestion to load it into the graph.',
         },
         {
           title: '2 · Explore the graph',
-          desc: 'Double-click a node to expand it, right-click for actions (preview data, hide, buy a report), and scroll to zoom or drag to pan. The graph is free, with no account.',
+          desc: 'Double-click a node to expand the network, right-click for actions, and follow shared officers, roles, sole shareholders, and connected companies. The graph is free, with no account.',
         },
         {
-          title: '3 · See the data',
-          desc: 'Open a company’s data preview to read its current officers by seniority, address, share capital and corporate events — before deciding whether to buy a report.',
+          title: '3 · Document what matters',
+          desc: 'Open a company’s data preview to read its current officers, address, share capital and corporate events, then order a report only when you need a PDF record.',
         },
       ],
     },
     reports: {
-      heading: 'Reports you can get',
-      sub: 'Two kinds of report — make sure you pick the right one.',
+      heading: 'Reports after exploration',
+      sub: 'Use the graph to understand the relationships first; order a report when you need documentation.',
       dd: {
         title: 'Due Diligence report',
         badge: 'Paid · EUR 22.50 · one company',
@@ -83,15 +83,15 @@ export const LANDING_COPY = {
       howToBuy: 'How to buy a Due Diligence report: search a company → open it in the graph → click the Due Diligence button.',
     },
     bookmark: {
-      heading: 'Bookmark the search page',
-      body: 'This page is just a quick guide. Your actual workspace is the interactive search graph — bookmark it so you can jump straight in next time:',
+      heading: 'Bookmark the relationship graph',
+      body: 'This page introduces the workflow. Your actual workspace is the interactive relationship graph — bookmark it so you can jump straight in next time:',
       url: 'mapasocietario.es/app',
       shortcut: 'Press ⌘/Ctrl + D to bookmark',
-      cta: 'Open the search graph',
+      cta: 'Open the relationship graph',
     },
     stats: {
       heading: 'Built on official BORME data',
-      sub: 'Every company, officer, and corporate event is drawn from Spain’s official commercial registry gazette.',
+      sub: 'The graph connects companies, officers, and corporate events drawn from Spain’s official commercial registry gazette.',
       sinceLabel: 'Continuous coverage since',
       sinceValue: '2009',
       items: [
@@ -106,7 +106,7 @@ export const LANDING_COPY = {
       items: [
         {
           q: 'What is Mapa Societario?',
-          a: 'Mapa Societario is a free search engine for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional AI-powered due diligence reports from EUR 22.50.',
+          a: 'Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional due diligence reports from EUR 22.50.',
         },
         {
           q: 'Do I need an account to use this?',
@@ -130,7 +130,7 @@ export const LANDING_COPY = {
     proofItems: [
       'By Nurnberg Consulting SL (Madrid, since 2013)',
       'Based on official BORME publications',
-      'Free graph exploration',
+      'Free relationship graph',
       'No account required',
     ],
     footer: {
@@ -151,13 +151,13 @@ export const LANDING_COPY = {
 
   es: {
     meta: {
-      title: 'Cómo funciona Mapa Societario | Buscador de Empresas y Due Diligence',
+      title: 'Inteligencia de Relaciones Societarias en España | Mapa Societario',
       description:
-        'Guía rápida de Mapa Societario: busca empresas y administradores españoles, explora sus relaciones en un grafo BORME interactivo y pide informes due diligence. Gratis; sin cuenta.',
+        'Entiende quién está conectado con quién en empresas españolas. Explora relaciones societarias en un grafo BORME interactivo y pide informes due diligence cuando necesites documentación. Gratis; sin cuenta.',
       ogDescription:
-        'Cómo buscar empresas y administradores españoles, explorar el grafo societario y pedir informes due diligence, con datos oficiales del BORME.',
+        'Busca empresas y administradores españoles, explora quién está conectado con quién y convierte publicaciones BORME en inteligencia societaria accionable.',
       twitterDescription:
-        'Cómo funciona Mapa Societario: busca empresas, explora el grafo del BORME, pide informes due diligence.',
+        'Inteligencia de relaciones societarias en España: busca empresas, explora el grafo BORME y pide informes cuando los necesites.',
       ogLocale: 'es_ES',
     },
     topLinks: [
@@ -169,12 +169,12 @@ export const LANDING_COPY = {
       { label: 'English', href: '/', alignRight: true },
     ],
     hero: {
-      eyebrow: '¿Primera vez? Empieza en 30 segundos',
-      h1: 'Cómo funciona Mapa Societario',
+      eyebrow: 'Relaciones societarias, no solo fichas',
+      h1: 'Inteligencia de relaciones societarias en España',
       subtitle:
-        'Busca empresas y administradores españoles, explora sus relaciones en un grafo interactivo y pide informes due diligence, todo con datos oficiales del BORME.',
-      openCta: 'Abrir el grafo de búsqueda',
-      bookmarkTip: 'Consejo: guarda la página de búsqueda en marcadores para saltarte esta guía la próxima vez.',
+        'Busca una empresa o administrador y entiende quién está conectado con quién en un grafo BORME interactivo. Convierte los hallazgos en informes due diligence cuando necesites documentación.',
+      openCta: 'Abrir el grafo de relaciones',
+      bookmarkTip: 'Consejo: guarda el grafo en marcadores para entrar directamente al análisis de relaciones la próxima vez.',
     },
     quickLinks: {
       listed: 'Ver empresas del IBEX 35',
@@ -182,29 +182,29 @@ export const LANDING_COPY = {
     },
     howItWorks: {
       heading: 'Cómo funciona',
-      sub: 'Tres pasos para pasar de un nombre a una visión societaria completa.',
+      sub: 'Tres pasos para pasar de un nombre a una visión societaria conectada.',
       demoCaption: 'Datos reales del BORME: el consejo y las conexiones societarias de ACERINOX SA.',
       demoCta: 'Abrir este grafo en vivo →',
       demoAlt: 'Grafo interactivo de relaciones societarias BORME de una empresa española: administradores, cargos y empresas conectadas',
       demoFallback: 'Grafo de relaciones interactivo',
       steps: [
         {
-          title: '1 · Busca una empresa o administrador',
+          title: '1 · Empieza con una empresa o administrador',
           desc: 'Escribe el nombre de una empresa o de un administrador. Usa el conmutador para alternar entre búsqueda de empresas y de personas, y elige una sugerencia para cargarla en el grafo.',
         },
         {
           title: '2 · Explora el grafo',
-          desc: 'Haz doble clic en un nodo para expandirlo, clic derecho para acciones (vista previa, ocultar, comprar un informe) y usa la rueda para acercar o arrastra para desplazarte. El grafo es gratis y sin cuenta.',
+          desc: 'Haz doble clic en un nodo para expandir la red, clic derecho para acciones y sigue administradores compartidos, cargos, socios únicos y empresas conectadas. El grafo es gratis y sin cuenta.',
         },
         {
-          title: '3 · Consulta los datos',
-          desc: 'Abre la vista previa de una empresa para ver sus administradores por antigüedad, domicilio, capital social y eventos societarios, antes de decidir si compras un informe.',
+          title: '3 · Documenta lo importante',
+          desc: 'Abre la vista previa de una empresa para ver administradores, domicilio, capital social y eventos societarios, y pide un informe solo cuando necesites un PDF documental.',
         },
       ],
     },
     reports: {
-      heading: 'Informes que puedes obtener',
-      sub: 'Dos tipos de informe: asegúrate de elegir el correcto.',
+      heading: 'Informes después de explorar',
+      sub: 'Usa primero el grafo para entender las relaciones; pide un informe cuando necesites documentación.',
       dd: {
         title: 'Informe due diligence',
         badge: 'De pago · 22,50 € · una empresa',
@@ -229,15 +229,15 @@ export const LANDING_COPY = {
       howToBuy: 'Cómo comprar un informe due diligence: busca una empresa → ábrela en el grafo → pulsa el botón Due Diligence.',
     },
     bookmark: {
-      heading: 'Guarda la página de búsqueda',
-      body: 'Esta página es solo una guía rápida. Tu espacio de trabajo es el grafo de búsqueda interactivo: guárdalo en marcadores para entrar directamente la próxima vez:',
+      heading: 'Guarda el grafo de relaciones',
+      body: 'Esta página presenta el flujo de trabajo. Tu espacio real es el grafo interactivo de relaciones: guárdalo en marcadores para entrar directamente la próxima vez:',
       url: 'mapasocietario.es/app',
       shortcut: 'Pulsa ⌘/Ctrl + D para guardar',
-      cta: 'Abrir el grafo de búsqueda',
+      cta: 'Abrir el grafo de relaciones',
     },
     stats: {
       heading: 'Construido sobre datos oficiales del BORME',
-      sub: 'Cada empresa, administrador y evento societario procede del Boletín Oficial del Registro Mercantil.',
+      sub: 'El grafo conecta empresas, administradores y eventos societarios procedentes del Boletín Oficial del Registro Mercantil.',
       sinceLabel: 'Cobertura continua desde',
       sinceValue: '2009',
       items: [
@@ -252,7 +252,7 @@ export const LANDING_COPY = {
       items: [
         {
           q: '¿Qué es Mapa Societario?',
-          a: 'Mapa Societario es un buscador gratuito de empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales con IA desde 22,50 EUR.',
+          a: 'Mapa Societario es una herramienta de inteligencia de relaciones societarias para empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales desde 22,50 EUR.',
         },
         {
           q: '¿Necesito una cuenta para usarlo?',
@@ -276,7 +276,7 @@ export const LANDING_COPY = {
     proofItems: [
       'De Nurnberg Consulting SL (Madrid, desde 2013)',
       'Basado en publicaciones oficiales del BORME',
-      'Exploración del grafo gratuita',
+      'Grafo de relaciones gratuito',
       'Sin necesidad de cuenta',
     ],
     footer: {

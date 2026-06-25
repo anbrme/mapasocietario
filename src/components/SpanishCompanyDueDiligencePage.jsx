@@ -27,7 +27,7 @@ const SECTIONS = [
     ],
   },
   {
-    title: 'Why Spanish due diligence needs registry context',
+    title: 'Why Spanish due diligence needs relationship context',
     body: [
       'A company name alone is rarely enough. Useful due diligence usually requires understanding current and former administrators, corporate appointments and resignations, companies connected through the same officers, sole shareholders, and changes over time.',
       'Mapa Societario turns that registry context into an explorable graph first, then a paid PDF report when you need a document for internal files.',
@@ -59,11 +59,11 @@ export default function SpanishCompanyDueDiligencePage() {
         <title>Spanish Company Due Diligence Reports | Mapa Societario</title>
         <meta
           name="description"
-          content="Spanish company due diligence reports using BORME registry data, corporate relationship graphs, officer history, BOE sanctions checks, sole shareholders, and fully-owned participations."
+          content="Spanish company due diligence reports that start from BORME relationship intelligence: corporate graphs, officer history, BOE sanctions checks, sole shareholders, and fully-owned participations."
         />
         <link rel="canonical" href="https://mapasocietario.es/spanish-company-due-diligence" />
         <meta property="og:title" content="Spanish Company Due Diligence Reports | Mapa Societario" />
-        <meta property="og:description" content="Due diligence reports for Spanish companies with BORME registry data, officer history, relationship graphs, sanctions checks, and PDF delivery." />
+        <meta property="og:description" content="Graph-first due diligence reports for Spanish companies with BORME registry data, officer history, relationship graphs, sanctions checks, and PDF delivery." />
         <meta property="og:url" content="https://mapasocietario.es/spanish-company-due-diligence" />
         <meta property="og:type" content="article" />
       </Helmet>
@@ -81,8 +81,8 @@ export default function SpanishCompanyDueDiligencePage() {
             Spanish company due diligence reports
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 740, lineHeight: 1.7, mb: 3 }}>
-            Investigate Spanish companies with registry-based corporate relationship mapping, officer history,
-            sole-shareholder and fully-owned participation checks, BOE sanctions checks, and downloadable PDF reports.
+            Start from registry-based corporate relationship mapping, then document the company with officer history,
+            sole-shareholder and fully-owned participation checks, BOE sanctions checks, and a downloadable PDF report.
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
             {['BORME registry data', 'Officer history', 'BOE sanctions checks', 'PDF report', '2-day AI investigation', 'No subscription'].map((chip) => (
@@ -91,7 +91,7 @@ export default function SpanishCompanyDueDiligencePage() {
           </Box>
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 4 }}>
             <Button variant="contained" startIcon={<SearchIcon />} onClick={() => navigate('/app')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
-              Search a Spanish company
+              Open the relationship graph
             </Button>
             <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate('/due-diligence')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, color: 'warning.light', borderColor: 'rgba(255,167,38,0.45)' }}>
               See report details
@@ -175,7 +175,7 @@ export default function SpanishCompanyDueDiligencePage() {
 
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', pb: 2 }}>
             <Button variant="contained" startIcon={<VerifiedIcon />} onClick={() => navigate('/app')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
-              Start with a free graph search
+              Start with the free relationship graph
             </Button>
           </Box>
         </Box>
