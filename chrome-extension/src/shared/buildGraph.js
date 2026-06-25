@@ -1,12 +1,4 @@
-import { isBoardPosition } from './positionCategories.js';
-
-const BOARD_ROLES = ['consejero', 'administrador', 'presidente', 'secretario',
-  'vicepresidente', 'consejero delegado', 'liquidador'];
-
-function isBoardRole(position) {
-  const p = (position || '').toLowerCase();
-  return BOARD_ROLES.some((r) => p.includes(r));
-}
+import { isBoardPosition, positionCategoryFor, BOARD_CATEGORIES } from './positionCategories.js';
 
 function normName(name) {
   return (name || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
@@ -28,7 +20,7 @@ export function buildGraph(company, { maxOfficers = 40 } = {}) {
     if (!isBoardPosition(o.position)) return; // skip non-board seats for board map
 
     const existing = boardSeats.get(key);
-    const board = isBoardRole(o.position);
+    const board = BOARD_CATEGORIES.has(positionCategoryFor(o.position));
     const date = status === 'active' ? o.appointedDate : o.resignedDate;
     if (!existing) {
       boardSeats.set(key, { label: o.name, status, role: o.position || '', date: date || null, board });

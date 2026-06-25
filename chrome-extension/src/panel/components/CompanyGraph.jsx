@@ -19,6 +19,7 @@ export default function CompanyGraph({ company, locale = 'en' }) {
     return () => ro.disconnect();
   }, []);
 
+  const noteH = hiddenNonBoard > 0 ? 24 : 0;
   return (
     <div ref={wrapRef} style={{ height: 320, borderTop: '1px solid #eee' }}>
       {hiddenNonBoard > 0 && (
@@ -29,7 +30,7 @@ export default function CompanyGraph({ company, locale = 'en' }) {
       <ForceGraph2D
         graphData={graphData}
         width={width}
-        height={320}
+        height={320 - noteH}
         nodeLabel="label"
         nodeColor={(n) => {
           if (n.type === 'company') return COMPANY_COLOR;
