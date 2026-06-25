@@ -65,6 +65,9 @@ export async function getCompany(id, { fetchImpl = fetch } = {}) {
       officersResigned: (doc.officers_resigned || []).map(shapeOfficer),
       firstSeen: doc.first_seen || null,
       lastSeen: doc.last_seen || null,
+      nameChanges: (doc.name_changes || []).map((x) => ({ date: x.date || null, from: x.old_name || '', to: x.new_name || '' })),
+      capitalHistory: (doc.capital_history || []).map((x) => ({ date: x.date || null, amount: x.amount ?? null })),
+      addressHistory: (doc.address_history || []).map((x) => ({ date: x.date || null, address: x.address || '' })),
     };
   } catch {
     return null;

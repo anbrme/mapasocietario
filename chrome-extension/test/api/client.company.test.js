@@ -17,6 +17,16 @@ const doc = {
   officers_resigned: [
     { name: 'JOHN ROE', position_normalized: 'Administrador', resigned_date: '2018-05-05' },
   ],
+  name_changes: [
+    { date: '2011-07-11', old_name: 'CRITERIA CAIXACORP SA', new_name: 'TELEFONICA SA' },
+  ],
+  capital_history: [
+    { date: '2014-01-15', amount: 943035.0 },
+    { date: '2013-06-01', amount: 800000.0 },
+  ],
+  address_history: [
+    { date: '2017-10-30', address: 'C/ PINTOR SOROLLA 2-4 (VALENCIA)' },
+  ],
 };
 
 describe('getCompany', () => {
@@ -48,5 +58,35 @@ describe('getCompany', () => {
   it('returns null on error', async () => {
     const out = await getCompany('H:M-1', { fetchImpl: async () => { throw new Error('x'); } });
     expect(out).toBeNull();
+  });
+
+  it('maps name_changes to nameChanges with from/to/date', async () => {
+    const out = await getCompany('H:M-396846', { fetchImpl: fetchReturning({ results: [doc] }) });
+    expect(out.nameChanges).toEqual([
+      { date: '2011-07-11', from: 'CRITERIA CAIXACORP SA', to: 'TELEFONICA SA' },
+    ]);
+  });
+
+  it('maps capital_history to capitalHistory with date/amount', async () => {
+    const out = await getCompany('H:M-396846', { fetchImpl: fetchReturning({ results: [doc] }) });
+    expect(out.capitalHistory).toEqual([
+      { date: '2014-01-15', amount: 943035.0 },
+      { date: '2013-06-01', amount: 800000.0 },
+    ]);
+  });
+
+  it('maps address_history to addressHistory with date/address', async () => {
+    const out = await getCompany('H:M-396846', { fetchImpl: fetchReturning({ results: [doc] }) });
+    expect(out.addressHistory).toEqual([
+      { date: '2017-10-30', address: 'C/ PINTOR SOROLLA 2-4 (VALENCIA)' },
+    ]);
+  });
+
+  it('returns empty arrays when history fields are absent', async () => {
+    const noHistoryDoc = { ...doc, _id: 'H:M-NO', name_changes: undefined, capital_history: undefined, address_history: undefined };
+    const out = await getCompany('H:M-NO', { fetchImpl: fetchReturning({ results: [noHistoryDoc] }) });
+    expect(out.nameChanges).toEqual([]);
+    expect(out.capitalHistory).toEqual([]);
+    expect(out.addressHistory).toEqual([]);
   });
 });

@@ -8,6 +8,13 @@ const STRINGS = {
     statusActive: 'Active', statusDissolved: 'Dissolved',
     formerly: 'formerly',
     hiddenRoles: 'non-board roles hidden',
+    historyHeading: 'Main changes',
+    evtIncorporated: 'Incorporated',
+    evtRenamed: 'Renamed',
+    evtAddress: 'Address',
+    evtCapital: 'Capital',
+    evtDissolved: 'Dissolved',
+    showMore: 'show more',
   },
   es: {
     matchesHeading: 'Coincidencias', noMatches: 'No se encontró ninguna empresa española para esta selección.',
@@ -18,6 +25,13 @@ const STRINGS = {
     statusActive: 'Activa', statusDissolved: 'Disuelta',
     formerly: 'antes',
     hiddenRoles: 'cargos no ejecutivos ocultos',
+    historyHeading: 'Principales cambios',
+    evtIncorporated: 'Constituida',
+    evtRenamed: 'Cambio de nombre',
+    evtAddress: 'Domicilio',
+    evtCapital: 'Capital',
+    evtDissolved: 'Disuelta',
+    showMore: 'ver más',
   },
 };
 
