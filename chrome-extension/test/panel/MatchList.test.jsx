@@ -16,7 +16,7 @@ describe('MatchList', () => {
   });
   it('shows the former-name hint for aliases', () => {
     render(<MatchList matches={matches} locale="en" onPick={() => {}} />);
-    expect(screen.getByText(/OLD SL/)).toBeInTheDocument();
+    expect(screen.getByText(/formerly: OLD SL/)).toBeInTheDocument();
   });
   it('shows no-matches message for empty list', () => {
     render(<MatchList matches={[]} locale="en" onPick={() => {}} />);

@@ -6,6 +6,7 @@ const STRINGS = {
     activeOfficers: 'Active officers', formerOfficers: 'Former officers',
     viewProfile: 'View full profile on mapasocietario.es',
     statusActive: 'Active', statusDissolved: 'Dissolved',
+    formerly: 'formerly',
   },
   es: {
     matchesHeading: 'Coincidencias', noMatches: 'No se encontró ninguna empresa española para esta selección.',
@@ -14,6 +15,7 @@ const STRINGS = {
     activeOfficers: 'Cargos activos', formerOfficers: 'Cargos anteriores',
     viewProfile: 'Ver perfil completo en mapasocietario.es',
     statusActive: 'Activa', statusDissolved: 'Disuelta',
+    formerly: 'antes',
   },
 };
 

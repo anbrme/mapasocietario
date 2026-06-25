@@ -22,7 +22,7 @@ export default function MatchList({ matches, locale, onPick }) {
               <div style={{ fontWeight: 600 }}>{m.name}</div>
               <div style={{ fontSize: 12, color: '#777' }}>
                 {[m.location, m.nif].filter(Boolean).join(' · ')}
-                {m.isAlias && m.formerName ? ` · (antes: ${m.formerName})` : ''}
+                {m.isAlias && m.formerName ? ` · (${t(locale, 'formerly')}: ${m.formerName})` : ''}
               </div>
             </button>
           </li>
