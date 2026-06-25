@@ -6,9 +6,9 @@ const fetchReturning = (payload) => async () => ({ ok: true, json: async () => p
 const doc = {
   _id: 'H:M-396846',
   company_name: 'TELEFONICA SA',
-  nif: 'A28015865',
-  capital: 5000000,
-  enriched_address: 'Gran Via 28, Madrid',
+  current_capital: 5000000,
+  current_address: 'Gran Via 28, Madrid',
+  is_dissolved: false,
   identifiers: ['M-396846'],
   first_seen: '2009-01-01', last_seen: '2026-06-01',
   officers_active: [
@@ -24,12 +24,20 @@ describe('getCompany', () => {
     const out = await getCompany('H:M-396846', { fetchImpl: fetchReturning({ results: [doc] }) });
     expect(out.groupKey).toBe('H:M-396846');
     expect(out.name).toBe('TELEFONICA SA');
-    expect(out.nif).toBe('A28015865');
+    expect(out.nif).toBeNull();
+    expect(out.capital).toBe(5000000);
     expect(out.address).toBe('Gran Via 28, Madrid');
+    expect(out.status).toBe('active');
     expect(out.officersActive).toEqual([
       { name: 'JANE DOE', position: 'Consejero', appointedDate: '2020-01-01', resignedDate: null },
     ]);
     expect(out.officersResigned[0].name).toBe('JOHN ROE');
+  });
+
+  it('maps is_dissolved: true → status dissolved', async () => {
+    const dissolvedDoc = { ...doc, _id: 'H:M-111', is_dissolved: true };
+    const out = await getCompany('H:M-111', { fetchImpl: fetchReturning({ results: [dissolvedDoc] }) });
+    expect(out.status).toBe('dissolved');
   });
 
   it('returns null when no doc matches the group_key', async () => {
