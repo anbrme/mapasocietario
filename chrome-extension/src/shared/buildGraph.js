@@ -47,6 +47,7 @@ export function buildGraph(company, { maxOfficers = 40 } = {}) {
   const nodes = [center];
   const links = [];
   for (const [key, p] of ordered) {
+    if (p.status !== 'active') continue; // only show current board members
     const id = `officer:${key}`;
     nodes.push({ id, label: p.label, type: 'officer', status: p.status });
     links.push({ source: center.id, target: id, status: p.status, role: p.role, date: p.date });

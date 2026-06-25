@@ -59,10 +59,18 @@ describe('buildGraph', () => {
     expect(jane.status).toBe('active');
   });
 
-  it('ceased board member is ceased', () => {
-    const { links } = buildGraph(company);
-    const jane = links.find((l) => l.target.endsWith('JANE DOE'));
-    expect(jane.status).toBe('active');
+  it('a purely-ceased board member produces no node or link', () => {
+    const ceasedOnly = {
+      groupKey: 'H:M-5', name: 'CEASED SA',
+      officersActive: [],
+      officersResigned: [
+        { name: 'OLD BOSS', position: 'Administrador', appointedDate: null, resignedDate: '2019-01-01' },
+      ],
+    };
+    const { nodes, links } = buildGraph(ceasedOnly);
+    const officers = nodes.filter((n) => n.type === 'officer');
+    expect(officers.length).toBe(0);
+    expect(links.length).toBe(0);
   });
 
   it('a company whose officers are ALL apoderados yields nodes=[company] and hiddenNonBoard=count', () => {
@@ -80,11 +88,12 @@ describe('buildGraph', () => {
     expect(hiddenNonBoard).toBe(2);
   });
 
-  it('caps officer nodes at maxOfficers, board roles first', () => {
-    // All 100 people are Consejero (board) so they pass the filter; cap at 5
-    const many = { groupKey: 'H:M-2', name: 'BIG SA', officersActive: [], officersResigned:
-      Array.from({ length: 100 }, (_, i) => ({ name: `P${i}`,
-        position: 'Consejero', resignedDate: '2020-01-01' })) };
+  it('caps officer nodes at maxOfficers using active officers', () => {
+    // All 100 people are active Consejero (board) so they pass the filter; cap at 5
+    const many = { groupKey: 'H:M-2', name: 'BIG SA',
+      officersActive: Array.from({ length: 100 }, (_, i) => ({ name: `P${i}`,
+        position: 'Consejero', appointedDate: '2020-01-01' })),
+      officersResigned: [] };
     const { nodes } = buildGraph(many, { maxOfficers: 5 });
     const officers = nodes.filter((n) => n.type === 'officer');
     expect(officers.length).toBe(5);
