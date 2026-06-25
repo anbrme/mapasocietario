@@ -132,7 +132,7 @@ const COPY = {
       invoicedPre: 'Service provided and invoiced by ',
       invoicedPost: ' · Madrid, Spain · Operating since 2013',
     },
-    footer: { home: 'Home', about: 'About', terms: 'Terms', privacy: 'Privacy', contact: 'Contact' },
+    footer: { home: 'Home', about: 'About', terms: 'Terms', privacy: 'Privacy', facebook: 'Facebook', contact: 'Contact' },
   },
 
   es: {
@@ -227,7 +227,7 @@ const COPY = {
       invoicedPre: 'Servicio prestado y facturado por ',
       invoicedPost: ' · Madrid, España · En activo desde 2013',
     },
-    footer: { home: 'Inicio', about: 'Acerca de', terms: 'Términos', privacy: 'Privacidad', contact: 'Contacto' },
+    footer: { home: 'Inicio', about: 'Acerca de', terms: 'Términos', privacy: 'Privacidad', facebook: 'Facebook', contact: 'Contacto' },
   },
 };
 
@@ -566,6 +566,7 @@ export default function DueDiligencePage() {
           <Link href={nav.about} variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.about}</Link>
           <Link href={nav.terms} variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.terms}</Link>
           <Link href={nav.privacy} variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.privacy}</Link>
+          <Link href={nav.facebook} target="_blank" rel="noopener" variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.facebook}</Link>
           <Link href="mailto:mapasocietario@ncdata.eu" variant="caption" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{t.footer.contact}</Link>
         </Box>
 

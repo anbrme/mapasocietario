@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FACEBOOK_URL } from '../src/utils/socialLinks.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
@@ -206,6 +207,7 @@ const routes = [
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
           <li><a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></li>
+          <li><a href="${FACEBOOK_URL}">Mapa Societario on Facebook</a></li>
         </ul>
         <h2>Frequently asked questions</h2>
         <h3>What is Mapa Societario?</h3>
@@ -237,7 +239,7 @@ const routes = [
           <li>Visualize corporate relationships in real time</li>
           <li>Purchase Due Diligence reports from the search toolbar</li>
         </ul>
-        <p><a href="/">Back to Mapa Societario</a></p>
+        <p><a href="/">Back to Mapa Societario</a> | <a href="${FACEBOOK_URL}">Facebook</a></p>
       </main>`,
   },
   {
@@ -353,6 +355,7 @@ const routes = [
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
           <li><a href="/es/mapa-relaciones-societarias/">Mapa de relaciones societarias</a></li>
+          <li><a href="${FACEBOOK_URL}">Mapa Societario en Facebook</a></li>
           <li><a href="/">English version</a></li>
         </ul>
       </main>`,

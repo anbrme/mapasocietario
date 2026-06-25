@@ -6,7 +6,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
-import { siteNav, isHtmlNav } from './utils/siteNav';
+import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
 import { openListedCompanies } from './services/listedCompaniesNav';
 import {
   getBrowserLanguage,
@@ -32,6 +32,7 @@ const APP_COPY = {
       pricing: 'Pricing',
       about: 'About',
       faq: 'FAQ',
+      facebook: 'Facebook',
       terms: 'Terms',
       privacy: 'Privacy',
     },
@@ -52,6 +53,7 @@ const APP_COPY = {
       listed: 'Empresas del IBEX 35',
       dashboard: 'Panel estadístico',
       faq: 'Preguntas frecuentes',
+      facebook: 'Facebook',
       terms: 'Términos',
       privacy: 'Privacidad',
     },
@@ -85,6 +87,7 @@ export default function App() {
     // The IBEX 35 hub is an SSR page, not a SPA route — open it via the helper
     // (full-page load on web, in-app Custom Tab on native), never client-route.
     if (url === nav.listed) { openListedCompanies(language); return; }
+    if (isExternalNav(url)) { window.location.assign(url); return; }
     if (isHtmlNav(url)) window.location.assign(url);
     else navigate(url);
   };
@@ -99,6 +102,7 @@ export default function App() {
     null,
     { label: copy.menu.about, url: nav.about },
     { label: copy.menu.faq, url: nav.faq },
+    { label: copy.menu.facebook, url: nav.facebook },
     null,
     { label: copy.menu.terms, url: nav.terms },
     { label: copy.menu.privacy, url: nav.privacy },
