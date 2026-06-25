@@ -19,7 +19,7 @@ const EXAMPLE_ICONS = [<SearchIcon />, <BusinessCenterIcon />, <PersonSearchIcon
 const COPY = {
   en: {
     meta: {
-      title: 'Use the Spanish Company Registry in Claude | Mapa Societario',
+      title: 'Get Spanish Company Data in Claude | Mapa Societario',
       description:
         'Connect Mapa Societario to Claude as a custom MCP connector and query the Spanish company registry (BORME) in plain language: search companies and officers, read profiles, and map corporate relationships. Free, no account.',
       ogDescription:
@@ -27,7 +27,7 @@ const COPY = {
     },
     back: 'Back to Mapa Societario',
     eyebrow: 'Claude connector',
-    title: 'Use the Spanish company registry inside Claude',
+    title: 'Get Spanish Company Data in Claude',
     subtitle:
       'Mapa Societario is available as a connector for Claude. Add it once, then ask about Spanish companies, officers and corporate relationships in plain language — answers come from official BORME (Registro Mercantil) data, each with a link to cite.',
     urlLabel: 'Connector URL',
@@ -74,7 +74,7 @@ const COPY = {
     },
     back: 'Volver a Mapa Societario',
     eyebrow: 'Conector de Claude',
-    title: 'Usa el registro mercantil español dentro de Claude',
+    title: 'Consulta datos de empresas españolas dentro de Claude',
     subtitle:
       'Mapa Societario está disponible como conector para Claude. Añádelo una vez y pregunta sobre empresas, administradores y relaciones societarias en lenguaje natural — las respuestas proceden de datos oficiales del BORME (Registro Mercantil), cada una con un enlace para citar.',
     urlLabel: 'URL del conector',

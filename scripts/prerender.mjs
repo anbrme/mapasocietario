@@ -431,13 +431,13 @@ const routes = [
   },
   {
     path: '/connect-claude',
-    title: 'Use the Spanish Company Registry in Claude | Mapa Societario',
+    title: 'Get Spanish Company Data in Claude | Mapa Societario',
     description:
       'Connect Mapa Societario to Claude as a custom MCP connector and query the Spanish company registry (BORME) in plain language: search companies and officers, read profiles, and map corporate relationships. Free, no account.',
     ogType: 'website',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Use the Spanish company registry inside Claude</h1>
+        <h1>Get Spanish Company Data in Claude</h1>
         <p>Mapa Societario is available as a connector for Claude. Add it once, then ask about Spanish companies, officers and corporate relationships in plain language &mdash; answers come from official BORME (Registro Mercantil) data, each with a link to cite.</p>
         ${disclaimerHtmlEn}
         <h2>Add it in three steps</h2>
@@ -459,7 +459,7 @@ const routes = [
     lang: 'es',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Usa el registro mercantil español dentro de Claude</h1>
+        <h1>Consulta datos de empresas españolas dentro de Claude</h1>
         <p>Mapa Societario está disponible como conector para Claude. Añádelo una vez y pregunta sobre empresas, administradores y relaciones societarias en lenguaje natural &mdash; las respuestas proceden de datos oficiales del BORME (Registro Mercantil), cada una con un enlace para citar.</p>
         ${disclaimerHtmlEs}
         <h2>Añádelo en tres pasos</h2>
