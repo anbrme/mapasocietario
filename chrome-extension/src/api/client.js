@@ -1,7 +1,17 @@
 const API_BASE = 'https://api.ncdata.eu';
 
+// Strip vowel diacritics (á→a, é→e, í→i, ó→o, ú→u, ü→u) but PRESERVE ñ/Ñ.
+// Naive NFD-strip decomposes ñ → n + combining tilde, dropping the tilde and
+// breaking Spanish company names like Peñarroya. We protect ñ/Ñ with sentinels.
+function normalizeQuery(q) {
+  return q
+    .replace(/ñ/g, '\x00n\x00').replace(/Ñ/g, '\x00N\x00')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\x00n\x00/g, 'ñ').replace(/\x00N\x00/g, 'Ñ');
+}
+
 export async function resolveCompany(query, { fetchImpl = fetch } = {}) {
-  const q = (query || '').trim();
+  const q = normalizeQuery((query || '').trim());
   if (q.length < 2) return [];
   try {
     const url = `${API_BASE}/bormes/companies/directory/autocomplete?q=${encodeURIComponent(q)}&limit=8`;
@@ -47,14 +57,17 @@ export async function getCompany(id, { fetchImpl = fetch } = {}) {
       groupKey: key,
       name: doc.company_name || doc.company_name_normalized || '',
       nif: doc.nif || doc.enriched_nif || null,
-      capital: doc.capital ?? doc.enriched_capital ?? null,
-      address: doc.enriched_address || doc.address || null,
-      status: doc.status || (doc.has_dissolution ? 'dissolved' : 'active'),
+      capital: doc.current_capital ?? doc.capital ?? doc.enriched_capital ?? null,
+      address: doc.current_address || doc.enriched_address || doc.address || null,
+      status: doc.is_dissolved ? 'dissolved' : 'active',
       identifiers: doc.identifiers || [],
       officersActive: (doc.officers_active || []).map(shapeOfficer),
       officersResigned: (doc.officers_resigned || []).map(shapeOfficer),
       firstSeen: doc.first_seen || null,
       lastSeen: doc.last_seen || null,
+      nameChanges: (doc.name_changes || []).map((x) => ({ date: x.date || null, from: x.old_name || '', to: x.new_name || '' })),
+      capitalHistory: (doc.capital_history || []).map((x) => ({ date: x.date || null, amount: x.amount ?? null })),
+      addressHistory: (doc.address_history || []).map((x) => ({ date: x.date || null, address: x.address || '' })),
     };
   } catch {
     return null;

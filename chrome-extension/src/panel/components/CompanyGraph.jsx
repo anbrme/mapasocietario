@@ -1,12 +1,15 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { buildGraph } from '../../shared/buildGraph.js';
+import { t } from '../i18n.js';
 
+const COMPANY_COLOR = '#1a5fb4';
 const ACTIVE = '#2ca02c';
 const CEASED = '#bbbbbb';
 
-export default function CompanyGraph({ company }) {
-  const graphData = useMemo(() => buildGraph(company), [company]);
+export default function CompanyGraph({ company, locale = 'en' }) {
+  const { nodes, links, hiddenNonBoard } = useMemo(() => buildGraph(company), [company]);
+  const graphData = useMemo(() => ({ nodes, links }), [nodes, links]);
   const wrapRef = useRef(null);
   const [width, setWidth] = useState(360);
   useEffect(() => {
@@ -16,14 +19,23 @@ export default function CompanyGraph({ company }) {
     return () => ro.disconnect();
   }, []);
 
+  const noteH = hiddenNonBoard > 0 ? 24 : 0;
   return (
     <div ref={wrapRef} style={{ height: 320, borderTop: '1px solid #eee' }}>
+      {hiddenNonBoard > 0 && (
+        <p style={{ margin: '4px 8px', fontSize: 12, color: '#888' }}>
+          {hiddenNonBoard} {t(locale, 'hiddenRoles')}
+        </p>
+      )}
       <ForceGraph2D
         graphData={graphData}
         width={width}
-        height={320}
+        height={320 - noteH}
         nodeLabel="label"
-        nodeColor={(n) => (n.type === 'company' ? '#1a5fb4' : '#444')}
+        nodeColor={(n) => {
+          if (n.type === 'company') return COMPANY_COLOR;
+          return n.status === 'active' ? ACTIVE : CEASED;
+        }}
         nodeRelSize={5}
         linkColor={(l) => (l.status === 'active' ? ACTIVE : CEASED)}
         linkDirectionalArrowLength={4}

@@ -36,4 +36,30 @@ describe('resolveCompany', () => {
     const boom = async () => { throw new Error('network'); };
     expect(await resolveCompany('telefonica', { fetchImpl: boom })).toEqual([]);
   });
+
+  it('strips vowel accents from query before sending (Telefónica → Telefonica)', async () => {
+    let capturedUrl = null;
+    const spy = async (url) => {
+      capturedUrl = url;
+      return { ok: true, json: async () => ({ suggestions: [] }) };
+    };
+    await resolveCompany('Telefónica', { fetchImpl: spy });
+    expect(capturedUrl).not.toBeNull();
+    expect(capturedUrl).toContain(encodeURIComponent('Telefonica'));
+    expect(capturedUrl).not.toContain(encodeURIComponent('Telefónica'));
+  });
+
+  it('preserves ñ in query (Peñarroya stays Peñarroya, not Penarroya)', async () => {
+    let capturedUrl = null;
+    const spy = async (url) => {
+      capturedUrl = url;
+      return { ok: true, json: async () => ({ suggestions: [] }) };
+    };
+    await resolveCompany('Peñarroya', { fetchImpl: spy });
+    expect(capturedUrl).not.toBeNull();
+    // ñ encoded is %C3%B1
+    expect(capturedUrl).toContain('%C3%B1');
+    // must NOT have silently dropped ñ to n (i.e. not Penarroya)
+    expect(capturedUrl).not.toContain(encodeURIComponent('Penarroya'));
+  });
 });

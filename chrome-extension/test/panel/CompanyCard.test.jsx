@@ -16,7 +16,7 @@ describe('CompanyCard', () => {
     expect(screen.getByText('A28015865')).toBeInTheDocument();
     expect(screen.getByText(/Active officers/i)).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /View full profile/i });
-    expect(link).toHaveAttribute('href', 'https://mapasocietario.es/empresa/telefonica-sa');
+    expect(link).toHaveAttribute('href', 'https://mapasocietario.es/app?search=TELEFONICA%20SA');
     expect(link).toHaveAttribute('target', '_blank');
   });
 });

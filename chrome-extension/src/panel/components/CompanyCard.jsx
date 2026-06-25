@@ -1,6 +1,6 @@
 import React from 'react';
 import { t } from '../i18n.js';
-import { empresaUrl } from '../empresaUrl.js';
+import { appSearchUrl } from '../appSearchUrl.js';
 
 function fmtCapital(value, locale) {
   if (value == null) return null;
@@ -31,7 +31,7 @@ export default function CompanyCard({ company, locale }) {
       <Row label={t(locale, 'status')}>{statusLabel}</Row>
       <Row label={t(locale, 'activeOfficers')}>{company.officersActive.length}</Row>
       <Row label={t(locale, 'formerOfficers')}>{company.officersResigned.length}</Row>
-      <a href={empresaUrl(company)} target="_blank" rel="noopener noreferrer"
+      <a href={appSearchUrl(company)} target="_blank" rel="noopener noreferrer"
          style={{ display: 'inline-block', marginTop: 10, fontSize: 13, color: '#1a5fb4' }}>
         → {t(locale, 'viewProfile')}
       </a>

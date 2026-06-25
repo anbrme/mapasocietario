@@ -4,6 +4,7 @@ import { pickLocale, t } from './i18n.js';
 import { sendToWorker } from './sendToWorker.js';
 import MatchList from './components/MatchList.jsx';
 import CompanyCard from './components/CompanyCard.jsx';
+import CompanyHistory from './components/CompanyHistory.jsx';
 import CompanyGraph from './components/CompanyGraph.jsx';
 
 export default function App({ sendImpl = sendToWorker, initialSelection = null }) {
@@ -50,7 +51,8 @@ export default function App({ sendImpl = sendToWorker, initialSelection = null }
       {view.state === 'company' && (
         <>
           <CompanyCard company={view.company} locale={locale} />
-          <CompanyGraph company={view.company} />
+          <CompanyHistory company={view.company} locale={locale} />
+          <CompanyGraph company={view.company} locale={locale} />
         </>
       )}
     </div>
