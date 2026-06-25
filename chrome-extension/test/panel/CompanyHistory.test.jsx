@@ -32,7 +32,7 @@ describe('CompanyHistory', () => {
 
   it('renders incorporation entry from firstSeen', () => {
     render(<CompanyHistory company={baseCompany} locale="en" />);
-    expect(screen.getByText(/Incorporated/i)).toBeInTheDocument();
+    expect(screen.getByText(/First seen in BORME/i)).toBeInTheDocument();
   });
 
   it('renders rename entry', () => {

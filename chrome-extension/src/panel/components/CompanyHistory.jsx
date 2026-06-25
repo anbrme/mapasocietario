@@ -38,7 +38,7 @@ export default function CompanyHistory({ company, locale }) {
   const nonCapital = [];
 
   if (company.firstSeen) {
-    nonCapital.push({ date: company.firstSeen, label: t(locale, 'evtIncorporated') });
+    nonCapital.push({ date: company.firstSeen, label: t(locale, 'evtFirstSeen') });
   }
 
   for (const nc of (company.nameChanges || [])) {
