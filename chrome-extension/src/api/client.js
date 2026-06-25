@@ -1,7 +1,17 @@
 const API_BASE = 'https://api.ncdata.eu';
 
+// Strip vowel diacritics (á→a, é→e, í→i, ó→o, ú→u, ü→u) but PRESERVE ñ/Ñ.
+// Naive NFD-strip decomposes ñ → n + combining tilde, dropping the tilde and
+// breaking Spanish company names like Peñarroya. We protect ñ/Ñ with sentinels.
+function normalizeQuery(q) {
+  return q
+    .replace(/ñ/g, '\x00n\x00').replace(/Ñ/g, '\x00N\x00')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\x00n\x00/g, 'ñ').replace(/\x00N\x00/g, 'Ñ');
+}
+
 export async function resolveCompany(query, { fetchImpl = fetch } = {}) {
-  const q = (query || '').trim();
+  const q = normalizeQuery((query || '').trim());
   if (q.length < 2) return [];
   try {
     const url = `${API_BASE}/bormes/companies/directory/autocomplete?q=${encodeURIComponent(q)}&limit=8`;
