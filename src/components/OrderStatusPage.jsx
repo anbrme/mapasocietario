@@ -112,7 +112,7 @@ const ORDER_COPY = {
     generating: {
       title: 'Generando tu informe de Due Diligence',
       sub: 'Esto puede tardar hasta 60 segundos. Por favor, no cierres esta página.',
-      saveLink: 'Puedes guardar el enlace de esta página para volver cuando quieras durante 7 días y descargar de nuevo tu informe.',
+      saveLink: 'Puedes guardar el enlace de esta página para volver cuando quieras durante 7 días y descargar de nuevo tu informe. También lo tienes en el correo electrónico que te hemos enviado',
       longerPre: '¿Tarda más de 2 minutos? Escribe a',
       longerPost: 'con la referencia de tu pedido y lo revisaremos.',
     },
