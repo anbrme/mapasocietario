@@ -113,6 +113,7 @@ const CATEGORY_LABELS = {
     revocaciones: 'Revocación',
     socio_unico: 'Socio único',
     socio_perdido: 'Pérdida socio único',
+    socio_anterior: 'Socio único (anterior)',
   },
   en: {
     nombramientos: 'Appointment',
@@ -121,6 +122,7 @@ const CATEGORY_LABELS = {
     revocaciones: 'Revocation',
     socio_unico: 'Sole shareholder',
     socio_perdido: 'Loss of sole shareholder',
+    socio_anterior: 'Previous sole shareholder',
   },
 };
 
@@ -2264,12 +2266,33 @@ const SpanishCompanyNetworkGraph = ({
       const companyShareholders = (result.sole_shareholders || []).map(s => ({
         name: typeof s === 'string' ? s : (s?.name || s?.shareholder_name || ''),
         kind: 'company',
+        historical: false,
       }));
       const individualShareholders = (result.sole_shareholder_individuals || []).map(s => ({
         name: typeof s === 'string' ? s : (s?.name || s?.shareholder_name || ''),
         kind: 'individual',
+        historical: false,
       }));
-      const shareholders = [...companyShareholders, ...individualShareholders].filter(s => s.name);
+      // Previous (superseded) sole shareholders — after a "cambio de socio
+      // único". Drawn set apart as historical so they don't read as current.
+      const prevCompanyShareholders = (result.previous_sole_shareholders || []).map(s => ({
+        name: typeof s === 'string' ? s : (s?.name || s?.shareholder_name || ''),
+        kind: 'company',
+        historical: true,
+      }));
+      const prevIndividualShareholders = (result.previous_sole_shareholder_individuals || []).map(
+        s => ({
+          name: typeof s === 'string' ? s : (s?.name || s?.shareholder_name || ''),
+          kind: 'individual',
+          historical: true,
+        })
+      );
+      const shareholders = [
+        ...companyShareholders,
+        ...individualShareholders,
+        ...prevCompanyShareholders,
+        ...prevIndividualShareholders,
+      ].filter(s => s.name);
       if (shareholders.length === 0) return;
       const ownershipLost = !!result.sole_shareholder_lost;
 
@@ -2352,15 +2375,21 @@ const SpanishCompanyNetworkGraph = ({
             newNodes.push(newNode);
           }
 
-          const linkId = `ownership-${shId}-${companyId}`;
+          const linkId = sh.historical
+            ? `ownership-prev-${shId}-${companyId}`
+            : `ownership-${shId}-${companyId}`;
           if (!newLinks.find(l => l.id === linkId)) {
             newLinks.push({
               id: linkId,
               source: shId,
               target: companyId,
               type: 'ownership',
-              relationship: 'Socio único',
-              category: ownershipLost ? 'socio_perdido' : 'socio_unico',
+              relationship: sh.historical ? 'Socio único (anterior)' : 'Socio único',
+              category: sh.historical
+                ? 'socio_anterior'
+                : ownershipLost
+                  ? 'socio_perdido'
+                  : 'socio_unico',
               date: null,
             });
           }
@@ -5377,7 +5406,12 @@ const SpanishCompanyNetworkGraph = ({
       } else if (sharedHighlightIds && touchesShared) {
         linkColor = PATH_HIGHLIGHT_COLOR;
       } else if (link.type === 'ownership') {
-        linkColor = cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d'; // Gold — sole shareholder
+        linkColor =
+          cat === 'socio_anterior'
+            ? '#9e9e9e' // Grey — previous (superseded) sole shareholder
+            : cat === 'socio_perdido'
+              ? '#bf8f30'
+              : '#fbc02d'; // Gold — current sole shareholder
       } else if (link.companyDissolved) {
         linkColor = '#e53935'; // Red — officer link to a DISSOLVED company is not current
       } else if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
@@ -6744,7 +6778,11 @@ const SpanishCompanyNetworkGraph = ({
             linkDirectionalArrowColor={link => {
               const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
               if (link.type === 'ownership') {
-                return cat === 'socio_perdido' ? '#bf8f30' : '#fbc02d';
+                return cat === 'socio_anterior'
+                  ? '#9e9e9e'
+                  : cat === 'socio_perdido'
+                    ? '#bf8f30'
+                    : '#fbc02d';
               }
               if (link.companyDissolved) return '#e53935'; // DISSOLVED company → officer link not current
               if (
