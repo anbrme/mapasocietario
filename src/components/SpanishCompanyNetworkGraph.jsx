@@ -4461,6 +4461,15 @@ const SpanishCompanyNetworkGraph = ({
               isDissolved,
               isInConcurso,
               isUnipersonal,
+              // Current + previous (superseded) socio único — for the chain chip.
+              soleShareholders: [
+                ...(company?.sole_shareholders || []),
+                ...(company?.sole_shareholder_individuals || []),
+              ],
+              previousSoleShareholders: [
+                ...(company?.previous_sole_shareholders || []),
+                ...(company?.previous_sole_shareholder_individuals || []),
+              ],
               // Re-registration trail: >1 entry means the company changed its
               // hoja registral (e.g. a provincial move — CaixaBank 2017).
               hojaHistory: company?.hoja_history || [],
@@ -7694,6 +7703,29 @@ const SpanishCompanyNetworkGraph = ({
               {previewData?.type === 'company' && previewData.enriched?.isUnipersonal && (
                 <Chip label={text.unipersonal} size="small" color="info" variant="outlined" />
               )}
+              {previewData?.type === 'company' &&
+                previewData.enriched?.previousSoleShareholders?.length > 0 &&
+                (() => {
+                  // Chain of socio único: previous (superseded) → current.
+                  const chain = [
+                    ...previewData.enriched.previousSoleShareholders,
+                    ...(previewData.enriched.soleShareholders || []),
+                  ].join(' → ');
+                  return (
+                    <Tooltip title={`${text.unipersonal}: ${chain}`}>
+                      <Chip
+                        label={chain}
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                        sx={{
+                          maxWidth: 380,
+                          '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
+                        }}
+                      />
+                    </Tooltip>
+                  );
+                })()}
             </Box>
             <IconButton onClick={() => setPreviewOpen(false)} size="small">
               <CloseIcon />
