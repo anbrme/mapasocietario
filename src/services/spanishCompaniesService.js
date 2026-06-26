@@ -2593,6 +2593,8 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
         success: true,
         sole_shareholders: result.sole_shareholders || [],
         sole_shareholder_individuals: result.sole_shareholder_individuals || [],
+        previous_sole_shareholders: result.previous_sole_shareholders || [],
+        previous_sole_shareholder_individuals: result.previous_sole_shareholder_individuals || [],
         sole_shareholder_lost: result.sole_shareholder_lost || false,
         company_name: companyName,
       };
