@@ -224,6 +224,7 @@ const SEARCH_COPY = {
     active: 'Active',
     ceased: 'Ceased',
     soleShareholder: 'Sole shareholder',
+    previousSoleShareholder: 'Previous sole shareholder',
     simplify: 'Simplify',
     hidden: 'hidden',
     positions: 'Roles',
@@ -455,6 +456,7 @@ const SEARCH_COPY = {
     active: 'Vigentes',
     ceased: 'Cesados',
     soleShareholder: 'Socio único',
+    previousSoleShareholder: 'Socio único anterior',
     simplify: 'Simplificar',
     hidden: 'ocultos',
     positions: 'Cargos',
@@ -1260,6 +1262,7 @@ const SpanishCompanyNetworkGraph = ({
   // Graph settings
   const [showSettings, setShowSettings] = useState(false);
   const [showShareholders, setShowShareholders] = useState(true);
+  const [showPreviousShareholders, setShowPreviousShareholders] = useState(true);
   const [nodeSize, setNodeSize] = useState(9);
   const [labelSize, setLabelSize] = useState(9);
   const [linkDistance, setLinkDistance] = useState(80);
@@ -4800,6 +4803,18 @@ const SpanishCompanyNetworkGraph = ({
       activeNodes = activeNodes.filter(n => linkedIds.has(normalizeNodeId(n.id)) || pinnedNodeIds.has(normalizeNodeId(n.id)));
     }
 
+    if (!showPreviousShareholders) {
+      // Hide superseded (anterior) sole-shareholder edges so the user can see
+      // the current ownership only.
+      activeLinks = activeLinks.filter(l => l.category !== 'socio_anterior');
+      const linkedIds = new Set();
+      activeLinks.forEach(l => {
+        linkedIds.add(normalizeNodeId(getNodeIdFromRef(l.source)));
+        linkedIds.add(normalizeNodeId(getNodeIdFromRef(l.target)));
+      });
+      activeNodes = activeNodes.filter(n => linkedIds.has(normalizeNodeId(n.id)) || pinnedNodeIds.has(normalizeNodeId(n.id)));
+    }
+
     // Apply status and position chip filters
     if (hasChipFilters) {
       activeLinks = activeLinks.filter(link => {
@@ -4930,6 +4945,7 @@ const SpanishCompanyNetworkGraph = ({
     positionFilters,
     hasChipFilters,
     showShareholders,
+    showPreviousShareholders,
     simplifyGraph,
     pathfinderStartNode,
     pathfinderEndNode,
@@ -6530,6 +6546,17 @@ const SpanishCompanyNetworkGraph = ({
                   : { borderColor: '#fbc02d', color: '#9e7b10' }
               }
               onClick={() => setShowShareholders(prev => !prev)}
+            />
+            <Chip
+              label={text.previousSoleShareholder}
+              size="small"
+              variant={showPreviousShareholders ? 'filled' : 'outlined'}
+              sx={
+                showPreviousShareholders
+                  ? { bgcolor: '#9e9e9e', color: '#212121', '&:hover': { bgcolor: '#8d8d8d' } }
+                  : { borderColor: '#9e9e9e', color: '#616161' }
+              }
+              onClick={() => setShowPreviousShareholders(prev => !prev)}
             />
             <Chip
               label={
