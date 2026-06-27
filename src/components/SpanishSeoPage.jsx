@@ -99,7 +99,7 @@ const pages = {
     cards: [
       { icon: <AccountTreeIcon />, title: 'Ver red de cargos', text: 'Pasa de una persona a sus sociedades y de cada sociedad a otros administradores.' },
       { icon: <NewspaperIcon />, title: 'Investigación periodística', text: 'Sigue conexiones públicas entre personas, empresas y cargos políticos identificados.' },
-      { icon: <VerifiedIcon />, title: 'Datos oficiales', text: 'Información derivada de publicaciones oficiales del BORME.' },
+      { icon: <VerifiedIcon />, title: 'Una empresa, una identidad', text: 'Las sociedades cambian de denominación y trasladan su hoja registral. Anclamos cada empresa a su hoja y reconciliamos esos cambios para mantener su historial completo bajo una sola ficha, en lugar de fragmentarlo en duplicados.' },
     ],
   },
   'borme-grafo-empresas': {
