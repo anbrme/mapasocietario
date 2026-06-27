@@ -1,6 +1,6 @@
 export const DATA_MAINTENANCE = Object.freeze({
-  enabled: false,
-  title: 'Index upgrade in progress',
+  enabled: true,
+  title: 'Index fix in progress to target certain limited cases where officers appeared resigned when they where actually active. It should be fast.',
   message:
     'Company and officer search remains available while we upgrade the index in the background. Some results may be incomplete or briefly delayed during the upgrade.',
 });
