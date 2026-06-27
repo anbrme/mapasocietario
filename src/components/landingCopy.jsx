@@ -5,9 +5,9 @@
 export const LANDING_COPY = {
   en: {
     meta: {
-      title: 'Relationship Intelligence for Spain | Mapa Societario',
+      title: 'Spanish Company Search | Mapa Societario',
       description:
-        'See who is connected to whom in Spanish companies. Explore corporate relationships in an interactive BORME graph, then order due diligence reports when you need documentation. Free to use; no account.',
+        'Search Spanish companies and directors, explore BORME corporate relationships in an interactive graph, and order due diligence reports when you need documentation. Free to use; no account.',
       ogDescription:
         'Search Spanish companies and directors, explore who is connected to whom, and turn BORME filings into actionable corporate intelligence.',
       twitterDescription:
@@ -24,7 +24,7 @@ export const LANDING_COPY = {
     ],
     hero: {
       eyebrow: 'Corporate relationships, not just records',
-      h1: 'Relationship intelligence for Spanish companies',
+      h1: 'Spanish company search and relationship intelligence',
       subtitle:
         'Search a company or officer and see who is connected to whom in an interactive BORME graph. Turn findings into due diligence reports when you need documentation.',
       openCta: 'Open the relationship graph',

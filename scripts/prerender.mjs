@@ -167,13 +167,13 @@ const routes = [
     // content. Prerender real content + crawlable links into #root; React
     // replaces it on hydration. Writes dist/index.html (path.join collapses '/').
     path: '/',
-    title: 'Mapa Societario | Relationship Intelligence for Spanish Companies',
+    title: 'Spanish Company Search | Mapa Societario',
     description:
-      'See who is connected to whom in Spanish companies. Explore corporate relationships in an interactive BORME graph, then order due diligence reports when you need documentation.',
+      'Search Spanish companies and directors, explore BORME corporate relationships in an interactive graph, and order due diligence reports when you need documentation.',
     ogType: 'website',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Mapa Societario &mdash; Relationship Intelligence for Spain</h1>
+        <h1>Mapa Societario &mdash; Spanish Company Search</h1>
         <p>Search a Spanish company or director and see who is connected to whom in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data.</p>
         ${disclaimerHtmlEn}
         <h2>Coverage by the numbers</h2>
