@@ -10,6 +10,7 @@ import {
   TextField,
   Checkbox,
   FormControlLabel,
+  MenuItem,
   Radio,
   RadioGroup,
   CircularProgress,
@@ -39,6 +40,12 @@ const DD_PRICE = 22.50;
 const FS_PRICE = 17.50;
 // Product Hunt launch promo. Set to null after the launch to hide the banner.
 //const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
+// Free-first-report insight program (intake-gated). Ship DORMANT: keep null
+// until the Stripe 100%-off coupon and the payments-worker changes (accept the
+// `intake` payload, apply the coupon on `freeFirstReport`, list free orders for
+// the admin) are live. Set to the coupon code to activate the offer + gate.
+// Spec: docs/superpowers/specs/2026-06-27-free-dd-insight-design.md
+const FREE_FIRST_REPORT_CODE = null; // e.g. 'FIRSTFREE'
 const ANDROID_PLAY_BILLING_ENABLED = true;
 const FS_FALLBACK_KEEP_DD = 'keep_dd_refund_fs';
 const FS_FALLBACK_FULL_REFUND = 'full_refund';
@@ -119,6 +126,23 @@ const DD_COPY = {
     continueStripe: subtotal => `Continue to Stripe · from EUR ${subtotal.toFixed(2)}`,
     cancel: 'Cancel',
     aiIncluded: 'Includes 2 days of AI investigation on this company’s network',
+    freeReportToggle: '🎁 Use my free first report',
+    freeReportHelp:
+      'Your first report is on us — without financial statements. In exchange, tell us briefly who you are and what you needed it for. We may email one short question later. No calls, ever.',
+    freeReportRoleLabel: 'Which best describes you?',
+    freeReportNeedLabel: 'What did you need this report for?',
+    freeReportNeedPlaceholder: 'e.g. checking a supplier before signing',
+    freeReportFollowUp: 'OK to email me one short question later',
+    freeReportRequired: 'Please tell us who you are and what you needed it for.',
+    roles: {
+      legal: 'Lawyer / legal',
+      advisor: 'Accountant / advisor',
+      compliance: 'Compliance / KYC',
+      investor: 'Investor / M&A',
+      journalist: 'Journalist',
+      owner: 'Business owner',
+      other: 'Other',
+    },
   },
   es: {
     androidVatNote:
@@ -196,6 +220,23 @@ const DD_COPY = {
     continueStripe: subtotal => `Continuar a Stripe · desde EUR ${subtotal.toFixed(2)}`,
     cancel: 'Cancelar',
     aiIncluded: 'Incluye 2 días de investigación por IA sobre la red de esta empresa',
+    freeReportToggle: '🎁 Usar mi primer informe gratis',
+    freeReportHelp:
+      'Tu primer informe corre de nuestra cuenta — sin cuentas anuales. A cambio, cuéntanos brevemente quién eres y para qué lo necesitabas. Puede que te enviemos una pregunta corta por email más adelante. Nunca llamadas.',
+    freeReportRoleLabel: '¿Qué te describe mejor?',
+    freeReportNeedLabel: '¿Para qué necesitabas este informe?',
+    freeReportNeedPlaceholder: 'p. ej. comprobar un proveedor antes de firmar',
+    freeReportFollowUp: 'De acuerdo en recibir una pregunta corta por email',
+    freeReportRequired: 'Cuéntanos quién eres y para qué lo necesitabas.',
+    roles: {
+      legal: 'Abogado / jurídico',
+      advisor: 'Asesor / gestoría',
+      compliance: 'Compliance / KYC',
+      investor: 'Inversor / M&A',
+      journalist: 'Periodista',
+      owner: 'Empresario / autónomo',
+      other: 'Otro',
+    },
   },
 };
 
@@ -219,6 +260,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   const [mode, setMode] = useState('faithful');
   const [correctionsCount, setCorrectionsCount] = useState(0);
   const [groupKey, setGroupKey] = useState(null);
+  // Free-first-report insight intake (active only when FREE_FIRST_REPORT_CODE is set).
+  const [useFreeReport, setUseFreeReport] = useState(false);
+  const [buyerRole, setBuyerRole] = useState('');
+  const [needContext, setNeedContext] = useState('');
+  const [followUpOptIn, setFollowUpOptIn] = useState(false);
 
   const subtotal = DD_PRICE + (includeFS ? FS_PRICE : 0);
   const isAndroidApp = isAndroidNativeApp();
@@ -385,6 +431,13 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       setError(copy.emailRequired);
       return;
     }
+    // Free-first-report path: only on the Stripe (web) flow, and only when the
+    // program is activated. Intake is the gate — require who + why before we proceed.
+    const freeActive = !!FREE_FIRST_REPORT_CODE && useFreeReport && !isAndroidApp;
+    if (freeActive && (!buyerRole || !needContext.trim())) {
+      setError(copy.freeReportRequired);
+      return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -440,7 +493,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           account_id: getClientId(),
           ...(groupKey ? { group_key: groupKey } : {}),
         } : {}),
-        ...(includeFS ? {
+        ...((includeFS && !freeActive) ? {
           financialStatements: true,
           financialStatementsYear,
           financialStatementsFallback,
@@ -457,6 +510,18 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           options,
           email: email.trim() || undefined,
           returnUrl: window.location.href,
+          // Free-first-report insight program: the payments worker applies the
+          // 100%-off coupon on `freeFirstReport` and persists `intake` to the
+          // Stripe session metadata. No-ops on the backend until that lands.
+          ...(freeActive ? {
+            freeFirstReport: true,
+            promoCode: FREE_FIRST_REPORT_CODE,
+            intake: {
+              role: buyerRole,
+              need: needContext.trim(),
+              followUpOptIn,
+            },
+          } : {}),
         }),
       });
       const data = await res.json();
@@ -634,6 +699,79 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 ? copy.amendedMode(correctionsCount)
                 : copy.faithfulMode}
             </Typography>
+          </Box>
+        )}
+        {/* Free-first-report insight gate. Dormant until FREE_FIRST_REPORT_CODE is set. */}
+        {FREE_FIRST_REPORT_CODE && !isAndroidApp && (
+          <Box
+            sx={{
+              p: 1.75,
+              mb: 2,
+              borderRadius: 1.5,
+              bgcolor: 'rgba(255,167,38,0.08)',
+              border: '1px solid rgba(255,167,38,0.3)',
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={useFreeReport}
+                  onChange={(e) => setUseFreeReport(e.target.checked)}
+                  sx={{ color: 'warning.main', '&.Mui-checked': { color: 'warning.main' }, py: 0.25 }}
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.light' }}>
+                  {copy.freeReportToggle}
+                </Typography>
+              }
+              sx={{ alignItems: 'center', m: 0 }}
+            />
+            {useFreeReport && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary', fontSize: '0.72rem', lineHeight: 1.5 }}>
+                  {copy.freeReportHelp}
+                </Typography>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label={copy.freeReportRoleLabel}
+                  value={buyerRole}
+                  onChange={(e) => setBuyerRole(e.target.value)}
+                  sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { fontSize: '0.85rem', bgcolor: 'rgba(255,255,255,0.03)' } }}
+                >
+                  {Object.entries(copy.roles).map(([value, label]) => (
+                    <MenuItem key={value} value={value} sx={{ fontSize: '0.85rem' }}>{label}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label={copy.freeReportNeedLabel}
+                  placeholder={copy.freeReportNeedPlaceholder}
+                  value={needContext}
+                  onChange={(e) => setNeedContext(e.target.value)}
+                  sx={{ mb: 1, '& .MuiOutlinedInput-root': { fontSize: '0.85rem', bgcolor: 'rgba(255,255,255,0.03)' } }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={followUpOptIn}
+                      onChange={(e) => setFollowUpOptIn(e.target.checked)}
+                      size="small"
+                      sx={{ color: 'text.disabled', '&.Mui-checked': { color: 'warning.main' }, py: 0.25 }}
+                    />
+                  }
+                  label={
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.72rem' }}>
+                      {copy.freeReportFollowUp}
+                    </Typography>
+                  }
+                  sx={{ alignItems: 'center', m: 0 }}
+                />
+              </Box>
+            )}
           </Box>
         )}
         {/*
