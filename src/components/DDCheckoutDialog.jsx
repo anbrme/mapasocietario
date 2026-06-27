@@ -45,7 +45,7 @@ const FS_PRICE = 17.50;
 // `intake` payload, apply the coupon on `freeFirstReport`, list free orders for
 // the admin) are live. Set to the coupon code to activate the offer + gate.
 // Spec: docs/superpowers/specs/2026-06-27-free-dd-insight-design.md
-const FREE_FIRST_REPORT_CODE = null; // e.g. 'FIRSTFREE'
+const FREE_FIRST_REPORT_CODE = 'FIRSTFREE'; // Stripe promotion code (100% / €22.50 off, first-purchase, capped)
 const ANDROID_PLAY_BILLING_ENABLED = true;
 const FS_FALLBACK_KEEP_DD = 'keep_dd_refund_fs';
 const FS_FALLBACK_FULL_REFUND = 'full_refund';
@@ -134,6 +134,8 @@ const DD_COPY = {
     freeReportNeedPlaceholder: 'e.g. checking a supplier before signing',
     freeReportFollowUp: 'OK to email me one short question later',
     freeReportRequired: 'Please tell us who you are and what you needed it for.',
+    freeReportCodeLabel: 'Your code',
+    freeReportCodeHelp: 'Enter this code at Stripe checkout to make the report free.',
     roles: {
       legal: 'Lawyer / legal',
       advisor: 'Accountant / advisor',
@@ -228,6 +230,8 @@ const DD_COPY = {
     freeReportNeedPlaceholder: 'p. ej. comprobar un proveedor antes de firmar',
     freeReportFollowUp: 'De acuerdo en recibir una pregunta corta por email',
     freeReportRequired: 'Cuéntanos quién eres y para qué lo necesitabas.',
+    freeReportCodeLabel: 'Tu código',
+    freeReportCodeHelp: 'Introduce este código en el pago de Stripe para que el informe sea gratis.',
     roles: {
       legal: 'Abogado / jurídico',
       advisor: 'Asesor / gestoría',
@@ -770,6 +774,21 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                   }
                   sx={{ alignItems: 'center', m: 0 }}
                 />
+                {/* Reveal the promo code only once the intake is filled — keeps the
+                    freebie intake-gated in practice. Stripe enforces redemption limits. */}
+                {buyerRole && needContext.trim() && (
+                  <Box sx={{ mt: 1.5, p: 1, borderRadius: 1, bgcolor: 'rgba(255,167,38,0.12)', border: '1px dashed rgba(255,167,38,0.5)' }}>
+                    <Typography variant="caption" sx={{ display: 'block', color: 'warning.light', fontSize: '0.72rem' }}>
+                      {copy.freeReportCodeLabel}:{' '}
+                      <Box component="span" sx={{ fontWeight: 800, letterSpacing: '0.06em', color: 'warning.main' }}>
+                        {FREE_FIRST_REPORT_CODE}
+                      </Box>
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.68rem', mt: 0.25 }}>
+                      {copy.freeReportCodeHelp}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             )}
           </Box>
