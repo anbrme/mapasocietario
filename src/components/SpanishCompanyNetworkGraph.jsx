@@ -4783,6 +4783,29 @@ const SpanishCompanyNetworkGraph = ({
     let activeNodes = graphData.nodes;
     let activeLinks = graphData.links;
 
+    // When an officer holds an ACTIVE seat at a company, drop their resigned
+    // sibling-seat edges to that SAME company — otherwise a currently-active
+    // officer reads as "resigned" (e.g. an active Adm. Mancom. who was formerly
+    // Secretario shows a red edge overlapping the green one). The resigned role
+    // still appears in the officer detail panel. Pairs with no active seat keep
+    // their resigned edges (genuinely former officers stay red). Skipped when the
+    // user explicitly filters to "Cesados" — there they want every resigned role.
+    if (!statusFilters.has('ceased')) {
+      const isOfficerLink = l => l.type === 'officer-company';
+      const pairKey = l =>
+        [normalizeNodeId(getNodeIdFromRef(l.source)), normalizeNodeId(getNodeIdFromRef(l.target))]
+          .sort().join('|');
+      const activePairs = new Set();
+      activeLinks.forEach(l => {
+        if (isOfficerLink(l) && getOfficerLinkStatus(l) === 'active') activePairs.add(pairKey(l));
+      });
+      if (activePairs.size > 0) {
+        activeLinks = activeLinks.filter(
+          l => !(isOfficerLink(l) && getOfficerLinkStatus(l) !== 'active' && activePairs.has(pairKey(l)))
+        );
+      }
+    }
+
     if (hiddenNodeIds.size > 0) {
       activeNodes = activeNodes.filter(n => !hiddenNodeIds.has(normalizeNodeId(n.id)));
       activeLinks = activeLinks.filter(l => {
