@@ -19,6 +19,7 @@ import LegalDisclaimer from './LegalDisclaimer';
 import { isAndroidNativeApp } from '../services/playBillingService';
 import { normalizeLanguage, getStoredSearchLanguage, getBrowserLanguage } from '../utils/language';
 import { siteNav } from '../utils/siteNav';
+import { FREE_FIRST_REPORT_CODE } from './DDCheckoutDialog';
 
 const SITE_URL = 'https://mapasocietario.es';
 
@@ -50,6 +51,8 @@ const COPY = {
     bundleLabel: 'Full report with financial statements',
     bundleSub: 'Report plus the Cuentas Anuales add-on.',
     bundlePrice: '€40.00',
+    freeReportNote:
+      '🎁 First report on us — your first due diligence is free (without financial statements). Tick “Use my free first report” when you order.',
     taxNote:
       'Prices exclude VAT. On the web, taxes are calculated by Stripe at checkout. In the Android app, Google Play is the merchant of record and adds VAT per country, so the final price shown there may differ.',
     searchCta: 'Search a company',
@@ -93,6 +96,8 @@ const COPY = {
     bundleLabel: 'Informe completo con cuentas anuales',
     bundleSub: 'Informe más el complemento de cuentas anuales.',
     bundlePrice: '40,00 €',
+    freeReportNote:
+      '🎁 Primer informe gratis — tu primera due diligence corre de nuestra cuenta (sin cuentas anuales). Marca «Usar mi primer informe gratis» al pedirla.',
     taxNote:
       'Precios sin IVA. En la web, los impuestos los calcula Stripe al pagar. En la app de Android, Google Play es el vendedor registrado y añade el IVA por país, por lo que el precio final mostrado allí puede diferir.',
     searchCta: 'Buscar una empresa',
@@ -191,6 +196,15 @@ export default function PricingPage() {
               </Box>
               <Typography variant="h5" sx={{ fontWeight: 800, color: 'warning.light', whiteSpace: 'nowrap' }}>{t.bundlePrice}</Typography>
             </Box>
+
+            {/* Free-first-report callout — discreet, gated on the program switch. */}
+            {FREE_FIRST_REPORT_CODE && (
+              <Box sx={{ mt: 2.5, p: 1.5, borderRadius: 2, bgcolor: 'rgba(102,187,106,0.07)', border: '1px solid rgba(102,187,106,0.3)' }}>
+                <Typography variant="caption" sx={{ color: 'success.light', fontWeight: 700, display: 'block', lineHeight: 1.55 }}>
+                  {t.freeReportNote}
+                </Typography>
+              </Box>
+            )}
 
             <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 3, lineHeight: 1.6 }}>
               {t.taxNote}

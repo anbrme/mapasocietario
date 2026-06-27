@@ -27,7 +27,7 @@ const SampleReportViewer = lazy(() => import('./SampleReportViewer'));
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
-import DDCheckoutDialog from './DDCheckoutDialog';
+import DDCheckoutDialog, { FREE_FIRST_REPORT_CODE } from './DDCheckoutDialog';
 import { normalizeLanguage, getStoredSearchLanguage, getBrowserLanguage } from '../utils/language';
 import { siteNav } from '../utils/siteNav';
 
@@ -58,6 +58,9 @@ const COPY = {
     heroTitle: 'Spanish Company Due Diligence Reports',
     heroSub:
       'Start from the relationship graph, then document what matters. Get a comprehensive PDF report with sanctions screening, risk analysis, and corporate history based on official BORME data.',
+    freeReportTitle: '🎁 Your first report is on us',
+    freeReportNote:
+      'First time? Your first due diligence report is free — without financial statements. When you order, tick “Use my free first report” and tell us briefly who you are and what you needed it for.',
     chips: {
       from: 'From EUR 22.50',
       instant: 'Instant delivery',
@@ -153,6 +156,9 @@ const COPY = {
     heroTitle: 'Informes due diligence de empresas españolas',
     heroSub:
       'Empieza en el grafo de relaciones y documenta lo importante. Obtén un PDF completo con comprobación de sanciones, análisis de riesgo e historial societario basado en datos oficiales del BORME.',
+    freeReportTitle: '🎁 Tu primer informe corre de nuestra cuenta',
+    freeReportNote:
+      '¿Primera vez? Tu primer informe due diligence es gratis — sin cuentas anuales. Al pedirlo, marca «Usar mi primer informe gratis» y cuéntanos brevemente quién eres y para qué lo necesitabas.',
     chips: {
       from: 'Desde 22,50 €',
       instant: 'Entrega instantánea',
@@ -287,6 +293,26 @@ export default function DueDiligencePage() {
             &larr; Mapa Societario
           </Link>
         </Box>
+        {/* Free-first-report callout — discreet, gated on the program switch. */}
+        {FREE_FIRST_REPORT_CODE && (
+          <Paper
+            elevation={0}
+            sx={{
+              width: '100%',
+              p: { xs: 1.75, sm: 2.25 },
+              bgcolor: 'rgba(102,187,106,0.07)',
+              border: '1px solid rgba(102,187,106,0.3)',
+              borderRadius: 2,
+            }}
+          >
+            <Typography variant="body2" sx={{ color: 'success.light', fontWeight: 700, mb: 0.25 }}>
+              {t.freeReportTitle}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', lineHeight: 1.55 }}>
+              {t.freeReportNote}
+            </Typography>
+          </Paper>
+        )}
         {/* Company-scoped buy banner — shown when a visitor arrives from the
             hero search box or an /empresa SEO page via ?company=. */}
         {company && (
