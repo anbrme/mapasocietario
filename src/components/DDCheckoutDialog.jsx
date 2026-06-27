@@ -134,8 +134,8 @@ const DD_COPY = {
     freeReportNeedPlaceholder: 'e.g. checking a supplier before signing',
     freeReportFollowUp: 'OK to email me one short question later',
     freeReportRequired: 'Please tell us who you are and what you needed it for.',
-    freeReportCodeLabel: 'Your code',
-    freeReportCodeHelp: 'Enter this code at Stripe checkout to make the report free.',
+    freeReportConfirm: '✓ This report will be free',
+    freeReportConfirmHelp: 'The discount is applied automatically at checkout — your total will be €0.',
     roles: {
       legal: 'Lawyer / legal',
       advisor: 'Accountant / advisor',
@@ -230,8 +230,8 @@ const DD_COPY = {
     freeReportNeedPlaceholder: 'p. ej. comprobar un proveedor antes de firmar',
     freeReportFollowUp: 'De acuerdo en recibir una pregunta corta por email',
     freeReportRequired: 'Cuéntanos quién eres y para qué lo necesitabas.',
-    freeReportCodeLabel: 'Tu código',
-    freeReportCodeHelp: 'Introduce este código en el pago de Stripe para que el informe sea gratis.',
+    freeReportConfirm: '✓ Este informe será gratuito',
+    freeReportConfirmHelp: 'El descuento se aplica automáticamente en el pago — tu total será 0 €.',
     roles: {
       legal: 'Abogado / jurídico',
       advisor: 'Asesor / gestoría',
@@ -774,18 +774,15 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                   }
                   sx={{ alignItems: 'center', m: 0 }}
                 />
-                {/* Reveal the promo code only once the intake is filled — keeps the
-                    freebie intake-gated in practice. Stripe enforces redemption limits. */}
+                {/* Confirm the report will be free once the intake is filled. The
+                    discount is auto-applied by the worker — no code to type. */}
                 {buyerRole && needContext.trim() && (
                   <Box sx={{ mt: 1.5, p: 1, borderRadius: 1, bgcolor: 'rgba(255,167,38,0.12)', border: '1px dashed rgba(255,167,38,0.5)' }}>
-                    <Typography variant="caption" sx={{ display: 'block', color: 'warning.light', fontSize: '0.72rem' }}>
-                      {copy.freeReportCodeLabel}:{' '}
-                      <Box component="span" sx={{ fontWeight: 800, letterSpacing: '0.06em', color: 'warning.main' }}>
-                        {FREE_FIRST_REPORT_CODE}
-                      </Box>
+                    <Typography variant="caption" sx={{ display: 'block', color: 'warning.light', fontSize: '0.72rem', fontWeight: 700 }}>
+                      {copy.freeReportConfirm}
                     </Typography>
                     <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.68rem', mt: 0.25 }}>
-                      {copy.freeReportCodeHelp}
+                      {copy.freeReportConfirmHelp}
                     </Typography>
                   </Box>
                 )}
