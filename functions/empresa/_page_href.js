@@ -23,7 +23,8 @@ const SLUG_BY_NAME = (() => {
 export function fullCompanyPageHref(name, lang = 'es') {
   const key = nameToSlug(name);
   if (!key) return null;
-  const slug = SLUG_BY_NAME[key];
-  if (!slug) return null;
+  // Prefer the curated/IBEX slug (a real indexed page); otherwise use the
+  // name-slug, which the route now resolves via its name-lookup fallback.
+  const slug = SLUG_BY_NAME[key] || key;
   return lang === 'en' ? `/en/company/${slug}` : `/empresa/${slug}`;
 }

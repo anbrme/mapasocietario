@@ -11,8 +11,9 @@ test('IBEX seed company resolves to its short seed slug via reverse lookup', () 
   assert.equal(fullCompanyPageHref('ACCIONA SA', 'es'), '/empresa/acciona');
 });
 
-test('non-curated company has no page → null', () => {
-  assert.equal(fullCompanyPageHref('Surya Consulting SL', 'es'), null);
+test('non-curated company now resolves to its name-slug path (universal)', () => {
+  assert.equal(fullCompanyPageHref('Surya Consulting SL', 'es'), '/empresa/surya-consulting-sl');
+  assert.equal(fullCompanyPageHref('Surya Consulting SL', 'en'), '/en/company/surya-consulting-sl');
 });
 
 test('empty/nullish name → null', () => {
