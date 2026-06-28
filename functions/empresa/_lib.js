@@ -587,7 +587,7 @@ function hreflangTags(slug) {
   ].join('\n');
 }
 
-export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null) {
+export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false) {
   const t = T[lang] || T.es;
   const name = company.company_name || company.company_name_normalized || '';
   const canonicalSlug = slug;
@@ -789,7 +789,7 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${esc(canonicalUrl)}">
-<meta name="robots" content="index, follow">
+<meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow'}">
 ${hreflangTags(canonicalSlug)}
 <meta property="og:type" content="profile">
 <meta property="og:title" content="${esc(t.ogTitle(name))}">
