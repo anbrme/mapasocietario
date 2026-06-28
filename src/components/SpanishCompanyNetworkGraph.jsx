@@ -82,6 +82,7 @@ import OfficerTimelineDialog from './OfficerTimelineDialog';
 import LegalDisclaimer from './LegalDisclaimer';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import PsychologyIcon from '@mui/icons-material/Psychology';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ForceGraph2D from 'react-force-graph-2d';
 import AIInvestigationGate from './AIInvestigationGate';
 import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
@@ -107,6 +108,7 @@ import {
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
+import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
 
 const CATEGORY_LABELS = {
   es: {
@@ -7862,6 +7864,7 @@ const SpanishCompanyNetworkGraph = ({
                 </>
               );
 
+              const fullHref = fullCompanyPageHref(previewData.name, uiLanguage);
               return (
                 <Box>
                   <CurrencyConfirmationCard
@@ -7991,6 +7994,28 @@ const SpanishCompanyNetworkGraph = ({
                       )}
                     </Box>
                   </Paper>
+
+                  {fullHref && (
+                    <Typography
+                      component="a"
+                      href={fullHref}
+                      target="_blank"
+                      rel="noopener"
+                      variant="body2"
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 3,
+                        color: 'primary.main',
+                        textDecoration: 'none',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                    >
+                      {uiLanguage === 'en' ? 'View full profile' : 'Ver ficha completa'}
+                      <OpenInNewIcon sx={{ fontSize: 16 }} />
+                    </Typography>
+                  )}
 
                   {/* Current officers — grouped by person, sorted by position importance */}
                   {e?.currentOfficers?.length > 0 && (
