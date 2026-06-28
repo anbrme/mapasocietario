@@ -68,6 +68,7 @@ const ORDER_COPY = {
       fsItemLabel: 'Financial Statements (Cuentas Anuales)',
       fsItemDesc: (year) => `Official document from Registro Mercantil · ${year}`,
       emailNotice: 'We will send you an email when your report is ready. If the requested accounts are not available, we will contact you and handle the refund and tax adjustment according to your preference.',
+      ddEmailNotice: "We're preparing your report — it will appear here and we'll email you when it's ready.",
       anyQuestionPre: 'Any question or concern? Email',
       anyQuestionPost: 'with your order reference — we usually reply within a few hours on business days.',
     },
@@ -127,6 +128,7 @@ const ORDER_COPY = {
       fsItemLabel: 'Cuentas Anuales',
       fsItemDesc: (year) => `Documento oficial del Registro Mercantil · ${year}`,
       emailNotice: 'Te enviaremos un email cuando tu informe esté listo. Si las cuentas solicitadas no están disponibles, te contactaremos y gestionaremos el reembolso y el ajuste fiscal según tu preferencia.',
+      ddEmailNotice: 'Estamos preparando tu informe — aparecerá aquí y te avisaremos por email cuando esté listo.',
       anyQuestionPre: '¿Alguna pregunta o duda? Escribe a',
       anyQuestionPost: 'con la referencia de tu pedido — solemos responder en unas horas en días laborables.',
     },
@@ -194,6 +196,8 @@ export default function OrderStatusPage() {
   const [financialStatementsReady, setFinancialStatementsReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const generatingRef = React.useRef(false);
+  const ga4FiredRef = React.useRef(false);
+  const prevStatusRef = React.useRef(null);
 
   // Free-monitoring opt-in state (Day 1b anonymous flow).
   // Mapasocietario.es has no user accounts — anonymous DD buyers land
@@ -322,8 +326,12 @@ export default function OrderStatusPage() {
         } else if (data.options?.financialStatements) {
           // FS order — wait for admin upload
           setStatus('processing');
+        } else if (data.country === 'es') {
+          // ES DD-only order: the server generates in the background and emails the
+          // buyer; just poll for reportReady (same path as FS orders).
+          setStatus('processing');
         } else {
-          // DD-only order, report not yet generated — generate it now
+          // Non-ES DD-only order: generate synchronously (UK/FR/CH/IT)
           generateReport(data);
         }
       } catch (err) {
@@ -374,6 +382,49 @@ export default function OrderStatusPage() {
     const interval = setInterval(poll, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [status, sessionId]);
+
+  // Self-heal: if a DD-only ES order is still processing after ~3 minutes,
+  // re-trigger server-side generation (handles cases where the initial trigger
+  // failed or the thread died silently).
+  useEffect(() => {
+    if (status !== 'processing' || orderData?.options?.financialStatements) return;
+    const RETRIGGER_AFTER_MS = 3 * 60 * 1000;
+    const t = setTimeout(() => {
+      fetch(`${PAYMENTS_API}/api/stripe/retrigger-dd-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      }).catch(() => {});
+    }, RETRIGGER_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [status, sessionId, orderData]);
+
+  // GA4 purchase event — fires once when a DD-only ES order transitions from
+  // processing to ready (i.e. server generation just completed). Guarded by
+  // ga4FiredRef so it cannot double-fire within a single page session.
+  // prevStatusRef tracks the previous status so return visits (verifying →
+  // ready, where the report was already in R2) do not trigger a duplicate event.
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    if (
+      status === 'ready' &&
+      prev === 'processing' &&
+      !ga4FiredRef.current &&
+      orderData &&
+      !orderData.options?.financialStatements
+    ) {
+      ga4FiredRef.current = true;
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', 'purchase', {
+          currency: 'EUR',
+          value: 22.50,
+          items: [{ item_name: `DD Report — ${orderData.country?.toUpperCase()}`, item_category: 'Due Diligence', price: 22.50, quantity: 1 }],
+        });
+      }
+    }
+  }, [status, orderData]);
 
   // Fetch the AI Investigation redemption code as soon as the payment is
   // verified — the buyer waits on THIS page while the report generates, so the
@@ -652,7 +703,7 @@ export default function OrderStatusPage() {
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
                 <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
-                  {copy.processing.emailNotice}
+                  {hasFinancialStatements ? copy.processing.emailNotice : copy.processing.ddEmailNotice}
                 </Alert>
                 <Button
                   size="small"
