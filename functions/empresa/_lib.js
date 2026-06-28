@@ -16,6 +16,13 @@ import { resolveSlug } from './_resolve.js';
 import { nameToSlug } from './_slug.js';
 import { renderConfirmationBlock } from './_confirmation.js';
 import { CONFIRMATIONS } from './_confirmations.js';
+// The canonical position classifier shared with the graph + officer-capping
+// service (backed by src/data/terms.json, swept by test/position-categories.test.mjs).
+// Pure module (no React/DOM/SPA deps — its purity is guarded by that node test),
+// so it is safe to import into this Cloudflare Pages Function. Using it here
+// instead of a local regex keeps the page and the in-app graph classifying
+// officers identically.
+import { positionCategoryFor } from '../../src/utils/positionCategories.js';
 
 const API_BASE = 'https://api.ncdata.eu';
 const SITE = 'https://mapasocietario.es';
@@ -381,15 +388,22 @@ const T = {
 
 const MAX_OFFICERS = 40;
 
+// Company-level governing-organ categories shown under "Administradores y cargos
+// vigentes". Everything else (Apoderado, Auditor, Vocal / Comisión, Otros) is a
+// non-board role. Classification is delegated to the shared positionCategoryFor
+// so the page and the graph never diverge on a position string.
+const BOARD_CATEGORIES = new Set([
+  'Presidente',
+  'Vicepresidente',
+  'Consejero',
+  'Administrador',
+  'Representante 143 RRM',
+  'Secretario',
+  'Liquidador',
+]);
+
 function isBoardRole(o) {
-  const p = (o.position_normalized || o.position || '').toUpperCase();
-  if (!p) return false;
-  if (/(APO\.|APODER)/.test(p)) return false;
-  // `\bCOM\.` (not bare `COM\.`) so the committee exclusion does not false-match
-  // the "COM." inside "MANCOM." — an administrador mancomunado IS a board role.
-  if (/(\bCOM\.|CTE\.|COMIS|COMITE|VOCCOM|MIEMCOM|MMBR|MBRO|M\.COM)/.test(p)) return false;
-  if (/(AUDITOR|AUD\.)/.test(p)) return false;
-  return /(PRESIDENT|VICEPRESID|CONSEJ|CONS\.|CON\.IND|CON\.DEL|ADMINISTR|ADM\.|SECRE|LIQUIDAD)/.test(p);
+  return BOARD_CATEGORIES.has(positionCategoryFor(o.position_normalized || o.position || ''));
 }
 
 function prettyPosition(pos, t) {
