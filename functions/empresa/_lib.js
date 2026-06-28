@@ -918,9 +918,12 @@ export async function handleCompany({ params }, lang = 'es') {
 
     const company = profile && profile.company ? profile.company : null;
     if (!company) {
+      // Cache only fallback misses (garbage slugs). For a curated/IBEX slug a
+      // missing company is most likely a TRANSIENT backend failure on an
+      // indexed page — never cache that, or a blip would pin a 404 for 10 min.
       return new Response(notFoundPage(slug, lang), {
         status: 404,
-        headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, s-maxage=600' },
+        headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': isFallback ? 'public, s-maxage=600' : 'no-store' },
       });
     }
 
