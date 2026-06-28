@@ -104,6 +104,9 @@ import {
   findShortestPath,
   detectConnectedComponents,
 } from '../utils/networkAnalysis';
+import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
+import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
+import { nameToSlug } from '../../functions/empresa/_slug.js';
 
 const CATEGORY_LABELS = {
   es: {
@@ -7861,6 +7864,10 @@ const SpanishCompanyNetworkGraph = ({
 
               return (
                 <Box>
+                  <CurrencyConfirmationCard
+                    rec={CONFIRMATIONS[nameToSlug(previewData.name)]}
+                    lang={uiLanguage}
+                  />
                   {/* Overview section */}
                   <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
                     <InfoIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
