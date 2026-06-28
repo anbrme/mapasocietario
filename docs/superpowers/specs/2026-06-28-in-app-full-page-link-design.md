@@ -16,17 +16,19 @@ The in-app company detail panel (`SpanishCompanyNetworkGraph.jsx`) has no link t
 
 In the in-app company detail panel, at the **end of the Overview/"Resumen" section**, render a **"Ver ficha completa → / View full profile →"** link (with an `OpenInNew` icon, `target="_blank"` to preserve the graph session) **iff** the company's `/empresa` page resolves. For every other company the link is absent and the panel is byte-identical to today. No link ever points at a 404.
 
-## 3. Architecture — a gated href helper
+## 3. Architecture — a gated href helper (reverse lookup by name)
 
 The decision "does this company have a real `/empresa` page, and what is its path?" is one pure function, unit-tested, with the React side staying a thin conditional render.
 
+**Why a reverse lookup, not `resolveSlug(nameToSlug(name))`:** the `/empresa` page resolves for two sets with *different* slug conventions. `CURATED` keys equal `nameToSlug(name)` (Nürnberg's key IS `nurnberg-consulting-sl`), but `SEED` (IBEX) keys are short hand-chosen slugs (`acciona`) that do **not** equal `nameToSlug('ACCIONA SA')` (`acciona-sa`). So `resolveSlug(nameToSlug(name))` would miss every IBEX company (whose page is a live 200). The robust gate is to index both maps by name and look the company up.
+
 **`functions/empresa/_page_href.js` — `fullCompanyPageHref(name, lang) → string | null`:**
-- `slug = nameToSlug(name)` (existing shared helper).
-- `resolveSlug(slug)` (existing pure resolver — the SAME function the `/empresa` route uses to decide 200 vs 404, so the gate is exact).
-- If `resolveSlug(...).kind === 'notfound'` → return `null`.
+- Build once a reverse index over `{ ...SEED, ...CURATED }`: for each `[slug, entry]`, map `nameToSlug(entry.v3Name) → slug`.
+- `key = nameToSlug(name)`; if empty → `null`.
+- `slug = index[key]`; if absent → `null` (company has no `/empresa` page).
 - Else return `lang === 'en' ? '/en/company/' + slug : '/empresa/' + slug` (relative path; the app is same-origin).
 
-Both imports are pure, no network, no `_lib.js` (so no server renderer enters the SPA bundle). `resolveSlug` pulls in the `SEED` + `CURATED` data maps only — already acceptable in the bundle (the panel already imports `CONFIRMATIONS` and `nameToSlug`).
+This matches the in-app company name (`previewData.name`, the v3 `company_name`) against each curated/seed entry's `v3Name` via the same `nameToSlug` normalisation on both sides — so accent/punctuation/case differences fold away. Imports are pure (`SEED` from `_ibex35.js`, `CURATED` from `_curated.js`, `nameToSlug` from `_slug.js`) — no `_lib.js`, no network, no server renderer in the SPA bundle (the panel already bundles `CONFIRMATIONS`/`nameToSlug`).
 
 ## 4. UI integration
 
@@ -40,7 +42,7 @@ In `src/components/SpanishCompanyNetworkGraph.jsx`:
 
 - **`fullCompanyPageHref`** (`node:test`, new `test/page-href.test.mjs`):
   - a curated name (`'NURNBERG CONSULTING SL'`) → `'/empresa/nurnberg-consulting-sl'` (es) and `'/en/company/nurnberg-consulting-sl'` (en).
-  - an IBEX seed name → a non-null href.
+  - an IBEX seed name (`'ACCIONA SA'`) → `'/empresa/acciona'` (proves the reverse lookup covers the short SEED slugs, which `nameToSlug` alone would miss).
   - a clearly non-curated name (`'Surya Consulting SL'`) → `null`.
   - empty/garbage name → `null`.
 - **Link rendering**: manual in-app check (no React test framework in the repo — not adding one). Verify the link shows for Nürnberg, opens the `/empresa` page in a new tab, is absent for a non-curated company, and reads in English when the UI is English.
