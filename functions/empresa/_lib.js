@@ -385,7 +385,9 @@ function isBoardRole(o) {
   const p = (o.position_normalized || o.position || '').toUpperCase();
   if (!p) return false;
   if (/(APO\.|APODER)/.test(p)) return false;
-  if (/(COM\.|CTE\.|COMIS|COMITE|VOCCOM|MIEMCOM|MMBR|MBRO|M\.COM)/.test(p)) return false;
+  // `\bCOM\.` (not bare `COM\.`) so the committee exclusion does not false-match
+  // the "COM." inside "MANCOM." — an administrador mancomunado IS a board role.
+  if (/(\bCOM\.|CTE\.|COMIS|COMITE|VOCCOM|MIEMCOM|MMBR|MBRO|M\.COM)/.test(p)) return false;
   if (/(AUDITOR|AUD\.)/.test(p)) return false;
   return /(PRESIDENT|VICEPRESID|CONSEJ|CONS\.|CON\.IND|CON\.DEL|ADMINISTR|ADM\.|SECRE|LIQUIDAD)/.test(p);
 }
