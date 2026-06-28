@@ -30,6 +30,7 @@ import {
 import AIInvestigationGate from './AIInvestigationGate';
 
 const POLL_INTERVAL = 15_000; // 15 seconds
+const DD_PRICE_EUR = 22.50;
 // Flask backend hosting the anonymous alert endpoint. Lives on rag.ncdata.eu
 // behind the Nginx /bormes/* location block.
 const ALERTS_API = 'https://rag.ncdata.eu/bormes/v3/alerts';
@@ -198,6 +199,7 @@ export default function OrderStatusPage() {
   const generatingRef = React.useRef(false);
   const ga4FiredRef = React.useRef(false);
   const prevStatusRef = React.useRef(null);
+  const orderDataRef = React.useRef(null);
 
   // Free-monitoring opt-in state (Day 1b anonymous flow).
   // Mapasocietario.es has no user accounts — anonymous DD buyers land
@@ -230,10 +232,7 @@ export default function OrderStatusPage() {
       setStatus('generating');
 
       let endpoint, body;
-      if (data.country === 'es') {
-        endpoint = `${API_URL}/bormes/dd-report/company`;
-        body = { company_name: data.companyIdentifier, options: data.options || {} };
-      } else if (data.country === 'uk') {
+      if (data.country === 'uk') {
         endpoint = `${API_URL}/uk/dd-report/company`;
         body = { company_number: data.companyIdentifier, options: data.options || {} };
       } else if (data.country === 'fr') {
@@ -280,8 +279,8 @@ export default function OrderStatusPage() {
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'purchase', {
           currency: 'EUR',
-          value: 22.50,
-          items: [{ item_name: `DD Report — ${data.country?.toUpperCase()}`, item_category: 'Due Diligence', price: 22.50, quantity: 1 }],
+          value: DD_PRICE_EUR,
+          items: [{ item_name: `DD Report — ${data.country?.toUpperCase()}`, item_category: 'Due Diligence', price: DD_PRICE_EUR, quantity: 1 }],
         });
       }
 
@@ -341,7 +340,7 @@ export default function OrderStatusPage() {
     })();
   }, [sessionId, generateReport, copy.invalidSession]);
 
-  // Poll for readiness when processing (FS orders only)
+  // Poll for readiness when processing (FS orders and ES DD-only orders)
   useEffect(() => {
     if (status !== 'processing') return;
 
@@ -383,27 +382,36 @@ export default function OrderStatusPage() {
     return () => clearInterval(interval);
   }, [status, sessionId]);
 
+  // Keep the ref in sync with the latest orderData so effects that should not
+  // re-run on every poll can read the current value via the ref instead.
+  React.useEffect(() => { orderDataRef.current = orderData; }, [orderData]);
+
   // Self-heal: if a DD-only ES order is still processing after ~3 minutes,
   // re-trigger server-side generation (handles cases where the initial trigger
   // failed or the thread died silently).
-  useEffect(() => {
-    if (status !== 'processing' || orderData?.options?.financialStatements) return;
-    const RETRIGGER_AFTER_MS = 3 * 60 * 1000;
+  // Deps are [status, sessionId] only — polling updates orderData every 15s
+  // which would otherwise reset the timer on every cycle, preventing it from
+  // ever firing. The FS-order exclusion is read from the ref instead.
+  React.useEffect(() => {
+    if (status !== 'processing') return;
+    if (orderDataRef.current?.options?.financialStatements) return; // FS waits for admin upload
     const t = setTimeout(() => {
       fetch(`${PAYMENTS_API}/api/stripe/retrigger-dd-report`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
       }).catch(() => {});
-    }, RETRIGGER_AFTER_MS);
+    }, 3 * 60 * 1000);
     return () => clearTimeout(t);
-  }, [status, sessionId, orderData]);
+  }, [status, sessionId]);
 
   // GA4 purchase event — fires once when a DD-only ES order transitions from
   // processing to ready (i.e. server generation just completed). Guarded by
   // ga4FiredRef so it cannot double-fire within a single page session.
   // prevStatusRef tracks the previous status so return visits (verifying →
   // ready, where the report was already in R2) do not trigger a duplicate event.
+  // Deps are [status] only — including orderData would cause prevStatusRef to
+  // be overwritten on every poll cycle, breaking the processing→ready transition
+  // detection. Order fields are read from orderDataRef instead.
   useEffect(() => {
     const prev = prevStatusRef.current;
     prevStatusRef.current = status;
@@ -412,19 +420,19 @@ export default function OrderStatusPage() {
       status === 'ready' &&
       prev === 'processing' &&
       !ga4FiredRef.current &&
-      orderData &&
-      !orderData.options?.financialStatements
+      orderDataRef.current &&
+      !orderDataRef.current.options?.financialStatements
     ) {
       ga4FiredRef.current = true;
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'purchase', {
           currency: 'EUR',
-          value: 22.50,
-          items: [{ item_name: `DD Report — ${orderData.country?.toUpperCase()}`, item_category: 'Due Diligence', price: 22.50, quantity: 1 }],
+          value: DD_PRICE_EUR,
+          items: [{ item_name: `DD Report — ${orderDataRef.current?.country?.toUpperCase()}`, item_category: 'Due Diligence', price: DD_PRICE_EUR, quantity: 1 }],
         });
       }
     }
-  }, [status, orderData]);
+  }, [status]);
 
   // Fetch the AI Investigation redemption code as soon as the payment is
   // verified — the buyer waits on THIS page while the report generates, so the
