@@ -8007,9 +8007,11 @@ const SpanishCompanyNetworkGraph = ({
                         alignItems: 'center',
                         gap: 0.5,
                         mb: 3,
-                        color: 'primary.main',
-                        textDecoration: 'none',
-                        '&:hover': { textDecoration: 'underline' },
+                        color: '#90caf9',
+                        fontWeight: 600,
+                        textDecoration: 'underline',
+                        textDecorationColor: 'rgba(144,202,249,0.5)',
+                        '&:hover': { color: '#bbdefb', textDecorationColor: '#bbdefb' },
                       }}
                     >
                       {uiLanguage === 'en' ? 'View full profile' : 'Ver ficha completa'}
