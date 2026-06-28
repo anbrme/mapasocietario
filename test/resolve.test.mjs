@@ -23,3 +23,9 @@ test('unknown slug resolves as notfound with null entry', () => {
 test('resolution is case-insensitive', () => {
   assert.equal(resolveSlug('ACCIONA').kind, 'seed');
 });
+
+test('nurnberg consulting resolves as curated with its v3Name', () => {
+  const r = resolveSlug('nurnberg-consulting-sl');
+  assert.equal(r.kind, 'curated');
+  assert.equal(r.entry.v3Name, 'NURNBERG CONSULTING SL');
+});
