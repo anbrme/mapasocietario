@@ -155,6 +155,8 @@ const T = {
     factProvince: 'Provincia',
     factAddress: 'Domicilio',
     factCapital: 'Capital social',
+    factActivity: 'Objeto social',
+    externalEstimate: '(estimación de fuente externa — verificar)',
     factFirstSeen: 'Primera inscripción (desde el 1/1/2009)',
     factLastSeen: 'Última actualización',
     factBormeIds: 'Identificadores BORME',
@@ -277,6 +279,8 @@ const T = {
     factProvince: 'Province',
     factAddress: 'Registered address',
     factCapital: 'Share capital',
+    factActivity: 'Corporate purpose',
+    externalEstimate: '(externally sourced estimate — verify)',
     factFirstSeen: 'First filing (since 1 Jan 2009)',
     factLastSeen: 'Last updated',
     factBormeIds: 'BORME IDs',
@@ -644,12 +648,32 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
       ? `<details><summary>${ids.length} ${idsLabel}</summary><div class="ids">${esc(ids.join(', '))}</div></details>`
       : esc(ids.join(', '));
 
-  // Values are pre-escaped here so the identifiers cell can carry HTML.
+  // Address / capital: prefer the BORME-sourced value; fall back to the
+  // LLM-enriched value (pre-2009 gaps) flagged with an "external estimate"
+  // caveat — matching the in-app preview and the shared-enrichment design,
+  // which never overwrites BORME-derived fields.
+  const withCaveat = (v) => `${v} <span class="muted">${esc(t.externalEstimate)}</span>`;
+  const addressVal = company.current_address
+    ? esc(company.current_address)
+    : company.enriched_address
+    ? withCaveat(esc(company.enriched_address))
+    : '';
+  const capitalVal =
+    typeof company.current_capital === 'number'
+      ? esc(fmtEur(company.current_capital, lang))
+      : typeof company.enriched_capital === 'number'
+      ? withCaveat(esc(fmtEur(company.enriched_capital, lang)))
+      : '';
+  const nifVal = esc(company.nif || company.enriched_nif || '');
+
+  // Values are pre-escaped here so the identifiers/estimate cells can carry HTML.
   const facts = [
+    [t.cNif, nifVal],
     [t.factLegalForm, esc(company.company_type)],
     [t.factProvince, esc(company.province)],
-    [t.factAddress, esc(company.current_address)],
-    [t.factCapital, esc(fmtEur(company.current_capital, lang))],
+    [t.factAddress, addressVal],
+    [t.factActivity, esc(company.activity)],
+    [t.factCapital, capitalVal],
     [t.factFirstSeen, esc(fmtDate(company.first_seen, lang))],
     [t.factLastSeen, esc(fmtDate(company.last_seen, lang))],
     [t.factBormeIds, idsCell],
