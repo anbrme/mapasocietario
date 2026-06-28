@@ -37,3 +37,72 @@ export function nameIsOfficer(repName, officerNames) {
     return rep.every((tk) => set.has(tk));
   });
 }
+
+const esc = (s) =>
+  String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtDate(d, lang) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
+  if (!m) return d || '';
+  const [, y, mo, day] = m;
+  return lang === 'en' ? `${day} ${EN_MONTHS[parseInt(mo, 10) - 1]} ${y}` : `${day}/${mo}/${y}`;
+}
+
+const I18N = {
+  es: {
+    title: 'Confirmación de vigencia',
+    fresh: (rep, role, n) =>
+      `Confirmado actual por ${rep}${role ? `, ${role}` : ''} (verificado en el registro), hace ${n} ${n === 1 ? 'día' : 'días'}`,
+    aged: (n) => `Última confirmación hace ${n} ${n === 1 ? 'día' : 'días'}`,
+    asOf: (date) => `La empresa confirma, a fecha ${date}:`,
+    chipCurrent: 'vigente',
+    chipNone: 'sin constancia',
+    disclaimer:
+      'Declaración de un representante cuya autoridad ha sido verificada contra el registro público. Mapa Societario verifica la autoridad del representante, no la veracidad de cada afirmación.',
+  },
+  en: {
+    title: 'Currency confirmation',
+    fresh: (rep, role, n) =>
+      `Confirmed current by ${rep}${role ? `, ${role}` : ''} (registry-verified), ${n} ${n === 1 ? 'day' : 'days'} ago`,
+    aged: (n) => `Last confirmed ${n} ${n === 1 ? 'day' : 'days'} ago`,
+    asOf: (date) => `As of ${date}, the company confirms:`,
+    chipCurrent: 'current',
+    chipNone: 'none on record',
+    disclaimer: `Statement by a representative whose authority was verified against the public registry. Mapa Societario verifies the representative's authority, not the truth of each statement.`,
+  },
+};
+
+// Decaying, registry-anchored confirmation panel. '' when there is nothing to show.
+export function renderConfirmationBlock(rec, lang = 'es', nowMs = Date.now()) {
+  if (!rec || !rec.confirmedAt || !rec.representative) return '';
+  const st = confirmationStatus(rec.confirmedAt, nowMs);
+  if (!st) return '';
+  const t = I18N[lang] || I18N.es;
+
+  const line =
+    st.level === 'fresh'
+      ? t.fresh(esc(rec.representative), esc(rec.role || ''), st.ageDays)
+      : t.aged(st.ageDays);
+
+  const facts = (rec.affirms || [])
+    .map((f) => {
+      const chip =
+        f.status === 'none'
+          ? `<span class="cc-chip cc-none">${t.chipNone}</span>`
+          : `<span class="cc-chip cc-cur">${t.chipCurrent}</span>`;
+      return `<li>${esc(f.label)} ${chip}</li>`;
+    })
+    .join('');
+
+  return `<section class="cc cc-${st.level}" aria-label="${esc(t.title)}">
+    <div class="cc-head"><span class="cc-dot"></span><strong>${esc(t.title)}</strong></div>
+    <p class="cc-line">${line}</p>
+    ${facts ? `<p class="cc-asof">${t.asOf(fmtDate(rec.confirmedAt, lang))}</p><ul class="cc-facts">${facts}</ul>` : ''}
+    <p class="cc-prov">${esc(t.disclaimer)}</p>
+  </section>`;
+}
