@@ -8,4 +8,5 @@
 export const CURATED = {
   'aldesa-energias-renovables-sl':   { name: 'Aldesa Energías Renovables', v3Name: 'ALDESA ENERGIAS RENOVABLES SL' },
   'aldesa-agrupacion-empresarial-sa':{ name: 'Aldesa Agrupación Empresarial', v3Name: 'ALDESA AGRUPACION EMPRESARIAL SA' },
+  'nurnberg-consulting-sl':          { name: 'Nürnberg Consulting', v3Name: 'NURNBERG CONSULTING SL' },
 };

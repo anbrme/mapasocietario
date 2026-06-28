@@ -13,6 +13,8 @@
 
 import { SEED } from './_ibex35.js';
 import { resolveSlug } from './_resolve.js';
+import { renderConfirmationBlock } from './_confirmation.js';
+import { CONFIRMATIONS } from './_confirmations.js';
 
 const API_BASE = 'https://api.ncdata.eu';
 const SITE = 'https://mapasocietario.es';
@@ -574,6 +576,22 @@ const STYLE = `<style>
   .gleif-panel[hidden]{display:none}
   .gleif-map{width:100%;min-height:360px;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden}
   .gleif h3{margin-top:18px}
+  .cc{border-radius:14px;padding:16px 18px;margin:0 0 18px;border:1px solid var(--line);background:#fff}
+  .cc-head{display:flex;align-items:center;gap:8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+  .cc-dot{width:9px;height:9px;border-radius:50%}
+  .cc-line{margin:8px 0 0;font-weight:600}
+  .cc-asof{margin:12px 0 6px;font-size:13px;color:var(--mut)}
+  .cc-facts{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+  .cc-chip{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:1px 7px;margin-left:6px}
+  .cc-cur{background:#dcfce7;color:#166534}
+  .cc-none{background:#f1f5f9;color:#475569}
+  .cc-prov{margin:12px 0 0;font-size:12px;color:var(--mut)}
+  .cc-fresh{border-color:#bbf7d0;background:#f0fdf4}
+  .cc-fresh .cc-dot{background:#16a34a}
+  .cc-aging{border-color:#fde68a;background:#fffbeb}
+  .cc-aging .cc-dot{background:#d97706}
+  .cc-stale{border-color:#e2e8f0;background:#f8fafc}
+  .cc-stale .cc-dot{background:#94a3b8}
 </style>`;
 
 function hreflangTags(slug) {
@@ -810,6 +828,8 @@ ${STYLE}
 
   ${renameNotice}
   ${cotizadaBlock}
+
+  ${renderConfirmationBlock(CONFIRMATIONS[canonicalSlug], lang)}
 
   <h2>${t.registryData}</h2>
   <table class="facts"><tbody>${facts}</tbody></table>
