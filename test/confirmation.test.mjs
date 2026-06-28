@@ -52,6 +52,7 @@ const REC = {
 test('missing or invalid record renders nothing', () => {
   assert.equal(renderConfirmationBlock(null, 'es'), '');
   assert.equal(renderConfirmationBlock({ confirmedAt: 'x' }, 'es'), '');
+  assert.equal(renderConfirmationBlock({ confirmedAt: 'x', representative: 'Bob' }, 'es'), '');
 });
 
 test('fresh ES panel names the representative and carries the disclaimer', () => {
@@ -75,4 +76,11 @@ test('EN panel renders English chrome', () => {
   const html = renderConfirmationBlock(REC, 'en', at('2026-06-28', 1));
   assert.match(html, /Currency confirmation/);
   assert.match(html, /1 day ago/);
+});
+
+test('aging panel (100 days) uses cc-aging and the aged line', () => {
+  const html = renderConfirmationBlock(REC, 'es', at('2026-06-28', 100));
+  assert.match(html, /cc cc-aging/);
+  assert.match(html, /Última confirmación hace 100 días/);
+  assert.doesNotMatch(html, /Confirmado actual por/);
 });

@@ -102,7 +102,7 @@ export function renderConfirmationBlock(rec, lang = 'es', nowMs = Date.now()) {
   return `<section class="cc cc-${st.level}" aria-label="${esc(t.title)}">
     <div class="cc-head"><span class="cc-dot"></span><strong>${esc(t.title)}</strong></div>
     <p class="cc-line">${line}</p>
-    ${facts ? `<p class="cc-asof">${t.asOf(fmtDate(rec.confirmedAt, lang))}</p><ul class="cc-facts">${facts}</ul>` : ''}
+    ${facts ? `<p class="cc-asof">${t.asOf(esc(fmtDate(rec.confirmedAt, lang)))}</p><ul class="cc-facts">${facts}</ul>` : ''}
     <p class="cc-prov">${esc(t.disclaimer)}</p>
   </section>`;
 }
