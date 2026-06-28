@@ -888,14 +888,11 @@ function notFoundPage(slug, lang = 'es') {
 export async function handleCompany({ params }, lang = 'es') {
   const slug = String(params.slug || '').toLowerCase();
   const resolved = resolveSlug(slug);
-  if (resolved.kind === 'notfound') {
-    return new Response(notFoundPage(slug, lang), {
-      status: 404,
-      headers: { 'content-type': 'text/html; charset=utf-8' },
-    });
-  }
+  // Non-curated slugs fall back to a name lookup (served noindex). Curated/IBEX
+  // resolve via their stored v3Name as before.
+  const isFallback = resolved.kind === 'notfound';
   const seed = resolved.kind === 'seed' ? resolved.entry : null;
-  const name = resolved.entry.v3Name;
+  const name = isFallback ? slugToQuery(slug) : resolved.entry.v3Name;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
@@ -927,6 +924,15 @@ export async function handleCompany({ params }, lang = 'es') {
       });
     }
 
+    // Fallback pages must round-trip exactly: the canonical name's slug has to
+    // equal the requested slug, or we'd serve the wrong (lossy-matched) entity.
+    if (isFallback && nameToSlug(company.company_name) !== slug) {
+      return new Response(notFoundPage(slug, lang), {
+        status: 404,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      });
+    }
+
     // The events endpoint falls back to name matching, which can leak events of
     // OTHER companies whose name embeds this one (e.g. an AIE named after its
     // members). Keep only events whose group_key belongs to this company; events
@@ -943,7 +949,7 @@ export async function handleCompany({ params }, lang = 'es') {
       .slice(0, 8);
 
     const gleif = gleifResp && gleifResp.success ? gleifResp.data : null;
-    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif);
+    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, isFallback);
     return new Response(html, {
       status: 200,
       headers: {
