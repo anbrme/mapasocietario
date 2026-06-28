@@ -1,0 +1,18 @@
+/**
+ * The canonical company-name → URL-slug function, shared by the server page
+ * renderer (_lib.js) and the SPA (which matches a selected company to a
+ * curated confirmation by slug). Kept in its own tiny module so the browser
+ * bundle does not import the whole _lib.js server renderer. The `_` prefix
+ * means Cloudflare Pages does not route this file.
+ */
+export function nameToSlug(name) {
+  return (name || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/ñ/gi, 'n')
+    .toLowerCase()
+    .replace(/&/g, ' y ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}

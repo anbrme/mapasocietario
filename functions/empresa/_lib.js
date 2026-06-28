@@ -13,6 +13,7 @@
 
 import { SEED } from './_ibex35.js';
 import { resolveSlug } from './_resolve.js';
+import { nameToSlug } from './_slug.js';
 import { renderConfirmationBlock } from './_confirmation.js';
 import { CONFIRMATIONS } from './_confirmations.js';
 
@@ -32,22 +33,6 @@ function hubUrl(lang) {
 }
 function hubPath(lang) {
   return lang === 'en' ? '/en/listed-companies' : '/empresas-cotizadas';
-}
-
-// ---------------------------------------------------------------------------
-// slug helpers
-// ---------------------------------------------------------------------------
-
-export function nameToSlug(name) {
-  return (name || '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/ñ/gi, 'n')
-    .toLowerCase()
-    .replace(/&/g, ' y ')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-');
 }
 
 function slugToQuery(slug) {
