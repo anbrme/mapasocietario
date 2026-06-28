@@ -16,3 +16,24 @@ export function confirmationStatus(confirmedAt, nowMs = Date.now()) {
   const level = ageDays <= 90 ? 'fresh' : ageDays <= 365 ? 'aging' : 'stale';
   return { ageDays, level };
 }
+
+// Accent/punctuation-insensitive uppercase word tokens.
+export function tokens(name) {
+  return (name || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+// True if every token of repName appears in at least one officer's token set.
+export function nameIsOfficer(repName, officerNames) {
+  const rep = tokens(repName);
+  if (!rep.length) return false;
+  return (officerNames || []).some((o) => {
+    const set = new Set(tokens(o));
+    return rep.every((tk) => set.has(tk));
+  });
+}
