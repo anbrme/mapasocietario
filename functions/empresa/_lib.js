@@ -920,7 +920,7 @@ export async function handleCompany({ params }, lang = 'es') {
     if (!company) {
       return new Response(notFoundPage(slug, lang), {
         status: 404,
-        headers: { 'content-type': 'text/html; charset=utf-8' },
+        headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, s-maxage=600' },
       });
     }
 
@@ -929,7 +929,7 @@ export async function handleCompany({ params }, lang = 'es') {
     if (isFallback && nameToSlug(company.company_name) !== slug) {
       return new Response(notFoundPage(slug, lang), {
         status: 404,
-        headers: { 'content-type': 'text/html; charset=utf-8' },
+        headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, s-maxage=600' },
       });
     }
 
