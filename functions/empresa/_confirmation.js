@@ -53,7 +53,7 @@ function fmtDate(d, lang) {
   return lang === 'en' ? `${day} ${EN_MONTHS[parseInt(mo, 10) - 1]} ${y}` : `${day}/${mo}/${y}`;
 }
 
-const I18N = {
+export const CONFIRMATION_I18N = {
   es: {
     title: 'Confirmación de vigencia',
     fresh: (rep, role, n) =>
@@ -77,32 +77,52 @@ const I18N = {
   },
 };
 
-// Decaying, registry-anchored confirmation panel. '' when there is nothing to show.
-export function renderConfirmationBlock(rec, lang = 'es', nowMs = Date.now()) {
-  if (!rec || !rec.confirmedAt || !rec.representative) return '';
+// Render-ready view model shared by the SEO HTML renderer and the in-app React
+// card. Strings are UNESCAPED (React escapes; the HTML renderer escapes at its
+// sink). null when there is nothing to show.
+export function confirmationViewModel(rec, lang = 'es', nowMs = Date.now()) {
+  if (!rec || !rec.confirmedAt || !rec.representative) return null;
   const st = confirmationStatus(rec.confirmedAt, nowMs);
-  if (!st) return '';
-  const t = I18N[lang] || I18N.es;
+  if (!st) return null;
+  const t = CONFIRMATION_I18N[lang] || CONFIRMATION_I18N.es;
 
-  const line =
+  const statusLine =
     st.level === 'fresh'
-      ? t.fresh(esc(rec.representative), esc(rec.role || ''), st.ageDays)
+      ? t.fresh(rec.representative, rec.role || '', st.ageDays)
       : t.aged(st.ageDays);
 
-  const facts = (rec.affirms || [])
+  const facts = (rec.affirms || []).map((f) => ({
+    label: f.label,
+    status: f.status === 'none' ? 'none' : 'current',
+    chipLabel: f.status === 'none' ? t.chipNone : t.chipCurrent,
+  }));
+
+  return {
+    title: t.title,
+    level: st.level,
+    statusLine,
+    asOf: facts.length ? t.asOf(fmtDate(rec.confirmedAt, lang)) : null,
+    facts,
+    disclaimer: t.disclaimer,
+  };
+}
+
+// Decaying, registry-anchored confirmation panel. '' when there is nothing to show.
+export function renderConfirmationBlock(rec, lang = 'es', nowMs = Date.now()) {
+  const vm = confirmationViewModel(rec, lang, nowMs);
+  if (!vm) return '';
+
+  const facts = vm.facts
     .map((f) => {
-      const chip =
-        f.status === 'none'
-          ? `<span class="cc-chip cc-none">${t.chipNone}</span>`
-          : `<span class="cc-chip cc-cur">${t.chipCurrent}</span>`;
-      return `<li>${esc(f.label)} ${chip}</li>`;
+      const cls = f.status === 'none' ? 'cc-chip cc-none' : 'cc-chip cc-cur';
+      return `<li>${esc(f.label)} <span class="${cls}">${esc(f.chipLabel)}</span></li>`;
     })
     .join('');
 
-  return `<section class="cc cc-${st.level}" aria-label="${esc(t.title)}">
-    <div class="cc-head"><span class="cc-dot"></span><strong>${esc(t.title)}</strong></div>
-    <p class="cc-line">${line}</p>
-    ${facts ? `<p class="cc-asof">${t.asOf(esc(fmtDate(rec.confirmedAt, lang)))}</p><ul class="cc-facts">${facts}</ul>` : ''}
-    <p class="cc-prov">${esc(t.disclaimer)}</p>
+  return `<section class="cc cc-${vm.level}" aria-label="${esc(vm.title)}">
+    <div class="cc-head"><span class="cc-dot"></span><strong>${esc(vm.title)}</strong></div>
+    <p class="cc-line">${esc(vm.statusLine)}</p>
+    ${vm.asOf ? `<p class="cc-asof">${esc(vm.asOf)}</p><ul class="cc-facts">${facts}</ul>` : ''}
+    <p class="cc-prov">${esc(vm.disclaimer)}</p>
   </section>`;
 }
