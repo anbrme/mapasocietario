@@ -605,9 +605,25 @@ function hreflangTags(slug) {
 
 export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false) {
   const t = T[lang] || T.es;
-  const name = company.company_name || company.company_name_normalized || '';
-  const canonicalSlug = slug;
+  const nameKey = (s) => (s || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+  const registeredName = company.company_name || company.company_name_normalized || '';
   const renamedTo = !seed && company.has_new_name ? company.new_company_name : null;
+  // BORME keeps a renamed entity under its original hoja name; a later rename
+  // appears only in name_changes[].new_name (no separate doc → no has_new_name).
+  // Show the CURRENT name (latest new_name) as the heading, matching the in-app
+  // preview; the former registral name then surfaces as a "prior name" below.
+  const latestRename =
+    !seed && !renamedTo
+      ? (company.name_changes || [])
+          .filter((c) => c && typeof c === 'object' && c.new_name)
+          .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+          .pop()
+      : null;
+  const name =
+    latestRename && nameKey(latestRename.new_name) !== nameKey(registeredName)
+      ? latestRename.new_name
+      : registeredName;
+  const canonicalSlug = slug;
   const canonicalUrl = renamedTo ? companyUrl(lang, nameToSlug(renamedTo)) : companyUrl(lang, canonicalSlug);
 
   const title = t.title(name);
@@ -643,7 +659,6 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
     .map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`)
     .join('');
 
-  const nameKey = (s) => (s || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
   const currentKey = nameKey(name);
   const priorNames = [
     ...new Set(
