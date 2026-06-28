@@ -126,9 +126,9 @@ A "verified" badge that silently rots when the confirming officer ceases is a ba
 
 **Decided boundary (so the principle doesn't strangle revenue):** a company may pay for **utility, never status** — monitoring/alerts, "who checked you this week," analytics, its own DD reports. Paying for a *tool* ≠ paying for *trust*.
 
-**Open debate — how the *requester* side pays (devil's-advocate outcome):**
-- The user's first instinct ("requester pays for a verification request, gets free DDs") is recorded but flagged as the **weaker instrument**, because (a) it cannibalizes DD, our actual paid product; (b) it charges for an *uncertain* outcome (the company may not respond); (c) the requester *is* essentially a DD customer.
-- **Recommended instead:** make the confirmation-request a **feature of the DD product** — "your DD report, with a live, as-of-today confirmation" — riding on a payment we already take, no cannibalization, principle intact.
+**Decided — how the *requester* side pays (user agreed with the devil's-advocate outcome, 2026-06-28):**
+- The first instinct ("requester pays for a standalone verification request, gets free DDs") is **rejected** as the weaker instrument, because (a) it cannibalizes DD, our actual paid product; (b) it charges for an *uncertain* outcome (the company may not respond); (c) the requester *is* essentially a DD customer.
+- **Chosen:** make the confirmation-request a **feature of the DD product** — "your DD report, with a live, as-of-today confirmation" — riding on a payment we already take, no cannibalization, principle intact.
 
 **Open ruling needed — third-party co-sign back door:** when a bank/insurer co-signs the check (the eventual killer incentive), *someone* pays the third party's cost. If that is the company, is it "company pays to be verified" through the back door? Proposed ruling: **permitted** — paying an independent third party for *deeper scrutiny* is the opposite of buying a pass — but this must be ruled explicitly, not by accident.
 
