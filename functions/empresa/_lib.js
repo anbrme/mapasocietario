@@ -13,7 +13,7 @@
 
 import { SEED } from './_ibex35.js';
 import { resolveSlug } from './_resolve.js';
-import { nameToSlug } from './_slug.js';
+import { nameToSlug, pickSlugMatch } from './_slug.js';
 import { renderConfirmationBlock } from './_confirmation.js';
 import { CONFIRMATIONS } from './_confirmations.js';
 // The canonical position classifier shared with the graph + officer-capping
@@ -908,7 +908,7 @@ export async function handleCompany({ params }, lang = 'es') {
   // resolve via their stored v3Name as before.
   const isFallback = resolved.kind === 'notfound';
   const seed = resolved.kind === 'seed' ? resolved.entry : null;
-  const name = isFallback ? slugToQuery(slug) : resolved.entry.v3Name;
+  let name = isFallback ? slugToQuery(slug) : resolved.entry.v3Name;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
@@ -918,7 +918,7 @@ export async function handleCompany({ params }, lang = 'es') {
     const boeUrl = seed
       ? `${API_BASE}/bormes/boe/company-mentions?name=${encodeURIComponent(seed.name || '')}&nif=${encodeURIComponent(seed.nif || '')}&categories=sancion,subvencion,contrato&size=8`
       : null;
-    const [profile, eventsResp, cnmvResp, chartSvg, boeResp, gleifResp] = await Promise.all([
+    let [profile, eventsResp, cnmvResp, chartSvg, boeResp, gleifResp] = await Promise.all([
       jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`, controller.signal),
       // Over-fetch (16) so the group_key post-filter below can still fill 8 slots.
       jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=16`, controller.signal),
@@ -932,7 +932,36 @@ export async function handleCompany({ params }, lang = 'es') {
         : Promise.resolve(null),
     ]);
 
-    const company = profile && profile.company ? profile.company : null;
+    let company = profile && profile.company ? profile.company : null;
+
+    // Fallback rescue: the exact name lookup above can't reverse lossy slug
+    // substitutions (nameToSlug turns "&"→"y" and "ñ"→"n"), so companies like
+    // "NURNBERG CONSULTING & PARTNERS SL" or "...MUÑOZ..." miss. Resolve the
+    // canonical name via search (tokenized) and re-fetch. pickSlugMatch keeps it
+    // exact (only a hit whose slug === the requested slug is accepted), and the
+    // round-trip guard below is the final safety net.
+    if (isFallback && (!company || nameToSlug(company.company_name) !== slug)) {
+      const searchResp = await jsonOrNull(
+        `${API_BASE}/bormes/v3/search?query=${encodeURIComponent(name)}&size=10`,
+        controller.signal,
+      );
+      const canonical = pickSlugMatch(
+        slug,
+        (searchResp && (searchResp.companies || searchResp.results || searchResp.hits)) || [],
+      );
+      if (canonical) {
+        const [p2, e2] = await Promise.all([
+          jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(canonical)}`, controller.signal),
+          jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(canonical)}&size=16`, controller.signal),
+        ]);
+        if (p2 && p2.company) {
+          company = p2.company;
+          eventsResp = e2;
+          name = canonical;
+        }
+      }
+    }
+
     if (!company) {
       // Cache only fallback misses (garbage slugs). For a curated/IBEX slug a
       // missing company is most likely a TRANSIENT backend failure on an

@@ -16,3 +16,16 @@ export function nameToSlug(name) {
     .replace(/^-+|-+$/g, '')
     .replace(/-{2,}/g, '-');
 }
+
+// From a list of (fuzzy) search hits, return the company_name whose slug EXACTLY
+// equals `slug`, else null. This is the round-trip guard applied to a search
+// result: nameToSlug is lossy ("&"→"y", "ñ"→"n"), so an exact backend name lookup
+// misses those companies; search tokenizes past the substitution, and this picks
+// the hit that round-trips — keeping resolution exact, never a fuzzy near-miss.
+export function pickSlugMatch(slug, hits) {
+  for (const h of hits || []) {
+    const name = h && (h.company_name || h.company_name_normalized);
+    if (name && nameToSlug(name) === slug) return name;
+  }
+  return null;
+}
