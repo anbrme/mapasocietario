@@ -512,11 +512,23 @@ function jsonLd(company, slug, lang, t, seed) {
     ],
   };
 
+  // Site-level publisher node \u2014 binds the PAGE (not the described company) to the
+  // Nurnberg brand/org. The company `org` node above stays free of any Nurnberg link.
+  const site = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': 'https://mapasocietario.es/#website',
+    url: `${SITE}/`,
+    name: 'Mapa Societario',
+    publisher: { '@id': 'https://nurnbergconsulting.com/#org' },
+    about: { '@id': 'https://mapasocietario.es/#brand' },
+  };
+
   const serialize = (obj) => JSON.stringify(obj)
     .replace(/</g, '\\u003c')
     .replace(/-->/g, '--\\u003e')
     .replace(/[\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
-  return [org, breadcrumb]
+  return [org, breadcrumb, site]
     .map((obj) => `<script type="application/ld+json">${serialize(obj)}</script>`)
     .join('');
 }
