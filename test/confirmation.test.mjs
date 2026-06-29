@@ -145,6 +145,15 @@ test('viewModel: verifiedVia maps email-tied method to ES copy', () => {
   assert.equal(vm.verifiedVia, 'Verificado por confirmación desde el email de la empresa');
 });
 
+test('viewModel: verifiedVia maps email-tied method to EN copy with curly apostrophe', () => {
+  const vm = confirmationViewModel(
+    { confirmedAt: '2026-06-28', representative: 'X', verification: 'email-from-tied-address', affirms: [] },
+    'en',
+    atMs('2026-06-28', 1),
+  );
+  assert.equal(vm.verifiedVia, `Verified by confirmation from the company’s email`);
+});
+
 test('viewModel: verifiedVia maps registry method and translates to EN', () => {
   const vm = confirmationViewModel(
     { confirmedAt: '2026-06-28', representative: 'X', verification: 'registry-officer-match', affirms: [] },

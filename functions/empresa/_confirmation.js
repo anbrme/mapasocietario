@@ -79,7 +79,7 @@ export const CONFIRMATION_I18N = {
     chipNone: 'none on record',
     disclaimer: `Statement by a representative whose authority was verified against the public registry. Mapa Societario verifies the representative's authority, not the truth of each statement.`,
     methods: {
-      'email-from-tied-address': "Verified by confirmation from the company's email",
+      'email-from-tied-address': "Verified by confirmation from the company’s email",
       'registry-officer-match': 'Authority verified against the public registry',
     },
   },
