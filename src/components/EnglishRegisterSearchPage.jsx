@@ -33,7 +33,7 @@ const sections = [
   {
     title: 'What is BORME?',
     body: [
-      'BORME stands for Boletin Oficial del Registro Mercantil. It is the official Spanish commercial registry gazette. It publishes corporate acts such as company formations, officer appointments and removals, capital increases or reductions, mergers, demergers, dissolutions, registered-office changes, sole-shareholder declarations, and other registry events.',
+      'BORME stands for Boletín Oficial del Registro Mercantil. It is the official Spanish commercial registry gazette. It publishes corporate acts such as company formations, officer appointments and removals, capital increases or reductions, mergers, demergers, dissolutions, registered-office changes, sole-shareholder declarations, and other registry events.',
       'BORME is not a simple company directory. It is a chronological public record. Mapa Societario structures those publications so a company search can become a graph of companies, officers, roles, and corporate events.',
     ],
   },
@@ -41,14 +41,14 @@ const sections = [
     title: 'What you can check',
     body: [
       'A Spanish company register search can show whether a company is active, who appears as an administrator or officer, how its registered office and capital have changed, whether it has declared a sole shareholder, whether it fully owns another company, and how often its representation structure changes.',
-      'The relationship graph is free to use. When you need a documented file, the paid report adds a PDF summary, risk indicators, officer history, relationship context, and checks based on public BOE/BORME sources.',
+      'The relationship graph is free to use. When you need a documented file, the paid report adds a PDF summary, risk indicators, officer history, NIF, relationship context, and checks based on public BOE/BORME sources.',
     ],
   },
   {
     title: 'What the register does not show',
     body: [
-      'BORME does not publish every piece of commercial intelligence a buyer, supplier, investor, or compliance team may want. Partial shareholders are usually not visible unless a sole shareholder declaration exists. Annual accounts, beneficial ownership, private contracts, websites, emails, and commercial contact details require separate sources.',
-      'For critical decisions, use BORME-based intelligence as a starting point, then verify current information with the official Commercial Registry, annual accounts, company-provided documents, and other appropriate sources.',
+      'BORME does not publish every piece of commercial intelligence a buyer, supplier, investor, or compliance team may want. Partial shareholders are not visible, as only sole shareholders are disclosed. Annual accounts, beneficial ownership information, websites, emails, and commercial contact details require separate sources.',
+      'For critical decisions, use BORME-based intelligence as a starting point, then verify current information with the official Commercial Registry (Registro Mercantil), annual accounts, company-provided documents, and other appropriate sources.',
     ],
   },
 ];
@@ -72,8 +72,8 @@ const cards = [
 ];
 
 const limits = [
-  'BORME is an official publication source, but Mapa Societario is not an official government service.',
-  'Automated parsing can occasionally miss or misclassify details; verify important findings in official sources.',
+  'BORME is an official publication source, but Mapa Societario is a private, independent service. It is not an official government service nor is it endorsed by any government entity.',
+  'Automated parsing can occasionally miss or misclassify details; verify important findings in official sources (Bear in mind that the BORME itself may have typos or occasional errors).',
   'Public registry data does not replace legal, financial, tax, or accounting advice.',
 ];
 
