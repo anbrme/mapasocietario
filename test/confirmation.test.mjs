@@ -85,6 +85,24 @@ test('aging panel (100 days) uses cc-aging and the aged line', () => {
   assert.doesNotMatch(html, /Confirmado actual por/);
 });
 
+test('panel shows the verification method line when present (ES)', () => {
+  const rec = {
+    confirmedAt: '2026-06-28',
+    representative: 'Alessandro Nürnberg',
+    verification: 'email-from-tied-address',
+    affirms: [],
+  };
+  const html = renderConfirmationBlock(rec, 'es', at('2026-06-28', 1));
+  assert.match(html, /cc-method/);
+  assert.match(html, /Verificado por confirmación desde el email de la empresa/);
+});
+
+test('panel omits the method line when verification is absent', () => {
+  const rec = { confirmedAt: '2026-06-28', representative: 'X', affirms: [] };
+  const html = renderConfirmationBlock(rec, 'es', at('2026-06-28', 1));
+  assert.doesNotMatch(html, /cc-method/);
+});
+
 const VM_REC = {
   confirmedAt: '2026-06-28',
   representative: 'Alessandro Nürnberg',

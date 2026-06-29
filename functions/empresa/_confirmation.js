@@ -131,6 +131,7 @@ export function renderConfirmationBlock(rec, lang = 'es', nowMs = Date.now()) {
   return `<section class="cc cc-${vm.level}" aria-label="${esc(vm.title)}">
     <div class="cc-head"><span class="cc-dot"></span><strong>${esc(vm.title)}</strong></div>
     <p class="cc-line">${esc(vm.statusLine)}</p>
+    ${vm.verifiedVia ? `<p class="cc-method">${esc(vm.verifiedVia)}</p>` : ''}
     ${vm.asOf ? `<p class="cc-asof">${esc(vm.asOf)}</p><ul class="cc-facts">${facts}</ul>` : ''}
     <p class="cc-prov">${esc(vm.disclaimer)}</p>
   </section>`;
