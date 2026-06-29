@@ -189,3 +189,29 @@ test('viewModel: verifiedVia is null for missing or unknown method', () => {
     null,
   );
 });
+
+import { confirmationProvenanceError } from '../functions/empresa/_confirmation.js';
+
+test('provenance: email-tied record needs reviewer and evidenceRef', () => {
+  const ok = {
+    verification: 'email-from-tied-address',
+    reviewer: 'AN',
+    evidenceRef: 'CONF-2026-0001',
+  };
+  assert.equal(confirmationProvenanceError(ok), null);
+
+  assert.match(
+    confirmationProvenanceError({ verification: 'email-from-tied-address', evidenceRef: 'CONF-2026-0001' }),
+    /reviewer/,
+  );
+  assert.match(
+    confirmationProvenanceError({ verification: 'email-from-tied-address', reviewer: 'AN' }),
+    /evidenceRef/,
+  );
+});
+
+test('provenance: non-email-tied methods need no audit trail', () => {
+  assert.equal(confirmationProvenanceError({ verification: 'registry-officer-match' }), null);
+  assert.equal(confirmationProvenanceError({}), null);
+  assert.equal(confirmationProvenanceError(null), null);
+});

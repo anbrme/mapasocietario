@@ -8,7 +8,7 @@
  */
 import { CONFIRMATIONS } from '../functions/empresa/_confirmations.js';
 import { resolveSlug } from '../functions/empresa/_resolve.js';
-import { nameIsOfficer } from '../functions/empresa/_confirmation.js';
+import { nameIsOfficer, confirmationProvenanceError } from '../functions/empresa/_confirmation.js';
 
 const API = 'https://api.ncdata.eu';
 let failures = 0;
@@ -40,6 +40,12 @@ for (const [slug, rec] of Object.entries(CONFIRMATIONS)) {
       console.error(
         `✗ ${slug}: representative '${rec.representative}' is not a current officer (${officers.join('; ') || 'none on record'})`,
       );
+      failures++;
+      continue;
+    }
+    const provErr = confirmationProvenanceError(rec);
+    if (provErr) {
+      console.error(`✗ ${slug}: ${provErr} (email-tied confirmations require reviewer + evidenceRef)`);
       failures++;
       continue;
     }

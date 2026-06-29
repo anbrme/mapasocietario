@@ -136,3 +136,14 @@ export function renderConfirmationBlock(rec, lang = 'es', nowMs = Date.now()) {
     <p class="cc-prov">${esc(vm.disclaimer)}</p>
   </section>`;
 }
+
+// Audit-trail guard for the build gate. A record verified by an emailed
+// confirmation MUST carry a reviewer and an evidenceRef pointing at the
+// (off-repo) evidence log. Returns a reason string when that trail is missing,
+// else null. Other verification methods carry no audit-trail requirement.
+export function confirmationProvenanceError(rec) {
+  if (!rec || rec.verification !== 'email-from-tied-address') return null;
+  if (!rec.reviewer) return 'missing reviewer';
+  if (!rec.evidenceRef) return 'missing evidenceRef';
+  return null;
+}
