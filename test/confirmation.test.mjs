@@ -172,13 +172,13 @@ test('viewModel: verifiedVia maps email-tied method to EN copy with curly apostr
   assert.equal(vm.verifiedVia, `Verified by confirmation from the company’s email`);
 });
 
-test('viewModel: verifiedVia maps registry method and translates to EN', () => {
+test('viewModel: verifiedVia is null for registry-officer-match (default, not surfaced)', () => {
   const vm = confirmationViewModel(
     { confirmedAt: '2026-06-28', representative: 'X', verification: 'registry-officer-match', affirms: [] },
     'en',
     atMs('2026-06-28', 1),
   );
-  assert.equal(vm.verifiedVia, 'Authority verified against the public registry');
+  assert.equal(vm.verifiedVia, null);
 });
 
 test('viewModel: verifiedVia is null for missing or unknown method', () => {
