@@ -135,3 +135,30 @@ test('viewModel: EN copy', () => {
   assert.match(vm.statusLine, /1 day ago/);
   assert.equal(vm.facts[0].chipLabel, 'current');
 });
+
+test('viewModel: verifiedVia maps email-tied method to ES copy', () => {
+  const vm = confirmationViewModel(
+    { confirmedAt: '2026-06-28', representative: 'X', verification: 'email-from-tied-address', affirms: [] },
+    'es',
+    atMs('2026-06-28', 1),
+  );
+  assert.equal(vm.verifiedVia, 'Verificado por confirmación desde el email de la empresa');
+});
+
+test('viewModel: verifiedVia maps registry method and translates to EN', () => {
+  const vm = confirmationViewModel(
+    { confirmedAt: '2026-06-28', representative: 'X', verification: 'registry-officer-match', affirms: [] },
+    'en',
+    atMs('2026-06-28', 1),
+  );
+  assert.equal(vm.verifiedVia, 'Authority verified against the public registry');
+});
+
+test('viewModel: verifiedVia is null for missing or unknown method', () => {
+  const base = { confirmedAt: '2026-06-28', representative: 'X', affirms: [] };
+  assert.equal(confirmationViewModel(base, 'es', atMs('2026-06-28', 1)).verifiedVia, null);
+  assert.equal(
+    confirmationViewModel({ ...base, verification: 'something-else' }, 'es', atMs('2026-06-28', 1)).verifiedVia,
+    null,
+  );
+});

@@ -64,6 +64,10 @@ export const CONFIRMATION_I18N = {
     chipNone: 'sin constancia',
     disclaimer:
       'Declaración de un representante cuya autoridad ha sido verificada contra el registro público. Mapa Societario verifica la autoridad del representante, no la veracidad de cada afirmación.',
+    methods: {
+      'email-from-tied-address': 'Verificado por confirmación desde el email de la empresa',
+      'registry-officer-match': 'Autoridad verificada contra el registro público',
+    },
   },
   en: {
     title: 'Currency confirmation',
@@ -74,6 +78,10 @@ export const CONFIRMATION_I18N = {
     chipCurrent: 'current',
     chipNone: 'none on record',
     disclaimer: `Statement by a representative whose authority was verified against the public registry. Mapa Societario verifies the representative's authority, not the truth of each statement.`,
+    methods: {
+      'email-from-tied-address': "Verified by confirmation from the company's email",
+      'registry-officer-match': 'Authority verified against the public registry',
+    },
   },
 };
 
@@ -101,6 +109,7 @@ export function confirmationViewModel(rec, lang = 'es', nowMs = Date.now()) {
     title: t.title,
     level: st.level,
     statusLine,
+    verifiedVia: rec.verification ? (t.methods[rec.verification] || null) : null,
     asOf: facts.length ? t.asOf(fmtDate(rec.confirmedAt, lang)) : null,
     facts,
     disclaimer: t.disclaimer,
