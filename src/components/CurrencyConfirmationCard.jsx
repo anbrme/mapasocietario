@@ -45,6 +45,12 @@ export default function CurrencyConfirmationCard({ rec, lang = 'es' }) {
         {vm.statusLine}
       </Typography>
 
+      {vm.verifiedVia && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+          {vm.verifiedVia}
+        </Typography>
+      )}
+
       {vm.asOf && (
         <>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, mb: 0.5 }}>
