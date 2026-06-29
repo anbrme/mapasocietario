@@ -85,6 +85,24 @@ test('aging panel (100 days) uses cc-aging and the aged line', () => {
   assert.doesNotMatch(html, /Confirmado actual por/);
 });
 
+test('panel shows the verification method line when present (ES)', () => {
+  const rec = {
+    confirmedAt: '2026-06-28',
+    representative: 'Alessandro Nürnberg',
+    verification: 'email-from-tied-address',
+    affirms: [],
+  };
+  const html = renderConfirmationBlock(rec, 'es', at('2026-06-28', 1));
+  assert.match(html, /cc-method/);
+  assert.match(html, /Verificado por confirmación desde el email de la empresa/);
+});
+
+test('panel omits the method line when verification is absent', () => {
+  const rec = { confirmedAt: '2026-06-28', representative: 'X', affirms: [] };
+  const html = renderConfirmationBlock(rec, 'es', at('2026-06-28', 1));
+  assert.doesNotMatch(html, /cc-method/);
+});
+
 const VM_REC = {
   confirmedAt: '2026-06-28',
   representative: 'Alessandro Nürnberg',
@@ -134,4 +152,66 @@ test('viewModel: EN copy', () => {
   assert.equal(vm.title, 'Currency confirmation');
   assert.match(vm.statusLine, /1 day ago/);
   assert.equal(vm.facts[0].chipLabel, 'current');
+});
+
+test('viewModel: verifiedVia maps email-tied method to ES copy', () => {
+  const vm = confirmationViewModel(
+    { confirmedAt: '2026-06-28', representative: 'X', verification: 'email-from-tied-address', affirms: [] },
+    'es',
+    atMs('2026-06-28', 1),
+  );
+  assert.equal(vm.verifiedVia, 'Verificado por confirmación desde el email de la empresa');
+});
+
+test('viewModel: verifiedVia maps email-tied method to EN copy with curly apostrophe', () => {
+  const vm = confirmationViewModel(
+    { confirmedAt: '2026-06-28', representative: 'X', verification: 'email-from-tied-address', affirms: [] },
+    'en',
+    atMs('2026-06-28', 1),
+  );
+  assert.equal(vm.verifiedVia, `Verified by confirmation from the company’s email`);
+});
+
+test('viewModel: verifiedVia is null for registry-officer-match (default, not surfaced)', () => {
+  const vm = confirmationViewModel(
+    { confirmedAt: '2026-06-28', representative: 'X', verification: 'registry-officer-match', affirms: [] },
+    'en',
+    atMs('2026-06-28', 1),
+  );
+  assert.equal(vm.verifiedVia, null);
+});
+
+test('viewModel: verifiedVia is null for missing or unknown method', () => {
+  const base = { confirmedAt: '2026-06-28', representative: 'X', affirms: [] };
+  assert.equal(confirmationViewModel(base, 'es', atMs('2026-06-28', 1)).verifiedVia, null);
+  assert.equal(
+    confirmationViewModel({ ...base, verification: 'something-else' }, 'es', atMs('2026-06-28', 1)).verifiedVia,
+    null,
+  );
+});
+
+import { confirmationProvenanceError } from '../functions/empresa/_confirmation.js';
+
+test('provenance: email-tied record needs reviewer and evidenceRef', () => {
+  const ok = {
+    verification: 'email-from-tied-address',
+    reviewer: 'AN',
+    evidenceRef: 'CONF-2026-0001',
+  };
+  assert.equal(confirmationProvenanceError(ok), null);
+
+  assert.match(
+    confirmationProvenanceError({ verification: 'email-from-tied-address', evidenceRef: 'CONF-2026-0001' }),
+    /reviewer/,
+  );
+  assert.match(
+    confirmationProvenanceError({ verification: 'email-from-tied-address', reviewer: 'AN' }),
+    /evidenceRef/,
+  );
+});
+
+test('provenance: non-email-tied methods need no audit trail', () => {
+  assert.equal(confirmationProvenanceError({ verification: 'registry-officer-match' }), null);
+  assert.equal(confirmationProvenanceError({}), null);
+  assert.equal(confirmationProvenanceError(null), null);
 });

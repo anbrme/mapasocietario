@@ -4,6 +4,9 @@ dist
 *.local
 /.sync
 
+# Private confirmation evidence log — contains personal data, never commit
+confirmation-evidence.local.*
+
 # Local env overrides (branch/dev backend URLs) — never commit
 .env.local
 .env*.local

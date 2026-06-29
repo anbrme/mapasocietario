@@ -3,7 +3,9 @@
  * anchored confirmation that the company record is current. Rendered as a
  * decaying panel ABOVE the registry data; it NEVER overwrites BORME fields.
  * Every entry MUST pass `node scripts/check-confirmations.mjs` (the slug
- * resolves AND the representative is a current officer in BORME). The `_`
+ * resolves AND the representative is a current officer in BORME). Records whose
+ * `verification` is 'email-from-tied-address' MUST also carry `reviewer` and
+ * `evidenceRef` (the id of the off-repo evidence-log row). The `_`
  * prefix means Cloudflare Pages does not route this file.
  */
 export const CONFIRMATIONS = {
