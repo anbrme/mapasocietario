@@ -26,6 +26,7 @@ const sitemapRoutes = [
   { path: '/app/', changefreq: 'daily', priority: '0.8' },
   { path: '/due-diligence/', changefreq: 'weekly', priority: '0.9' },
   { path: '/spanish-company-due-diligence/', changefreq: 'weekly', priority: '0.9' },
+  { path: '/spanish-company-register-search/', changefreq: 'weekly', priority: '0.9' },
   { path: '/pricing/', changefreq: 'monthly', priority: '0.8' },
   { path: '/dashboard/', changefreq: 'daily', priority: '0.7' },
   { path: '/es/', changefreq: 'weekly', priority: '0.9' },

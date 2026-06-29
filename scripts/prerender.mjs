@@ -206,6 +206,7 @@ const routes = [
           <li><a href="/es/">Mapa societario de empresas espa&ntilde;olas</a></li>
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
+          <li><a href="/spanish-company-register-search/">Spanish company register search and BORME guide</a></li>
           <li><a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></li>
           <li><a href="${FACEBOOK_URL}">Mapa Societario on Facebook</a></li>
         </ul>
@@ -239,7 +240,7 @@ const routes = [
           <li>Visualize corporate relationships in real time</li>
           <li>Purchase Due Diligence reports from the search toolbar</li>
         </ul>
-        <p><a href="/">Back to Mapa Societario</a> | <a href="${FACEBOOK_URL}">Facebook</a></p>
+        <p><a href="/">Back to Mapa Societario</a> | <a href="/spanish-company-register-search">Spanish company register guide</a> | <a href="${FACEBOOK_URL}">Facebook</a></p>
       </main>`,
   },
   {
@@ -288,7 +289,42 @@ const routes = [
         <h2>API access and higher-touch investigations</h2>
         <p>The self-serve report is the fast mid-tier option. For third-party data integrations, Spanish registry intelligence is available through NC Data API access and data feeds. For higher-stakes matters, Nurnberg Consulting SL can add human analyst work, source retrieval, document review, and bespoke conclusions.</p>
         <p><a href="mailto:mapasocietario@ncdata.eu?subject=NC%20Data%20Spanish%20API">Discuss NC Data API access</a> | <a href="https://nurnbergconsulting.com">Human-led investigations</a></p>
-        <p><a href="/app">Open the relationship graph</a> | <a href="/due-diligence">See report details</a></p>
+        <p><a href="/app">Open the relationship graph</a> | <a href="/due-diligence">See report details</a> | <a href="/spanish-company-register-search">Spanish company register guide</a></p>
+      </main>`,
+  },
+  {
+    path: '/spanish-company-register-search',
+    title: 'Spanish Company Register Search | BORME Company Search Spain',
+    description:
+      'Search Spanish companies and directors using BORME registry data. Understand what the Spanish company register shows, what it omits, and when to order a due diligence report.',
+    ogType: 'article',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Spanish company register search, explained</h1>
+        <p>Search Spanish companies and directors, understand BORME registry publications, and move from a company lookup to a relationship graph or due diligence report when the registry record needs context.</p>
+        ${disclaimerHtmlEn}
+        <h2>Search Spanish companies from BORME data</h2>
+        <p>Mapa Societario lets you search Spanish companies and directors, then explore their corporate relationships in an interactive graph. The underlying registry intelligence is built from BORME publications, the official gazette where Spanish Commercial Registry acts are published.</p>
+        <h2>What is BORME?</h2>
+        <p>BORME stands for Boletin Oficial del Registro Mercantil. It publishes corporate acts such as company formations, officer appointments and removals, capital changes, mergers, demergers, dissolutions, registered-office changes, sole-shareholder declarations, and other registry events.</p>
+        <p>BORME is not a simple company directory. It is a chronological public record. Mapa Societario structures those publications so a company search can become a graph of companies, officers, roles, and corporate events.</p>
+        <h2>What you can check</h2>
+        <ul>
+          <li>Company status, registered office, capital events, and corporate changes.</li>
+          <li>Current and historical administrators, officers, proxies, appointments, and resignations.</li>
+          <li>Sole-shareholder declarations and fully-owned participations where they appear in public filings.</li>
+          <li>Connected companies and officer relationships in a visual graph.</li>
+        </ul>
+        <h2>What the register does not show</h2>
+        <p>BORME does not publish every piece of commercial intelligence a buyer, supplier, investor, or compliance team may want. Partial shareholders are usually not visible unless a sole-shareholder declaration exists. Annual accounts, beneficial ownership, private contracts, websites, emails, and commercial contact details require separate sources.</p>
+        <h2>How to use Mapa Societario</h2>
+        <ol>
+          <li>Open the relationship graph and search by company name or officer name.</li>
+          <li>Review the company profile, officers, capital events, and connected companies.</li>
+          <li>Expand the graph when a director, proxy, or related company needs more context.</li>
+          <li>Order a due diligence report only when you need a PDF record.</li>
+        </ol>
+        <p><a href="/app">Search a Spanish company</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence reports</a></p>
       </main>`,
   },
   {

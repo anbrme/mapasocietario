@@ -25,6 +25,7 @@ const APP_COPY = {
     menu: {
       tooltip: 'Menu',
       guide: 'How it works',
+      registerGuide: 'Company register guide',
       listed: 'IBEX 35 companies',
       dashboard: 'Stats dashboard',
       reports: 'Due Diligence reports',
@@ -46,6 +47,7 @@ const APP_COPY = {
     menu: {
       tooltip: 'Menú',
       guide: 'Cómo funciona',
+      registerGuide: 'Guía BORME',
       reports: 'Informes due diligence',
       connectClaude: 'Usar en Claude',
       pricing: 'Precios',
@@ -93,6 +95,7 @@ export default function App() {
   };
   const navItems = [
     { label: copy.menu.guide, url: nav.guide },
+    { label: copy.menu.registerGuide, url: nav.registerGuide },
     { label: copy.menu.listed, url: nav.listed },
     { label: copy.menu.dashboard, url: nav.dashboard },
     null,
