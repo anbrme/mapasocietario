@@ -60,38 +60,45 @@
          Product/Offer and FAQPage are injected per-route by scripts/prerender.mjs,
          only on the pages where they genuinely apply (Google placement guidelines).
          Figures sourced from the live /bormes/stats/overview endpoint. -->
-    <script type="application/ld+json">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
     {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "WebSite",
-          "name": "Mapa Societario",
-          "url": "https://mapasocietario.es/",
-          "inLanguage": "en",
-          "description": "Search and visualize corporate relationships between Spanish companies and directors using official BORME registry data covering 3.1 million companies since 2009.",
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://mapasocietario.es/app?search={search_term_string}",
-            "query-input": "required name=search_term_string"
-          }
-        },
-        {
-          "@type": "Organization",
-          "name": "Mapa Societario",
-          "url": "https://mapasocietario.es/",
-          "sameAs": ["https://www.facebook.com/profile.php?id=61591449988403"],
-          "description": "Corporate intelligence and due diligence reports for Spanish companies, built on 9.4 million official BORME registry filings.",
-          "parentOrganization": { "@type": "Organization", "name": "Nurnberg Consulting SL" },
-          "contactPoint": {
-            "@type": "ContactPoint",
-            "email": "mapasocietario@ncdata.eu",
-            "contactType": "customer service"
-          }
-        }
+      "@type": "WebSite",
+      "@id": "https://mapasocietario.es/#website",
+      "name": "Mapa Societario",
+      "url": "https://mapasocietario.es/",
+      "inLanguage": "en",
+      "description": "Search and visualize corporate relationships between Spanish companies and directors using official BORME registry data covering 3.1 million companies since 2009.",
+      "publisher": { "@id": "https://nurnbergconsulting.com/#org" },
+      "about": { "@id": "https://mapasocietario.es/#brand" },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://mapasocietario.es/app?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@type": "Brand",
+      "@id": "https://mapasocietario.es/#brand",
+      "name": "Mapa Societario",
+      "description": "Corporate intelligence and due diligence reports for Spanish companies, built on 9.4 million official BORME registry filings.",
+      "sameAs": [
+        "https://www.linkedin.com/showcase/mapa-societario/",
+        "https://www.facebook.com/profile.php?id=61591449988403"
       ]
+    },
+    {
+      "@type": "ProfessionalService",
+      "@id": "https://nurnbergconsulting.com/#org",
+      "name": "Nurnberg Consulting",
+      "legalName": "Nurnberg Consulting SL",
+      "url": "https://nurnbergconsulting.com"
     }
-    </script>
+  ]
+}
+</script>
     <!-- Cloudflare Turnstile — loaded without SRI intentionally: Cloudflare
          rotates this unversioned script and does not support pinned hashes. -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
