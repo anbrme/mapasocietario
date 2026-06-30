@@ -213,7 +213,7 @@ export default function SpanishSeoPage({ pageKey: explicitPageKey }) {
               width: 54,
               height: 54,
               borderRadius: 2,
-              bgcolor: 'rgba(25,118,210,0.12)',
+              bgcolor: 'rgba(20,184,166,0.12)',
               color: 'primary.light',
               display: 'flex',
               alignItems: 'center',

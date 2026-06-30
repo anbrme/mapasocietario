@@ -166,7 +166,7 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
                   <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>{answer.answer.summary}</Typography>
                 )}
                 {answer.answer.registry && (
-                  <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(25,118,210,0.08)', border: '1px solid rgba(25,118,210,0.3)' }}>
+                  <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.3)' }}>
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#90caf9' }}>
                       {language === 'en' ? 'From the registry (BORME)' : 'Del registro (BORME)'}
                     </Typography>

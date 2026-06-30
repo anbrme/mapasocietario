@@ -39,6 +39,7 @@ import {
   Badge,
   Checkbox,
 } from '@mui/material';
+import TuneIcon from '@mui/icons-material/Tune';
 import {
   Close as CloseIcon,
   Search as SearchIcon,
@@ -200,7 +201,7 @@ const SEARCH_COPY = {
     legalTooltip: 'Source and legal notice',
     legalLabel: 'Source and legal notice',
     pathfinderTooltip: 'Find connection path (Pathfinder)',
-    graphSettingsTitle: 'Graph settings',
+    graphSettingsTitle: 'Graph controls',
     pathfinderTitle: 'Connection Path Finder (Pathfinder)',
     originNode: 'Source milestone',
     destinationNode: 'Destination milestone',
@@ -239,6 +240,7 @@ const SEARCH_COPY = {
     nodeSize: 'Node size',
     labelSize: 'Label size',
     colorByNetworks: 'Color by networks',
+    edgeLength: 'Edge length',
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     center: 'Center',
@@ -432,7 +434,7 @@ const SEARCH_COPY = {
     legalTooltip: 'Fuente y aviso legal',
     legalLabel: 'Fuente y aviso legal',
     pathfinderTooltip: 'Buscar camino de conexión (Pathfinder)',
-    graphSettingsTitle: 'Configuración del grafo',
+    graphSettingsTitle: 'Controles del grafo',
     pathfinderTitle: 'Buscador de Caminos de Conexión (Pathfinder)',
     originNode: 'Hito de origen',
     destinationNode: 'Hito de destino',
@@ -471,6 +473,7 @@ const SEARCH_COPY = {
     nodeSize: 'Tamaño de nodos',
     labelSize: 'Tamaño de etiquetas',
     colorByNetworks: 'Colorear por redes',
+    edgeLength: 'Longitud de enlaces',
     zoomIn: 'Acercar',
     zoomOut: 'Alejar',
     center: 'Centrar',
@@ -1237,10 +1240,9 @@ const SpanishCompanyNetworkGraph = ({
 
   // Floating table panel state
   const [tablePosition, setTablePosition] = useState({ x: null, y: null }); // null = default position
-  // Default collapsed on phones so the Datos panel doesn't cover half the screen; open on desktop.
-  const [isTableCollapsed, setIsTableCollapsed] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth < 768,
-  );
+  // Default collapsed everywhere so the Datos panel doesn't cover the graph on
+  // open; the user expands it on demand (it was intrusive opening expanded).
+  const [isTableCollapsed, setIsTableCollapsed] = useState(true);
   // Date filter: click on a date cell filters the table to rows sharing same date + company + category
   // Shape: { date, companyNodeId, category } or null
   const [dateFilter, setDateFilter] = useState(null);
@@ -1269,7 +1271,7 @@ const SpanishCompanyNetworkGraph = ({
   const [showShareholders, setShowShareholders] = useState(true);
   const [showPreviousShareholders, setShowPreviousShareholders] = useState(true);
   const [nodeSize, setNodeSize] = useState(9);
-  const [labelSize, setLabelSize] = useState(9);
+  const [labelSize, setLabelSize] = useState(4.5);
   const [linkDistance, setLinkDistance] = useState(80);
   const [chargeStrength, setChargeStrength] = useState(-350);
   const [showNodeLabels] = useState(true); // Renamed for clarity
@@ -1295,12 +1297,12 @@ const SpanishCompanyNetworkGraph = ({
   // Node colors and shapes
   const nodeColors = React.useMemo(
     () => ({
-      company: '#1976d2',
-      officer_individual: '#f57c00',
-      officer_company: '#9c27b0',
-      expanded: '#4caf50',
-      selected: '#e91e63',
-      searchOrigin: '#e91e63',
+      company: '#33bdad',
+      officer_individual: '#cd87c0',
+      officer_company: '#8a86d4',
+      expanded: '#56b387',
+      selected: '#e26d9a',
+      searchOrigin: '#5fd6c6',
     }),
     []
   );
@@ -1321,7 +1323,7 @@ const SpanishCompanyNetworkGraph = ({
     const fg = fgRef.current;
     if (!fg || !containerReady || graphData.nodes.length === 0) return;
     const isPinned = node => !!node && (node.fx != null || node.fy != null);
-    const isOfficer = node => !!node && node.type === 'spanish-officer';
+    const isOfficer = node => !!node && node.type === 'officer';
 
     const chargeForce = fg.d3Force('charge');
     if (chargeForce) {
@@ -1372,8 +1374,8 @@ const SpanishCompanyNetworkGraph = ({
         .radius(node => {
           const labelLen = (node.name || '').length;
           return node.type === 'spanish-company-group'
-            ? Math.max(nodeSize + 40, labelLen * 3.5)
-            : nodeSize + 14;
+            ? Math.max(nodeSize + 28, labelLen * 2.6)
+            : nodeSize + 8;
         })
         .iterations(3)
     );
@@ -1394,8 +1396,6 @@ const SpanishCompanyNetworkGraph = ({
     embedded,
     simplifyGraph,
   ]);
-
-
 
   // Clear graph data when dialog closes so it starts fresh each time (only in dialog mode)
   useEffect(() => {
@@ -5288,22 +5288,24 @@ const SpanishCompanyNetworkGraph = ({
         if (node.expanded) {
           color = nodeColors.expanded;
         }
-
-        if (isOrigin) {
-          color = nodeColors.searchOrigin;
-        }
+        // Origin keeps its base color (teal for companies); it's set apart by a
+        // glowing ring below, mirroring the hero network's hub — not a clashing hue.
       }
 
       // Draw node based on type and subtype
       ctx.fillStyle = color;
 
-      // Search origin nodes get a glowing ring to stand out
+      // Search origin nodes get a glowing teal ring to stand out (hero-hub language)
       if (isOrigin) {
+        ctx.save();
+        ctx.shadowColor = nodeColors.searchOrigin;
+        ctx.shadowBlur = 14;
         ctx.strokeStyle = nodeColors.searchOrigin;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.arc(node.x, node.y, nodeRadius + 3, 0, 2 * Math.PI, false);
+        ctx.arc(node.x, node.y, nodeRadius + 3.5, 0, 2 * Math.PI, false);
         ctx.stroke();
+        ctx.restore();
       } else if (pathfinderActive && inPath) {
         ctx.strokeStyle = PATH_HIGHLIGHT_COLOR;
         ctx.lineWidth = 2;
@@ -5318,12 +5320,31 @@ const SpanishCompanyNetworkGraph = ({
         ctx.stroke();
       }
 
-      ctx.strokeStyle = '#fff';
+      // Hollow/outlined nodes to match the hero network: a dark fill with the
+      // node's color as the outline — the identity is the border, not a solid fill.
+      ctx.fillStyle = '#0d1220';
+      ctx.strokeStyle = color;
       ctx.lineWidth = 2;
 
-      // Draw all nodes as circles
+      // Shape encodes type: companies are rounded squares, officers are circles
+      // (same grammar as the hero network, so the real graph reads as the same product).
+      const isCompany = node.type !== 'officer';
       ctx.beginPath();
-      ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI, false);
+      if (isCompany) {
+        const s = nodeRadius * 1.55;
+        const r = Math.max(s * 0.3, 1);
+        const x0 = node.x - s;
+        const y0 = node.y - s;
+        const w = s * 2;
+        ctx.moveTo(x0 + r, y0);
+        ctx.arcTo(x0 + w, y0, x0 + w, y0 + w, r);
+        ctx.arcTo(x0 + w, y0 + w, x0, y0 + w, r);
+        ctx.arcTo(x0, y0 + w, x0, y0, r);
+        ctx.arcTo(x0, y0, x0 + w, y0, r);
+        ctx.closePath();
+      } else {
+        ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI, false);
+      }
       ctx.fill();
       ctx.stroke();
 
@@ -5364,7 +5385,7 @@ const SpanishCompanyNetworkGraph = ({
         }
 
         if (shouldRenderLabel) {
-          ctx.font = `${fontSize}px Sans-Serif`;
+          ctx.font = `${fontSize}px "IBM Plex Mono", monospace`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
@@ -5452,21 +5473,21 @@ const SpanishCompanyNetworkGraph = ({
       } else if (link.type === 'ownership') {
         linkColor =
           cat === 'socio_anterior'
-            ? '#9e9e9e' // Grey — previous (superseded) sole shareholder
+            ? '#94a3b8' // Slate — previous (superseded) sole shareholder
             : cat === 'socio_perdido'
-              ? '#bf8f30'
-              : '#fbc02d'; // Gold — current sole shareholder
+              ? '#c79a3a'
+              : '#fbbf24'; // Amber — current sole shareholder
       } else if (link.companyDissolved) {
-        linkColor = '#e53935'; // Red — officer link to a DISSOLVED company is not current
+        linkColor = '#f87171'; // Red — officer link to a DISSOLVED company is not current
       } else if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
-        linkColor = '#43a047'; // Green — appointments and re-elections
+        linkColor = '#34d399'; // Green — appointments and re-elections
       } else if (
         cat.includes('cese') || cat.includes('dimision') || cat.includes('dimisión') ||
         cat.includes('revocacion') || cat.includes('revocación')
       ) {
-        linkColor = '#e53935'; // Red — resignations and revocations
+        linkColor = '#f87171'; // Red — resignations and revocations
       } else {
-        linkColor = '#90a4ae'; // Blue-grey for unknown / company-company
+        linkColor = '#64748b'; // Slate for unknown / company-company
       }
 
       // Pathfinder alpha control
@@ -5475,7 +5496,7 @@ const SpanishCompanyNetworkGraph = ({
       } else if (sharedHighlightIds) {
         ctx.globalAlpha = touchesShared ? 1.0 : PATH_DIM_ALPHA;
       } else {
-        ctx.globalAlpha = 1.0;
+        ctx.globalAlpha = 0.78;
       }
 
       // Draw link — dashed for officers from a previous company name and ownership links
@@ -6109,15 +6130,15 @@ const SpanishCompanyNetworkGraph = ({
         {graphData.nodes.some(n => n.type === 'company' || n.type === 'spanish-company-group') && (
           <Button
             variant="contained"
-            color="warning"
+            color="primary"
             size="small"
             startIcon={<DescriptionIcon />}
             sx={{
               textTransform: 'none',
               fontWeight: 700,
               whiteSpace: 'nowrap',
-              color: '#1a1205',
-              boxShadow: '0 2px 10px rgba(255,167,38,0.35)',
+              color: '#04231f',
+              boxShadow: '0 2px 10px rgba(20,184,166,0.35)',
             }}
             onClick={() => {
               // DD is per-company. Prefer the sticky subject (always a company,
@@ -6147,7 +6168,7 @@ const SpanishCompanyNetworkGraph = ({
                   variant="contained" color="primary" size="small"
                   startIcon={relResolving ? <CircularProgress size={14} /> : <AccountTreeIcon />}
                   disabled={relResolving}
-                  sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(25,118,210,0.35)' }}
+                  sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(20,184,166,0.35)' }}
                   onClick={openRelationshipReport}>
                   {text.relationshipReport}
                 </Button>
@@ -6214,9 +6235,15 @@ const SpanishCompanyNetworkGraph = ({
             <RouteIcon />
           </IconButton>
         </Tooltip>
-        <IconButton onClick={() => setShowSettings(!showSettings)} title={text.graphSettingsTitle}>
-          <SettingsIcon />
-        </IconButton>
+        <Tooltip title={text.graphSettingsTitle}>
+          <IconButton
+            onClick={() => setShowSettings(!showSettings)}
+            color={showSettings ? 'primary' : 'default'}
+            aria-label={text.graphSettingsTitle}
+          >
+            <TuneIcon />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Pathfinder Panel */}
@@ -6652,26 +6679,38 @@ const SpanishCompanyNetworkGraph = ({
         </Box>
       )}
 
-      {/* Settings Panel */}
+      {/* Graph Control Panel — layout, labels, node size, color-by-network in one place */}
       {showSettings && (
         <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            {text.graphSettingsTitle}
+          <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <TuneIcon fontSize="small" /> {text.graphSettingsTitle}
           </Typography>
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
               gap: 2,
+              alignItems: 'center',
             }}
           >
+            <Box>
+              <Typography variant="caption">{text.edgeLength}</Typography>
+              <Slider
+                value={linkDistance}
+                onChange={(e, value) => setLinkDistance(value)}
+                min={30}
+                max={160}
+                step={5}
+                size="small"
+              />
+            </Box>
             <Box>
               <Typography variant="caption">{text.nodeSize}</Typography>
               <Slider
                 value={nodeSize}
                 onChange={(e, value) => setNodeSize(value)}
                 min={4}
-                max={20}
+                max={28}
                 step={1}
                 size="small"
               />
@@ -6681,9 +6720,9 @@ const SpanishCompanyNetworkGraph = ({
               <Slider
                 value={labelSize}
                 onChange={(e, value) => setLabelSize(value)}
-                min={5}
+                min={3}
                 max={18}
-                step={1}
+                step={0.5}
                 size="small"
               />
             </Box>
@@ -6839,20 +6878,20 @@ const SpanishCompanyNetworkGraph = ({
                     ? '#bf8f30'
                     : '#fbc02d';
               }
-              if (link.companyDissolved) return '#e53935'; // DISSOLVED company → officer link not current
+              if (link.companyDissolved) return '#f87171'; // DISSOLVED company → officer link not current
               if (
                 cat.includes('nombramiento') ||
                 cat.includes('reeleccion') ||
                 cat.includes('reelección')
-              ) return '#43a047';
+              ) return '#34d399';
               if (
                 cat.includes('cese') ||
                 cat.includes('dimision') ||
                 cat.includes('dimisión') ||
                 cat.includes('revocacion') ||
                 cat.includes('revocación')
-              ) return '#e53935';
-              return '#90a4ae';
+              ) return '#f87171';
+              return '#64748b';
             }}
             d3AlphaDecay={0.08}
             d3VelocityDecay={0.8}
@@ -6881,7 +6920,7 @@ const SpanishCompanyNetworkGraph = ({
                 startIcon={<PsychologyIcon />}
                 disabled={!launch.canLaunch}
                 // Empty-state launcher is an enabled CTA (focuses the primary
-                // company), but the default outlined primary blue (#1976d2) is
+                // company), but the default outlined primary blue (#14b8a6) is
                 // near-invisible on the dark rgba(18,24,40,.9) Paper. Brighten
                 // to blue[200] with a visible border so it reads on dark.
                 sx={count > 0 ? undefined : {
@@ -6940,9 +6979,9 @@ const SpanishCompanyNetworkGraph = ({
               py: 0.75,
               cursor: 'move',
               userSelect: 'none',
-              background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+              background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
               color: 'white',
-              '&:hover': { background: 'linear-gradient(135deg, #1e88e5 0%, #1976d2 100%)' },
+              '&:hover': { background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)' },
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -7055,7 +7094,7 @@ const SpanishCompanyNetworkGraph = ({
                         fontSize: '0.7rem',
                         py: 0.5,
                         bgcolor: '#f5f5f5',
-                        color: '#1565c0',
+                        color: '#0d9488',
                         width: 32,
                         px: 0.5,
                       }}
@@ -7066,7 +7105,7 @@ const SpanishCompanyNetworkGraph = ({
                         fontSize: '0.7rem',
                         py: 0.5,
                         bgcolor: '#f5f5f5',
-                        color: '#1565c0',
+                        color: '#0d9488',
                       }}
                     >
                       {text.tableCompany}
@@ -7077,7 +7116,7 @@ const SpanishCompanyNetworkGraph = ({
                         fontSize: '0.7rem',
                         py: 0.5,
                         bgcolor: '#f5f5f5',
-                        color: '#1565c0',
+                        color: '#0d9488',
                       }}
                     >
                       {text.tableOfficer}
@@ -7088,7 +7127,7 @@ const SpanishCompanyNetworkGraph = ({
                         fontSize: '0.7rem',
                         py: 0.5,
                         bgcolor: '#f5f5f5',
-                        color: '#1565c0',
+                        color: '#0d9488',
                       }}
                     >
                       {text.tableRole}
@@ -7099,7 +7138,7 @@ const SpanishCompanyNetworkGraph = ({
                         fontSize: '0.7rem',
                         py: 0.5,
                         bgcolor: '#f5f5f5',
-                        color: '#1565c0',
+                        color: '#0d9488',
                       }}
                     >
                       {text.tableType}
@@ -7110,7 +7149,7 @@ const SpanishCompanyNetworkGraph = ({
                         fontSize: '0.7rem',
                         py: 0.5,
                         bgcolor: '#f5f5f5',
-                        color: '#1565c0',
+                        color: '#0d9488',
                       }}
                     >
                       {text.tableDate}
@@ -7132,8 +7171,8 @@ const SpanishCompanyNetworkGraph = ({
                         key={`${row.company}-${row.officer}-${row.position}-${idx}`}
                         hover
                         sx={{
-                          '&:nth-of-type(odd)': { bgcolor: 'rgba(25, 118, 210, 0.03)' },
-                          '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.08)' },
+                          '&:nth-of-type(odd)': { bgcolor: 'rgba(20,184,166, 0.03)' },
+                          '&:hover': { bgcolor: 'rgba(20,184,166, 0.08)' },
                         }}
                       >
                         <TableCell sx={{ py: 0.25, px: 0.5, width: 32 }}>
@@ -7931,7 +7970,7 @@ const SpanishCompanyNetworkGraph = ({
                       {e?.cif && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
-                          <Typography variant="body2">{e.cif}</Typography>
+                          <Typography variant="body2" className="registry-ref">{e.cif}</Typography>
                         </Box>
                       )}
                       {e?.address && (
@@ -7956,7 +7995,7 @@ const SpanishCompanyNetworkGraph = ({
                       {e?.capital && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">{text.capital}</Typography>
-                          <Typography variant="body2">
+                          <Typography variant="body2" className="registry-ref">
                             {e.capital}
                             {e.capitalExternal && (
                               <Typography component="span" variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', ml: 0.5 }}>
@@ -7969,7 +8008,7 @@ const SpanishCompanyNetworkGraph = ({
                       {(e?.firstSeen || e?.lastSeen) && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">{text.bormeRange}</Typography>
-                          <Typography variant="body2">
+                          <Typography variant="body2" className="registry-ref">
                             {e.firstSeen ? formatDate(e.firstSeen, uiLanguage) : '?'} — {e.lastSeen ? formatDate(e.lastSeen, uiLanguage) : '?'}
                           </Typography>
                         </Box>
@@ -7977,7 +8016,7 @@ const SpanishCompanyNetworkGraph = ({
                       {e?.eventCount > 0 && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">{text.publicationsFound}</Typography>
-                          <Typography variant="body2">{e.eventCount}</Typography>
+                          <Typography variant="body2" className="registry-ref">{e.eventCount}</Typography>
                         </Box>
                       )}
                       {e?.hojaHistory?.length > 1 && (
@@ -7985,7 +8024,7 @@ const SpanishCompanyNetworkGraph = ({
                           <Typography variant="caption" color="text.secondary">
                             {text.registrySheetChange}
                           </Typography>
-                          <Typography variant="body2">
+                          <Typography variant="body2" className="registry-ref">
                             {e.hojaHistory.map((h, i) => (
                               `${h.hoja}${h.province ? ` (${h.province})` : ''} ${formatDate(h.first_seen, uiLanguage)} — ${formatDate(h.last_seen, uiLanguage)}`
                             )).join('  →  ')}
@@ -8022,7 +8061,7 @@ const SpanishCompanyNetworkGraph = ({
                   {/* Current officers — grouped by person, sorted by position importance */}
                   {e?.currentOfficers?.length > 0 && (
                     <>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#1976d2' }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#14b8a6' }}>
                         {text.currentOfficers(e.currentOfficers.length)}
                       </Typography>
                       <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>

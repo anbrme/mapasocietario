@@ -437,7 +437,7 @@ export default function DueDiligencePage() {
         </Paper>
 
         {/* Financial Statements add-on */}
-        <Paper elevation={0} sx={{ width: '100%', p: 3, bgcolor: 'rgba(25,118,210,0.04)', border: '1px solid rgba(25,118,210,0.15)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
+        <Paper elevation={0} sx={{ width: '100%', p: 3, bgcolor: 'rgba(20,184,166,0.04)', border: '1px solid rgba(20,184,166,0.15)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
           <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 1.5 }}>
             <AccountBalanceIcon sx={{ color: 'primary.main', mt: 0.25, fontSize: 28 }} />
             <Box>
@@ -458,7 +458,7 @@ export default function DueDiligencePage() {
             {t.serviceBy.label}
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-            <Box sx={{ width: 48, height: 48, borderRadius: 1.5, bgcolor: 'rgba(25,118,210,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', flexShrink: 0 }}>
+            <Box sx={{ width: 48, height: 48, borderRadius: 1.5, bgcolor: 'rgba(20,184,166,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', flexShrink: 0 }}>
               <BusinessCenterIcon sx={{ fontSize: 24 }} />
             </Box>
             <Box sx={{ flex: 1 }}>

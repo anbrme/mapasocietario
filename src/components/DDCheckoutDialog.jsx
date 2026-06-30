@@ -878,9 +878,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           sx={{
             p: 2,
             borderRadius: 1.5,
-            bgcolor: includeFS ? 'rgba(25,118,210,0.06)' : 'rgba(255,255,255,0.02)',
+            bgcolor: includeFS ? 'rgba(20,184,166,0.06)' : 'rgba(255,255,255,0.02)',
             border: '1px solid',
-            borderColor: includeFS ? 'rgba(25,118,210,0.2)' : 'rgba(255,255,255,0.06)',
+            borderColor: includeFS ? 'rgba(20,184,166,0.2)' : 'rgba(255,255,255,0.06)',
             transition: 'all 0.2s',
           }}
         >
@@ -919,8 +919,8 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               mt: 1.5,
               p: 1.5,
               borderRadius: 1.5,
-              bgcolor: 'rgba(25,118,210,0.04)',
-              border: '1px solid rgba(25,118,210,0.16)',
+              bgcolor: 'rgba(20,184,166,0.04)',
+              border: '1px solid rgba(20,184,166,0.16)',
             }}
           >
             <TextField
@@ -1136,7 +1136,7 @@ function FallbackRadioOption({ value, label, description }) {
         alignItems: 'flex-start',
         '&:has(.Mui-checked)': {
           borderColor: 'rgba(144,202,249,0.5)',
-          bgcolor: 'rgba(25,118,210,0.12)',
+          bgcolor: 'rgba(20,184,166,0.12)',
         },
       }}
     />

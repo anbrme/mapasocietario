@@ -14,8 +14,8 @@ export default function LegalDisclaimer({ dense = false, language = 'en', sx = {
       variant="outlined"
       sx={{
         textAlign: 'left',
-        bgcolor: 'rgba(25,118,210,0.04)',
-        borderColor: 'rgba(25,118,210,0.24)',
+        bgcolor: 'rgba(20,184,166,0.04)',
+        borderColor: 'rgba(20,184,166,0.24)',
         '& .MuiAlert-message': { width: '100%' },
         ...sx,
       }}

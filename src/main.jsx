@@ -147,14 +147,14 @@ window.addEventListener('vite:preloadError', () => {
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
-    primary: { main: '#1976d2' },
+    primary: { main: '#14b8a6', light: '#2dd4bf', dark: '#0d9488' },
     background: {
       default: '#0a0e1a',
       paper: '#121828',
     },
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"IBM Plex Sans", "Roboto", "Helvetica", "Arial", sans-serif',
   },
 });
 
