@@ -240,7 +240,7 @@ const SEARCH_COPY = {
     nodeSize: 'Node size',
     labelSize: 'Label size',
     colorByNetworks: 'Color by networks',
-    edgeLength: 'Edge length',
+    spacing: 'Spacing',
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     center: 'Center',
@@ -473,7 +473,7 @@ const SEARCH_COPY = {
     nodeSize: 'Tamaño de nodos',
     labelSize: 'Tamaño de etiquetas',
     colorByNetworks: 'Colorear por redes',
-    edgeLength: 'Longitud de enlaces',
+    spacing: 'Separación',
     zoomIn: 'Acercar',
     zoomOut: 'Alejar',
     center: 'Centrar',
@@ -6694,13 +6694,13 @@ const SpanishCompanyNetworkGraph = ({
             }}
           >
             <Box>
-              <Typography variant="caption">{text.edgeLength}</Typography>
+              <Typography variant="caption">{text.spacing}</Typography>
               <Slider
-                value={linkDistance}
-                onChange={(e, value) => setLinkDistance(value)}
-                min={30}
-                max={160}
-                step={5}
+                value={-chargeStrength}
+                onChange={(e, value) => setChargeStrength(-value)}
+                min={80}
+                max={700}
+                step={20}
                 size="small"
               />
             </Box>
