@@ -466,7 +466,12 @@ class SpanishCompanyTermsParser {
    * Extract by direct position patterns (Position: Name format) - IMPROVED
    */
   extractByDirectPatterns(fullEntry, result) {
+    // Defense-in-depth: collapse erroneous spaces inside Spanish legal-form
+    // abbreviations ("DELOITTE S. L." -> "DELOITTE S.L.") BEFORE the period-split
+    // below, so a corporate-officer name isn't truncated to "DELOITTE S". The
+    // authoritative fix lives in the backend parser; this guards the fallback path.
     const lines = fullEntry
+      .replace(/\b([A-ZÑ])\.\s+(?=[A-ZÑ](?:[.\s;]|$))/g, '$1.')
       .split(/[.\n\r]/)
       .map(l => l.trim())
       .filter(l => l.length > 0);
@@ -819,7 +824,10 @@ class SpanishCompanyTermsParser {
     const officers = [];
 
     // Look for officer position patterns in the text
+    // Defense-in-depth: collapse spaced legal-form abbreviations ("S. L." -> "S.L.")
+    // before the period-split so corporate-officer names aren't truncated.
     const lines = text
+      .replace(/\b([A-ZÑ])\.\s+(?=[A-ZÑ](?:[.\s;]|$))/g, '$1.')
       .split(/[.\n\r]/)
       .map(l => l.trim())
       .filter(l => l.length > 5);
