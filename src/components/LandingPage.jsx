@@ -3,7 +3,6 @@ import { Box, Typography, Button, Link, Paper, Chip, Accordion, AccordionSummary
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import SearchIcon from '@mui/icons-material/Search';
 import TouchAppIcon from '@mui/icons-material/TouchApp';
 import PreviewIcon from '@mui/icons-material/Preview';
@@ -14,6 +13,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
+import HeroNetwork from './HeroNetwork';
 import { LANDING_COPY } from './landingCopy';
 import { siteNav } from '../utils/siteNav';
 import { statsService } from '../services/statsService';
@@ -110,10 +110,6 @@ export default function LandingPage({ lang = 'en' }) {
       /* storage unavailable (private mode, etc.) — just show the guide */
     }
   }, [redirecting, navigate, lang]);
-
-  // Never render a broken image: if public/graph-demo.png is missing, fall
-  // back to a tasteful placeholder that still links into the live graph.
-  const [demoImgOk, setDemoImgOk] = React.useState(true);
 
   // Live coverage figures — start from the static fallback (instant render, no
   // layout shift) and refine from the overview endpoint when it resolves.
@@ -212,7 +208,7 @@ export default function LandingPage({ lang = 'en' }) {
                   size="large"
                   startIcon={<SearchIcon />}
                   onClick={openGraph}
-                  sx={{ textTransform: 'none', fontWeight: 600, px: 4.5, py: 1.5, fontSize: '1.05rem', borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#1565c0' } }}
+                  sx={{ textTransform: 'none', fontWeight: 600, px: 4.5, py: 1.5, fontSize: '1.05rem', borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#0d9488' } }}
                 >
                   {copy.hero.openCta}
                 </Button>
@@ -245,29 +241,17 @@ export default function LandingPage({ lang = 'en' }) {
 
             {/* Right: live graph demo (graceful fallback until graph-demo.png exists) */}
             <Box>
-              <Box sx={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', bgcolor: '#0d1220', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
-                <Box component="a" href={demoHref} sx={{ display: 'block' }}>
-                  {demoImgOk ? (
-                    <Box
-                      component="img"
-                      src="/graph-demo.png"
-                      alt={copy.howItWorks.demoAlt}
-                      onError={() => setDemoImgOk(false)}
-                      sx={{ display: 'block', width: '100%', height: 'auto' }}
-                    />
-                  ) : (
-                    <Box
-                      sx={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5,
-                        aspectRatio: '16 / 9', width: '100%',
-                        background: 'radial-gradient(ellipse 60% 60% at 50% 45%, rgba(25,118,210,0.18) 0%, transparent 70%)',
-                        color: 'text.secondary',
-                      }}
-                    >
-                      <AccountTreeIcon sx={{ fontSize: 48, color: 'primary.main', opacity: 0.8 }} />
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{copy.howItWorks.demoFallback}</Typography>
-                    </Box>
-                  )}
+              <Box sx={{ borderRadius: 2, border: '1px solid rgba(20,184,166,0.18)', overflow: 'hidden', bgcolor: '#0d1220', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
+                <Box
+                  component="a"
+                  href={demoHref}
+                  aria-label={copy.howItWorks.demoCta}
+                  sx={{
+                    display: 'block', position: 'relative', width: '100%', aspectRatio: '16 / 9',
+                    background: 'radial-gradient(ellipse 70% 70% at 50% 45%, rgba(20,184,166,0.10) 0%, transparent 70%)',
+                  }}
+                >
+                  <HeroNetwork ariaLabel={copy.howItWorks.demoAlt} />
                 </Box>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
@@ -281,13 +265,13 @@ export default function LandingPage({ lang = 'en' }) {
         </Section>
 
         {/* ---- STATS / BY THE NUMBERS ---- */}
-        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(25,118,210,0.04)' }}>
+        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(20,184,166,0.04)' }}>
           <Section sx={{ py: { xs: 4, sm: 5 } }}>
             <SectionHeading heading={copy.stats.heading} sub={copy.stats.sub} />
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' }, gap: { xs: 2.5, sm: 2 } }}>
               {copy.stats.items.map((item) => (
                 <Box key={item.key} sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
-                  <Typography component="div" sx={{ fontWeight: 700, letterSpacing: '-0.02em', color: 'primary.light', fontSize: { xs: '1.85rem', sm: '2.25rem' }, lineHeight: 1.05 }}>
+                  <Typography component="div" className="registry-ref" sx={{ fontWeight: 700, letterSpacing: '-0.01em', color: 'primary.light', fontSize: { xs: '1.85rem', sm: '2.25rem' }, lineHeight: 1.05 }}>
                     {fmtMillions(stats[STAT_FIELD[item.key]] ?? STAT_FALLBACK[STAT_FIELD[item.key]])}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4, display: 'block', mt: 0.5 }}>
@@ -298,7 +282,7 @@ export default function LandingPage({ lang = 'en' }) {
             </Box>
             <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', mt: 3, letterSpacing: '0.02em' }}>
               {copy.stats.sinceLabel}{' '}
-              <Box component="span" sx={{ color: 'text.secondary', fontWeight: 700 }}>{copy.stats.sinceValue}</Box>
+              <Box component="span" className="registry-ref" sx={{ color: 'text.secondary', fontWeight: 700 }}>{copy.stats.sinceValue}</Box>
             </Typography>
           </Section>
         </Box>
@@ -311,7 +295,7 @@ export default function LandingPage({ lang = 'en' }) {
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 2 }}>
               {copy.howItWorks.steps.map((step, i) => (
                 <Box key={i} sx={{ p: 2.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.07)', bgcolor: 'rgba(255,255,255,0.02)' }}>
-                  <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'rgba(25,118,210,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 19 } }}>
+                  <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'rgba(20,184,166,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 19 } }}>
                     {STEP_ICONS[i]}
                   </Box>
                   <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{step.title}</Typography>
@@ -327,12 +311,12 @@ export default function LandingPage({ lang = 'en' }) {
           <SectionHeading heading={copy.reports.heading} sub={copy.reports.sub} />
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5, alignItems: 'start' }}>
             {/* Due Diligence (paid) */}
-            <Paper elevation={0} sx={{ p: 3, bgcolor: 'rgba(255,167,38,0.05)', border: '1px solid rgba(255,167,38,0.3)', borderRadius: 2, height: '100%' }}>
+            <Paper elevation={0} sx={{ p: 3, bgcolor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 2, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <DescriptionIcon sx={{ color: 'warning.main' }} />
+                <DescriptionIcon sx={{ color: 'primary.light' }} />
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.dd.title}</Typography>
               </Box>
-              <Chip label={copy.reports.dd.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'warning.main', color: '#1a1205', mb: 1.5 }} />
+              <Chip label={copy.reports.dd.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(255,255,255,0.08)', color: 'text.primary', border: '1px solid rgba(255,255,255,0.15)', mb: 1.5 }} />
               <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.6, mb: 1.5 }}>
                 {copy.reports.dd.desc}
               </Typography>
@@ -350,23 +334,23 @@ export default function LandingPage({ lang = 'en' }) {
                   size="small"
                   startIcon={<DescriptionIcon />}
                   onClick={() => navigate(nav.reports)}
-                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, bgcolor: 'warning.main', color: '#1a1205', '&:hover': { bgcolor: 'warning.dark' } }}
+                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, bgcolor: 'primary.main', color: '#04231f', '&:hover': { bgcolor: 'primary.dark' } }}
                 >
                   {copy.reports.dd.buyCta}
                 </Button>
-                <Link href="/sample-dd-report.pdf" target="_blank" rel="noopener" variant="caption" sx={{ color: 'warning.light', fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                <Link href="/sample-dd-report.pdf" target="_blank" rel="noopener" variant="caption" sx={{ color: 'primary.light', fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
                   {copy.reports.dd.sampleCta}
                 </Link>
               </Box>
             </Paper>
 
             {/* Relationship report (free) */}
-            <Paper elevation={0} sx={{ p: 3, bgcolor: 'rgba(25,118,210,0.05)', border: '1px solid rgba(25,118,210,0.25)', borderRadius: 2, height: '100%' }}>
+            <Paper elevation={0} sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <HubIcon sx={{ color: 'primary.light' }} />
+                <HubIcon sx={{ color: 'text.secondary' }} />
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.rel.title}</Typography>
               </Box>
-              <Chip label={copy.reports.rel.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'primary.main', color: '#fff', mb: 1.5 }} />
+              <Chip label={copy.reports.rel.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(255,255,255,0.08)', color: 'text.primary', border: '1px solid rgba(255,255,255,0.15)', mb: 1.5 }} />
               <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.6 }}>
                 {copy.reports.rel.desc}
               </Typography>
@@ -407,7 +391,7 @@ export default function LandingPage({ lang = 'en' }) {
         </Section>
 
         {/* ---- BOOKMARK CALLOUT ---- */}
-        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(25,118,210,0.08) 0%, transparent 70%)' }}>
+        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,184,166,0.08) 0%, transparent 70%)' }}>
           <Section sx={{ textAlign: 'center' }}>
             <BookmarkBorderIcon sx={{ fontSize: 36, color: 'primary.light', mb: 1.5 }} />
             <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1.5, letterSpacing: '-0.02em' }}>
@@ -426,7 +410,7 @@ export default function LandingPage({ lang = 'en' }) {
                 size="large"
                 startIcon={<SearchIcon />}
                 onClick={openGraph}
-                sx={{ textTransform: 'none', fontWeight: 600, px: 4, py: 1.5, borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#1565c0' } }}
+                sx={{ textTransform: 'none', fontWeight: 600, px: 4, py: 1.5, borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#0d9488' } }}
               >
                 {copy.bookmark.cta}
               </Button>

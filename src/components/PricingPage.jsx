@@ -243,7 +243,7 @@ export default function PricingPage() {
             <Paper
               component="section"
               elevation={0}
-              sx={{ p: { xs: 2.5, sm: 4 }, bgcolor: 'rgba(25,118,210,0.06)', border: '1px solid rgba(25,118,210,0.25)', borderRadius: 3 }}
+              sx={{ p: { xs: 2.5, sm: 4 }, bgcolor: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.25)', borderRadius: 3 }}
             >
               <Box sx={{ color: 'primary.light', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 26 } }}><GroupsIcon /></Box>
               <Typography variant="h6" component="h2" sx={{ fontWeight: 750, mb: 1 }}>

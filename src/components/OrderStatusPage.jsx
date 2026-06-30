@@ -547,7 +547,7 @@ export default function OrderStatusPage() {
   // (generating / processing / ready) so the waiting buyer sees it here and
   // never has to dig it out of the receipt email (which only links back here).
   const aiCodeBlock = aiCode ? (
-    <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'rgba(25,118,210,0.08)', border: '1px solid rgba(25,118,210,0.3)' }}>
+    <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.3)' }}>
       <Typography variant="body2" color="text.secondary">
         {copy.aiCode.label}
       </Typography>

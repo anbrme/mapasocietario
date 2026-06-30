@@ -38,8 +38,8 @@ export const LANDING_COPY = {
     howItWorks: {
       heading: 'How it works',
       sub: 'Three steps from a name to a connected corporate picture.',
-      demoCaption: 'Real BORME data: the board and corporate connections of ACERINOX SA.',
-      demoCta: 'Open this graph live →',
+      demoCaption: 'How the graph maps companies, officers, and their connections from BORME. Search any company to explore the live data.',
+      demoCta: 'Explore the live graph →',
       demoAlt: 'Interactive BORME corporate relationship graph of a Spanish company: directors, officers and connected companies',
       demoFallback: 'Interactive relationship graph',
       steps: [
@@ -185,8 +185,8 @@ export const LANDING_COPY = {
     howItWorks: {
       heading: 'Cómo funciona',
       sub: 'Tres pasos para pasar de un nombre a una visión societaria conectada.',
-      demoCaption: 'Datos reales del BORME: el consejo y las conexiones societarias de ACERINOX SA.',
-      demoCta: 'Abrir este grafo en vivo →',
+      demoCaption: 'Cómo el grafo conecta empresas, administradores y sus relaciones societarias del BORME. Busca cualquier empresa para explorar los datos en vivo.',
+      demoCta: 'Explorar el grafo en vivo →',
       demoAlt: 'Grafo interactivo de relaciones societarias BORME de una empresa española: administradores, cargos y empresas conectadas',
       demoFallback: 'Grafo de relaciones interactivo',
       steps: [

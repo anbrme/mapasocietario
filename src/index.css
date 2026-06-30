@@ -9,7 +9,18 @@ html, body, #root {
   width: 100%;
   background: #0a0e1a;
   color: #e0e0e0;
-  font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  font-family: 'IBM Plex Sans', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+}
+
+/* Registry data artifacts — official identifiers and figures (NIF/CIF, capital,
+   hoja registral, BORME dates and counts) rendered in monospace so they read as
+   ledger data rather than generic UI text. This is a deliberate, domain-specific
+   texture: it's what makes the product look like a registry tool, not a template.
+   Tabular figures keep digits column-aligned. */
+.registry-ref {
+  font-family: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: 0.01em;
 }
 
 /* Hide prerendered static content once JS is available.
@@ -49,7 +60,7 @@ html, body, #root {
     max-height: none !important; overflow: visible !important;
     color: #000; background: #fff;
     padding: 0 8px !important;
-    font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
+    font-family: 'IBM Plex Sans', 'Helvetica', 'Arial', sans-serif;
   }
   .rel-report-no-print { display: none !important; }
 
@@ -61,14 +72,14 @@ html, body, #root {
   }
 
   .rel-report-print-header {
-    border-bottom: 2px solid #1976d2;
+    border-bottom: 2px solid #14b8a6;
     padding-bottom: 10px;
     margin-bottom: 16px;
   }
   .rel-report-brand {
     font-size: 20px; font-weight: 800; letter-spacing: 0.3px; color: #102a43;
   }
-  .rel-report-brand span { color: #1976d2; }
+  .rel-report-brand span { color: #14b8a6; }
   .rel-report-doc-title {
     font-size: 16px; font-weight: 700; margin-top: 4px; color: #102a43;
   }
