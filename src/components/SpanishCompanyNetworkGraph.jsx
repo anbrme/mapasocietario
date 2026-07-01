@@ -80,6 +80,7 @@ import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
+import ApoderadosDialog from './ApoderadosDialog';
 import LegalDisclaimer from './LegalDisclaimer';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import PsychologyIcon from '@mui/icons-material/Psychology';
@@ -184,6 +185,7 @@ const SEARCH_COPY = {
     officer: 'Officer',
     officers: 'Officers',
     officersPerCompany: 'Officers/company',
+    showApoderados: 'Show apoderados',
     searchCompanyPlaceholder: 'Search company...',
     searchOfficerPlaceholder: 'Search officer...',
     searchUnifiedPlaceholder: 'Search a company or person…',
@@ -417,6 +419,7 @@ const SEARCH_COPY = {
     officer: 'Directivo',
     officers: 'Directivos',
     officersPerCompany: 'Cargos/empresa',
+    showApoderados: 'Ver apoderados',
     searchCompanyPlaceholder: 'Buscar empresa...',
     searchOfficerPlaceholder: 'Buscar directivo...',
     searchUnifiedPlaceholder: 'Busca una empresa o persona…',
@@ -1199,6 +1202,11 @@ const SpanishCompanyNetworkGraph = ({
   // clears it. (Derived-from-lastSearchContext was fragile: exploring the graph
   // moved the subject off the company the user was actually investigating.)
   const [primarySubject, setPrimarySubject] = useState(null);
+
+  // On-demand apoderados dialog state (company nodes only). Fetches the FULL
+  // officer list (full_officers=1) so a user can reach a specific apoderado that
+  // the default capped/simplified graph hides.
+  const [apoderadosDialog, setApoderadosDialog] = useState({ open: false, company: null });
 
   // Officer timeline dialog state
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
@@ -7668,6 +7676,20 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.buyDueDiligence}</ListItemText>
             </MenuItem>
           )}
+          {contextNode && contextNode.type === 'spanish-company-group' && (
+            <MenuItem
+              onClick={() => {
+                const n = contextNode;
+                closeNodeContextMenu();
+                if (n) setApoderadosDialog({ open: true, company: { name: n.name, groupKey: n.groupKey || null } });
+              }}
+            >
+              <ListItemIcon>
+                <PersonIcon fontSize="small" color="action" />
+              </ListItemIcon>
+              <ListItemText>{text.showApoderados}</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem onClick={hideNodeFromMenu}>
             <ListItemIcon>
               <VisibilityOffIcon fontSize="small" />
@@ -7688,6 +7710,38 @@ const SpanishCompanyNetworkGraph = ({
             <ListItemText>{text.deleteNode}</ListItemText>
           </MenuItem>
         </Menu>
+
+        <ApoderadosDialog
+          open={apoderadosDialog.open}
+          company={apoderadosDialog.company}
+          lang={language}
+          onClose={() => setApoderadosDialog({ open: false, company: null })}
+          onPin={(officer) => {
+            const companyName = apoderadosDialog.company?.name;
+            if (!companyName) return;
+            // Route resigned apoderados into ceses_dimisiones so the link renders
+            // as ceased; active ones go into nombramientos. Either way this just
+            // adds the officer node + company link (MVP: no full event semantics).
+            const isResigned = officer.status === 'resigned';
+            const officerItem = { name: officer.name, position: officer.position };
+            const entry = {
+              name: companyName,
+              company_name: companyName,
+              parsed: {
+                officers: {
+                  nombramientos: isResigned ? [] : [officerItem],
+                  reelecciones: [],
+                  ceses_dimisiones: isResigned ? [officerItem] : [],
+                  revocaciones: [],
+                },
+              },
+              officers: [],
+              parsed_details: {},
+              entry_type: [],
+            };
+            addCompanyWithOfficersToGraph([entry]);
+          }}
+        />
 
         <Dialog
           open={isEditNodeDialogOpen}
