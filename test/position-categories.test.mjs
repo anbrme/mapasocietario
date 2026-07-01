@@ -57,6 +57,24 @@ test('comisión / junta organ roles map to Vocal / Comisión', () => {
   }
 });
 
+test('a chair OF a committee is an organ role, not the apical Presidente', () => {
+  // The "Presidente" chip must surface the company-level chair, not committee
+  // chairs. Presidente/Pdte./Pte. de una Comisión (Ejecutiva, Nombramientos y
+  // Retribuciones, Auditoría, Estrategia…) belongs under Vocal / Comisión.
+  // (CaixaBank: PTE.C.EJ and PRES.NOMB.RE were wrongly under "Presidente".)
+  for (const pos of ['PTE.C.EJ', 'PRES.NOMB.RE', 'PDTE.COM.CYA', 'PDTE.CTE.NYR',
+                     'PTE.COM.EJCR', 'PTE.COM.INV', 'PTE.COM.RET.', 'PTE.COMI.RES',
+                     'PTE.COMIT.AU', 'PTE. C. AUD.', 'PTE ESTRATEG']) {
+    assert.equal(positionCategoryFor(pos), 'Vocal / Comisión', pos);
+  }
+  // …while genuinely apical chairs stay Presidente — including the non-executive
+  // Chair (PRE.NO.EJEC. = Presidente No Ejecutivo), which is apical, not a committee.
+  for (const pos of ['PRESIDENTE', 'PDTE.', 'COPRESIDENTE', 'PRES.EJECUT.',
+                     'PRES.HONORI.', 'PRES.SUPLEN.', 'PRE.NO.EJEC.']) {
+    assert.equal(positionCategoryFor(pos), 'Presidente', pos);
+  }
+});
+
 test('apoderado variants map to Apoderado', () => {
   for (const pos of ['APODERADO', 'APO.SOL.', 'Apo.Man.Soli', 'APOD.MANCOMU', 'APD.SOL', 'DTOR.APO.SUC']) {
     assert.equal(positionCategoryFor(pos), 'Apoderado', pos);

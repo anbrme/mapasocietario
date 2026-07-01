@@ -30,11 +30,19 @@ export const POSITION_CATEGORY_ORDER = [
 // junta, consejo rector, asamblea). COM(?!ISAR|SAR|ISIN) keeps COMISARIO /
 // COMSARIO / COMISINOBLI (bondholder-syndicate trustees) out — those are
 // "Otros", not commission members.
-const ORGAN_CONTEXT = /COM(?!ISAR|SAR|ISIN)|CMS|CMTE|CTE[.\s]|JTA|JUNTA|JUN[.\s]|J\.\s?DIR|J\.\s?ADM|J\.\s?G|J\.\s?REC|J\.D\b|J\.R\b|JT\.\s?DI|CON[S]?\.?\s?RE[CG]?\b|C\.\s?RE[CT]|C\.PERM|CJO|ASAMBL|CONS\.GO|CON\.GOB|CONADM|CONS\.\s?LIQ|C\.DIR|CO\.E|C\.C\.|C\.D\.|C\.N\.|C\.A\.|CO\.DE|C\.RIESGO|C\.SEGURI|C\.INV|C\.RET|C\.PRO|C\.AUD/;
+// NOTE: committee-chair tokens (C.EJ = comité ejecutivo, NOMB/NYR = comisión de
+// nombramientos [y retribuciones], spaced "C. AUD" = comité de auditoría,
+// ESTRATEG = comisión de estrategia) are included so a chair OF such a committee
+// (PTE.C.EJ, PRES.NOMB.RE, PTE. C. AUD.…) is an organ role, NOT the company-level
+// apical "Presidente". Bare board-chair forms (PRESIDENTE, PDTE.) carry no organ
+// token and stay "Presidente".
+const ORGAN_CONTEXT = /COM(?!ISAR|SAR|ISIN)|CMS|CMTE|CTE[.\s]|JTA|JUNTA|JUN[.\s]|J\.\s?DIR|J\.\s?ADM|J\.\s?G|J\.\s?REC|J\.D\b|J\.R\b|JT\.\s?DI|CON[S]?\.?\s?RE[CG]?\b|C\.\s?RE[CT]|C\.PERM|CJO|ASAMBL|CONS\.GO|CON\.GOB|CONADM|CONS\.\s?LIQ|C\.DIR|CO\.E|C\.C\.|C\.D\.|C\.N\.|C\.A\.|CO\.DE|C\.RIESGO|C\.SEGURI|C\.INV|C\.RET|C\.PRO|C\.\s?AUD|C\.EJ|NOMB|NYR|ESTRATEG/;
 
 // Role-prefix shapes that combine with ORGAN_CONTEXT (pre/vice/sec/tes/vocal/
 // member/suplente abbreviations, down to single letters like "P.COM.EJEC.").
-const ORGAN_ROLE_PREFIX = /^(P\b|P\.|PR\b|PR\.|PRE|PRES|V\b|V\.|V-|VP|VPR|VPRE|VPTE|VICE|VIC|VS|VSE|VSEC|VCS|VCP|S\b|S\.|SC|SCR|SCT|SE\.|SEC|VOC|VO\.|VOTI|VOSU|MIE|MIEM|MMBR|MBRO|MRO|M\.|TES|SUPL|SUP\b|SUP\.|VTE|CO\.|COPRE)/;
+// PTE/PDTE (presidente del comité/comisión) are here so a committee chair
+// resolves via ORGAN_CONTEXT above rather than falling through to "Presidente".
+const ORGAN_ROLE_PREFIX = /^(P\b|P\.|PR\b|PR\.|PRE|PRES|PTE|PDTE|V\b|V\.|V-|VP|VPR|VPRE|VPTE|VICE|VIC|VS|VSE|VSEC|VCS|VCP|S\b|S\.|SC|SCR|SCT|SE\.|SEC|VOC|VO\.|VOTI|VOSU|MIE|MIEM|MMBR|MBRO|MRO|M\.|TES|SUPL|SUP\b|SUP\.|VTE|CO\.|COPRE)/;
 
 export const positionCategoryFor = pos => {
   const p = (pos || '').trim().toUpperCase();
@@ -55,7 +63,9 @@ export const positionCategoryFor = pos => {
     return 'Vocal / Comisión';
   }
 
-  if (/^(PRESIDENT|PDTE|PTE\b|PTE\.|PRES|PRESID|COPRE)/.test(p)) return 'Presidente';
+  // PRE.NO.EJEC. = Presidente No Ejecutivo (non-executive Chair) — the apical
+  // board chair, NOT a committee (it reaches here because it has no organ token).
+  if (/^(PRESIDENT|PDTE|PTE\b|PTE\.|PRES|PRESID|COPRE|PRE\.NO)/.test(p)) return 'Presidente';
   if (/^(VICEPRESIDEN|VICEPRESID|VICEPRESI|VICEPRE|VICEPR|VICPRES|VICPTE|VICEPTE|VPDTE|V-PRE|VPRE|VPTE)/.test(p)) return 'Vicepresidente';
   if (/^(CONSEJER|CONSEJ|CONSJ|CONS[.\s]|CON\.)/.test(p)) return 'Consejero';
   if (/^(ADMINISTRADOR|ADMINISTRAD|ADMINISTR|ADMIN|ADM[.\s]|ADMR|ADMOR|ADMPROV)/.test(p)) return 'Administrador';
