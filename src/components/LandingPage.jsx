@@ -198,9 +198,18 @@ export default function LandingPage({ lang = 'en' }) {
               </Typography>
               <Typography
                 variant="body1"
-                sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: { xs: '0.95rem', sm: '1.1rem' }, mb: 3.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
+                sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: { xs: '0.95rem', sm: '1.1rem' }, mb: 1.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
               >
                 {copy.hero.subtitle}
+              </Typography>
+              {/* Compact, keyword-dense definition line — gives Google a strong,
+                  intent-matching snippet target high in the DOM instead of the
+                  step-by-step "How it works" text it currently lifts. */}
+              <Typography
+                variant="body2"
+                sx={{ color: 'text.disabled', lineHeight: 1.55, fontSize: { xs: '0.85rem', sm: '0.9rem' }, mb: 3.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
+              >
+                {copy.hero.intro}
               </Typography>
               <Box sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                 <Button

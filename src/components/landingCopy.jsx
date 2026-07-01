@@ -28,6 +28,8 @@ export const LANDING_COPY = {
       h1: 'Spanish company search and relationship intelligence',
       subtitle:
         'Search a company or officer and see who is connected to whom in an interactive BORME graph. Turn findings into due diligence reports when you need documentation.',
+      intro:
+        'Mapa Societario is a free Spanish company search engine to investigate companies, directors, ownership structures, corporate relationships, BORME filings and historical management changes.',
       openCta: 'Open the relationship graph',
       bookmarkTip: 'Tip: bookmark the graph so you can jump straight into relationship analysis next time.',
     },
@@ -45,7 +47,7 @@ export const LANDING_COPY = {
       steps: [
         {
           title: '1 · Start with a company or officer',
-          desc: 'Type a company or a director’s name. Use the toggle to switch between company and officer search, then pick a suggestion to load it into the graph.',
+          desc: 'Search any Spanish company or director to explore its ownership, management history, corporate relationships and official BORME filings. Use the toggle to switch between company and officer search, then pick a suggestion to open it in the graph.',
         },
         {
           title: '2 · Explore the graph',
@@ -175,6 +177,8 @@ export const LANDING_COPY = {
       h1: 'Inteligencia de relaciones societarias en España',
       subtitle:
         'Busca una empresa o administrador y entiende quién está conectado con quién en un grafo BORME interactivo. Convierte los hallazgos en informes due diligence cuando necesites documentación.',
+      intro:
+        'Mapa Societario es un buscador gratuito de empresas españolas para investigar empresas, administradores, estructuras de propiedad, relaciones societarias, publicaciones del BORME y cambios históricos en la administración.',
       openCta: 'Abrir el grafo de relaciones',
       bookmarkTip: 'Consejo: guarda el grafo en marcadores para entrar directamente al análisis de relaciones la próxima vez.',
     },
@@ -192,7 +196,7 @@ export const LANDING_COPY = {
       steps: [
         {
           title: '1 · Empieza con una empresa o administrador',
-          desc: 'Escribe el nombre de una empresa o de un administrador. Usa el conmutador para alternar entre búsqueda de empresas y de personas, y elige una sugerencia para cargarla en el grafo.',
+          desc: 'Busca cualquier empresa o administrador español para explorar su propiedad, historial de administradores, relaciones societarias y publicaciones oficiales del BORME. Usa el conmutador para alternar entre búsqueda de empresas y de personas, y elige una sugerencia para abrirla en el grafo.',
         },
         {
           title: '2 · Explora el grafo',
