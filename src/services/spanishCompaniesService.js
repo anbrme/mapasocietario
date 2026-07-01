@@ -378,7 +378,7 @@ class SpanishCompaniesService {
    * Returns company-level aggregate docs with officers_active/officers_resigned.
    */
   async searchCompaniesV3(query, options = {}) {
-    const { size = 20, exact = false, groupKey = null, analyticsSource = null } = options;
+    const { size = 20, exact = false, groupKey = null, analyticsSource = null, fullOfficers = false } = options;
     const params = new URLSearchParams({
       size: size.toString(),
       exact: exact.toString(),
@@ -386,6 +386,9 @@ class SpanishCompaniesService {
     // group_key is a direct, name-independent lookup (renamed companies are stored
     // under their CURRENT name, so a historical name can't find the survivor doc).
     if (groupKey) params.set('group_key', groupKey);
+    // full_officers=1 returns the COMPLETE officer list (no 1000/500 cap). Only
+    // used on demand (e.g. the apoderados dialog); default behaviour is untouched.
+    if (fullOfficers) params.set('full_officers', '1');
     if (query) params.set('query', query);
     const response = await this.fetchWithRetry(
       `${this.baseUrl}/bormes/v3/search?${params}`,
@@ -479,7 +482,7 @@ class SpanishCompaniesService {
    *              renamed "NAMISA INTERNATIONAL MINERIOS SL" = H:M-396846).
    */
   async getCompanyProfileV3(companyName, options = {}) {
-    const { groupKey = null, analyticsSource = null } = options;
+    const { groupKey = null, analyticsSource = null, fullOfficers = false } = options;
 
     if (groupKey) {
       // The v3 search returns aggregate company docs carrying their group_key as
@@ -496,6 +499,7 @@ class SpanishCompaniesService {
           size: 10,
           groupKey: wanted,
           analyticsSource,
+          fullOfficers,
         });
         const results = searchData.results || [];
         const match = results.find(
@@ -509,8 +513,11 @@ class SpanishCompaniesService {
       }
     }
 
+    const nameUrl = `${this.baseUrl}/bormes/v3/company/${encodeURIComponent(companyName)}${
+      fullOfficers ? '?full_officers=1' : ''
+    }`;
     const response = await this.fetchWithRetry(
-      `${this.baseUrl}/bormes/v3/company/${encodeURIComponent(companyName)}`,
+      nameUrl,
       {
         method: 'GET',
         headers: analyticsSource ? { 'X-Mapasocietario-User-Search': analyticsSource } : undefined,
