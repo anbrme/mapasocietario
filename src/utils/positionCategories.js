@@ -63,7 +63,9 @@ export const positionCategoryFor = pos => {
     return 'Vocal / Comisión';
   }
 
-  if (/^(PRESIDENT|PDTE|PTE\b|PTE\.|PRES|PRESID|COPRE)/.test(p)) return 'Presidente';
+  // PRE.NO.EJEC. = Presidente No Ejecutivo (non-executive Chair) — the apical
+  // board chair, NOT a committee (it reaches here because it has no organ token).
+  if (/^(PRESIDENT|PDTE|PTE\b|PTE\.|PRES|PRESID|COPRE|PRE\.NO)/.test(p)) return 'Presidente';
   if (/^(VICEPRESIDEN|VICEPRESID|VICEPRESI|VICEPRE|VICEPR|VICPRES|VICPTE|VICEPTE|VPDTE|V-PRE|VPRE|VPTE)/.test(p)) return 'Vicepresidente';
   if (/^(CONSEJER|CONSEJ|CONSJ|CONS[.\s]|CON\.)/.test(p)) return 'Consejero';
   if (/^(ADMINISTRADOR|ADMINISTRAD|ADMINISTR|ADMIN|ADM[.\s]|ADMR|ADMOR|ADMPROV)/.test(p)) return 'Administrador';

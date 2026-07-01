@@ -67,9 +67,10 @@ test('a chair OF a committee is an organ role, not the apical Presidente', () =>
                      'PTE.COMIT.AU', 'PTE. C. AUD.', 'PTE ESTRATEG']) {
     assert.equal(positionCategoryFor(pos), 'Vocal / Comisión', pos);
   }
-  // …while genuinely apical chairs stay Presidente.
+  // …while genuinely apical chairs stay Presidente — including the non-executive
+  // Chair (PRE.NO.EJEC. = Presidente No Ejecutivo), which is apical, not a committee.
   for (const pos of ['PRESIDENTE', 'PDTE.', 'COPRESIDENTE', 'PRES.EJECUT.',
-                     'PRES.HONORI.', 'PRES.SUPLEN.']) {
+                     'PRES.HONORI.', 'PRES.SUPLEN.', 'PRE.NO.EJEC.']) {
     assert.equal(positionCategoryFor(pos), 'Presidente', pos);
   }
 });
