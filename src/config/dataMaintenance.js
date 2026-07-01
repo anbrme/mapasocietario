@@ -1,6 +1,6 @@
 export const DATA_MAINTENANCE = Object.freeze({
-  enabled: false,
-  title: 'A major index upgrade is in progressand is expected to last for 36-40 hours. We recommend you do not buy a due diligence until this notice disappears.',
+  enabled: true,
+  title: 'An index upgrade is in progress and is expected to last for 6 hours. We recommend you do not buy a due diligence - we strongly recommend waiting until this notice disappears.',
   message:
     'Company and officer search remains available while we upgrade the index in the background. Some results may be incomplete or briefly delayed during the upgrade.',
 });
