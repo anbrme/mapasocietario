@@ -80,7 +80,7 @@ import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
-import ApoderadosDialog from './ApoderadosDialog';
+import ApoderadosSidebar from './ApoderadosSidebar';
 import LegalDisclaimer from './LegalDisclaimer';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import PsychologyIcon from '@mui/icons-material/Psychology';
@@ -185,6 +185,7 @@ const SEARCH_COPY = {
     officer: 'Officer',
     officers: 'Officers',
     officersPerCompany: 'Officers/company',
+    fetchAllOfficers: 'Fetch all',
     showApoderados: 'Show apoderados',
     searchCompanyPlaceholder: 'Search company...',
     searchOfficerPlaceholder: 'Search officer...',
@@ -419,6 +420,7 @@ const SEARCH_COPY = {
     officer: 'Directivo',
     officers: 'Directivos',
     officersPerCompany: 'Cargos/empresa',
+    fetchAllOfficers: 'Ver todos',
     showApoderados: 'Ver apoderados',
     searchCompanyPlaceholder: 'Buscar empresa...',
     searchOfficerPlaceholder: 'Buscar directivo...',
@@ -1203,10 +1205,11 @@ const SpanishCompanyNetworkGraph = ({
   // moved the subject off the company the user was actually investigating.)
   const [primarySubject, setPrimarySubject] = useState(null);
 
-  // On-demand apoderados dialog state (company nodes only). Fetches the FULL
-  // officer list (full_officers=1) so a user can reach a specific apoderado that
-  // the default capped/simplified graph hides.
-  const [apoderadosDialog, setApoderadosDialog] = useState({ open: false, company: null });
+  // On-demand apoderados sidebar state (non-modal, right-anchored). Fetches the
+  // FULL officer list (full_officers=1) so a user can reach a specific apoderado
+  // that the default capped/simplified graph hides. `company` = the initial
+  // target ({ name, groupKey }); the sidebar's own switcher can change it.
+  const [apoderadosSidebar, setApoderadosSidebar] = useState({ open: false, company: null });
 
   // Officer timeline dialog state
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
@@ -3894,6 +3897,40 @@ const SpanishCompanyNetworkGraph = ({
   // search), edits stay graph-only and nothing is persisted.
   const subjectCompanyName = primarySubject;
 
+  // Company nodes currently in the graph, as { name, groupKey } for the
+  // apoderados sidebar switcher. De-duplicated by uppercased name.
+  const apoderadosCompanies = React.useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    (graphData.nodes || []).forEach(n => {
+      if (n.type !== 'spanish-company-group' || !n.name) return;
+      const key = n.name.toUpperCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ name: n.name, groupKey: n.groupKey || null });
+    });
+    return out;
+  }, [graphData.nodes]);
+
+  // Resolve the focused company as { name, groupKey }. Uses primarySubject (a
+  // STRING company name; may be null) to find its node's group_key; falls back
+  // to the FIRST company node in the graph. Returns null if the graph has no
+  // company nodes.
+  const resolveFocusedCompany = useCallback(() => {
+    const companyNodes = (graphData.nodes || []).filter(
+      n => n.type === 'spanish-company-group' && n.name
+    );
+    if (companyNodes.length === 0) return null;
+    if (primarySubject) {
+      const match = companyNodes.find(
+        n => n.name.toUpperCase() === primarySubject.toUpperCase()
+      );
+      if (match) return { name: match.name, groupKey: match.groupKey || null };
+    }
+    const first = companyNodes[0];
+    return { name: first.name, groupKey: first.groupKey || null };
+  }, [graphData.nodes, primarySubject]);
+
   // Resolve (and cache) the subject company's group_key on demand. Graph nodes
   // are name-keyed, not group_key-keyed, so we resolve via directory autocomplete.
   const resolveSubjectGroupKey = useCallback(async name => {
@@ -5990,7 +6027,17 @@ const SpanishCompanyNetworkGraph = ({
           <InputLabel>{text.officersPerCompany}</InputLabel>
           <Select
             value={officersPerCompany}
-            onChange={e => setOfficersPerCompany(Number(e.target.value))}
+            onChange={e => {
+              // "all" is a transient action, NOT a cap value: open the apoderados
+              // sidebar for the focused company and leave officersPerCompany
+              // (and thus the Select's displayed numeric value) unchanged.
+              if (e.target.value === 'all') {
+                const focused = resolveFocusedCompany();
+                if (focused) setApoderadosSidebar({ open: true, company: focused });
+                return;
+              }
+              setOfficersPerCompany(Number(e.target.value));
+            }}
             label={text.officersPerCompany}
           >
             {OFFICERS_PER_COMPANY_OPTIONS.map(size => (
@@ -5998,6 +6045,7 @@ const SpanishCompanyNetworkGraph = ({
                 {size}
               </MenuItem>
             ))}
+            <MenuItem value="all">{text.fetchAllOfficers}</MenuItem>
           </Select>
         </FormControl>
 
@@ -7681,7 +7729,7 @@ const SpanishCompanyNetworkGraph = ({
               onClick={() => {
                 const n = contextNode;
                 closeNodeContextMenu();
-                if (n) setApoderadosDialog({ open: true, company: { name: n.name, groupKey: n.groupKey || null } });
+                if (n) setApoderadosSidebar({ open: true, company: { name: n.name, groupKey: n.groupKey || null } });
               }}
             >
               <ListItemIcon>
@@ -7711,13 +7759,16 @@ const SpanishCompanyNetworkGraph = ({
           </MenuItem>
         </Menu>
 
-        <ApoderadosDialog
-          open={apoderadosDialog.open}
-          company={apoderadosDialog.company}
+        <ApoderadosSidebar
+          open={apoderadosSidebar.open}
+          initialCompany={apoderadosSidebar.company}
+          companies={apoderadosCompanies}
           lang={language}
-          onClose={() => setApoderadosDialog({ open: false, company: null })}
-          onPin={(officer) => {
-            const companyName = apoderadosDialog.company?.name;
+          onClose={() => setApoderadosSidebar({ open: false, company: null })}
+          onPin={(officer, company) => {
+            // Attribute the pin to the company currently shown in the sidebar
+            // (the switcher may have changed it), falling back to the initial target.
+            const companyName = company?.name || apoderadosSidebar.company?.name;
             if (!companyName) return;
             // Route resigned apoderados into ceses_dimisiones so the link renders
             // as ceased; active ones go into nombramientos. Either way this just

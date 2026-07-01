@@ -1,9 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
   TextField,
   List,
@@ -11,12 +7,20 @@ import {
   ListItemText,
   Chip,
   Box,
+  Paper,
   Typography,
   CircularProgress,
   TablePagination,
   InputAdornment,
+  IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Divider,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 // Named singleton (the service has no default export).
 import { spanishCompaniesService } from '../services/spanishCompaniesService';
@@ -27,6 +31,7 @@ const PAGE_SIZE = 25;
 const STRINGS = {
   es: {
     title: 'Apoderados',
+    company: 'Empresa',
     searchPlaceholder: 'Buscar apoderado por nombre…',
     count: n => `${n} apoderado${n === 1 ? '' : 's'}`,
     filtered: (shown, total) => `${shown} de ${total}`,
@@ -42,6 +47,7 @@ const STRINGS = {
   },
   en: {
     title: 'Apoderados',
+    company: 'Company',
     searchPlaceholder: 'Search apoderado by name…',
     count: n => `${n} apoderado${n === 1 ? '' : 's'}`,
     filtered: (shown, total) => `${shown} of ${total}`,
@@ -64,8 +70,13 @@ const normalizeForSearch = s =>
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
 
-const ApoderadosDialog = ({ open, company, lang = 'es', onClose, onPin }) => {
+const ApoderadosSidebar = ({ open, companies = [], initialCompany, lang = 'es', onClose, onPin }) => {
   const t = STRINGS[lang === 'en' ? 'en' : 'es'];
+
+  // The company currently shown in the sidebar. Defaults to initialCompany
+  // (the right-click target or the focused company), user can switch via the
+  // company selector at the top.
+  const [selectedCompany, setSelectedCompany] = useState(initialCompany || null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -73,8 +84,31 @@ const ApoderadosDialog = ({ open, company, lang = 'es', onClose, onPin }) => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 
+  // Reset the selection to the incoming target whenever the sidebar is opened
+  // against a new company (right-click a different node, "Fetch all", etc.).
   useEffect(() => {
-    if (!open || !company || !company.name) return;
+    if (open && initialCompany) setSelectedCompany(initialCompany);
+  }, [open, initialCompany]);
+
+  // De-duplicated switcher options by uppercased name, ensuring the currently
+  // selected company is always present so the Select has a valid value.
+  const companyOptions = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    const push = c => {
+      if (!c || !c.name) return;
+      const key = c.name.toUpperCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ name: c.name, groupKey: c.groupKey || null });
+    };
+    (Array.isArray(companies) ? companies : []).forEach(push);
+    push(selectedCompany);
+    return out;
+  }, [companies, selectedCompany]);
+
+  useEffect(() => {
+    if (!open || !selectedCompany || !selectedCompany.name) return;
 
     let cancelled = false;
     setLoading(true);
@@ -85,8 +119,8 @@ const ApoderadosDialog = ({ open, company, lang = 'es', onClose, onPin }) => {
 
     (async () => {
       try {
-        const resp = await spanishCompaniesService.getCompanyProfileV3(company.name, {
-          groupKey: company.groupKey || null,
+        const resp = await spanishCompaniesService.getCompanyProfileV3(selectedCompany.name, {
+          groupKey: selectedCompany.groupKey || null,
           fullOfficers: true,
         });
         if (cancelled) return;
@@ -120,7 +154,7 @@ const ApoderadosDialog = ({ open, company, lang = 'es', onClose, onPin }) => {
     return () => {
       cancelled = true;
     };
-  }, [open, company]);
+  }, [open, selectedCompany]);
 
   const filtered = useMemo(() => {
     const q = normalizeForSearch(search.trim());
@@ -138,17 +172,74 @@ const ApoderadosDialog = ({ open, company, lang = 'es', onClose, onPin }) => {
     [filtered, page]
   );
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {t.title}
-        {company?.name ? (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {company.name}
-          </Typography>
-        ) : null}
-      </DialogTitle>
-      <DialogContent dividers>
+    // Non-modal, right-anchored sidebar: a fixed Paper (NO backdrop, no focus
+    // trap) so the graph stays fully clickable behind it — the user pins nodes
+    // and watches them appear while it's open.
+    <Paper
+      elevation={8}
+      sx={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: 380,
+        maxWidth: '100vw',
+        zIndex: theme => theme.zIndex.drawer + 2,
+        display: 'flex',
+        flexDirection: 'column',
+        borderLeft: '1px solid',
+        borderColor: 'divider',
+        boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
+      }}
+    >
+      {/* Header */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          p: 2,
+          pb: 1.5,
+        }}
+      >
+        <Box>
+          <Typography variant="h6">{t.title}</Typography>
+        </Box>
+        <IconButton size="small" onClick={onClose} aria-label={t.close}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* Company switcher */}
+      <Box sx={{ px: 2, pb: 1.5 }}>
+        <FormControl size="small" fullWidth>
+          <InputLabel id="apoderados-company-label">{t.company}</InputLabel>
+          <Select
+            labelId="apoderados-company-label"
+            label={t.company}
+            value={selectedCompany?.name || ''}
+            disabled={companyOptions.length <= 1}
+            onChange={e => {
+              const next = companyOptions.find(c => c.name === e.target.value);
+              if (next) setSelectedCompany(next);
+            }}
+          >
+            {companyOptions.map(c => (
+              <MenuItem key={c.name} value={c.name}>
+                {c.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      <Divider />
+
+      {/* Body */}
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
         {loading ? (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, py: 6 }}>
             <CircularProgress size={24} />
@@ -170,7 +261,6 @@ const ApoderadosDialog = ({ open, company, lang = 'es', onClose, onPin }) => {
               placeholder={t.searchPlaceholder}
               size="small"
               fullWidth
-              autoFocus
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -194,7 +284,7 @@ const ApoderadosDialog = ({ open, company, lang = 'es', onClose, onPin }) => {
               </Box>
             ) : (
               <>
-                <List dense sx={{ maxHeight: 360, overflowY: 'auto' }}>
+                <List dense>
                   {pageItems.map((item, idx) => (
                     <ListItem
                       key={`${item.name}-${item.position}-${item.status}-${idx}`}
@@ -203,7 +293,7 @@ const ApoderadosDialog = ({ open, company, lang = 'es', onClose, onPin }) => {
                         <Button
                           size="small"
                           startIcon={<PushPinOutlinedIcon fontSize="small" />}
-                          onClick={() => onPin && onPin(item)}
+                          onClick={() => onPin && onPin(item, selectedCompany)}
                         >
                           {t.pin}
                         </Button>
@@ -241,12 +331,9 @@ const ApoderadosDialog = ({ open, company, lang = 'es', onClose, onPin }) => {
             )}
           </>
         )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>{t.close}</Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </Paper>
   );
 };
 
-export default ApoderadosDialog;
+export default ApoderadosSidebar;
