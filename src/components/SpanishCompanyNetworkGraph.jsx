@@ -240,7 +240,7 @@ const SEARCH_COPY = {
     nodeSize: 'Node size',
     labelSize: 'Label size',
     colorByNetworks: 'Color by networks',
-    spacing: 'Spacing',
+    spacing: 'Edge length',
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     center: 'Center',
@@ -473,7 +473,7 @@ const SEARCH_COPY = {
     nodeSize: 'Tamaño de nodos',
     labelSize: 'Tamaño de etiquetas',
     colorByNetworks: 'Colorear por redes',
-    spacing: 'Separación',
+    spacing: 'Longitud de enlaces',
     zoomIn: 'Acercar',
     zoomOut: 'Alejar',
     center: 'Centrar',
@@ -1274,6 +1274,12 @@ const SpanishCompanyNetworkGraph = ({
   const [labelSize, setLabelSize] = useState(4.5);
   const [linkDistance, setLinkDistance] = useState(80);
   const [chargeStrength, setChargeStrength] = useState(-350);
+  // Edge-length / spacing control. The layout PINS nodes (fx/fy) at deterministic
+  // positions, so d3 forces can't move them — the control therefore scales the
+  // pinned positions directly. `spacing` is an absolute factor (1 = as laid out);
+  // prevSpacingRef tracks the last-applied factor so each change scales by the delta.
+  const [spacing, setSpacing] = useState(1);
+  const prevSpacingRef = useRef(1);
   const [showNodeLabels] = useState(true); // Renamed for clarity
   const [zoomLevel, setZoomLevel] = useState(1);
   const [simplifyGraph, setSimplifyGraph] = useState(true);
@@ -1396,6 +1402,31 @@ const SpanishCompanyNetworkGraph = ({
     embedded,
     simplifyGraph,
   ]);
+
+  // Edge-length / spacing control: scale node positions around the graph centroid.
+  // Runs ONLY when the slider moves (not on data changes) so it never clobbers a
+  // manual drag or a node expansion. Because most nodes are pinned (fx/fy), we move
+  // both x/y and fx/fy; the reheat repaints links/particles. New searches reset
+  // `spacing` to 1 (handleSearch), keeping the slider consistent with the layout.
+  useEffect(() => {
+    const fg = fgRef.current;
+    const nodes = graphData?.nodes;
+    const prev = prevSpacingRef.current;
+    if (!fg || !nodes?.length || prev === spacing) return;
+    const factor = spacing / prev;
+    prevSpacingRef.current = spacing;
+    let cx = 0, cy = 0, k = 0;
+    nodes.forEach(n => {
+      if (Number.isFinite(n.x) && Number.isFinite(n.y)) { cx += n.x; cy += n.y; k += 1; }
+    });
+    if (!k) return;
+    cx /= k; cy /= k;
+    nodes.forEach(n => {
+      if (Number.isFinite(n.x)) { n.x = cx + (n.x - cx) * factor; if (n.fx != null) n.fx = n.x; }
+      if (Number.isFinite(n.y)) { n.y = cy + (n.y - cy) * factor; if (n.fy != null) n.fy = n.y; }
+    });
+    if (typeof fg.d3ReheatSimulation === 'function') fg.d3ReheatSimulation();
+  }, [spacing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear graph data when dialog closes so it starts fresh each time (only in dialog mode)
   useEffect(() => {
@@ -1923,6 +1954,10 @@ const SpanishCompanyNetworkGraph = ({
     setIsSearching(true);
     setError(null);
     setLastSearchContext(null);
+    // Fresh layout → reset the spacing control to neutral (1) so the slider stays
+    // consistent with the new graph. Set the ref first so the effect sees no delta.
+    prevSpacingRef.current = 1;
+    setSpacing(1);
 
     try {
       if (effectiveSearchType === 'officer') {
@@ -6696,11 +6731,11 @@ const SpanishCompanyNetworkGraph = ({
             <Box>
               <Typography variant="caption">{text.spacing}</Typography>
               <Slider
-                value={-chargeStrength}
-                onChange={(e, value) => setChargeStrength(-value)}
-                min={80}
-                max={700}
-                step={20}
+                value={spacing}
+                onChange={(e, value) => setSpacing(value)}
+                min={0.5}
+                max={2.5}
+                step={0.1}
                 size="small"
               />
             </Box>
@@ -6840,13 +6875,13 @@ const SpanishCompanyNetworkGraph = ({
             | {text.links}: {filteredGraphData.links.length}
             {filterTerms.length > 0 || hiddenNodeIds.size > 0 ? ` / ${graphData.links.length}` : ''}
           </Typography>
-          {isLoading && <CircularProgress size={16} />}
+          {isLoading && !isSearching && <CircularProgress size={16} />}
         </Box>
       </Box>
       {/* Graph Container (full width, table floats on top) */}
       <Box
         ref={containerCallbackRef}
-        sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200 }}
+        sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: '#0d1220' }}
       >
         {containerReady && (
           <ForceGraph2D
@@ -6901,6 +6936,33 @@ const SpanishCompanyNetworkGraph = ({
             width={containerDimensions.width}
             height={containerDimensions.height}
           />
+        )}
+
+        {/* Loading state — scoped to the graph canvas only, so a search shows a
+            calm indicator on the graph surface instead of a bare black viewport.
+            Semi-transparent so a re-search dims the existing graph rather than
+            blanking it. */}
+        {isSearching && (
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 15,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1.5,
+              bgcolor: 'rgba(13, 18, 32, 0.82)',
+              backdropFilter: 'blur(1px)',
+              pointerEvents: 'none',
+            }}
+          >
+            <CircularProgress size={40} thickness={4} sx={{ color: '#2dd4bf' }} />
+            <Typography variant="body2" sx={{ color: 'rgba(224, 224, 224, 0.75)', letterSpacing: 0.3 }}>
+              {searchQuery ? text.searching(searchQuery) : text.loadingData}
+            </Typography>
+          </Box>
         )}
 
         {/* Floating AI Investigation Launcher */}
@@ -8606,25 +8668,9 @@ const SpanishCompanyNetworkGraph = ({
         }}
       >
         {searchPanelContent}
-        {/* Loading overlay for initial search */}
-        {isSearching && graphData.nodes.length === 0 && (
-          <Box sx={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10,
-            bgcolor: 'background.default',
-            gap: 2,
-          }}>
-            <CircularProgress size={40} />
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {text.searching(searchQuery)}
-            </Typography>
-          </Box>
-        )}
+        {/* Search loading state is rendered INSIDE the graph container
+            (graphAreaContent) so it covers only the canvas, not the whole
+            viewport — the search panel above stays visible. */}
         {graphAreaContent}
         {nodeManagementOverlays}
         <DDCheckoutDialog
