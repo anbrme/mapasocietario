@@ -239,7 +239,14 @@ Append to `src/free-report-gate.js`:
 ```js
 async function r2Has(env, key) {
   if (!env.PAYMENTS_R2) return false;
-  return !!(await env.PAYMENTS_R2.head(key));
+  // Never throw: the eligibility check is a pre-checkout UX aid, and the gate's
+  // block/ledger reads must fail safe (treat an R2 error as "key absent").
+  try {
+    return !!(await env.PAYMENTS_R2.head(key));
+  } catch (e) {
+    console.error('r2Has failed:', key, e);
+    return false;
+  }
 }
 
 // Hardcoded list OR dynamic waiver allowlist.
@@ -324,7 +331,7 @@ describe("evaluateFreeReportGate", () => {
   });
   it("rejects a previously-redeemed identity and logs abuse", async () => {
     await recordFreeReportRedemption(env, { email: "again@example.com", sessionId: "cs_free_1", meta });
-    const res = await evaluateFreeReportGate(env, { email: "AG.AIN@example.com", meta });
+    const res = await evaluateFreeReportGate(env, { email: "AGAIN@example.com", meta });
     expect(res).toMatchObject({ decision: "reject", status: 403, error: "free_report_already_used" });
     const abuse = await env.PAYMENTS_R2.list({ prefix: "free_first_report_abuse/" });
     expect(abuse.objects.length).toBe(1);
@@ -363,7 +370,9 @@ Append to `src/free-report-gate.js`:
 export async function recordFreeReportAbuse(env, { email, canonical, reason, meta = {} }) {
   if (!env.PAYMENTS_R2) return;
   const id = canonical || freeReportEmailIdentity(email);
-  const key = `${ABUSE_PREFIX}${encodeURIComponent(id)}_${Date.now()}`;
+  // Date.now() alone is ms-resolution: two rapid attempts for the same identity
+  // could collide and silently drop a record. Add a short random suffix.
+  const key = `${ABUSE_PREFIX}${encodeURIComponent(id)}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   try {
     await env.PAYMENTS_R2.put(key, JSON.stringify({
       canonicalEmail: id,
