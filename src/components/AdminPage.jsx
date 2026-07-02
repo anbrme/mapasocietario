@@ -24,6 +24,7 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { Helmet } from 'react-helmet-async';
 import CnmvReviewTab from './CnmvReviewTab';
+import FreeReportsTab from './FreeReportsTab';
 import { PAYMENTS_API } from '../config';
 
 export default function AdminPage() {
@@ -270,6 +271,7 @@ export default function AdminPage() {
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
           <Tab label="Orders" sx={{ textTransform: 'none' }} />
           <Tab label="CNMV Review" sx={{ textTransform: 'none' }} />
+          <Tab label="Free DD" sx={{ textTransform: 'none' }} />
         </Tabs>
 
         {error && <Alert severity="error" sx={{ mb: 2, fontSize: '0.8rem' }}>{error}</Alert>}
@@ -377,6 +379,8 @@ export default function AdminPage() {
         </Collapse>
         </>)}
         {tab === 1 && <CnmvReviewTab adminKey={adminKey} />}
+
+        {tab === 2 && <FreeReportsTab adminKey={adminKey} />}
       </Box>
     </>
   );
