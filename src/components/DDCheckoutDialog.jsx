@@ -140,6 +140,9 @@ const DD_COPY = {
     freeReportRequired: 'Please tell us who you are and what you needed it for.',
     freeReportConfirm: '✓ This report will be free',
     freeReportConfirmHelp: 'The discount is applied automatically at checkout — your total will be €0.',
+    freeReportIneligible: 'This email has already used its free report.',
+    freeReportProgramClosed: 'The free report offer is currently closed.',
+    freeReportBlockedRetry: 'This email is not eligible for a free report. Please review and submit again to purchase.',
     roles: {
       legal: 'Lawyer / legal',
       advisor: 'Accountant / advisor',
@@ -236,6 +239,9 @@ const DD_COPY = {
     freeReportRequired: 'Cuéntanos quién eres y para qué lo necesitabas.',
     freeReportConfirm: '✓ Este informe será gratuito',
     freeReportConfirmHelp: 'El descuento se aplica automáticamente en el pago — tu total será 0 €.',
+    freeReportIneligible: 'Este correo ya ha usado su informe gratuito.',
+    freeReportProgramClosed: 'La oferta de informe gratuito está cerrada por ahora.',
+    freeReportBlockedRetry: 'Este correo no es elegible para un informe gratuito. Revisa y vuelve a enviar para comprarlo.',
     roles: {
       legal: 'Abogado / jurídico',
       advisor: 'Asesor / gestoría',
@@ -273,6 +279,10 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   const [buyerRole, setBuyerRole] = useState('');
   const [needContext, setNeedContext] = useState('');
   const [followUpOptIn, setFollowUpOptIn] = useState(false);
+  // Live free-report eligibility (per-email gate mirror). Default eligible so the
+  // offer shows until we learn otherwise; the backend is authoritative regardless.
+  const [freeEligible, setFreeEligible] = useState(true);
+  const [freeEligibilityReason, setFreeEligibilityReason] = useState('ok');
 
   const subtotal = DD_PRICE + (includeFS ? FS_PRICE : 0);
   const isAndroidApp = isAndroidNativeApp();
@@ -311,6 +321,33 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       cancelled = true;
     };
   }, [open, isAndroidApp, copy.googlePlayProductsError]);
+
+  // Debounced eligibility check: when the program is on and an email is present,
+  // ask the worker whether this email may still redeem a free report.
+  useEffect(() => {
+    if (!FREE_FIRST_REPORT_CODE || isAndroidApp) return;
+    const trimmed = email.trim();
+    if (!trimmed) { setFreeEligible(true); setFreeEligibilityReason('unknown'); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`${PAYMENTS_API}/api/stripe/check-free-report-eligibility`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: trimmed }),
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        setFreeEligible(data.eligible !== false);
+        setFreeEligibilityReason(data.reason || 'ok');
+        if (data.eligible === false) setUseFreeReport(false);
+      } catch {
+        // Network hiccup: don't block the UI — backend still enforces on submit.
+        if (!cancelled) { setFreeEligible(true); setFreeEligibilityReason('ok'); }
+      }
+    }, 450);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [email, isAndroidApp]);
 
   // On open, look up the company's corrections overlay. The "Custom" mode is
   // only offered when the user actually has corrections for this company; until
@@ -533,7 +570,14 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         }),
       });
       const data = await res.json();
-      if (data.url) {
+      const freeBlockedErrors = ['free_report_already_used', 'free_report_blocked', 'free_report_email_required'];
+      if (freeBlockedErrors.includes(data.error)) {
+        // The free offer is no longer valid for this email — fall back to paid.
+        setUseFreeReport(false);
+        setFreeEligible(false);
+        setFreeEligibilityReason(data.error === 'free_report_blocked' ? 'blocked' : 'already_used');
+        setError(copy.freeReportBlockedRetry);
+      } else if (data.url) {
         localStorage.setItem('dd_return_url', window.location.href);
         if (includeFS) {
           localStorage.setItem('dd_include_fs', 'true');
@@ -710,7 +754,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           </Box>
         )}
         {/* Free-first-report insight gate. Dormant until FREE_FIRST_REPORT_CODE is set. */}
-        {FREE_FIRST_REPORT_CODE && !isAndroidApp && (
+        {FREE_FIRST_REPORT_CODE && !isAndroidApp && freeEligible && (
           <Box
             sx={{
               p: 1.75,
@@ -793,6 +837,17 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               </Box>
             )}
           </Box>
+        )}
+        {FREE_FIRST_REPORT_CODE && !isAndroidApp && !freeEligible && email.trim() && (
+          freeEligibilityReason === 'limit_reached' ? (
+            <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'text.secondary', fontSize: '0.72rem' }}>
+              {copy.freeReportProgramClosed}
+            </Typography>
+          ) : (
+            <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'text.secondary', fontSize: '0.72rem' }}>
+              {copy.freeReportIneligible}
+            </Typography>
+          )
         )}
         {/*
         {!isAndroidApp && LAUNCH_PROMO_CODE && (
