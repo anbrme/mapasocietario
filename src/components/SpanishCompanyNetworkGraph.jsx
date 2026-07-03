@@ -5769,18 +5769,21 @@ const SpanishCompanyNetworkGraph = ({
       if (isDirectionalLink(link) && length > 0) {
         const ux = dx / length;
         const uy = dy / length;
-        // Back the arrow off from the target node's edge so the tip is visible.
-        const tipOffset = nodeSize + 1;
-        const tipX = end.x - ux * tipOffset;
-        const tipY = end.y - uy * tipOffset;
         // Size the arrowhead in GRAPH units relative to the node radius so it stays
         // proportional to the nodes at ANY zoom. The previous screen-pixel sizing
         // (6 / globalScale) collapsed to a couple of pixels and effectively vanished
         // as you zoomed in; a graph-unit size scales with the nodes instead.
         const arrowLen = (pathfinderActive && isLinkInPath)
-          ? nodeSize * 1.3
-          : nodeSize * 0.95;
-        const arrowHalfWidth = arrowLen * 0.62;
+          ? nodeSize * 1.2
+          : nodeSize * 0.85;
+        const arrowHalfWidth = arrowLen * 0.55;
+        // Sit the WHOLE arrowhead in the gap between the edge and the target node,
+        // with clear breathing room, so the icon never covers it. tip = node edge +
+        // gap; the head then extends further back along the edge from there.
+        const tipGap = Math.max(4, nodeSize * 0.7);
+        const tipOffset = nodeSize + tipGap;
+        const tipX = end.x - ux * tipOffset;
+        const tipY = end.y - uy * tipOffset;
         const baseX = tipX - ux * arrowLen;
         const baseY = tipY - uy * arrowLen;
         const leftX = baseX + -uy * arrowHalfWidth;
@@ -5792,6 +5795,12 @@ const SpanishCompanyNetworkGraph = ({
         ctx.lineTo(leftX, leftY);
         ctx.lineTo(rightX, rightY);
         ctx.closePath();
+        // Thin canvas-background outline separates the head from the edge line so it
+        // reads as a crisp arrow rather than a blob fused to the stroke.
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = Math.max(0.4, 0.9 / globalScale);
+        ctx.strokeStyle = '#0d1220';
+        ctx.stroke();
         ctx.fillStyle = linkColor;
         ctx.fill();
       }
