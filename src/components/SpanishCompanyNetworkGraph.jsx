@@ -99,6 +99,7 @@ import {
   SIMPLIFIED_EXCLUDED_CATEGORIES,
 } from '../utils/positionCategories';
 import { isActiveCategory, effectiveCategoryFromEvents } from '../utils/officerLinkStatus';
+import { BORME_SECTION_NAMES, getLinkEffectiveCategory, isDirectionalLink } from '../utils/linkDirectionality';
 import { useTerms } from '../hooks/useTerms';
 import { spanishCompaniesService, SpanishCompaniesService } from '../services/spanishCompaniesService';
 import {
@@ -898,13 +899,9 @@ const normalizeCategoryKey = category => {
 
 const isActiveLinkCategory = isActiveCategory;
 
-const getLinkEffectiveCategory = link => {
-  if (!link || link.userAmended) return link?.category;
-  // link.events are role-filtered at enrichment time; effectiveCategoryFromEvents
-  // picks the latest, preferring an appointment over a cessation on a same-date
-  // board renewal so a still-active seat is not mislabeled ceased.
-  return effectiveCategoryFromEvents(link.events, link.category);
-};
+// getLinkEffectiveCategory now lives in ../utils/linkDirectionality (imported
+// above), shared with isDirectionalLink so the arrowhead/particle gate and the
+// active/ceased status logic resolve a link's category identically.
 
 // A dissolved company can't have current officers — a dissolution implies
 // cessation even if BORME never inscribed individual ceses. When
@@ -963,29 +960,8 @@ const normalizeNameForMerge = value =>
 const officerNodeKey = name => (name || '').trim().toLowerCase().replace(/[\s-]+/g, '-');
 const officerIdFor = name => `officer-${officerNodeKey(name)}`;
 
-const BORME_SECTION_NAMES = new Set([
-  'nombramientos', 'reelecciones', 'ceses_dimisiones', 'ceses', 'revocaciones',
-  'dimisiones', 'cargo no especificado',
-]);
-
-// A link is DIRECTIONAL (gets an arrowhead + particle flow) when it represents
-// an officer→company appointment/cese or an owner→owned ownership tie. In the
-// MAIN graph view, officer→company edges are built with a resolved BORME
-// section category (e.g. category: 'nombramientos') rather than
-// type: 'officer-company' — that type is only stamped by the officer-expand
-// paths (assembleOfficerGraph etc). So the gate must also recognize the
-// resolved category, not just the type field. Resolve the category the same
-// way the renderer colors the link (getLinkEffectiveCategory: latest event
-// category, falling back to the build-time link.category) so arrows/particles
-// never disagree with what's drawn/colored on screen.
-const isDirectionalLink = link => {
-  if (!link) return false;
-  if (link.type === 'officer-company' || link.type === 'ownership') return true;
-  const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
-  if (BORME_SECTION_NAMES.has(cat)) return true;
-  if (cat.startsWith('socio')) return true;
-  return false;
-};
+// BORME_SECTION_NAMES and isDirectionalLink now live in
+// ../utils/linkDirectionality (imported above).
 
 const normalizeEdgeLabelText = (relationship, _category) => {
   const text = (relationship || '').trim();
