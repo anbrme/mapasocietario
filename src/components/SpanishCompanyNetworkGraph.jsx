@@ -6059,20 +6059,35 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, [visibleTableRows, text, uiLanguage]);
 
-  // Toggle fullscreen
+  // Toggle fullscreen. The CSS overlay (position:fixed / inset:0, applied by the
+  // embedded container below when isFullscreen) is what ACTUALLY fills the screen,
+  // and it works everywhere — including the Capacitor Android WebView, where the
+  // native Fullscreen API is a silent no-op (the previous native-first path resolved
+  // but did nothing, leaving the graph cramped). So we always drive the overlay
+  // state, and treat the native Fullscreen API as a best-effort web enhancement
+  // (hides the browser chrome) layered on top — never depended on.
   const toggleFullscreen = useCallback(() => {
-    if (embedded) {
-      const el = fullscreenContainerRef.current;
-      if (!el || !document.fullscreenEnabled) return;
-      if (!document.fullscreenElement) {
-        el.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
+    const next = !isFullscreen;
+    setIsFullscreen(next);
+    const el = fullscreenContainerRef.current;
+    if (el && document.fullscreenEnabled) {
+      try {
+        if (next && !document.fullscreenElement && typeof el.requestFullscreen === 'function') {
+          el.requestFullscreen().catch(() => {});
+        } else if (!next && document.fullscreenElement && typeof document.exitFullscreen === 'function') {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch {
+        /* native fullscreen unavailable — the CSS overlay already covers it */
       }
-    } else {
-      setIsFullscreen(prev => !prev);
     }
-  }, [embedded]);
+    // The canvas resizes (panel hidden ⇄ shown, overlay on ⇄ off); re-fit the graph
+    // to the new size once the layout has settled so it re-centers instead of sitting
+    // off to one side.
+    setTimeout(() => {
+      try { fgRef.current?.zoomToFit(400, 60); } catch { /* ref not ready */ }
+    }, 300);
+  }, [isFullscreen]);
 
   // Table drag handlers (always absolute, relative to offsetParent container)
   const handleTableDragStart = useCallback(e => {
@@ -9003,11 +9018,31 @@ const SpanishCompanyNetworkGraph = ({
           flexDirection: 'column',
           p: 0,
           overflow: 'hidden',
-          bgcolor: isFullscreen ? 'background.paper' : undefined,
-          height: isFullscreen ? '100vh' : undefined,
+          // Fullscreen: a fixed, inset:0 overlay fills the entire app viewport
+          // (works in the Capacitor Android WebView, where the native Fullscreen API
+          // is a no-op). inset:0 stretches to all four edges — no vh/dvh unit needed.
+          // env(safe-area-inset-*) protects content from notches/system bars on
+          // edge-to-edge devices (0 otherwise, so harmless).
+          ...(isFullscreen
+            ? {
+                position: 'fixed',
+                inset: 0,
+                zIndex: 1300,
+                bgcolor: 'background.paper',
+                pt: 'env(safe-area-inset-top)',
+                pb: 'env(safe-area-inset-bottom)',
+                pl: 'env(safe-area-inset-left)',
+                pr: 'env(safe-area-inset-right)',
+              }
+            : {}),
         }}
       >
-        {searchPanelContent}
+        {/* In fullscreen (esp. on phones) the bulky search/filter panel is hidden so
+            the graph canvas actually fills the screen — otherwise fullscreen only
+            reclaimed the thin breadcrumb and the graph barely grew. The graph's own
+            toolbar (incl. the exit-fullscreen button) + legend live in
+            graphAreaContent, so the user can still fit/zoom and leave fullscreen. */}
+        {!isFullscreen && searchPanelContent}
         {/* Search loading state is rendered INSIDE the graph container
             (graphAreaContent) so it covers only the canvas, not the whole
             viewport — the search panel above stays visible. */}
