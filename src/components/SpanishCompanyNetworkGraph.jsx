@@ -290,10 +290,8 @@ const SEARCH_COPY = {
     cargoBannerTitle: 'This entity also holds cargos',
     cargoBannerBody: (name, count) => `“${name}” also appears as an officer in ${count} other ${count === 1 ? 'company' : 'companies'}. Unify them onto this node?`,
     cargoUnify: 'Unify',
+    cargoUnifying: 'Unifying…',
     cargoDismiss: 'Dismiss',
-    cargoConfirmTitle: 'Unify cargos',
-    cargoConfirmBody: (name, count) => `This entity also holds cargos in ${count} ${count === 1 ? 'company' : 'companies'}. Add them as edges on “${name}”?`,
-    cargoConfirmAction: 'Unify',
     cargoUnified: 'Unified — cargos attached',
     unifyCargosError: msg => `Could not unify cargos: ${msg}`,
     expandNode: 'Expand node',
@@ -536,10 +534,8 @@ const SEARCH_COPY = {
     cargoBannerTitle: 'Esta entidad también figura como cargo',
     cargoBannerBody: (name, count) => `«${name}» también figura como cargo en ${count} ${count === 1 ? 'sociedad' : 'sociedades'}. ¿Unificarlas en este nodo?`,
     cargoUnify: 'Unificar',
+    cargoUnifying: 'Unificando…',
     cargoDismiss: 'Descartar',
-    cargoConfirmTitle: 'Unificar cargos',
-    cargoConfirmBody: (name, count) => `Esta entidad también figura como cargo en ${count} ${count === 1 ? 'sociedad' : 'sociedades'}. ¿Añadirlas como aristas en «${name}»?`,
-    cargoConfirmAction: 'Unificar',
     cargoUnified: 'Unificada — cargos añadidos',
     unifyCargosError: msg => `No se pudieron unificar los cargos: ${msg}`,
     expandNode: 'Expandir nodo',
@@ -1188,7 +1184,7 @@ const SpanishCompanyNetworkGraph = ({
   // Company⇄cargo unify: pending affordance for the loaded company that also holds
   // cargos elsewhere, and the light confirm gate. { nodeId, name, count }.
   const [cargoAffordance, setCargoAffordance] = useState(null);
-  const [unifyConfirm, setUnifyConfirm] = useState(null);
+  const [isUnifying, setIsUnifying] = useState(false);
   const [nodeContextMenu, setNodeContextMenu] = useState(null); // { mouseX, mouseY, nodeId }
   const [investigationSet, setInvestigationSet] = useState(() => new Set());
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -3380,6 +3376,7 @@ const SpanishCompanyNetworkGraph = ({
   const unifyCargosForNode = useCallback(async (companyNodeId, companyName) => {
     if (!companyNodeId || !companyName) return;
     setIsLoading(true);
+    setIsUnifying(true);
     setError(null);
     try {
       const data = await spanishCompaniesService.expandOfficerV3(companyName);
@@ -3402,8 +3399,8 @@ const SpanishCompanyNetworkGraph = ({
       setError(text.unifyCargosError(err.message));
     } finally {
       setIsLoading(false);
+      setIsUnifying(false);
       setCargoAffordance(null);
-      setUnifyConfirm(null);
     }
   }, [addOfficerToGraph, text]);
 
@@ -7167,15 +7164,18 @@ const SpanishCompanyNetworkGraph = ({
             <Button
               size="small"
               variant="contained"
-              onClick={() => setUnifyConfirm(cargoAffordance)}
-              sx={{ flexShrink: 0, minWidth: 0, px: 1.25, py: 0.25, fontSize: 12, textTransform: 'none', bgcolor: '#38bdf8', color: '#04121f', '&:hover': { bgcolor: '#7dd3fc' } }}
+              disabled={isUnifying}
+              startIcon={isUnifying ? <CircularProgress size={14} sx={{ color: '#04121f' }} /> : null}
+              onClick={() => unifyCargosForNode(cargoAffordance.nodeId, cargoAffordance.name)}
+              sx={{ flexShrink: 0, minWidth: 0, px: 1.25, py: 0.25, fontSize: 12, textTransform: 'none', bgcolor: '#38bdf8', color: '#04121f', '&:hover': { bgcolor: '#7dd3fc' }, '&.Mui-disabled': { bgcolor: '#38bdf8', color: '#04121f', opacity: 0.7 } }}
             >
-              {text.cargoUnify}
+              {isUnifying ? text.cargoUnifying : text.cargoUnify}
             </Button>
             <IconButton
               size="small"
               aria-label={text.cargoDismiss}
               onClick={() => setCargoAffordance(null)}
+              disabled={isUnifying}
               sx={{ flexShrink: 0, color: '#94a3b8', p: 0.25 }}
             >
               <CloseIcon sx={{ fontSize: 16 }} />
@@ -7809,7 +7809,7 @@ const SpanishCompanyNetworkGraph = ({
             <MenuItem
               onClick={() => {
                 closeNodeContextMenu();
-                setUnifyConfirm({ nodeId: contextNode.id, name: contextNode.name, count: contextNode.cargoCount });
+                unifyCargosForNode(contextNode.id, contextNode.name);
               }}
             >
               <ListItemIcon>
@@ -8955,30 +8955,6 @@ const SpanishCompanyNetworkGraph = ({
             </Button>
           }
         />
-
-        {/* Light confirm before unifying an entity's cargos onto its company node. */}
-        <Dialog open={Boolean(unifyConfirm)} onClose={() => setUnifyConfirm(null)} maxWidth="xs">
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <HubIcon sx={{ fontSize: 20, color: '#38bdf8' }} />
-            {text.cargoConfirmTitle}
-          </DialogTitle>
-          <DialogContent>
-            <Typography sx={{ fontSize: 14 }}>
-              {unifyConfirm ? text.cargoConfirmBody(unifyConfirm.name, unifyConfirm.count) : ''}
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setUnifyConfirm(null)}>{text.cancel}</Button>
-            <Button
-              variant="contained"
-              onClick={() => {
-                if (unifyConfirm) unifyCargosForNode(unifyConfirm.nodeId, unifyConfirm.name);
-              }}
-            >
-              {text.cargoConfirmAction}
-            </Button>
-          </DialogActions>
-        </Dialog>
       </>
     );
   })();
