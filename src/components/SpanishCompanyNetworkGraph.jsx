@@ -7210,13 +7210,16 @@ const SpanishCompanyNetworkGraph = ({
           </Box>
         )}
 
-        {/* Contextual UNDO chip — shown only while the selected node is unified.
+        {/* Contextual UNDO chip — shown whenever a node in the graph is unified
+            (cargos merged into it), regardless of right-click selection. Unifying
+            via the banner (the normal path) never sets contextNode, so gating on
+            that hid the chip entirely; unifiedNode looks at all graph nodes instead.
             ✕ (onDelete) reverses the unify and restores the "+N cargos" badge. */}
-        {contextNode && contextNode.unified && (
+        {unifiedNode && (
           <Chip
             icon={<HubIcon sx={{ fontSize: 16, color: '#5eead4 !important' }} />}
-            label={text.cargoUndoChip(contextNode.unifiedCargoCount || 0)}
-            onDelete={() => undoCargoUnifyForNode(contextNode.id)}
+            label={text.cargoUndoChip(unifiedNode.unifiedCargoCount || 0)}
+            onDelete={() => undoCargoUnifyForNode(unifiedNode.id)}
             deleteIcon={<CloseIcon sx={{ fontSize: 15 }} />}
             size="small"
             sx={{
