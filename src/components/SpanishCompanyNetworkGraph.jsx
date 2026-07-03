@@ -967,6 +967,26 @@ const BORME_SECTION_NAMES = new Set([
   'nombramientos', 'reelecciones', 'ceses_dimisiones', 'ceses', 'revocaciones',
   'dimisiones', 'cargo no especificado',
 ]);
+
+// A link is DIRECTIONAL (gets an arrowhead + particle flow) when it represents
+// an officer→company appointment/cese or an owner→owned ownership tie. In the
+// MAIN graph view, officer→company edges are built with a resolved BORME
+// section category (e.g. category: 'nombramientos') rather than
+// type: 'officer-company' — that type is only stamped by the officer-expand
+// paths (assembleOfficerGraph etc). So the gate must also recognize the
+// resolved category, not just the type field. Resolve the category the same
+// way the renderer colors the link (getLinkEffectiveCategory: latest event
+// category, falling back to the build-time link.category) so arrows/particles
+// never disagree with what's drawn/colored on screen.
+const isDirectionalLink = link => {
+  if (!link) return false;
+  if (link.type === 'officer-company' || link.type === 'ownership') return true;
+  const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
+  if (BORME_SECTION_NAMES.has(cat)) return true;
+  if (cat.startsWith('socio')) return true;
+  return false;
+};
+
 const normalizeEdgeLabelText = (relationship, _category) => {
   const text = (relationship || '').trim();
   if (!text || BORME_SECTION_NAMES.has(text.toLowerCase())) return '';
@@ -3768,6 +3788,16 @@ const SpanishCompanyNetworkGraph = ({
     return graphData.nodes.find(n => isSameNodeId(n.id, activeNodeId)) || null;
   }, [activeNodeId, graphData.nodes]);
 
+  // The undo chip should show whenever a node is unified (cargos merged into a
+  // single company node) — NOT only when that node happens to be the last
+  // right-clicked one. contextNode only gets set on right-click, so the normal
+  // "unify via banner" path never sets it and the chip never appeared. If more
+  // than one node is unified, showing the chip for the first one is fine for now.
+  const unifiedNode = React.useMemo(
+    () => graphData.nodes.find(n => n.unified) || null,
+    [graphData.nodes]
+  );
+
   const mergeCandidateNodes = React.useMemo(() => {
     if (!contextNode) return [];
     return graphData.nodes
@@ -5747,13 +5777,14 @@ const SpanishCompanyNetworkGraph = ({
       // appointments/ceses and owner→owned ownership). Non-directional links (e.g.
       // untyped company-company / structural links) get no arrow. react-force-graph's
       // built-in linkDirectionalArrow is suppressed when a custom linkCanvasObject is
-      // in 'replace' mode, so we draw it here manually.
-      const isDirectionalLink =
-        link.type === 'officer-company' || link.type === 'ownership';
+      // in 'replace' mode, so we draw it here manually. isDirectionalLink (module
+      // scope) also matches resolved BORME/ownership categories, since main-graph
+      // officer→company edges carry category: 'nombramientos' etc rather than
+      // type: 'officer-company'.
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       const length = Math.sqrt(dx * dx + dy * dy);
-      if (isDirectionalLink && length > 0) {
+      if (isDirectionalLink(link) && length > 0) {
         const ux = dx / length;
         const uy = dy / length;
         // Back the arrow off from the target node's edge so the tip is visible.
@@ -7111,13 +7142,12 @@ const SpanishCompanyNetworkGraph = ({
             onNodeDrag={handleNodeDrag}
             onNodeDragEnd={handleNodeDragEnd}
             onZoom={handleZoom}
-            // Light particle flow — DIRECTIONAL edges only (source→target). Arrowheads are
-            // drawn manually in linkCanvasObject (built-in linkDirectionalArrow* props are
-            // ignored under a custom 'replace'-mode renderer). Kept light: one slow particle
-            // so a ~50-edge graph stays smooth.
-            linkDirectionalParticles={link =>
-              (link.type === 'officer-company' || link.type === 'ownership') ? 1 : 0
-            }
+            // Light particle flow — DIRECTIONAL edges only (source→target), same gate as
+            // the arrowheads in linkCanvasObject (isDirectionalLink, module scope).
+            // Arrowheads are drawn manually in linkCanvasObject (built-in
+            // linkDirectionalArrow* props are ignored under a custom 'replace'-mode
+            // renderer). Kept light: one slow particle so a ~50-edge graph stays smooth.
+            linkDirectionalParticles={link => (isDirectionalLink(link) ? 1 : 0)}
             linkDirectionalParticleSpeed={0.004}
             linkDirectionalParticleWidth={1.6}
             d3AlphaDecay={0.08}
