@@ -90,7 +90,7 @@ import AIInvestigationGate from './AIInvestigationGate';
 import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
 import { isLegalEntityName } from '../utils/legalEntity';
 import { detectCargoPresence } from '../utils/cargoDetection';
-import { mergeCargoIntoCompanyNode } from '../utils/graphUnify';
+import { mergeCargoIntoCompanyNode, undoCargoUnify } from '../utils/graphUnify';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import {
   POSITION_CATEGORY_ORDER,
@@ -293,6 +293,8 @@ const SEARCH_COPY = {
     cargoUnifying: 'Unifying…',
     cargoDismiss: 'Dismiss',
     cargoUnified: 'Unified — cargos attached',
+    cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
+    cargoUndo: 'Undo unify',
     unifyCargosError: msg => `Could not unify cargos: ${msg}`,
     expandNode: 'Expand node',
     editNode: 'Edit node',
@@ -537,6 +539,8 @@ const SEARCH_COPY = {
     cargoUnifying: 'Unificando…',
     cargoDismiss: 'Descartar',
     cargoUnified: 'Unificada — cargos añadidos',
+    cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
+    cargoUndo: 'Deshacer unificación',
     unifyCargosError: msg => `No se pudieron unificar los cargos: ${msg}`,
     expandNode: 'Expandir nodo',
     editNode: 'Modificar nodo',
@@ -963,6 +967,26 @@ const BORME_SECTION_NAMES = new Set([
   'nombramientos', 'reelecciones', 'ceses_dimisiones', 'ceses', 'revocaciones',
   'dimisiones', 'cargo no especificado',
 ]);
+
+// A link is DIRECTIONAL (gets an arrowhead + particle flow) when it represents
+// an officer→company appointment/cese or an owner→owned ownership tie. In the
+// MAIN graph view, officer→company edges are built with a resolved BORME
+// section category (e.g. category: 'nombramientos') rather than
+// type: 'officer-company' — that type is only stamped by the officer-expand
+// paths (assembleOfficerGraph etc). So the gate must also recognize the
+// resolved category, not just the type field. Resolve the category the same
+// way the renderer colors the link (getLinkEffectiveCategory: latest event
+// category, falling back to the build-time link.category) so arrows/particles
+// never disagree with what's drawn/colored on screen.
+const isDirectionalLink = link => {
+  if (!link) return false;
+  if (link.type === 'officer-company' || link.type === 'ownership') return true;
+  const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
+  if (BORME_SECTION_NAMES.has(cat)) return true;
+  if (cat.startsWith('socio')) return true;
+  return false;
+};
+
 const normalizeEdgeLabelText = (relationship, _category) => {
   const text = (relationship || '').trim();
   if (!text || BORME_SECTION_NAMES.has(text.toLowerCase())) return '';
@@ -3404,6 +3428,13 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [addOfficerToGraph, text]);
 
+  // Reverse a unify: strip the relocated cargo edges + the cargo-only nodes and
+  // restore the amber "+N cargos" affordance. Pure transform via undoCargoUnify.
+  const undoCargoUnifyForNode = useCallback((companyNodeId) => {
+    if (!companyNodeId) return;
+    setGraphData(prev => undoCargoUnify(prev, companyNodeId));
+  }, []);
+
   // Plot a bare shareholder node (no officers, no subsidiaries) so the user
   // can see the entity on the canvas before deciding to fetch its participadas.
   const plotBareShareholderNode = useCallback(
@@ -3756,6 +3787,16 @@ const SpanishCompanyNetworkGraph = ({
     if (!activeNodeId) return null;
     return graphData.nodes.find(n => isSameNodeId(n.id, activeNodeId)) || null;
   }, [activeNodeId, graphData.nodes]);
+
+  // The undo chip should show whenever a node is unified (cargos merged into a
+  // single company node) — NOT only when that node happens to be the last
+  // right-clicked one. contextNode only gets set on right-click, so the normal
+  // "unify via banner" path never sets it and the chip never appeared. If more
+  // than one node is unified, showing the chip for the first one is fine for now.
+  const unifiedNode = React.useMemo(
+    () => graphData.nodes.find(n => n.unified) || null,
+    [graphData.nodes]
+  );
 
   const mergeCandidateNodes = React.useMemo(() => {
     if (!contextNode) return [];
@@ -5732,12 +5773,18 @@ const SpanishCompanyNetworkGraph = ({
       ctx.stroke();
       ctx.setLineDash([]); // Reset dash
 
-      // Arrowhead at the target end. react-force-graph's built-in linkDirectionalArrow is
-      // suppressed when a custom linkCanvasObject is in 'replace' mode, so we draw it here.
+      // Arrowhead at the target end — DIRECTIONAL edges only (entity→company cargo
+      // appointments/ceses and owner→owned ownership). Non-directional links (e.g.
+      // untyped company-company / structural links) get no arrow. react-force-graph's
+      // built-in linkDirectionalArrow is suppressed when a custom linkCanvasObject is
+      // in 'replace' mode, so we draw it here manually. isDirectionalLink (module
+      // scope) also matches resolved BORME/ownership categories, since main-graph
+      // officer→company edges carry category: 'nombramientos' etc rather than
+      // type: 'officer-company'.
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       const length = Math.sqrt(dx * dx + dy * dy);
-      if (length > 0) {
+      if (isDirectionalLink(link) && length > 0) {
         const ux = dx / length;
         const uy = dy / length;
         // Back the arrow off from the target node's edge so the tip is visible.
@@ -7095,34 +7142,14 @@ const SpanishCompanyNetworkGraph = ({
             onNodeDrag={handleNodeDrag}
             onNodeDragEnd={handleNodeDragEnd}
             onZoom={handleZoom}
-            linkDirectionalParticles={2}
-            linkDirectionalParticleSpeed={0.005}
-            linkDirectionalArrowLength={4}
-            linkDirectionalArrowRelPos={1}
-            linkDirectionalArrowColor={link => {
-              const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
-              if (link.type === 'ownership') {
-                return cat === 'socio_anterior'
-                  ? '#9e9e9e'
-                  : cat === 'socio_perdido'
-                    ? '#bf8f30'
-                    : '#fbc02d';
-              }
-              if (link.companyDissolved) return '#f87171'; // DISSOLVED company → officer link not current
-              if (
-                cat.includes('nombramiento') ||
-                cat.includes('reeleccion') ||
-                cat.includes('reelección')
-              ) return '#34d399';
-              if (
-                cat.includes('cese') ||
-                cat.includes('dimision') ||
-                cat.includes('dimisión') ||
-                cat.includes('revocacion') ||
-                cat.includes('revocación')
-              ) return '#f87171';
-              return '#64748b';
-            }}
+            // Light particle flow — DIRECTIONAL edges only (source→target), same gate as
+            // the arrowheads in linkCanvasObject (isDirectionalLink, module scope).
+            // Arrowheads are drawn manually in linkCanvasObject (built-in
+            // linkDirectionalArrow* props are ignored under a custom 'replace'-mode
+            // renderer). Kept light: one slow particle so a ~50-edge graph stays smooth.
+            linkDirectionalParticles={link => (isDirectionalLink(link) ? 1 : 0)}
+            linkDirectionalParticleSpeed={0.004}
+            linkDirectionalParticleWidth={1.6}
             d3AlphaDecay={0.08}
             d3VelocityDecay={0.8}
             cooldownTicks={40}
@@ -7181,6 +7208,34 @@ const SpanishCompanyNetworkGraph = ({
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
+        )}
+
+        {/* Contextual UNDO chip — shown whenever a node in the graph is unified
+            (cargos merged into it), regardless of right-click selection. Unifying
+            via the banner (the normal path) never sets contextNode, so gating on
+            that hid the chip entirely; unifiedNode looks at all graph nodes instead.
+            ✕ (onDelete) reverses the unify and restores the "+N cargos" badge. */}
+        {unifiedNode && (
+          <Chip
+            icon={<HubIcon sx={{ fontSize: 16, color: '#5eead4 !important' }} />}
+            label={text.cargoUndoChip(unifiedNode.unifiedCargoCount || 0)}
+            onDelete={() => undoCargoUnifyForNode(unifiedNode.id)}
+            deleteIcon={<CloseIcon sx={{ fontSize: 15 }} />}
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: 10,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 16,
+              bgcolor: 'rgba(13, 148, 136, 0.92)',
+              color: '#ecfeff',
+              border: '1px solid rgba(94, 234, 212, 0.55)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
+              fontWeight: 600,
+              '& .MuiChip-deleteIcon': { color: '#a7f3d0', '&:hover': { color: '#ecfeff' } },
+            }}
+          />
         )}
 
         {/* Loading state — scoped to the graph canvas only, so a search shows a
@@ -7816,6 +7871,19 @@ const SpanishCompanyNetworkGraph = ({
                 <HubIcon fontSize="small" sx={{ color: '#38bdf8' }} />
               </ListItemIcon>
               <ListItemText>{text.cargoBadge(contextNode.cargoCount)}</ListItemText>
+            </MenuItem>
+          )}
+          {contextNode && contextNode.unified && (
+            <MenuItem
+              onClick={() => {
+                closeNodeContextMenu();
+                undoCargoUnifyForNode(contextNode.id);
+              }}
+            >
+              <ListItemIcon>
+                <HubIcon fontSize="small" sx={{ color: '#5eead4' }} />
+              </ListItemIcon>
+              <ListItemText>{text.cargoUndo}</ListItemText>
             </MenuItem>
           )}
           <MenuItem onClick={openEditNodeDialog}>

@@ -81,24 +81,99 @@ export function mergeCargoIntoCompanyNode(graphData, companyNodeId, officerNodeI
       source: companyNodeId,
       target: targetId,
       unified: true,
+      // Tag so undoCargoUnify can find exactly what this pass added/relocated.
+      __cargoUnify: companyNodeId,
     });
+  });
+
+  // A cargo target company "existed independently" if it appears in a link that
+  // does NOT touch the officer node (keptLinks). Those we must NOT tag — undo must
+  // never delete them. Cargo targets that are reachable ONLY through the officer's
+  // cargo edges were introduced solely for this unify → tag them.
+  const cargoTargetIds = new Set(officerCargoLinks.map((l) => idOf(l.target)));
+  const independentlyConnected = new Set();
+  keptLinks.forEach((l) => {
+    const s = idOf(l.source);
+    const t = idOf(l.target);
+    if (cargoTargetIds.has(s)) independentlyConnected.add(s);
+    if (cargoTargetIds.has(t)) independentlyConnected.add(t);
   });
 
   const newNodes = nodes
     .filter((n) => n.id !== officerNodeId)
-    .map((n) =>
-      n.id === companyNodeId
-        ? {
-            ...n,
-            unified: true,
-            unifiedCargoCount: (n.unifiedCargoCount || 0) + relocated.length,
-            // Clear the pending affordance count — it's now realised as edges.
-            cargoCount: 0,
-          }
-        : n
-    );
+    .map((n) => {
+      if (n.id === companyNodeId) {
+        return {
+          ...n,
+          unified: true,
+          unifiedCargoCount: (n.unifiedCargoCount || 0) + relocated.length,
+          // Clear the pending affordance count — it's now realised as edges.
+          cargoCount: 0,
+        };
+      }
+      if (
+        n.id !== companyNodeId &&
+        cargoTargetIds.has(n.id) &&
+        !independentlyConnected.has(n.id)
+      ) {
+        return { ...n, __cargoUnifyFor: companyNodeId };
+      }
+      return n;
+    });
 
   return { nodes: newNodes, links: [...keptLinks, ...relocated] };
+}
+
+/**
+ * Reverse `mergeCargoIntoCompanyNode` for one company: remove the relocated cargo
+ * edges (tagged `__cargoUnify === companyNodeId`), drop the cargo-company nodes that
+ * were introduced solely for this unify (tagged `__cargoUnifyFor === companyNodeId`)
+ * BUT ONLY if they have no other remaining links, and restore the company node so the
+ * amber "+N cargos" affordance returns.
+ *
+ * Pure & idempotent: after the first pass there are no `__cargoUnify` links and the
+ * company node is no longer `unified`, so a second pass is a no-op (and cargoCount is
+ * not clobbered).
+ *
+ * @param {{nodes: Array, links: Array}} graphData
+ * @param {string} companyNodeId
+ * @returns {{nodes: Array, links: Array}} new graph with the unify reversed.
+ */
+export function undoCargoUnify(graphData, companyNodeId) {
+  const nodes = Array.isArray(graphData && graphData.nodes) ? graphData.nodes : [];
+  const links = Array.isArray(graphData && graphData.links) ? graphData.links : [];
+
+  // 1) Drop exactly the links this unify relocated onto the company node.
+  const keptLinks = links.filter((l) => l.__cargoUnify !== companyNodeId);
+
+  // 2) Which node ids still have at least one remaining link?
+  const stillConnected = new Set();
+  keptLinks.forEach((l) => {
+    stillConnected.add(idOf(l.source));
+    stillConnected.add(idOf(l.target));
+  });
+
+  // 3) Remove cargo-only nodes introduced by THIS unify, but never orphan-delete a
+  //    node that is still connected somewhere else.
+  const keptNodes = nodes.filter(
+    (n) => !(n.__cargoUnifyFor === companyNodeId && !stillConnected.has(n.id))
+  );
+
+  // 4) Restore the company node — only while it is still marked unified, so repeat
+  //    calls don't overwrite the restored cargoCount with 0.
+  const newNodes = keptNodes.map((n) => {
+    if (n.id !== companyNodeId || !n.unified) return n;
+    const restored = {
+      ...n,
+      unified: false,
+      // Bring back the amber "+N cargos" badge.
+      cargoCount: n.unifiedCargoCount || 0,
+    };
+    delete restored.unifiedCargoCount;
+    return restored;
+  });
+
+  return { nodes: newNodes, links: keptLinks };
 }
 
 export default mergeCargoIntoCompanyNode;
