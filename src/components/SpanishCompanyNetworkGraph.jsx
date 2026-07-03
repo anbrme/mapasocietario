@@ -89,6 +89,8 @@ import ForceGraph2D from 'react-force-graph-2d';
 import AIInvestigationGate from './AIInvestigationGate';
 import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
 import { isLegalEntityName } from '../utils/legalEntity';
+import { detectCargoPresence } from '../utils/cargoDetection';
+import { mergeCargoIntoCompanyNode } from '../utils/graphUnify';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import {
   POSITION_CATEGORY_ORDER,
@@ -283,6 +285,17 @@ const SEARCH_COPY = {
     nodeCount: count => `${count} node${count === 1 ? '' : 's'}`,
     showAll: 'Show all',
     noHiddenNodes: 'No hidden nodes',
+    // Company⇄cargo unify
+    cargoBadge: count => `+${count} cargo${count === 1 ? '' : 's'}`,
+    cargoBannerTitle: 'This entity also holds cargos',
+    cargoBannerBody: (name, count) => `“${name}” also appears as an officer in ${count} other ${count === 1 ? 'company' : 'companies'}. Unify them onto this node?`,
+    cargoUnify: 'Unify',
+    cargoDismiss: 'Dismiss',
+    cargoConfirmTitle: 'Unify cargos',
+    cargoConfirmBody: (name, count) => `This entity also holds cargos in ${count} ${count === 1 ? 'company' : 'companies'}. Add them as edges on “${name}”?`,
+    cargoConfirmAction: 'Unify',
+    cargoUnified: 'Unified — cargos attached',
+    unifyCargosError: msg => `Could not unify cargos: ${msg}`,
     expandNode: 'Expand node',
     editNode: 'Edit node',
     mergeNode: 'Merge node',
@@ -518,6 +531,17 @@ const SEARCH_COPY = {
     nodeCount: count => `${count} nodo${count === 1 ? '' : 's'}`,
     showAll: 'Mostrar todos',
     noHiddenNodes: 'Sin nodos ocultos',
+    // Unificación empresa⇄cargo
+    cargoBadge: count => `+${count} cargo${count === 1 ? '' : 's'}`,
+    cargoBannerTitle: 'Esta entidad también figura como cargo',
+    cargoBannerBody: (name, count) => `«${name}» también figura como cargo en ${count} ${count === 1 ? 'sociedad' : 'sociedades'}. ¿Unificarlas en este nodo?`,
+    cargoUnify: 'Unificar',
+    cargoDismiss: 'Descartar',
+    cargoConfirmTitle: 'Unificar cargos',
+    cargoConfirmBody: (name, count) => `Esta entidad también figura como cargo en ${count} ${count === 1 ? 'sociedad' : 'sociedades'}. ¿Añadirlas como aristas en «${name}»?`,
+    cargoConfirmAction: 'Unificar',
+    cargoUnified: 'Unificada — cargos añadidos',
+    unifyCargosError: msg => `No se pudieron unificar los cargos: ${msg}`,
     expandNode: 'Expandir nodo',
     editNode: 'Modificar nodo',
     mergeNode: 'Fusionar nodo',
@@ -1161,6 +1185,10 @@ const SpanishCompanyNetworkGraph = ({
   const [hiddenNodeIds, setHiddenNodeIds] = useState(new Set());
   const [hiddenNodesMenuAnchorEl, setHiddenNodesMenuAnchorEl] = useState(null);
   const [activeNodeId, setActiveNodeId] = useState(null);
+  // Company⇄cargo unify: pending affordance for the loaded company that also holds
+  // cargos elsewhere, and the light confirm gate. { nodeId, name, count }.
+  const [cargoAffordance, setCargoAffordance] = useState(null);
+  const [unifyConfirm, setUnifyConfirm] = useState(null);
   const [nodeContextMenu, setNodeContextMenu] = useState(null); // { mouseX, mouseY, nodeId }
   const [investigationSet, setInvestigationSet] = useState(() => new Set());
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -1594,7 +1622,11 @@ const SpanishCompanyNetworkGraph = ({
             setPinnedNodeIds(prev => new Set([...prev, companyId]));
           }
         });
-        if (firstCompanyName) setPrimarySubject(prev => prev || firstCompanyName);
+        if (firstCompanyName) {
+          setPrimarySubject(prev => prev || firstCompanyName);
+          // Company⇄cargo: surface the affordance for the initially-loaded company.
+          runCargoDetection(firstCompanyName, companyNameToId(firstCompanyName));
+        }
       })();
     } else if (initialOfficerData && initialOfficerData.name) {
       const entries = initialOfficerData.companies || [];
@@ -2102,6 +2134,13 @@ const SpanishCompanyNetworkGraph = ({
             // company searches append to the graph but keep the original subject.
             setPrimarySubject(prev => prev || query);
             setSearchQuery('');
+            // Company⇄cargo: does this same entity also hold cargos elsewhere?
+            if (pinnedIds.length > 0) {
+              const primaryName = normalizeCompanyName(
+                merged[0].name || merged[0].company_name || ''
+              );
+              runCargoDetection(primaryName, pinnedIds[0]);
+            }
           } else {
             setError(text.noPreciseMatch(query));
           }
@@ -3312,6 +3351,61 @@ const SpanishCompanyNetworkGraph = ({
     },
     [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates, text]
   );
+
+  // Company⇄cargo detection: after a company loads, cheaply check (reverse lookup)
+  // whether that same entity also holds cargos (officer seats) on OTHER companies.
+  // If so, stamp a `cargoCount` on the node (drives the on-node "+N cargos" badge)
+  // and surface a persistent, non-blocking affordance banner. Never throws.
+  const runCargoDetection = useCallback(async (companyName, companyId) => {
+    if (!companyName || !companyId) return;
+    try {
+      const res = await detectCargoPresence(spanishCompaniesService, companyName);
+      if (!res.hasCargo || res.count <= 0) return;
+      setGraphData(prev => ({
+        ...prev,
+        nodes: prev.nodes.map(n =>
+          n.id === companyId && !n.unified ? { ...n, cargoCount: res.count } : n
+        ),
+      }));
+      setCargoAffordance({ nodeId: companyId, name: companyName, count: res.count });
+    } catch {
+      // Non-fatal — detection is best-effort.
+    }
+  }, []);
+
+  // Unify: reuse the EXACT existing reverse-lookup render path
+  // (expandOfficerV3 → addOfficerToGraph) to build the cargo nodes/links, then fold
+  // them off the throwaway officer node ONTO the loaded company node via the pure
+  // mergeCargoIntoCompanyNode transform (one node, marked unified).
+  const unifyCargosForNode = useCallback(async (companyNodeId, companyName) => {
+    if (!companyNodeId || !companyName) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await spanishCompaniesService.expandOfficerV3(companyName);
+      if (data.success && Array.isArray(data.officers) && data.officers.length > 0) {
+        // Builds the officer node + cargo company nodes + officer-company links.
+        await addOfficerToGraph(data.officers, companyName);
+        const officerNodeId = officerIdFor(companyName);
+        // Relocate those cargo links onto the company node and drop the officer node.
+        setGraphData(prev => mergeCargoIntoCompanyNode(prev, companyNodeId, officerNodeId));
+        // The officer node (if it had been pinned) no longer exists — clean up.
+        setPinnedNodeIds(prev => {
+          if (!prev.has(officerNodeId)) return prev;
+          const next = new Set(prev);
+          next.delete(officerNodeId);
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error('Unify cargos failed:', err);
+      setError(text.unifyCargosError(err.message));
+    } finally {
+      setIsLoading(false);
+      setCargoAffordance(null);
+      setUnifyConfirm(null);
+    }
+  }, [addOfficerToGraph, text]);
 
   // Plot a bare shareholder node (no officers, no subsidiaries) so the user
   // can see the entity on the canvas before deciding to fetch its participadas.
@@ -5454,6 +5548,45 @@ const SpanishCompanyNetworkGraph = ({
         }
       }
 
+      // Company⇄cargo badge (top-right pill). Two states:
+      //  • unified → teal "⚭ N" marker (this node's cargos are attached here).
+      //  • pending affordance → amber "+N" (this entity also holds cargos elsewhere).
+      // Drawn for company nodes only; small yet high-contrast so it's unmissable.
+      if (node.type !== 'officer' && (node.unified || node.cargoCount > 0)) {
+        const isUnified = !!node.unified;
+        const badgeText = isUnified
+          ? `⚭${node.unifiedCargoCount ? ' ' + node.unifiedCargoCount : ''}`
+          : `+${node.cargoCount}`;
+        const bg = isUnified ? '#14b8a6' : '#f59e0b';
+        const s = nodeRadius * 1.55; // half-side of the company rounded square
+        const pillH = Math.min(Math.max(nodeRadius * 0.9, 6), 12);
+        const glyphSize = pillH * 0.72;
+        ctx.font = `600 ${glyphSize}px "IBM Plex Mono", monospace`;
+        const textW = ctx.measureText(badgeText).width;
+        const padX = pillH * 0.35;
+        const pillW = textW + padX * 2;
+        // Anchor at the top-right corner of the square.
+        const pillX = node.x + s - pillW * 0.55;
+        const pillY = node.y - s - pillH * 0.55;
+        const r = pillH / 2;
+        ctx.beginPath();
+        ctx.moveTo(pillX + r, pillY);
+        ctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + pillH, r);
+        ctx.arcTo(pillX + pillW, pillY + pillH, pillX, pillY + pillH, r);
+        ctx.arcTo(pillX, pillY + pillH, pillX, pillY, r);
+        ctx.arcTo(pillX, pillY, pillX + pillW, pillY, r);
+        ctx.closePath();
+        ctx.fillStyle = bg;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(4, 18, 31, 0.9)';
+        ctx.lineWidth = Math.max(0.5, 1 / globalScale);
+        ctx.stroke();
+        ctx.fillStyle = isUnified ? '#04121f' : '#1a1206';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badgeText, pillX + pillW / 2, pillY + pillH / 2 + 0.5);
+      }
+
       // Conditional label rendering based on density and zoom
       if (showNodeLabels) {
         const isDense = filteredGraphData.nodes.length > MAX_NODES_FOR_LABELS;
@@ -7003,6 +7136,53 @@ const SpanishCompanyNetworkGraph = ({
           />
         )}
 
+        {/* Company⇄cargo affordance — a persistent, non-blocking banner that appears
+            when the loaded company ALSO holds cargos (officer seats) elsewhere.
+            Gentle (small, tucked top-centre, dismissible) yet unmissable; pairs with
+            the on-node "+N cargos" badge. NOT a transient toast. */}
+        {cargoAffordance && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 10,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 16,
+              maxWidth: 'min(92%, 440px)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.5,
+              py: 0.75,
+              borderRadius: 2,
+              bgcolor: 'rgba(20, 28, 46, 0.94)',
+              border: '1px solid rgba(56, 189, 248, 0.55)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
+            }}
+          >
+            <HubIcon sx={{ fontSize: 18, color: '#38bdf8', flexShrink: 0 }} />
+            <Typography sx={{ fontSize: 12.5, color: '#e2e8f0', lineHeight: 1.35, flex: 1 }}>
+              {text.cargoBannerBody(cargoAffordance.name, cargoAffordance.count)}
+            </Typography>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => setUnifyConfirm(cargoAffordance)}
+              sx={{ flexShrink: 0, minWidth: 0, px: 1.25, py: 0.25, fontSize: 12, textTransform: 'none', bgcolor: '#38bdf8', color: '#04121f', '&:hover': { bgcolor: '#7dd3fc' } }}
+            >
+              {text.cargoUnify}
+            </Button>
+            <IconButton
+              size="small"
+              aria-label={text.cargoDismiss}
+              onClick={() => setCargoAffordance(null)}
+              sx={{ flexShrink: 0, color: '#94a3b8', p: 0.25 }}
+            >
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        )}
+
         {/* Loading state — scoped to the graph canvas only, so a search shows a
             calm indicator on the graph surface instead of a bare black viewport.
             Semi-transparent so a re-search dims the existing graph rather than
@@ -7625,6 +7805,19 @@ const SpanishCompanyNetworkGraph = ({
             </ListItemIcon>
             <ListItemText>{text.expandNode}</ListItemText>
           </MenuItem>
+          {contextNode && contextNode.type !== 'officer' && contextNode.cargoCount > 0 && !contextNode.unified && (
+            <MenuItem
+              onClick={() => {
+                closeNodeContextMenu();
+                setUnifyConfirm({ nodeId: contextNode.id, name: contextNode.name, count: contextNode.cargoCount });
+              }}
+            >
+              <ListItemIcon>
+                <HubIcon fontSize="small" sx={{ color: '#38bdf8' }} />
+              </ListItemIcon>
+              <ListItemText>{text.cargoBadge(contextNode.cargoCount)}</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem onClick={openEditNodeDialog}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
@@ -8762,6 +8955,30 @@ const SpanishCompanyNetworkGraph = ({
             </Button>
           }
         />
+
+        {/* Light confirm before unifying an entity's cargos onto its company node. */}
+        <Dialog open={Boolean(unifyConfirm)} onClose={() => setUnifyConfirm(null)} maxWidth="xs">
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <HubIcon sx={{ fontSize: 20, color: '#38bdf8' }} />
+            {text.cargoConfirmTitle}
+          </DialogTitle>
+          <DialogContent>
+            <Typography sx={{ fontSize: 14 }}>
+              {unifyConfirm ? text.cargoConfirmBody(unifyConfirm.name, unifyConfirm.count) : ''}
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setUnifyConfirm(null)}>{text.cancel}</Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                if (unifyConfirm) unifyCargosForNode(unifyConfirm.nodeId, unifyConfirm.name);
+              }}
+            >
+              {text.cargoConfirmAction}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </>
     );
   })();
