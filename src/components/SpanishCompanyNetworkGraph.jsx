@@ -5743,12 +5743,17 @@ const SpanishCompanyNetworkGraph = ({
       ctx.stroke();
       ctx.setLineDash([]); // Reset dash
 
-      // Arrowhead at the target end. react-force-graph's built-in linkDirectionalArrow is
-      // suppressed when a custom linkCanvasObject is in 'replace' mode, so we draw it here.
+      // Arrowhead at the target end — DIRECTIONAL edges only (entity→company cargo
+      // appointments/ceses and owner→owned ownership). Non-directional links (e.g.
+      // untyped company-company / structural links) get no arrow. react-force-graph's
+      // built-in linkDirectionalArrow is suppressed when a custom linkCanvasObject is
+      // in 'replace' mode, so we draw it here manually.
+      const isDirectionalLink =
+        link.type === 'officer-company' || link.type === 'ownership';
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       const length = Math.sqrt(dx * dx + dy * dy);
-      if (length > 0) {
+      if (isDirectionalLink && length > 0) {
         const ux = dx / length;
         const uy = dy / length;
         // Back the arrow off from the target node's edge so the tip is visible.
@@ -7106,34 +7111,15 @@ const SpanishCompanyNetworkGraph = ({
             onNodeDrag={handleNodeDrag}
             onNodeDragEnd={handleNodeDragEnd}
             onZoom={handleZoom}
-            linkDirectionalParticles={2}
-            linkDirectionalParticleSpeed={0.005}
-            linkDirectionalArrowLength={4}
-            linkDirectionalArrowRelPos={1}
-            linkDirectionalArrowColor={link => {
-              const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
-              if (link.type === 'ownership') {
-                return cat === 'socio_anterior'
-                  ? '#9e9e9e'
-                  : cat === 'socio_perdido'
-                    ? '#bf8f30'
-                    : '#fbc02d';
-              }
-              if (link.companyDissolved) return '#f87171'; // DISSOLVED company → officer link not current
-              if (
-                cat.includes('nombramiento') ||
-                cat.includes('reeleccion') ||
-                cat.includes('reelección')
-              ) return '#34d399';
-              if (
-                cat.includes('cese') ||
-                cat.includes('dimision') ||
-                cat.includes('dimisión') ||
-                cat.includes('revocacion') ||
-                cat.includes('revocación')
-              ) return '#f87171';
-              return '#64748b';
-            }}
+            // Light particle flow — DIRECTIONAL edges only (source→target). Arrowheads are
+            // drawn manually in linkCanvasObject (built-in linkDirectionalArrow* props are
+            // ignored under a custom 'replace'-mode renderer). Kept light: one slow particle
+            // so a ~50-edge graph stays smooth.
+            linkDirectionalParticles={link =>
+              (link.type === 'officer-company' || link.type === 'ownership') ? 1 : 0
+            }
+            linkDirectionalParticleSpeed={0.004}
+            linkDirectionalParticleWidth={1.6}
             d3AlphaDecay={0.08}
             d3VelocityDecay={0.8}
             cooldownTicks={40}
