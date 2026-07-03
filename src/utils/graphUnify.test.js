@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeCargoIntoCompanyNode } from './graphUnify';
+import { mergeCargoIntoCompanyNode, undoCargoUnify } from './graphUnify';
 
 // Build a fixture that represents the graph AFTER the existing officer-expansion
 // path (expandOfficerV3 -> addOfficerToGraph) has run: the loaded COMPANY node,
@@ -135,5 +135,127 @@ describe('mergeCargoIntoCompanyNode', () => {
     const out = mergeCargoIntoCompanyNode(g, 'company:missing', 'officer-acme-sa');
     expect(out.nodes.find((n) => n.id === 'officer-acme-sa')).toBeDefined();
     expect(out.nodes.some((n) => n.unified)).toBe(false);
+  });
+
+  it('tags each relocated cargo link with __cargoUnify = companyNodeId', () => {
+    const out = mergeCargoIntoCompanyNode(baseGraph(), 'company:acme', 'officer-acme-sa');
+    const cargoLinks = out.links.filter((l) => l.type === 'officer-company');
+    expect(cargoLinks).toHaveLength(2);
+    expect(cargoLinks.every((l) => l.__cargoUnify === 'company:acme')).toBe(true);
+  });
+
+  it('tags cargo-company nodes that exist ONLY for the unify, not independently-connected ones', () => {
+    const g = baseGraph();
+    // target-b already has an independent link (e.g. it owns another company),
+    // so it existed in the graph on its own merits — it must NOT be tagged.
+    g.nodes.push({ id: 'company:other', name: 'OTHER SL', type: 'spanish-company-group' });
+    g.links.push({
+      id: 'company:target-b-company:other-own',
+      source: 'company:target-b',
+      target: 'company:other',
+      type: 'ownership',
+      relationship: 'Socio único',
+      category: 'socio_unico',
+    });
+
+    const out = mergeCargoIntoCompanyNode(g, 'company:acme', 'officer-acme-sa');
+
+    const tA = out.nodes.find((n) => n.id === 'company:target-a');
+    const tB = out.nodes.find((n) => n.id === 'company:target-b');
+    // target-a is only reachable through the cargo edge → tagged.
+    expect(tA.__cargoUnifyFor).toBe('company:acme');
+    // target-b existed independently → NOT tagged.
+    expect(tB.__cargoUnifyFor).toBeUndefined();
+    // The company node itself is never tagged as a cargo-unify node.
+    const acme = out.nodes.find((n) => n.id === 'company:acme');
+    expect(acme.__cargoUnifyFor).toBeUndefined();
+  });
+});
+
+describe('undoCargoUnify', () => {
+  const unified = () => mergeCargoIntoCompanyNode(baseGraph(), 'company:acme', 'officer-acme-sa');
+
+  it('removes exactly the tagged cargo links and the exclusively-cargo target nodes', () => {
+    const out = undoCargoUnify(unified(), 'company:acme');
+
+    // All __cargoUnify links gone.
+    expect(out.links.some((l) => l.__cargoUnify === 'company:acme')).toBe(false);
+    expect(out.links.filter((l) => l.type === 'officer-company')).toHaveLength(0);
+    // Exclusively-cargo target nodes removed (they had no other links).
+    expect(out.nodes.find((n) => n.id === 'company:target-a')).toBeUndefined();
+    expect(out.nodes.find((n) => n.id === 'company:target-b')).toBeUndefined();
+    // The company node survives.
+    expect(out.nodes.find((n) => n.id === 'company:acme')).toBeDefined();
+  });
+
+  it('keeps a cargo company that is still connected elsewhere (never orphan-deletes)', () => {
+    const g = baseGraph();
+    g.nodes.push({ id: 'company:other', name: 'OTHER SL', type: 'spanish-company-group' });
+    g.links.push({
+      id: 'company:target-b-company:other-own',
+      source: 'company:target-b',
+      target: 'company:other',
+      type: 'ownership',
+      relationship: 'Socio único',
+      category: 'socio_unico',
+    });
+    const merged = mergeCargoIntoCompanyNode(g, 'company:acme', 'officer-acme-sa');
+    const out = undoCargoUnify(merged, 'company:acme');
+
+    // target-a was exclusively cargo → removed.
+    expect(out.nodes.find((n) => n.id === 'company:target-a')).toBeUndefined();
+    // target-b still connected to company:other → retained.
+    expect(out.nodes.find((n) => n.id === 'company:target-b')).toBeDefined();
+    // Its independent link survives.
+    expect(
+      out.links.some((l) => l.id === 'company:target-b-company:other-own')
+    ).toBe(true);
+  });
+
+  it('resets the company node: unified=false, drops unifiedCargoCount, restores cargoCount badge', () => {
+    const merged = unified();
+    const before = merged.nodes.find((n) => n.id === 'company:acme');
+    expect(before.unified).toBe(true);
+    expect(before.unifiedCargoCount).toBe(2);
+    expect(before.cargoCount).toBe(0);
+
+    const out = undoCargoUnify(merged, 'company:acme');
+    const acme = out.nodes.find((n) => n.id === 'company:acme');
+    expect(acme.unified).toBe(false);
+    expect('unifiedCargoCount' in acme).toBe(false);
+    // Amber "+N cargos" badge returns.
+    expect(acme.cargoCount).toBe(2);
+  });
+
+  it('is idempotent — undoing twice yields the same nodes/links and stable cargoCount', () => {
+    const once = undoCargoUnify(unified(), 'company:acme');
+    const twice = undoCargoUnify(once, 'company:acme');
+    expect(twice.nodes).toHaveLength(once.nodes.length);
+    expect(twice.links).toHaveLength(once.links.length);
+    const acme = twice.nodes.find((n) => n.id === 'company:acme');
+    expect(acme.unified).toBe(false);
+    expect(acme.cargoCount).toBe(2); // not clobbered to 0 on the second pass
+    expect('unifiedCargoCount' in acme).toBe(false);
+  });
+
+  it('handles d3-mutated links whose source/target are node objects', () => {
+    const merged = unified();
+    // Simulate react-force-graph replacing string ids with node object refs.
+    merged.links.forEach((l) => {
+      if (l.__cargoUnify) {
+        l.source = merged.nodes.find((n) => n.id === 'company:acme');
+        l.target = merged.nodes.find((n) => n.id === l.target);
+      }
+    });
+    const out = undoCargoUnify(merged, 'company:acme');
+    expect(out.links.some((l) => l.__cargoUnify === 'company:acme')).toBe(false);
+    expect(out.nodes.find((n) => n.id === 'company:target-a')).toBeUndefined();
+  });
+
+  it('is a no-op for a company that was never unified', () => {
+    const g = baseGraph();
+    const out = undoCargoUnify(g, 'company:acme');
+    expect(out.links).toHaveLength(g.links.length);
+    expect(out.nodes.find((n) => n.id === 'company:acme').unified).toBeFalsy();
   });
 });

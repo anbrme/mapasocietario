@@ -90,7 +90,7 @@ import AIInvestigationGate from './AIInvestigationGate';
 import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
 import { isLegalEntityName } from '../utils/legalEntity';
 import { detectCargoPresence } from '../utils/cargoDetection';
-import { mergeCargoIntoCompanyNode } from '../utils/graphUnify';
+import { mergeCargoIntoCompanyNode, undoCargoUnify } from '../utils/graphUnify';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import {
   POSITION_CATEGORY_ORDER,
@@ -293,6 +293,8 @@ const SEARCH_COPY = {
     cargoUnifying: 'Unifying…',
     cargoDismiss: 'Dismiss',
     cargoUnified: 'Unified — cargos attached',
+    cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
+    cargoUndo: 'Undo unify',
     unifyCargosError: msg => `Could not unify cargos: ${msg}`,
     expandNode: 'Expand node',
     editNode: 'Edit node',
@@ -537,6 +539,8 @@ const SEARCH_COPY = {
     cargoUnifying: 'Unificando…',
     cargoDismiss: 'Descartar',
     cargoUnified: 'Unificada — cargos añadidos',
+    cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
+    cargoUndo: 'Deshacer unificación',
     unifyCargosError: msg => `No se pudieron unificar los cargos: ${msg}`,
     expandNode: 'Expandir nodo',
     editNode: 'Modificar nodo',
@@ -3403,6 +3407,13 @@ const SpanishCompanyNetworkGraph = ({
       setCargoAffordance(null);
     }
   }, [addOfficerToGraph, text]);
+
+  // Reverse a unify: strip the relocated cargo edges + the cargo-only nodes and
+  // restore the amber "+N cargos" affordance. Pure transform via undoCargoUnify.
+  const undoCargoUnifyForNode = useCallback((companyNodeId) => {
+    if (!companyNodeId) return;
+    setGraphData(prev => undoCargoUnify(prev, companyNodeId));
+  }, []);
 
   // Plot a bare shareholder node (no officers, no subsidiaries) so the user
   // can see the entity on the canvas before deciding to fetch its participadas.
@@ -7183,6 +7194,31 @@ const SpanishCompanyNetworkGraph = ({
           </Box>
         )}
 
+        {/* Contextual UNDO chip — shown only while the selected node is unified.
+            ✕ (onDelete) reverses the unify and restores the "+N cargos" badge. */}
+        {contextNode && contextNode.unified && (
+          <Chip
+            icon={<HubIcon sx={{ fontSize: 16, color: '#5eead4 !important' }} />}
+            label={text.cargoUndoChip(contextNode.unifiedCargoCount || 0)}
+            onDelete={() => undoCargoUnifyForNode(contextNode.id)}
+            deleteIcon={<CloseIcon sx={{ fontSize: 15 }} />}
+            size="small"
+            sx={{
+              position: 'absolute',
+              top: 10,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 16,
+              bgcolor: 'rgba(13, 148, 136, 0.92)',
+              color: '#ecfeff',
+              border: '1px solid rgba(94, 234, 212, 0.55)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
+              fontWeight: 600,
+              '& .MuiChip-deleteIcon': { color: '#a7f3d0', '&:hover': { color: '#ecfeff' } },
+            }}
+          />
+        )}
+
         {/* Loading state — scoped to the graph canvas only, so a search shows a
             calm indicator on the graph surface instead of a bare black viewport.
             Semi-transparent so a re-search dims the existing graph rather than
@@ -7816,6 +7852,19 @@ const SpanishCompanyNetworkGraph = ({
                 <HubIcon fontSize="small" sx={{ color: '#38bdf8' }} />
               </ListItemIcon>
               <ListItemText>{text.cargoBadge(contextNode.cargoCount)}</ListItemText>
+            </MenuItem>
+          )}
+          {contextNode && contextNode.unified && (
+            <MenuItem
+              onClick={() => {
+                closeNodeContextMenu();
+                undoCargoUnifyForNode(contextNode.id);
+              }}
+            >
+              <ListItemIcon>
+                <HubIcon fontSize="small" sx={{ color: '#5eead4' }} />
+              </ListItemIcon>
+              <ListItemText>{text.cargoUndo}</ListItemText>
             </MenuItem>
           )}
           <MenuItem onClick={openEditNodeDialog}>
