@@ -296,6 +296,8 @@ const SEARCH_COPY = {
     cargoUnified: 'Unified — cargos attached',
     cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
     cargoUndo: 'Undo unify',
+    cargoToggleLabel: count => `Unify cargos (${count})`,
+    cargoToggleTooltip: 'This entity also holds officer seats in other companies. Toggle to unify them onto this node (or undo).',
     unifyCargosError: msg => `Could not unify cargos: ${msg}`,
     expandNode: 'Expand node',
     editNode: 'Edit node',
@@ -542,6 +544,8 @@ const SEARCH_COPY = {
     cargoUnified: 'Unificada — cargos añadidos',
     cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
     cargoUndo: 'Deshacer unificación',
+    cargoToggleLabel: count => `Unificar cargos (${count})`,
+    cargoToggleTooltip: 'Esta entidad también ocupa cargos en otras sociedades. Actívalo para unificarlos en este nodo (o deshacer).',
     unifyCargosError: msg => `No se pudieron unificar los cargos: ${msg}`,
     expandNode: 'Expandir nodo',
     editNode: 'Modificar nodo',
@@ -1181,9 +1185,10 @@ const SpanishCompanyNetworkGraph = ({
   const [hiddenNodeIds, setHiddenNodeIds] = useState(new Set());
   const [hiddenNodesMenuAnchorEl, setHiddenNodesMenuAnchorEl] = useState(null);
   const [activeNodeId, setActiveNodeId] = useState(null);
-  // Company⇄cargo unify: pending affordance for the loaded company that also holds
-  // cargos elsewhere, and the light confirm gate. { nodeId, name, count }.
-  const [cargoAffordance, setCargoAffordance] = useState(null);
+  // Company⇄cargo unify: `isUnifying` gates the toolbar toggle's spinner while the
+  // reverse lookup + merge runs. The presence/state of the unify-capable node is
+  // derived from graph nodes (cargoCount / unified) via cargoToggleNode, so no
+  // separate affordance state is needed.
   const [isUnifying, setIsUnifying] = useState(false);
   const [nodeContextMenu, setNodeContextMenu] = useState(null); // { mouseX, mouseY, nodeId }
   const [investigationSet, setInvestigationSet] = useState(() => new Set());
@@ -3363,7 +3368,6 @@ const SpanishCompanyNetworkGraph = ({
           n.id === companyId && !n.unified ? { ...n, cargoCount: res.count } : n
         ),
       }));
-      setCargoAffordance({ nodeId: companyId, name: companyName, count: res.count });
     } catch {
       // Non-fatal — detection is best-effort.
     }
@@ -3400,7 +3404,6 @@ const SpanishCompanyNetworkGraph = ({
     } finally {
       setIsLoading(false);
       setIsUnifying(false);
-      setCargoAffordance(null);
     }
   }, [addOfficerToGraph, text]);
 
@@ -3764,13 +3767,16 @@ const SpanishCompanyNetworkGraph = ({
     return graphData.nodes.find(n => isSameNodeId(n.id, activeNodeId)) || null;
   }, [activeNodeId, graphData.nodes]);
 
-  // The undo chip should show whenever a node is unified (cargos merged into a
-  // single company node) — NOT only when that node happens to be the last
-  // right-clicked one. contextNode only gets set on right-click, so the normal
-  // "unify via banner" path never sets it and the chip never appeared. If more
-  // than one node is unified, showing the chip for the first one is fine for now.
-  const unifiedNode = React.useMemo(
-    () => graphData.nodes.find(n => n.unified) || null,
+  // Drives the persistent toolbar toggle (like "Simplify"): the company node that
+  // either is currently unified (cargos merged onto it) OR has a detected cargo
+  // presence (cargoCount > 0) waiting to be unified. A unified node takes
+  // precedence. `.unified` on the returned node tells the toggle which way it sits,
+  // so one control both unifies and undoes — re-toggleable, never disappears.
+  const cargoToggleNode = React.useMemo(
+    () =>
+      graphData.nodes.find(n => n.unified) ||
+      graphData.nodes.find(n => n.type !== 'officer' && n.cargoCount > 0) ||
+      null,
     [graphData.nodes]
   );
 
@@ -5767,10 +5773,14 @@ const SpanishCompanyNetworkGraph = ({
         const tipOffset = nodeSize + 1;
         const tipX = end.x - ux * tipOffset;
         const tipY = end.y - uy * tipOffset;
+        // Size the arrowhead in GRAPH units relative to the node radius so it stays
+        // proportional to the nodes at ANY zoom. The previous screen-pixel sizing
+        // (6 / globalScale) collapsed to a couple of pixels and effectively vanished
+        // as you zoomed in; a graph-unit size scales with the nodes instead.
         const arrowLen = (pathfinderActive && isLinkInPath)
-          ? Math.max(6, 9 / globalScale)
-          : Math.max(4, 6 / globalScale);
-        const arrowHalfWidth = arrowLen * 0.55;
+          ? nodeSize * 1.3
+          : nodeSize * 0.95;
+        const arrowHalfWidth = arrowLen * 0.62;
         const baseX = tipX - ux * arrowLen;
         const baseY = tipY - uy * arrowLen;
         const leftX = baseX + -uy * arrowHalfWidth;
@@ -6877,6 +6887,35 @@ const SpanishCompanyNetworkGraph = ({
               color={simplifyGraph ? 'info' : 'default'}
               onClick={() => setSimplifyGraph(prev => !prev)}
             />
+            {cargoToggleNode && (
+              <Tooltip arrow title={text.cargoToggleTooltip}>
+                <Chip
+                  label={text.cargoToggleLabel(
+                    cargoToggleNode.unified
+                      ? (cargoToggleNode.unifiedCargoCount || 0)
+                      : (cargoToggleNode.cargoCount || 0)
+                  )}
+                  size="small"
+                  icon={
+                    isUnifying
+                      ? <CircularProgress size={12} sx={{ color: 'inherit', ml: 0.5 }} />
+                      : <HubIcon sx={{ fontSize: 15 }} />
+                  }
+                  variant={cargoToggleNode.unified ? 'filled' : 'outlined'}
+                  disabled={isUnifying}
+                  onClick={() =>
+                    cargoToggleNode.unified
+                      ? undoCargoUnifyForNode(cargoToggleNode.id)
+                      : unifyCargosForNode(cargoToggleNode.id, cargoToggleNode.name)
+                  }
+                  sx={
+                    cargoToggleNode.unified
+                      ? { bgcolor: '#0d9488', color: '#ecfeff', fontWeight: 600, '& .MuiChip-icon': { color: '#5eead4' }, '&:hover': { bgcolor: '#0f766e' } }
+                      : { borderColor: '#5eead4', color: '#5eead4', '& .MuiChip-icon': { color: '#5eead4' } }
+                  }
+                />
+              </Tooltip>
+            )}
             {availablePositionCount > 0 && (
               <Button
                 size="small"
@@ -7123,9 +7162,22 @@ const SpanishCompanyNetworkGraph = ({
             // Arrowheads are drawn manually in linkCanvasObject (built-in
             // linkDirectionalArrow* props are ignored under a custom 'replace'-mode
             // renderer). Kept light: one slow particle so a ~50-edge graph stays smooth.
-            linkDirectionalParticles={link => (isDirectionalLink(link) ? 1 : 0)}
-            linkDirectionalParticleSpeed={0.004}
-            linkDirectionalParticleWidth={1.6}
+            linkDirectionalParticles={link => (isDirectionalLink(link) ? 2 : 0)}
+            linkDirectionalParticleSpeed={0.006}
+            linkDirectionalParticleWidth={3}
+            // Bright, edge-matched particle color so the flow is visible on the dark
+            // canvas (the default particle color is a faint link tint). Mirrors the
+            // linkCanvasObject color rules: amber ownership, red ceased, teal active.
+            linkDirectionalParticleColor={link => {
+              const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
+              if (link.type === 'ownership' || cat.startsWith('socio')) return '#fbbf24';
+              if (
+                link.companyDissolved ||
+                cat.includes('cese') || cat.includes('dimision') || cat.includes('dimisión') ||
+                cat.includes('revocacion') || cat.includes('revocación')
+              ) return '#f87171';
+              return '#5eead4';
+            }}
             d3AlphaDecay={0.08}
             d3VelocityDecay={0.8}
             cooldownTicks={40}
@@ -7136,83 +7188,11 @@ const SpanishCompanyNetworkGraph = ({
           />
         )}
 
-        {/* Company⇄cargo affordance — a persistent, non-blocking banner that appears
-            when the loaded company ALSO holds cargos (officer seats) elsewhere.
-            Gentle (small, tucked top-centre, dismissible) yet unmissable; pairs with
-            the on-node "+N cargos" badge. NOT a transient toast. */}
-        {cargoAffordance && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 10,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 16,
-              maxWidth: 'min(92%, 440px)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              px: 1.5,
-              py: 0.75,
-              borderRadius: 2,
-              bgcolor: 'rgba(20, 28, 46, 0.94)',
-              border: '1px solid rgba(56, 189, 248, 0.55)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
-            }}
-          >
-            <HubIcon sx={{ fontSize: 18, color: '#38bdf8', flexShrink: 0 }} />
-            <Typography sx={{ fontSize: 12.5, color: '#e2e8f0', lineHeight: 1.35, flex: 1 }}>
-              {text.cargoBannerBody(cargoAffordance.name, cargoAffordance.count)}
-            </Typography>
-            <Button
-              size="small"
-              variant="contained"
-              disabled={isUnifying}
-              startIcon={isUnifying ? <CircularProgress size={14} sx={{ color: '#04121f' }} /> : null}
-              onClick={() => unifyCargosForNode(cargoAffordance.nodeId, cargoAffordance.name)}
-              sx={{ flexShrink: 0, minWidth: 0, px: 1.25, py: 0.25, fontSize: 12, textTransform: 'none', bgcolor: '#38bdf8', color: '#04121f', '&:hover': { bgcolor: '#7dd3fc' }, '&.Mui-disabled': { bgcolor: '#38bdf8', color: '#04121f', opacity: 0.7 } }}
-            >
-              {isUnifying ? text.cargoUnifying : text.cargoUnify}
-            </Button>
-            <IconButton
-              size="small"
-              aria-label={text.cargoDismiss}
-              onClick={() => setCargoAffordance(null)}
-              disabled={isUnifying}
-              sx={{ flexShrink: 0, color: '#94a3b8', p: 0.25 }}
-            >
-              <CloseIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Box>
-        )}
-
-        {/* Contextual UNDO chip — shown whenever a node in the graph is unified
-            (cargos merged into it), regardless of right-click selection. Unifying
-            via the banner (the normal path) never sets contextNode, so gating on
-            that hid the chip entirely; unifiedNode looks at all graph nodes instead.
-            ✕ (onDelete) reverses the unify and restores the "+N cargos" badge. */}
-        {unifiedNode && (
-          <Chip
-            icon={<HubIcon sx={{ fontSize: 16, color: '#5eead4 !important' }} />}
-            label={text.cargoUndoChip(unifiedNode.unifiedCargoCount || 0)}
-            onDelete={() => undoCargoUnifyForNode(unifiedNode.id)}
-            deleteIcon={<CloseIcon sx={{ fontSize: 15 }} />}
-            size="small"
-            sx={{
-              position: 'absolute',
-              top: 10,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 16,
-              bgcolor: 'rgba(13, 148, 136, 0.92)',
-              color: '#ecfeff',
-              border: '1px solid rgba(94, 234, 212, 0.55)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
-              fontWeight: 600,
-              '& .MuiChip-deleteIcon': { color: '#a7f3d0', '&:hover': { color: '#ecfeff' } },
-            }}
-          />
-        )}
+        {/* Company⇄cargo unify is now a persistent toolbar toggle ("Unify cargos")
+            next to Simplify — see cargoToggleNode above. It replaces the old
+            discovery banner + transient undo chip: one re-toggleable control that
+            both unifies and undoes, paired with the on-node "+N cargos" / "⚭ N"
+            badge as the discovery cue. */}
 
         {/* Loading state — scoped to the graph canvas only, so a search shows a
             calm indicator on the graph surface instead of a bare black viewport.
