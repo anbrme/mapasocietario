@@ -9,7 +9,8 @@
     "prebuild": "node scripts/check-gleif-render.mjs && node scripts/check-curated.mjs && node scripts/check-confirmations.mjs && node scripts/generate-empresa-sitemap.mjs && node scripts/generate-seo-files.mjs",
     "build": "vite build",
     "postbuild": "node scripts/generate-barometro.mjs && node scripts/prerender.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
@@ -36,6 +37,7 @@
     "@vitejs/plugin-react": "^4.2.0",
     "force-graph": "^1.49.5",
     "jsvectormap": "1.7.0",
-    "vite": "^5.0.0"
+    "vite": "^5.0.0",
+    "vitest": "^1.6.0"
   }
 }

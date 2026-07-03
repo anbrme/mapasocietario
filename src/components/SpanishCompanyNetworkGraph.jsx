@@ -88,6 +88,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ForceGraph2D from 'react-force-graph-2d';
 import AIInvestigationGate from './AIInvestigationGate';
 import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
+import { isLegalEntityName } from '../utils/legalEntity';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import {
   POSITION_CATEGORY_ORDER,
@@ -1850,19 +1851,19 @@ const SpanishCompanyNetworkGraph = ({
     [termData, termsAreReady]
   );
 
-  // Helper function to determine if an officer name represents a company or individual
+  // Helper function to determine if an officer name represents a company or individual.
+  // Base check is the shared, pure isLegalEntityName (SL/SA/SGIIC/SCOOP/AIE/UTE/
+  // foreign forms/...); plus a few known-firm-name heuristics that aren't a legal
+  // form per se (audit/consulting houses commonly seen acting as officers).
   const isCompanyOfficer = useCallback(officerName => {
-    const companyIndicators = [
-      /\b(S\.?L\.?|S\.?A\.?|SLU|SAU)\b/i, // Spanish company suffixes
-      /\b(LTD|LIMITED|INC|CORP|CORPORATION|LLC|PLC)\b/i, // English company suffixes
-      /\b(GMBH|AG|KG|OHG)\b/i, // German company suffixes
-      /\b(SAS|SARL|SA|EURL)\b/i, // French company suffixes
-      /\b(BV|NV)\b/i, // Dutch company suffixes
+    if (isLegalEntityName(officerName)) return true;
+
+    const knownFirmIndicators = [
       /\b(AUDIT|AUDITOR|CONSULTING|CONSULTORIA|ASESORES|GESTORIA|DESPACHO)\b/i, // Service companies
       /\b(PRICEWATERHOUSE|DELOITTE|KPMG|EY|ERNST)\b/i, // Known audit firms
     ];
 
-    return companyIndicators.some(pattern => pattern.test(officerName));
+    return knownFirmIndicators.some(pattern => pattern.test(officerName));
   }, []);
 
   // Debounced autocomplete handler
@@ -6085,12 +6086,19 @@ const SpanishCompanyNetworkGraph = ({
             if (typeof value === 'string') return option.label === value;
             return option.label === value?.label;
           }}
-          renderOption={(props, option) => (
+          renderOption={(props, option) => {
+            // An officer suggestion's `type` is 'officer'/'officer_sole_shareholder'
+            // regardless of whether the officer itself is a company (e.g. a
+            // corporate administrador like "CAJAMAR GESTION SGIIC SA"), so fall
+            // back to the name-based legal-entity check to pick the right icon.
+            const isCompanyLike =
+              option.type === 'company' || isLegalEntityName(option.name || option.label);
+            return (
             <Box component="li" {...props} key={option.label + (option.cif || '')}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, width: '100%' }}>
                 {option.type === 'sole_shareholder' ? (
                   <AccountTreeIcon sx={{ fontSize: 16, color: 'warning.main', mt: 0.3 }} />
-                ) : option.type === 'company' ? (
+                ) : isCompanyLike ? (
                   <BusinessIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.3 }} />
                 ) : (
                   <PersonIcon sx={{ fontSize: 16, color: 'info.main', mt: 0.3 }} />
@@ -6182,7 +6190,8 @@ const SpanishCompanyNetworkGraph = ({
                 </Box>
               </Box>
             </Box>
-          )}
+            );
+          }}
           sx={{ flexGrow: 1, minWidth: 200 }}
           renderInput={params => (
             <TextField
