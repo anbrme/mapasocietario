@@ -23,7 +23,7 @@ const STOPWORDS = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'da', 'do']);
 // Spanish-aware tokenizer: NFD-normalize so accented letters survive lowercase
 // before we strip diacritics, then drop short tokens and connector words like
 // "de", "del", "la" so "JUAN DE LA TORRE" and "TORRE, JUAN" still match.
-export function tokenizeName(name) {
+function tokenizeName(name) {
   if (!name || typeof name !== 'string') return [];
   return name
     .normalize('NFD')
@@ -88,7 +88,7 @@ async function fetchAllDeputies() {
 //   - Diput__ (historical): NOMBRE = first name only, APELLIDOS = surnames,
 //     LEGISLATURA + FECHAINICIOLEGISLATURA + FECHAFINLEGISLATURA, no party
 //     or group fields. One row per (deputy × legislatura).
-export function fullDeputyName(d) {
+function fullDeputyName(d) {
   if (!d) return '';
   if (d.APELLIDOS) return `${d.NOMBRE || ''} ${d.APELLIDOS}`.trim();
   return d.NOMBRE || '';

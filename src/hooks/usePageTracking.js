@@ -13,20 +13,3 @@ export default function usePageTracking() {
     }
   }, [location]);
 }
-
-/** Call this when a DD purchase completes successfully. */
-export function trackDDPurchase(country, companyName, value) {
-  if (typeof window.gtag === 'function') {
-    window.gtag('event', 'purchase', {
-      currency: 'EUR',
-      value,
-      items: [{
-        item_name: `DD Report — ${country?.toUpperCase()}`,
-        item_category: 'Due Diligence',
-        price: value,
-        quantity: 1,
-      }],
-      company_name: companyName,
-    });
-  }
-}
