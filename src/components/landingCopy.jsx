@@ -51,7 +51,7 @@ export const LANDING_COPY = {
         },
         {
           title: '2 · Explore the graph',
-          desc: 'Double-click a node to expand the network, right-click for actions, and follow shared officers, roles, sole shareholders, and connected companies. The graph is free, with no account.',
+          desc: 'Double-click a node to expand the network, right-click for actions, and follow shared officers, roles, sole shareholders, and connected companies.',
         },
         {
           title: '3 · Document what matters',
@@ -113,15 +113,47 @@ export const LANDING_COPY = {
         },
         {
           q: 'Do I need an account to use this?',
-          a: 'No. Mapa Societario is completely free to use without any registration or login. Due Diligence reports are an optional paid feature purchased per company from EUR 22.50.',
+          a: 'No. Mapa Societario is completely free to use without any registration or login. Due Diligence reports are an optional paid feature purchased per company from EUR 22.50. Only an email address is required to receive the report. The payment is processed securely through Stripe.',
         },
         {
           q: 'Can I search by officer name?',
-          a: 'Yes. Use the toggle at the top of the search to switch between company and officer search modes. Officer search lets you find a person and see all the companies they are linked to across 6.3 million recorded officer changes.',
+          a: 'Yes. Officer search lets you find a person and see all the companies they are linked to across 6.3 million recorded officer changes. However, you have to be aware that the BORME does not provide an identifier for officers, so the search is based on name matching. For common names, this may lead to false positives (we use several techniques to limit this, and wrong relationships are not common, but we think it is important you are aware of this limitation).',
         },
         {
           q: 'Is the data accurate and official?',
           a: 'The data originates from official BORME publications and is extracted using automated parsers. The service is unofficial and provided as is; automated parsing can produce occasional errors. Always cross-reference the official BORME and, for critical decisions, obtain current information directly from the Registro Mercantil.',
+        },
+        {
+          q: 'What if a company changes its name or merges with another? What if it has been dissolved or spun off?',
+          a: 'The graph tracks name changes, mergers, spin-offs and dissolutions. You can search for a company by its current or former name, and the graph will show its history and connections.',
+        },
+        {
+          q: 'What about shareholders? Can I see who owns a company?',
+          a: 'The Spanish corporate registry provides information about sole shareholders only. We track this and show 100% shareholders and participations, which is all what the Spanish registry offers.',
+        },
+        {
+          q: 'What does the due diligence report include?',
+          a: 'Due diligence reports include comprehensive information on the company’s corporate structure, officer history, and relationship graph. They also feature BOE sanctions checks, risk analysis, and a downloadable PDF format. You can view a sample report before purchasing to see the level of detail provided.',
+        },
+        {
+          q: 'I purchased a report but did not receive it. What should I do?',
+          a: 'If you purchased a report and did not receive it, please check your spam folder first. If you still cannot find it, contact us at orders@ncdata.eu and we will assist you in retrieving your report.',
+        },
+        {
+          q: 'Can I get a refund for a report?',
+          a: 'If the report you received is incorrect due to a parsing error or other issue on our side, we will provide a full refund or issue a credit for other reports. Please contact us at orders@ncdata.eu for assistance.',
+        },
+        {
+          q: 'How often is the data updated?',
+          a: 'Our data is updated daily to ensure you have the most current information available.',
+        },
+        {
+          q: 'Can I use this data for commercial purposes?',
+          a: 'Yes, you can use the data for commercial purposes, but please note that the service is unofficial and not endorsed by any government body. Always verify critical information with official sources.',
+        },
+        {
+          q: 'Is there an API available?',
+          a: 'Yes, we provide a public API for developers and researchers. Please get in touch with us for access and documentation. The API allows you to programmatically access company and officer data, as well as relationship graphs.',
         },
         {
           q: 'Who built Mapa Societario?',
@@ -200,7 +232,7 @@ export const LANDING_COPY = {
         },
         {
           title: '2 · Explora el grafo',
-          desc: 'Haz doble clic en un nodo para expandir la red, clic derecho para acciones y sigue administradores compartidos, cargos, socios únicos y empresas conectadas. El grafo es gratis y sin cuenta.',
+          desc: 'Haz doble clic en un nodo para expandir la red, clic derecho para acciones y sigue administradores compartidos, cargos, socios únicos y empresas conectadas.',
         },
         {
           title: '3 · Documenta lo importante',
@@ -262,15 +294,47 @@ export const LANDING_COPY = {
         },
         {
           q: '¿Necesito una cuenta para usarlo?',
-          a: 'No. Mapa Societario es completamente gratuito, sin registro ni inicio de sesión. Los informes due diligence son una función de pago opcional que se compra por empresa desde 22,50 EUR.',
+          a: 'No. Mapa Societario es completamente gratuito, sin registro ni inicio de sesión. Los informes due diligence son una función de pago opcional que se compra por empresa desde 22,50 EUR. Solo se necesita una dirección de correo electrónico para recibir el informe. El pago se procesa de forma segura a través de Stripe.',
         },
         {
           q: '¿Puedo buscar por nombre de administrador?',
-          a: 'Sí. Usa el conmutador en la parte superior de la búsqueda para alternar entre búsqueda por empresa y por administrador. La búsqueda por persona te permite encontrar a alguien y ver todas las empresas a las que está vinculado, a partir de 6,3 millones de cambios de administradores registrados.',
+          a: 'Sí. La búsqueda por persona te permite encontrar a alguien y ver todas las empresas a las que está vinculado, a partir de 6,3 millones de cambios de administradores registrados. Sin embargo, ten en cuenta que el BORME no ofrece un identificador para los administradores, por lo que la búsqueda se basa en la coincidencia de nombres. En el caso de nombres comunes, esto puede dar lugar a falsos positivos (usamos varias técnicas para limitarlo y las relaciones incorrectas no son habituales, pero creemos importante que conozcas esta limitación).',
         },
         {
           q: '¿Los datos son precisos y oficiales?',
           a: 'Los datos proceden de publicaciones oficiales del BORME y se extraen mediante analizadores automáticos. El servicio es no oficial y se ofrece tal cual; el análisis automático puede contener errores ocasionales. Contrasta siempre con el BORME oficial y, para decisiones importantes, obtén información actualizada directamente del Registro Mercantil.',
+        },
+        {
+          q: '¿Qué ocurre si una empresa cambia de nombre o se fusiona con otra? ¿Y si se ha disuelto o escindido?',
+          a: 'El grafo registra cambios de nombre, fusiones, escisiones y disoluciones. Puedes buscar una empresa por su nombre actual o anterior, y el grafo mostrará su historial y sus conexiones.',
+        },
+        {
+          q: '¿Qué hay de los socios? ¿Puedo ver quién es el propietario de una empresa?',
+          a: 'El registro mercantil español solo ofrece información sobre socios únicos. Recogemos este dato y mostramos los socios y participaciones al 100%, que es todo lo que ofrece el registro español.',
+        },
+        {
+          q: '¿Qué incluye el informe due diligence?',
+          a: 'Los informes due diligence incluyen información completa sobre la estructura societaria de la empresa, el historial de administradores y el grafo de relaciones. También incluyen comprobación de sanciones BOE, análisis de riesgo y formato PDF descargable. Puedes ver un informe de ejemplo antes de comprarlo para conocer el nivel de detalle que ofrece.',
+        },
+        {
+          q: 'Compré un informe pero no lo recibí. ¿Qué debo hacer?',
+          a: 'Si compraste un informe y no lo recibiste, revisa primero tu carpeta de spam. Si sigues sin encontrarlo, contáctanos en orders@ncdata.eu y te ayudaremos a recuperar tu informe.',
+        },
+        {
+          q: '¿Puedo obtener un reembolso de un informe?',
+          a: 'Si el informe que recibiste es incorrecto por un error de análisis u otro problema por nuestra parte, te ofreceremos un reembolso completo o un crédito para otros informes. Contáctanos en orders@ncdata.eu para recibir ayuda.',
+        },
+        {
+          q: '¿Con qué frecuencia se actualizan los datos?',
+          a: 'Nuestros datos se actualizan a diario para que dispongas siempre de la información más reciente.',
+        },
+        {
+          q: '¿Puedo usar estos datos con fines comerciales?',
+          a: 'Sí, puedes usar los datos con fines comerciales, pero ten en cuenta que el servicio es no oficial y no está avalado por ningún organismo público. Verifica siempre la información crítica con fuentes oficiales.',
+        },
+        {
+          q: '¿Hay una API disponible?',
+          a: 'Sí, ofrecemos una API pública para desarrolladores e investigadores. Ponte en contacto con nosotros para obtener acceso y documentación. La API permite acceder de forma programática a los datos de empresas y administradores, así como a los grafos de relaciones.',
         },
         {
           q: '¿Quién ha creado Mapa Societario?',
