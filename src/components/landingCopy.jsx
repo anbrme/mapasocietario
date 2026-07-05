@@ -98,7 +98,7 @@ export const LANDING_COPY = {
       sinceLabel: 'Continuous coverage since',
       sinceValue: '2009',
       items: [
-        { key: 'companies', label: 'Spanish companies' },
+        { key: 'companies', label: 'Spanish companies (tracking name changes, mergers and spin-offs)' },
         { key: 'events', label: 'BORME registry filings' },
         { key: 'officerChanges', label: 'Director / officer changes' },
         { key: 'formations', label: 'Company formations' },
