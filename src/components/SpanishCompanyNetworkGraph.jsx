@@ -81,6 +81,7 @@ import { extractVisibleScope } from '../utils/relationshipScope';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 import ApoderadosSidebar from './ApoderadosSidebar';
+import Ibex35MarketSidebar from './Ibex35MarketSidebar';
 import LegalDisclaimer from './LegalDisclaimer';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import PsychologyIcon from '@mui/icons-material/Psychology';
@@ -115,6 +116,7 @@ import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
+import { matchIbexSeed } from '../utils/ibex35Match';
 
 const CATEGORY_LABELS = {
   es: {
@@ -4045,6 +4047,14 @@ const SpanishCompanyNetworkGraph = ({
     const first = companyNodes[0];
     return { name: first.name, groupKey: first.groupKey || null };
   }, [graphData.nodes, primarySubject]);
+
+  // The focused company's IBEX 35 SEED entry, or null. Recomputed on every
+  // render (cheap: a map lookup against the ~35-entry SEED) whenever the
+  // focused company changes.
+  const focusedIbexSeed = (() => {
+    const focused = resolveFocusedCompany();
+    return focused ? matchIbexSeed(focused.name) : null;
+  })();
 
   // Resolve (and cache) the subject company's group_key on demand. Graph nodes
   // are name-keyed, not group_key-keyed, so we resolve via directory autocomplete.
@@ -8042,6 +8052,12 @@ const SpanishCompanyNetworkGraph = ({
             };
             addCompanyWithOfficersToGraph([entry]);
           }}
+        />
+
+        <Ibex35MarketSidebar
+          open={Boolean(focusedIbexSeed) && !apoderadosSidebar.open}
+          seedEntry={focusedIbexSeed}
+          lang={uiLanguage}
         />
 
         <Dialog
