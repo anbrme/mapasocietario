@@ -134,8 +134,17 @@ elsewhere in the graph component.
   against a handful of real `SEED` entries.
 - Unit tests for `ibex35DashboardClient`: NIF lookup (with normalization),
   session-level caching, and failure handling (mocked `fetch`).
-- Component test for `Ibex35MarketSidebar`: renders nothing without a
-  match/data, renders the full snapshot + shareholders list given mock data.
+- The main app has no component-rendering test setup today (no
+  `@testing-library/react`/jsdom in `package.json`; existing tests —
+  `graphUnify.test.js` etc. — are all pure-function unit tests). Rather than
+  introduce new test infrastructure for one component, the "renders nothing
+  vs. renders the snapshot" behavior is covered by unit-testing a pure view
+  model function (`buildIbexCardViewModel(seedEntry, apiRow, lang)` in
+  `src/utils/ibex35Match.js`) that `Ibex35MarketSidebar.jsx` consumes —
+  same separation of concerns as `_confirmation.js`'s `confirmationViewModel`
+  feeding the (untested) `CurrencyConfirmationCard.jsx`. The component
+  itself is verified by manually opening an IBEX 35 company in the running
+  app.
 
 Follows the existing test style already in the repo (`graphUnify.test.js`,
 `chrome-extension/test/shared/buildGraph.test.js`).
