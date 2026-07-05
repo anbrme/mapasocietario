@@ -11,10 +11,13 @@ elsewhere:
   BORME/v3 registry name), `nif`, `isin`, `ticker`, `hoja`, `sector`,
   `website`. Used today only by the SSR `/empresa/:slug` and
   `/empresas-cotizadas` pages — not visible to the SPA graph.
-- `ibex35dashboard.ncdata.eu` (separate Cloudflare Worker, same account) — a
-  public, rate-limited (`GET /api/companies`, CORS `*`) JSON endpoint
-  returning live price/market data and CNMV-sourced significant-shareholder
-  data for all 35 companies.
+- `ibex35-api.ncdata.eu` (dedicated Cloudflare Worker behind the
+  `ibex35dashboard` project, same Cloudflare account) — a public,
+  rate-limited (`GET /api/companies`, CORS `*`) JSON endpoint returning live
+  price/market data and CNMV-sourced significant-shareholder data for all 35
+  companies. (Note: `ibex35dashboard.ncdata.eu` itself is a separate Pages
+  site with unrelated payment/auth routes and does not proxy this API —
+  calls go directly to `ibex35-api.ncdata.eu`.)
 
 This feature surfaces that data inside the main graph app: when the user is
 looking at an IBEX 35 company, a sidebar card shows live market data and
@@ -38,7 +41,7 @@ source of truth; no new list, no duplication. A new pure utility,
 `_confirmation.js`) and exposes:
 
 ```js
-matchIbexSeed(companyName) // -> SEED entry (with .ticker) | null
+matchIbexSeed(companyName) // -> SEED entry (with .nif) | null
 ```
 
 Matching is a normalized (uppercase + trim) comparison against each entry's
@@ -47,23 +50,28 @@ graph component for GLEIF/AI-panel company resolution.
 
 **Live price + shareholder data** — a new `src/services/ibex35DashboardClient.js`:
 
-- Fetches `https://ibex35dashboard.ncdata.eu/api/companies` (with the
-  existing public API key header), caching the full ~35-row array in
-  module-level memory for 5 minutes (matching the freshness the upstream
-  worker itself targets) so hopping between several IBEX companies in one
-  session doesn't re-fetch every time.
-- Exposes `getIbexCompanyData(ticker)`, stripping the `BME:` prefix and
-  looking up by ticker. Returns the full row (including the `shareholders`
-  array) or `null`.
+- Fetches `https://ibex35-api.ncdata.eu/api/companies` (with the existing
+  public API key header), caching the full ~35-row array in module-level
+  memory for 5 minutes (matching the freshness the upstream worker itself
+  targets) so hopping between several IBEX companies in one session doesn't
+  re-fetch every time.
+- Exposes `getIbexCompanyData(nif)`, looking up by NIF (normalized:
+  strip non-alphanumerics, uppercase, on both sides of the comparison).
+  NIF — not ticker — is the match key: verified live against the API that
+  SEED's `nif` values match the API's `nif` field exactly for all 35
+  companies, whereas ticker formats differ between the two sources (SEED
+  uses `BME:SAN`, the live API uses `SAN.MC`) and would need lossy
+  reformatting. Returns the full row (including the `shareholders` array)
+  or `null`.
 - No new backend/proxy is introduced — the client calls the existing public
   worker endpoint directly, same as any other public consumer of that API.
 
 **Trigger wiring** — `SpanishCompanyNetworkGraph.jsx` already resolves the
 focused company via `resolveFocusedCompany()` → `{ name, groupKey }`. A new
-`useEffect` keyed on `primarySubject`:
+`useEffect` keyed on the resolved company name:
 
 1. Calls `matchIbexSeed(name)`.
-2. If matched, calls `getIbexCompanyData(match.ticker)`.
+2. If matched, calls `getIbexCompanyData(match.nif)`.
 3. Populates sidebar state; a non-match or fetch failure clears it (sidebar
    renders nothing).
 
@@ -114,7 +122,7 @@ positional collision with this sidebar.
 
 Three states: loading (small spinner in the header, same convention as
 Apoderados' `loading` string), loaded (full card as above), and failure
-(network error, or ticker not found in the dashboard's dataset). On failure
+(network error, or NIF not found in the dashboard's dataset). On failure
 the sidebar renders nothing — this is a bonus enrichment, not core data, so
 a broken-looking card would be worse than no card. A `console.warn` is
 logged for diagnosis, matching the existing `[Preview]` warning convention
@@ -124,8 +132,8 @@ elsewhere in the graph component.
 
 - Unit tests for `matchIbexSeed`: name normalization, no-match, exact-match
   against a handful of real `SEED` entries.
-- Unit tests for `ibex35DashboardClient`: ticker lookup, session-level
-  caching, and failure handling (mocked `fetch`).
+- Unit tests for `ibex35DashboardClient`: NIF lookup (with normalization),
+  session-level caching, and failure handling (mocked `fetch`).
 - Component test for `Ibex35MarketSidebar`: renders nothing without a
   match/data, renders the full snapshot + shareholders list given mock data.
 
