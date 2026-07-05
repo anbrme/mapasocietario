@@ -23,3 +23,59 @@ describe('matchIbexSeed', () => {
     expect(matchIbexSeed(undefined)).toBeNull();
   });
 });
+
+import { buildIbexCardViewModel } from './ibex35Match';
+
+describe('buildIbexCardViewModel', () => {
+  const seedEntry = { name: 'Repsol', nif: 'A78374725', ticker: 'BME:REP' };
+  const apiRow = {
+    ticker: 'REP.MC',
+    current_price_eur: 11.5,
+    change_percent: -0.42,
+    market_cap_eur: 15234567890,
+    volume: 3456789,
+    pe_ratio: 8.1,
+    eps: 1.42,
+    high_52: 13.2,
+    low_52: 9.8,
+    dividend_yield: 6.5,
+    shareholders: [
+      { name: 'Sacyr', type: 'strategic', percentage: 3.2, shares: 0, reportDate: 45842 },
+      { name: 'BlackRock', type: 'institutional', percentage: 5.1, shares: 0, reportDate: 46177 },
+    ],
+  };
+
+  it('returns null when there is no seed entry or no api row', () => {
+    expect(buildIbexCardViewModel(null, apiRow, 'es')).toBeNull();
+    expect(buildIbexCardViewModel(seedEntry, null, 'es')).toBeNull();
+  });
+
+  it('formats the market snapshot fields', () => {
+    const vm = buildIbexCardViewModel(seedEntry, apiRow, 'en');
+    expect(vm.name).toBe('Repsol');
+    expect(vm.priceLabel).toContain('11.50');
+    expect(vm.changeLabel).toBe('-0.42%');
+    expect(vm.changePositive).toBe(false);
+    expect(vm.dividendYieldLabel).toBe('6.50%');
+  });
+
+  it('sorts shareholders by percentage descending and formats their own as-of date', () => {
+    const vm = buildIbexCardViewModel(seedEntry, apiRow, 'en');
+    expect(vm.shareholders.map(s => s.name)).toEqual(['BlackRock', 'Sacyr']);
+    expect(vm.shareholders[0].percentageLabel).toBe('5.10%');
+    // reportDate 46177 -> 2026-06-04 (Excel serial date)
+    expect(vm.shareholders[0].asOfLabel).toContain('2026');
+    // reportDate 45842 -> 2025-07-04 (Excel serial date)
+    expect(vm.shareholders[1].asOfLabel).toContain('2025');
+  });
+
+  it('omits dividend yield and P/E labels when the API returns null for them', () => {
+    const vm = buildIbexCardViewModel(
+      seedEntry,
+      { ...apiRow, dividend_yield: null, pe_ratio: null },
+      'en'
+    );
+    expect(vm.dividendYieldLabel).toBeNull();
+    expect(vm.peRatioLabel).toBeNull();
+  });
+});

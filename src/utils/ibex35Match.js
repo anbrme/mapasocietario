@@ -10,3 +10,80 @@ export function matchIbexSeed(companyName) {
   if (!slug) return null;
   return SEED[slug] || null;
 }
+
+// Excel/Google Sheets serial date (days since 1899-12-30) -> JS Date.
+function excelSerialToDate(serial) {
+  return new Date(Date.UTC(1899, 11, 30) + Number(serial) * 86400000);
+}
+
+function formatDateForLang(date, lang) {
+  return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'es-ES', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
+function formatCurrency(value, lang) {
+  if (value === null || value === undefined) return null;
+  return new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatCompactCurrency(value, lang) {
+  if (value === null || value === undefined) return null;
+  return new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    notation: 'compact',
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+// API percent-ish fields (change_percent, dividend_yield, shareholder percentage)
+// are already expressed as percent units (e.g. 6.5 means 6.5%), not fractions.
+function formatPercentValue(value, lang, { showSign = false } = {}) {
+  if (value === null || value === undefined) return null;
+  const formatted = new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    signDisplay: showSign ? 'exceptZero' : 'auto',
+  }).format(Number(value));
+  return `${formatted}%`;
+}
+
+function formatPlainNumber(value, lang) {
+  if (value === null || value === undefined) return null;
+  return new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'es-ES').format(value);
+}
+
+export function buildIbexCardViewModel(seedEntry, apiRow, lang = 'es') {
+  if (!seedEntry || !apiRow) return null;
+
+  const shareholders = (Array.isArray(apiRow.shareholders) ? apiRow.shareholders : [])
+    .slice()
+    .sort((a, b) => (b.percentage || 0) - (a.percentage || 0))
+    .map(s => ({
+      name: s.name,
+      percentageLabel: formatPercentValue(s.percentage, lang),
+      asOfLabel: s.reportDate ? formatDateForLang(excelSerialToDate(s.reportDate), lang) : null,
+    }));
+
+  return {
+    name: seedEntry.name,
+    priceLabel: formatCurrency(apiRow.current_price_eur, lang),
+    changeLabel: formatPercentValue(apiRow.change_percent, lang, { showSign: true }),
+    changePositive: Number(apiRow.change_percent || 0) >= 0,
+    marketCapLabel: formatCompactCurrency(apiRow.market_cap_eur, lang),
+    volumeLabel: formatPlainNumber(apiRow.volume, lang),
+    peRatioLabel: formatPlainNumber(apiRow.pe_ratio, lang),
+    epsLabel: formatCurrency(apiRow.eps, lang),
+    high52Label: formatCurrency(apiRow.high_52, lang),
+    low52Label: formatCurrency(apiRow.low_52, lang),
+    dividendYieldLabel: formatPercentValue(apiRow.dividend_yield, lang),
+    shareholders,
+  };
+}
