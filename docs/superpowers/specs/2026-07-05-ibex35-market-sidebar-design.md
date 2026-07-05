@@ -110,11 +110,14 @@ positional collision with this sidebar.
   dividend yield. Numbers formatted via `Intl.NumberFormat` with
   `es-ES`/`en-US` locale and EUR currency, consistent with the rest of the
   app.
-- **Significant shareholders** (CNMV-sourced, weekly): list of
+- **Significant shareholders** (CNMV-sourced): list of
   `name — percentage%`, sorted by percentage descending, using only
-  `is_active` records already filtered server-side. A single "as of
-  `reportDate`" line covers the whole section (the data refreshes weekly as
-  a batch, not per-shareholder).
+  `is_active` records already filtered server-side. Each row shows its own
+  "as of" date, converted from `reportDate` (an Excel/Sheets serial date
+  number, e.g. `45842` → 2025-07-04 — `new Date(Date.UTC(1899, 11, 30) +
+  reportDate * 86400000)`) — verified live that different shareholders for
+  the same company can carry different `reportDate` values, so a single
+  section-wide date would misrepresent the data.
 - Section/field labels follow the existing `STRINGS = { es: {...}, en: {...} }`
   object pattern from `ApoderadosSidebar.jsx`.
 
