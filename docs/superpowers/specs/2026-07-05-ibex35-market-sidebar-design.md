@@ -108,7 +108,7 @@ positional collision with this sidebar.
 - **Market-data snapshot** (full set, all fields the API provides): current
   price, change %, market cap, volume, P/E ratio, EPS, 52-week high/low,
   dividend yield. Numbers formatted via `Intl.NumberFormat` with
-  `es-ES`/`en-US` locale and EUR currency, consistent with the rest of the
+  `es-ES`/`en-GB` locale and EUR currency, consistent with the rest of the
   app.
 - **Significant shareholders** (CNMV-sourced): list of
   `name — percentage%`, sorted by percentage descending, using only

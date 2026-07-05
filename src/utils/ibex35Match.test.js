@@ -57,6 +57,11 @@ describe('buildIbexCardViewModel', () => {
     expect(vm.changeLabel).toBe('-0.42%');
     expect(vm.changePositive).toBe(false);
     expect(vm.dividendYieldLabel).toBe('6.50%');
+    expect(vm.marketCapLabel).toBe('€15.23bn');
+    expect(vm.volumeLabel).toBe('3,456,789');
+    expect(vm.epsLabel).toBe('€1.42');
+    expect(vm.high52Label).toBe('€13.20');
+    expect(vm.low52Label).toBe('€9.80');
   });
 
   it('sorts shareholders by percentage descending and formats their own as-of date', () => {
