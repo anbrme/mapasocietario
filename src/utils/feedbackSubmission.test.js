@@ -73,9 +73,10 @@ describe('buildFeedbackEmail', () => {
     expect(raw).toContain('\r\n\r\n');
   });
 
-  it('strips newlines from header-bound values to prevent header injection', () => {
+  it('collapses newlines in the page field so it cannot inject an extra line into the body', () => {
     const payload = { reaction: 'good', comment: 'irrelevant', lang: 'en', page: '/app\ninjected: true' };
     const { raw } = buildFeedbackEmail(payload, opts);
-    expect(raw).not.toContain('injected: true\r\n');
+    const pageLine = raw.split(/\r\n|\n/).find((line) => line.startsWith('Page: '));
+    expect(pageLine).toBe('Page: /app injected: true');
   });
 });

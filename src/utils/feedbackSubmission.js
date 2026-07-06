@@ -41,7 +41,7 @@ export function buildFeedbackEmail(payload, { from, to, timestamp }) {
   const body = [
     `Reaction: ${reactionLabel}`,
     `Language: ${payload.lang}`,
-    `Page: ${payload.page || '(unknown)'}`,
+    `Page: ${sanitizeLine(payload.page) || '(unknown)'}`,
     `Time: ${timestamp}`,
     '',
     'Comment:',
