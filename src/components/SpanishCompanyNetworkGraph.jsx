@@ -74,6 +74,7 @@ import {
   VerifiedUser as VerifiedUserIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 import HubIcon from '@mui/icons-material/Hub';
 import DDCheckoutDialog from './DDCheckoutDialog';
 import RelationshipReportModal from './RelationshipReportModal';
@@ -82,6 +83,7 @@ import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } fr
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 import ApoderadosSidebar from './ApoderadosSidebar';
 import Ibex35MarketSidebar from './Ibex35MarketSidebar';
+import Ibex35MarketDialog from './Ibex35MarketDialog';
 import LegalDisclaimer from './LegalDisclaimer';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import PsychologyIcon from '@mui/icons-material/Psychology';
@@ -116,7 +118,9 @@ import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
-import { matchIbexSeed } from '../utils/ibex35Match';
+import { matchIbexSeed, matchAllIbexNodes } from '../utils/ibex35Match';
+import { getIbexCompanyData } from '../services/ibex35DashboardClient';
+import { isAndroidNativeApp } from '../services/playBillingService';
 
 const CATEGORY_LABELS = {
   es: {
@@ -193,6 +197,7 @@ const SEARCH_COPY = {
     officersPerCompany: 'Officers/company',
     fetchAllOfficers: 'Fetch all',
     showApoderados: 'Show apoderados',
+    marketData: 'Market data',
     searchCompanyPlaceholder: 'Search company...',
     searchOfficerPlaceholder: 'Search officer...',
     searchUnifiedPlaceholder: 'Search a company or person…',
@@ -441,6 +446,7 @@ const SEARCH_COPY = {
     officersPerCompany: 'Cargos/empresa',
     fetchAllOfficers: 'Ver todos',
     showApoderados: 'Ver apoderados',
+    marketData: 'Datos de mercado',
     searchCompanyPlaceholder: 'Buscar empresa...',
     searchOfficerPlaceholder: 'Buscar directivo...',
     searchUnifiedPlaceholder: 'Busca una empresa o persona…',
@@ -4055,6 +4061,39 @@ const SpanishCompanyNetworkGraph = ({
     const focused = resolveFocusedCompany();
     return focused ? matchIbexSeed(focused.name) : null;
   })();
+
+  // Android-only: NIF -> apiRow|null cache for every IBEX 35 company node
+  // currently loaded in the graph, populated by the background prefetch
+  // effect below. Lets the node context menu decide, per right-clicked
+  // node, whether "Datos de mercado" has real data to show, without
+  // blocking the menu on an async check. No-op (and no extra network
+  // calls) on web.
+  const [androidIbexDataCache, setAndroidIbexDataCache] = useState({});
+  const androidIbexCheckedRef = useRef(new Set());
+  const [ibexMarketDialog, setIbexMarketDialog] = useState({
+    open: false,
+    seedEntry: null,
+    apiRow: null,
+  });
+
+  useEffect(() => {
+    if (!isAndroidNativeApp()) return undefined;
+    const matches = matchAllIbexNodes(graphData.nodes);
+    const toFetch = matches.filter(m => !androidIbexCheckedRef.current.has(m.nif));
+    if (toFetch.length === 0) return undefined;
+    toFetch.forEach(m => androidIbexCheckedRef.current.add(m.nif));
+    let cancelled = false;
+    toFetch.forEach(seedEntry => {
+      getIbexCompanyData(seedEntry.nif).then(apiRow => {
+        if (!cancelled) {
+          setAndroidIbexDataCache(prev => ({ ...prev, [seedEntry.nif]: apiRow }));
+        }
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [graphData.nodes]);
 
   // Resolve (and cache) the subject company's group_key on demand. Graph nodes
   // are name-keyed, not group_key-keyed, so we resolve via directory autocomplete.
@@ -7998,6 +8037,24 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.showApoderados}</ListItemText>
             </MenuItem>
           )}
+          {contextNode && contextNode.type === 'spanish-company-group' && isAndroidNativeApp() && (() => {
+            const ibexSeed = matchIbexSeed(contextNode.name);
+            const ibexData = ibexSeed ? androidIbexDataCache[ibexSeed.nif] : null;
+            if (!ibexSeed || !ibexData) return null;
+            return (
+              <MenuItem
+                onClick={() => {
+                  closeNodeContextMenu();
+                  setIbexMarketDialog({ open: true, seedEntry: ibexSeed, apiRow: ibexData });
+                }}
+              >
+                <ListItemIcon>
+                  <ShowChartIcon fontSize="small" color="action" />
+                </ListItemIcon>
+                <ListItemText>{text.marketData}</ListItemText>
+              </MenuItem>
+            );
+          })()}
           <MenuItem onClick={hideNodeFromMenu}>
             <ListItemIcon>
               <VisibilityOffIcon fontSize="small" />
@@ -8057,6 +8114,14 @@ const SpanishCompanyNetworkGraph = ({
         <Ibex35MarketSidebar
           open={Boolean(focusedIbexSeed) && !apoderadosSidebar.open}
           seedEntry={focusedIbexSeed}
+          lang={uiLanguage}
+        />
+
+        <Ibex35MarketDialog
+          open={ibexMarketDialog.open}
+          onClose={() => setIbexMarketDialog({ open: false, seedEntry: null, apiRow: null })}
+          seedEntry={ibexMarketDialog.seedEntry}
+          apiRow={ibexMarketDialog.apiRow}
           lang={uiLanguage}
         />
 
