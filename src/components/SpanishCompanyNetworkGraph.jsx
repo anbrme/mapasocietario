@@ -8134,7 +8134,7 @@ const SpanishCompanyNetworkGraph = ({
         />
 
         <Ibex35MarketSidebar
-          open={Boolean(focusedIbexSeed) && !apoderadosSidebar.open}
+          open={Boolean(focusedIbexSeed) && !apoderadosSidebar.open && !isAndroidNativeApp()}
           seedEntry={focusedIbexSeed}
           lang={uiLanguage}
         />
