@@ -189,7 +189,7 @@ export default function LandingPage({ lang = 'en' }) {
               <Typography variant="overline" sx={{ display: 'block', color: 'primary.light', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.68rem', mb: 1 }}>
                 {copy.hero.eyebrow}
               </Typography>
-              <Typography
+              <Typography 
                 variant="h3"
                 component="h1"
                 sx={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.12, mb: 2, fontSize: { xs: '1.9rem', sm: '2.6rem', md: '2.9rem' } }}
