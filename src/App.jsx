@@ -6,6 +6,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
+import FeedbackWidget from './components/FeedbackWidget';
 import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
 import { openListedCompanies } from './services/listedCompaniesNav';
 import {
@@ -251,6 +252,7 @@ export default function App() {
         initialCompanyName={initialSearch}
         language={language}
       />
+      <FeedbackWidget lang={language} />
     </Box>
   );
 }
