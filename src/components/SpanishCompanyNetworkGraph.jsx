@@ -4098,7 +4098,8 @@ const SpanishCompanyNetworkGraph = ({
             setAndroidIbexDataCache(prev => ({ ...prev, [seedEntry.nif]: apiRow }));
           }
         })
-        .catch(() => {
+        .catch(err => {
+          console.warn('[Android IBEX prefetch] failed to fetch market data:', err.message);
           settled.add(seedEntry.nif);
         });
     });
