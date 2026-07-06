@@ -8,9 +8,11 @@ const REACTION_LABEL = {
   good: '🙂 Good',
 };
 
-// Strips newlines and trims — used for any value that ends up inside a MIME
-// header (Subject/From/To) or inline in a header-adjacent line, so a comment
-// or page path can never inject an extra header/line into the raw message.
+// Strips newlines and trims — general input normalization for values that
+// render as a single display line (e.g. the page path shown in the email
+// body). Cloudflare's Email Sending REST API takes structured JSON fields
+// (subject/text), not a raw MIME string, so this is no longer a header-
+// injection concern — just tidiness.
 function sanitizeLine(value) {
   return String(value ?? '').replace(/[\r\n]+/g, ' ').trim();
 }
@@ -35,10 +37,16 @@ export function validateFeedbackPayload(body) {
   return { ok: true, payload: { reaction, comment, lang, page } };
 }
 
+// Builds the request body for Cloudflare's Email Sending REST API
+// (POST /accounts/{account_id}/email/sending/send) — see
+// https://developers.cloudflare.com/api/resources/email_sending/methods/send.
+// `from`/`to` are plain email address strings; the API accepts either a bare
+// string or an `{ address, name }` object for `from` — we use the bare form
+// since no display name is needed here.
 export function buildFeedbackEmail(payload, { from, to, timestamp }) {
   const reactionLabel = REACTION_LABEL[payload.reaction] || '(no reaction selected)';
   const subject = sanitizeLine(`Mapa Societario feedback (${payload.lang}) — ${reactionLabel}`);
-  const body = [
+  const text = [
     `Reaction: ${reactionLabel}`,
     `Language: ${payload.lang}`,
     `Page: ${sanitizeLine(payload.page) || '(unknown)'}`,
@@ -46,25 +54,7 @@ export function buildFeedbackEmail(payload, { from, to, timestamp }) {
     '',
     'Comment:',
     payload.comment || '(none)',
-  ].join('\r\n');
+  ].join('\n');
 
-  // Cloudflare's Email Routing send_email binding rejects raw MIME messages
-  // without a Message-ID header. timestamp + a random component keeps this
-  // unique even for two submissions arriving in the same millisecond.
-  // timestamp is sanitized even though the only real caller passes a
-  // machine-generated ISO string, since this is an exported, general-purpose
-  // function and anything entering a header must go through sanitizeLine.
-  const messageId = `<${sanitizeLine(timestamp)}-${Math.random().toString(36).slice(2)}@mapasocietario.es>`;
-
-  const raw = [
-    `From: ${sanitizeLine(from)}`,
-    `To: ${sanitizeLine(to)}`,
-    `Subject: ${subject}`,
-    `Message-ID: ${messageId}`,
-    'Content-Type: text/plain; charset=utf-8',
-    '',
-    body,
-  ].join('\r\n');
-
-  return { subject, body, raw };
+  return { to, from, subject, text };
 }

@@ -48,61 +48,50 @@ describe('validateFeedbackPayload', () => {
 });
 
 describe('buildFeedbackEmail', () => {
-  const opts = { from: 'feedback@mapasocietario.es', to: 'mapasocietario@ncdata.eu', timestamp: '2026-07-07T10:00:00.000Z' };
+  const opts = { from: 'feedback@ncdata.eu', to: 'mapasocietario@ncdata.eu', timestamp: '2026-07-07T10:00:00.000Z' };
 
-  it('includes the reaction, language, page, and comment in the body', () => {
+  it('returns a payload shaped for the Cloudflare Email Sending REST API', () => {
     const payload = { reaction: 'good', comment: 'Great tool!', lang: 'en', page: '/app' };
-    const { body } = buildFeedbackEmail(payload, opts);
-    expect(body).toContain('Great tool!');
-    expect(body).toContain('/app');
-    expect(body).toContain('2026-07-07T10:00:00.000Z');
+    const result = buildFeedbackEmail(payload, opts);
+    expect(result).toEqual({
+      to: opts.to,
+      from: opts.from,
+      subject: result.subject,
+      text: result.text,
+    });
+  });
+
+  it('includes the reaction, language, page, and comment in the text body', () => {
+    const payload = { reaction: 'good', comment: 'Great tool!', lang: 'en', page: '/app' };
+    const { text } = buildFeedbackEmail(payload, opts);
+    expect(text).toContain('Great tool!');
+    expect(text).toContain('/app');
+    expect(text).toContain('2026-07-07T10:00:00.000Z');
   });
 
   it('labels a null reaction as no reaction selected', () => {
     const payload = { reaction: null, comment: 'Just a comment', lang: 'es', page: '/app' };
-    const { body } = buildFeedbackEmail(payload, opts);
-    expect(body).toContain('(no reaction selected)');
+    const { text } = buildFeedbackEmail(payload, opts);
+    expect(text).toContain('(no reaction selected)');
   });
 
-  it('produces a raw MIME string with From/To/Subject headers and a blank line before the body', () => {
+  it('includes the reaction and language in the subject', () => {
     const payload = { reaction: 'bad', comment: 'Needs work', lang: 'en', page: '/app' };
-    const { raw, subject } = buildFeedbackEmail(payload, opts);
-    expect(raw).toContain(`From: ${opts.from}`);
-    expect(raw).toContain(`To: ${opts.to}`);
-    expect(raw).toContain(`Subject: ${subject}`);
-    expect(raw).toContain('\r\n\r\n');
+    const { subject } = buildFeedbackEmail(payload, opts);
+    expect(subject).toContain('(en)');
+    expect(subject).toContain('Not good');
   });
 
-  it('collapses newlines in the page field so it cannot inject an extra line into the body', () => {
+  it('collapses newlines in the page field for a tidy single-line display', () => {
     const payload = { reaction: 'good', comment: 'irrelevant', lang: 'en', page: '/app\ninjected: true' };
-    const { raw } = buildFeedbackEmail(payload, opts);
-    const pageLine = raw.split(/\r\n|\n/).find((line) => line.startsWith('Page: '));
+    const { text } = buildFeedbackEmail(payload, opts);
+    const pageLine = text.split('\n').find((line) => line.startsWith('Page: '));
     expect(pageLine).toBe('Page: /app injected: true');
   });
 
-  it('includes a valid Message-ID header required by Cloudflare Email Routing', () => {
-    const payload = { reaction: 'good', comment: 'Needs a message id', lang: 'en', page: '/app' };
-    const { raw } = buildFeedbackEmail(payload, opts);
-    expect(raw).toMatch(/^Message-ID: <[^\s@]+@mapasocietario\.es>$/m);
-  });
-
-  it('generates distinct Message-ID values across calls with the same timestamp', () => {
-    const payload = { reaction: 'good', comment: 'Needs a message id', lang: 'en', page: '/app' };
-    const { raw: rawA } = buildFeedbackEmail(payload, opts);
-    const { raw: rawB } = buildFeedbackEmail(payload, opts);
-    const extractMessageId = (raw) => raw.match(/^Message-ID: (<[^\s]+>)$/m)?.[1];
-    expect(extractMessageId(rawA)).toBeTruthy();
-    expect(extractMessageId(rawA)).not.toBe(extractMessageId(rawB));
-  });
-
-  it('keeps a multi-line comment within the body region without corrupting the header/body boundary', () => {
+  it('preserves a multi-line comment intact in the text body', () => {
     const payload = { reaction: 'good', comment: 'Line one\nLine two', lang: 'en', page: '/app' };
-    const { raw } = buildFeedbackEmail(payload, opts);
-    const boundaryIndex = raw.indexOf('\r\n\r\n');
-    const headerBlock = raw.slice(0, boundaryIndex);
-    const bodyBlock = raw.slice(boundaryIndex + '\r\n\r\n'.length);
-    expect(headerBlock).not.toContain('Line two');
-    expect(bodyBlock).toContain('Line one');
-    expect(bodyBlock).toContain('Line two');
+    const { text } = buildFeedbackEmail(payload, opts);
+    expect(text).toContain('Line one\nLine two');
   });
 });
