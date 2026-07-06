@@ -35,7 +35,6 @@ const STRINGS = {
 
 const CLIENT_MAX_COMMENT_LENGTH = 500;
 const THANKS_DISPLAY_MS = 2000;
-const WIDGET_Z_INDEX = 1300;
 
 // Bottom-right (not right-edge-centered) so it never collides with the
 // existing full-height right-anchored panels (Ibex35MarketSidebar,
@@ -44,7 +43,11 @@ const FIXED_POSITION_SX = {
   position: 'fixed',
   right: 'calc(16px + env(safe-area-inset-right))',
   bottom: 'calc(16px + env(safe-area-inset-bottom))',
-  zIndex: WIDGET_Z_INDEX,
+  // Stay below theme.zIndex.drawer so an open Ibex35MarketSidebar
+  // (drawer + 1) or ApoderadosSidebar (drawer + 2) — both full-height,
+  // right-anchored — visually covers this widget instead of the other
+  // way around. Do not bump this back up to a fixed literal.
+  zIndex: (theme) => theme.zIndex.drawer - 1,
 };
 
 const FeedbackWidget = ({ lang = 'en' }) => {

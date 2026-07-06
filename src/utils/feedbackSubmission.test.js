@@ -94,4 +94,15 @@ describe('buildFeedbackEmail', () => {
     expect(extractMessageId(rawA)).toBeTruthy();
     expect(extractMessageId(rawA)).not.toBe(extractMessageId(rawB));
   });
+
+  it('keeps a multi-line comment within the body region without corrupting the header/body boundary', () => {
+    const payload = { reaction: 'good', comment: 'Line one\nLine two', lang: 'en', page: '/app' };
+    const { raw } = buildFeedbackEmail(payload, opts);
+    const boundaryIndex = raw.indexOf('\r\n\r\n');
+    const headerBlock = raw.slice(0, boundaryIndex);
+    const bodyBlock = raw.slice(boundaryIndex + '\r\n\r\n'.length);
+    expect(headerBlock).not.toContain('Line two');
+    expect(bodyBlock).toContain('Line one');
+    expect(bodyBlock).toContain('Line two');
+  });
 });

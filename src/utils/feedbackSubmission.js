@@ -46,12 +46,15 @@ export function buildFeedbackEmail(payload, { from, to, timestamp }) {
     '',
     'Comment:',
     payload.comment || '(none)',
-  ].join('\n');
+  ].join('\r\n');
 
   // Cloudflare's Email Routing send_email binding rejects raw MIME messages
   // without a Message-ID header. timestamp + a random component keeps this
   // unique even for two submissions arriving in the same millisecond.
-  const messageId = `<${timestamp}-${Math.random().toString(36).slice(2)}@mapasocietario.es>`;
+  // timestamp is sanitized even though the only real caller passes a
+  // machine-generated ISO string, since this is an exported, general-purpose
+  // function and anything entering a header must go through sanitizeLine.
+  const messageId = `<${sanitizeLine(timestamp)}-${Math.random().toString(36).slice(2)}@mapasocietario.es>`;
 
   const raw = [
     `From: ${sanitizeLine(from)}`,
