@@ -4083,22 +4083,36 @@ const SpanishCompanyNetworkGraph = ({
     if (toFetch.length === 0) return undefined;
     toFetch.forEach(m => androidIbexCheckedRef.current.add(m.nif));
     let cancelled = false;
+    // NIFs whose fetch settled (resolved or rejected) during this effect run.
+    // Only fetches that never settle before cleanup are "cancelled mid-flight"
+    // and need their "checked" mark undone below — settled ones are done and
+    // cached, so they must stay marked to avoid needless refetching on every
+    // later graphData.nodes change (cleanup runs on every dependency change,
+    // not just unmount).
+    const settled = new Set();
     toFetch.forEach(seedEntry => {
       getIbexCompanyData(seedEntry.nif)
         .then(apiRow => {
+          settled.add(seedEntry.nif);
           if (!cancelled) {
             setAndroidIbexDataCache(prev => ({ ...prev, [seedEntry.nif]: apiRow }));
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          settled.add(seedEntry.nif);
+        });
     });
     return () => {
       cancelled = true;
       // A fetch cancelled mid-flight (e.g. graphData.nodes changed again
       // before it resolved) never gets to write into the cache above — undo
       // its "checked" mark so a later effect run retries it, instead of
-      // silently and permanently losing that company's market data.
-      toFetch.forEach(m => androidIbexCheckedRef.current.delete(m.nif));
+      // silently and permanently losing that company's market data. Fetches
+      // that already settled keep their mark so they aren't retried for no
+      // reason.
+      toFetch.forEach(m => {
+        if (!settled.has(m.nif)) androidIbexCheckedRef.current.delete(m.nif);
+      });
     };
   }, [graphData.nodes]);
 
