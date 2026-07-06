@@ -4084,14 +4084,21 @@ const SpanishCompanyNetworkGraph = ({
     toFetch.forEach(m => androidIbexCheckedRef.current.add(m.nif));
     let cancelled = false;
     toFetch.forEach(seedEntry => {
-      getIbexCompanyData(seedEntry.nif).then(apiRow => {
-        if (!cancelled) {
-          setAndroidIbexDataCache(prev => ({ ...prev, [seedEntry.nif]: apiRow }));
-        }
-      });
+      getIbexCompanyData(seedEntry.nif)
+        .then(apiRow => {
+          if (!cancelled) {
+            setAndroidIbexDataCache(prev => ({ ...prev, [seedEntry.nif]: apiRow }));
+          }
+        })
+        .catch(() => {});
     });
     return () => {
       cancelled = true;
+      // A fetch cancelled mid-flight (e.g. graphData.nodes changed again
+      // before it resolved) never gets to write into the cache above — undo
+      // its "checked" mark so a later effect run retries it, instead of
+      // silently and permanently losing that company's market data.
+      toFetch.forEach(m => androidIbexCheckedRef.current.delete(m.nif));
     };
   }, [graphData.nodes]);
 
