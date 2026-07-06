@@ -79,4 +79,19 @@ describe('buildFeedbackEmail', () => {
     const pageLine = raw.split(/\r\n|\n/).find((line) => line.startsWith('Page: '));
     expect(pageLine).toBe('Page: /app injected: true');
   });
+
+  it('includes a valid Message-ID header required by Cloudflare Email Routing', () => {
+    const payload = { reaction: 'good', comment: 'Needs a message id', lang: 'en', page: '/app' };
+    const { raw } = buildFeedbackEmail(payload, opts);
+    expect(raw).toMatch(/^Message-ID: <[^\s@]+@mapasocietario\.es>$/m);
+  });
+
+  it('generates distinct Message-ID values across calls with the same timestamp', () => {
+    const payload = { reaction: 'good', comment: 'Needs a message id', lang: 'en', page: '/app' };
+    const { raw: rawA } = buildFeedbackEmail(payload, opts);
+    const { raw: rawB } = buildFeedbackEmail(payload, opts);
+    const extractMessageId = (raw) => raw.match(/^Message-ID: (<[^\s]+>)$/m)?.[1];
+    expect(extractMessageId(rawA)).toBeTruthy();
+    expect(extractMessageId(rawA)).not.toBe(extractMessageId(rawB));
+  });
 });
