@@ -11,6 +11,24 @@ export function matchIbexSeed(companyName) {
   return SEED[slug] || null;
 }
 
+// Matches every spanish-company-group node against the IBEX 35 SEED,
+// deduplicated by NIF. Used by the Android prefetch effect in
+// SpanishCompanyNetworkGraph.jsx to discover which currently-loaded nodes
+// are worth fetching market data for.
+export function matchAllIbexNodes(nodes) {
+  const seen = new Set();
+  const matches = [];
+  (Array.isArray(nodes) ? nodes : []).forEach(n => {
+    if (!n || n.type !== 'spanish-company-group' || !n.name) return;
+    const match = matchIbexSeed(n.name);
+    if (match && !seen.has(match.nif)) {
+      seen.add(match.nif);
+      matches.push(match);
+    }
+  });
+  return matches;
+}
+
 // Excel/Google Sheets serial date (days since 1899-12-30) -> JS Date, or null
 // if the value isn't a finite number. The upstream sheet occasionally stores
 // a plain date string instead of a serial (e.g. Naturgy's "Sonatrach" row has

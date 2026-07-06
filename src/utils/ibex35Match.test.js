@@ -24,6 +24,46 @@ describe('matchIbexSeed', () => {
   });
 });
 
+import { matchAllIbexNodes } from './ibex35Match';
+
+describe('matchAllIbexNodes', () => {
+  it('returns an empty array for empty, null, or undefined input', () => {
+    expect(matchAllIbexNodes([])).toEqual([]);
+    expect(matchAllIbexNodes(null)).toEqual([]);
+    expect(matchAllIbexNodes(undefined)).toEqual([]);
+  });
+
+  it('ignores non-company nodes and nodes without a name', () => {
+    const nodes = [
+      { type: 'officer', name: 'REPSOL SA' },
+      { type: 'spanish-company-group', name: '' },
+      { type: 'spanish-company-group' },
+    ];
+    expect(matchAllIbexNodes(nodes)).toEqual([]);
+  });
+
+  it('matches IBEX company nodes and ignores non-IBEX company nodes', () => {
+    const nodes = [
+      { type: 'spanish-company-group', name: 'REPSOL SA' },
+      { type: 'spanish-company-group', name: 'ACME SL' },
+    ];
+    const matches = matchAllIbexNodes(nodes);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].name).toBe('Repsol');
+  });
+
+  it('deduplicates multiple nodes matching the same IBEX company by NIF', () => {
+    const nodes = [
+      { type: 'spanish-company-group', name: 'REPSOL SA' },
+      { type: 'spanish-company-group', name: 'REPSOL SA' },
+      { type: 'spanish-company-group', name: 'BANCO SANTANDER, S.A.' },
+    ];
+    const matches = matchAllIbexNodes(nodes);
+    expect(matches).toHaveLength(2);
+    expect(matches.map(m => m.name).sort()).toEqual(['Banco Santander', 'Repsol']);
+  });
+});
+
 import { buildIbexCardViewModel } from './ibex35Match';
 
 describe('buildIbexCardViewModel', () => {
