@@ -18,6 +18,7 @@ const STRINGS = {
     shareholders: 'Accionistas significativos',
     asOf: fecha => `a fecha de ${fecha}`,
     loading: 'Cargando datos de mercado…',
+    unavailable: 'Datos de mercado no disponibles (temporalmente).',
   },
   en: {
     title: 'Market data',
@@ -31,6 +32,7 @@ const STRINGS = {
     shareholders: 'Significant shareholders',
     asOf: date => `as of ${date}`,
     loading: 'Loading market data…',
+    unavailable: 'Market data unavailable (temporarily).',
   },
 };
 
@@ -54,10 +56,22 @@ const Ibex35MarketSidebar = ({ open, seedEntry, lang = 'es' }) => {
     setLoading(true);
     setViewModel(null);
     (async () => {
-      const apiRow = await getIbexCompanyData(seedEntry.nif);
-      if (cancelled) return;
-      setViewModel(buildIbexCardViewModel(seedEntry, apiRow, lang));
-      setLoading(false);
+      // Any failure here (network error, malformed upstream data, an
+      // unexpected throw while building the view model) must still resolve
+      // `loading` — otherwise the sidebar hangs on the spinner forever
+      // instead of falling back to the "unavailable" message below.
+      try {
+        const apiRow = await getIbexCompanyData(seedEntry.nif);
+        if (cancelled) return;
+        setViewModel(buildIbexCardViewModel(seedEntry, apiRow, lang));
+      } catch (err) {
+        if (!cancelled) {
+          console.warn('[Ibex35MarketSidebar] failed to build market data view:', err.message);
+          setViewModel(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
@@ -65,10 +79,6 @@ const Ibex35MarketSidebar = ({ open, seedEntry, lang = 'es' }) => {
   }, [open, seedEntry, lang]);
 
   if (!open || !seedEntry) return null;
-  // Fetch finished with no data (not-found or network failure) — this is a
-  // bonus enrichment, not core data, so a broken-looking card would be worse
-  // than no card at all.
-  if (!loading && !viewModel) return null;
 
   const rows = viewModel
     ? [
@@ -113,6 +123,12 @@ const Ibex35MarketSidebar = ({ open, seedEntry, lang = 'es' }) => {
             <CircularProgress size={24} />
             <Typography variant="body2" color="text.secondary">
               {t.loading}
+            </Typography>
+          </Box>
+        ) : !viewModel ? (
+          <Box sx={{ py: 4, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              {t.unavailable}
             </Typography>
           </Box>
         ) : (

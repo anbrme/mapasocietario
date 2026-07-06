@@ -11,9 +11,20 @@ export function matchIbexSeed(companyName) {
   return SEED[slug] || null;
 }
 
-// Excel/Google Sheets serial date (days since 1899-12-30) -> JS Date.
+// Excel/Google Sheets serial date (days since 1899-12-30) -> JS Date, or null
+// if the value isn't a finite number. The upstream sheet occasionally stores
+// a plain date string instead of a serial (e.g. Naturgy's "Sonatrach" row has
+// reportDate: "15/11/2011") — Number(...) on that yields NaN, which used to
+// produce an Invalid Date and throw downstream when formatted.
 function excelSerialToDate(serial) {
-  return new Date(Date.UTC(1899, 11, 30) + Number(serial) * 86400000);
+  const num = Number(serial);
+  if (!Number.isFinite(num)) return null;
+  return new Date(Date.UTC(1899, 11, 30) + num * 86400000);
+}
+
+function formatReportDate(reportDate, lang) {
+  const date = excelSerialToDate(reportDate);
+  return date ? formatDateForLang(date, lang) : null;
 }
 
 function formatDateForLang(date, lang) {
@@ -69,7 +80,7 @@ export function buildIbexCardViewModel(seedEntry, apiRow, lang = 'es') {
     .map(s => ({
       name: s.name,
       percentageLabel: formatPercentValue(s.percentage, lang),
-      asOfLabel: s.reportDate ? formatDateForLang(excelSerialToDate(s.reportDate), lang) : null,
+      asOfLabel: formatReportDate(s.reportDate, lang),
     }));
 
   return {

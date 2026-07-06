@@ -83,4 +83,21 @@ describe('buildIbexCardViewModel', () => {
     expect(vm.dividendYieldLabel).toBeNull();
     expect(vm.peRatioLabel).toBeNull();
   });
+
+  it('does not throw and omits asOfLabel when a shareholder reportDate is not a valid Excel serial (real Naturgy data has a plain date string here)', () => {
+    const rowWithMalformedDate = {
+      ...apiRow,
+      shareholders: [
+        { name: 'Sonatrach', type: 'individual', percentage: 3.85, shares: 0, reportDate: '15/11/2011' },
+        ...apiRow.shareholders,
+      ],
+    };
+    let vm;
+    expect(() => {
+      vm = buildIbexCardViewModel(seedEntry, rowWithMalformedDate, 'en');
+    }).not.toThrow();
+    const sonatrach = vm.shareholders.find(s => s.name === 'Sonatrach');
+    expect(sonatrach.percentageLabel).toBe('3.85%');
+    expect(sonatrach.asOfLabel).toBeNull();
+  });
 });
