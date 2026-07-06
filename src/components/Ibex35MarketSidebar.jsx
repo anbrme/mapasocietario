@@ -1,48 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Paper, Typography, CircularProgress, Divider, Chip } from '@mui/material';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import { Box, Paper, Typography, CircularProgress, Divider } from '@mui/material';
 import { getIbexCompanyData } from '../services/ibex35DashboardClient';
 import { buildIbexCardViewModel } from '../utils/ibex35Match';
-
-const STRINGS = {
-  es: {
-    title: 'Datos de mercado',
-    marketCap: 'Capitalización',
-    volume: 'Volumen',
-    peRatio: 'PER',
-    eps: 'BPA',
-    high52: 'Máx. 52 sem.',
-    low52: 'Mín. 52 sem.',
-    dividendYield: 'Rentabilidad por dividendo',
-    shareholders: 'Accionistas significativos',
-    asOf: fecha => `a fecha de ${fecha}`,
-    loading: 'Cargando datos de mercado…',
-    unavailable: 'Datos de mercado no disponibles (temporalmente).',
-  },
-  en: {
-    title: 'Market data',
-    marketCap: 'Market cap',
-    volume: 'Volume',
-    peRatio: 'P/E ratio',
-    eps: 'EPS',
-    high52: '52w high',
-    low52: '52w low',
-    dividendYield: 'Dividend yield',
-    shareholders: 'Significant shareholders',
-    asOf: date => `as of ${date}`,
-    loading: 'Loading market data…',
-    unavailable: 'Market data unavailable (temporarily).',
-  },
-};
+import Ibex35MarketCardBody, { IBEX_STRINGS } from './Ibex35MarketCardBody';
 
 // Non-modal, right-anchored, fixed sidebar mirroring ApoderadosSidebar.jsx's
 // positioning. Fully automatic: shown/hidden entirely by the `open`/`seedEntry`
 // props (no close button, no manual dismiss) — the caller (the graph
 // component) owns visibility, keyed to the focused node and precedence
-// against ApoderadosSidebar.
+// against ApoderadosSidebar. Web only — see Ibex35MarketDialog for the
+// Android context-menu-triggered equivalent.
 const Ibex35MarketSidebar = ({ open, seedEntry, lang = 'es' }) => {
-  const t = STRINGS[lang === 'en' ? 'en' : 'es'];
+  const t = IBEX_STRINGS[lang === 'en' ? 'en' : 'es'];
   const [loading, setLoading] = useState(false);
   const [viewModel, setViewModel] = useState(null);
 
@@ -79,18 +48,6 @@ const Ibex35MarketSidebar = ({ open, seedEntry, lang = 'es' }) => {
   }, [open, seedEntry, lang]);
 
   if (!open || !seedEntry) return null;
-
-  const rows = viewModel
-    ? [
-        [t.marketCap, viewModel.marketCapLabel],
-        [t.volume, viewModel.volumeLabel],
-        [t.peRatio, viewModel.peRatioLabel],
-        [t.eps, viewModel.epsLabel],
-        [t.high52, viewModel.high52Label],
-        [t.low52, viewModel.low52Label],
-        [t.dividendYield, viewModel.dividendYieldLabel],
-      ].filter(([, value]) => value != null)
-    : [];
 
   return (
     <Paper
@@ -132,53 +89,7 @@ const Ibex35MarketSidebar = ({ open, seedEntry, lang = 'es' }) => {
             </Typography>
           </Box>
         ) : (
-          <>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1.5 }}>
-              <Typography variant="h5">{viewModel.priceLabel}</Typography>
-              {viewModel.changeLabel && (
-                <Chip
-                  size="small"
-                  icon={viewModel.changePositive ? <TrendingUpIcon /> : <TrendingDownIcon />}
-                  label={viewModel.changeLabel}
-                  color={viewModel.changePositive ? 'success' : 'error'}
-                  variant="outlined"
-                />
-              )}
-            </Box>
-
-            {rows.map(([label, value]) => (
-              <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {label}
-                </Typography>
-                <Typography variant="body2">{value}</Typography>
-              </Box>
-            ))}
-
-            {viewModel.shareholders.length > 0 && (
-              <>
-                <Divider sx={{ my: 1.5 }} />
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  {t.shareholders}
-                </Typography>
-                {viewModel.shareholders.map(s => (
-                  <Box key={s.name} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                    <Box>
-                      <Typography variant="body2">{s.name}</Typography>
-                      {s.asOfLabel && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                          {t.asOf(s.asOfLabel)}
-                        </Typography>
-                      )}
-                    </Box>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {s.percentageLabel}
-                    </Typography>
-                  </Box>
-                ))}
-              </>
-            )}
-          </>
+          <Ibex35MarketCardBody viewModel={viewModel} t={t} />
         )}
       </Box>
     </Paper>
