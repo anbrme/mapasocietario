@@ -21,6 +21,13 @@ import useAndroidBackButton from './hooks/useAndroidBackButton';
 import { isNativeApp } from './services/listedCompaniesNav';
 import './index.css';
 
+// Build marker. Bumping this string changes the entry bundle's content hash,
+// which forces every client to fetch a fresh copy — the only way to dislodge a
+// poisoned `immutable`-cached bundle (see the 2026-07-08 blank-page incident:
+// a bad cached copy of index-*.js never executed and, because identical rebuilds
+// keep the same hash, redeploys couldn't invalidate it). Also handy for support.
+if (typeof window !== 'undefined') window.__MS_BUILD__ = '2026-07-08a';
+
 // Shown after a FREE DD report is fulfilled: the user stays on the company
 // graph (see the dd_free_report_ready handling in main) and this banner links
 // to the report instead of yanking them to the order page.
