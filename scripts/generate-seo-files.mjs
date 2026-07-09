@@ -35,6 +35,8 @@ const sitemapRoutes = [
   { path: '/es/borme-grafo-empresas/', changefreq: 'weekly', priority: '0.8' },
   { path: '/es/barometro-empresarial/', changefreq: 'monthly', priority: '0.8' },
   { path: '/es/mapa-relaciones-societarias/', changefreq: 'weekly', priority: '0.8' },
+  { path: '/estudios/consejos-cruzados-ibex-35/', changefreq: 'monthly', priority: '0.7' },
+  { path: '/en/studies/ibex-35-interlocking-boards/', changefreq: 'monthly', priority: '0.7' },
   { path: '/about', changefreq: 'monthly', priority: '0.5' },
   { path: '/terms', changefreq: 'monthly', priority: '0.4' },
   { path: '/privacy', changefreq: 'monthly', priority: '0.3' },

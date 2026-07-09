@@ -1,0 +1,1221 @@
+{
+  "as_of": "2026-07-09",
+  "universe": "IBEX 35",
+  "n_companies": 35,
+  "methodology_note": "Boards reflect BORME-active board seats (seat=BOARD) per company; a person on >=2 IBEX-35 boards is a shared director. Person identity is resolved across companies by surname+given-name token matching, then hand-verified via a corrections overlay to reject homonyms and merge spelling variants.",
+  "board_sizes": [
+    {
+      "slug": "unicaja",
+      "name": "Unicaja",
+      "count": 22
+    },
+    {
+      "slug": "banco-sabadell",
+      "name": "Banco Sabadell",
+      "count": 21
+    },
+    {
+      "slug": "indra",
+      "name": "Indra",
+      "count": 19
+    },
+    {
+      "slug": "enagas",
+      "name": "Enagás",
+      "count": 17
+    },
+    {
+      "slug": "naturgy",
+      "name": "Naturgy",
+      "count": 17
+    },
+    {
+      "slug": "bbva",
+      "name": "BBVA",
+      "count": 16
+    },
+    {
+      "slug": "endesa",
+      "name": "Endesa",
+      "count": 16
+    },
+    {
+      "slug": "fluidra",
+      "name": "Fluidra",
+      "count": 16
+    },
+    {
+      "slug": "repsol",
+      "name": "Repsol",
+      "count": 16
+    },
+    {
+      "slug": "acs",
+      "name": "ACS",
+      "count": 15
+    },
+    {
+      "slug": "amadeus-it-group",
+      "name": "Amadeus IT Group",
+      "count": 15
+    },
+    {
+      "slug": "caixabank",
+      "name": "CaixaBank",
+      "count": 15
+    },
+    {
+      "slug": "cellnex",
+      "name": "Cellnex Telecom",
+      "count": 15
+    },
+    {
+      "slug": "aena",
+      "name": "AENA",
+      "count": 15
+    },
+    {
+      "slug": "iberdrola",
+      "name": "Iberdrola",
+      "count": 15
+    },
+    {
+      "slug": "mapfre",
+      "name": "Mapfre",
+      "count": 15
+    },
+    {
+      "slug": "merlin-properties",
+      "name": "Merlin Properties",
+      "count": 15
+    },
+    {
+      "slug": "banco-santander",
+      "name": "Banco Santander",
+      "count": 15
+    },
+    {
+      "slug": "sacyr",
+      "name": "Sacyr",
+      "count": 15
+    },
+    {
+      "slug": "telefonica",
+      "name": "Telefónica",
+      "count": 15
+    },
+    {
+      "slug": "bankinter",
+      "name": "Bankinter",
+      "count": 14
+    },
+    {
+      "slug": "inmobiliaria-colonial",
+      "name": "Inmobiliaria Colonial",
+      "count": 14
+    },
+    {
+      "slug": "puig",
+      "name": "Puig",
+      "count": 13
+    },
+    {
+      "slug": "redeia",
+      "name": "Redeia Corporación",
+      "count": 13
+    },
+    {
+      "slug": "acciona",
+      "name": "Acciona",
+      "count": 12
+    },
+    {
+      "slug": "ferrovial",
+      "name": "Ferrovial",
+      "count": 12
+    },
+    {
+      "slug": "inditex",
+      "name": "Inditex",
+      "count": 12
+    },
+    {
+      "slug": "logista",
+      "name": "Logista",
+      "count": 12
+    },
+    {
+      "slug": "acerinox",
+      "name": "Acerinox",
+      "count": 11
+    },
+    {
+      "slug": "acciona-energia",
+      "name": "Acciona Energía",
+      "count": 11
+    },
+    {
+      "slug": "international-airlines-group",
+      "name": "International Airlines Group (IAG)",
+      "count": 11
+    },
+    {
+      "slug": "grifols",
+      "name": "Grifols",
+      "count": 10
+    },
+    {
+      "slug": "laboratorios-rovi",
+      "name": "Laboratorios Rovi",
+      "count": 7
+    },
+    {
+      "slug": "solaria",
+      "name": "Solaria",
+      "count": 7
+    },
+    {
+      "slug": "arcelormittal",
+      "name": "ArcelorMittal",
+      "count": 6
+    }
+  ],
+  "people_multi": [
+    {
+      "name": "DANCAUSA TREVIÑO MARIA DOLORES",
+      "variants": [
+        "DANCAUSA TREVIÑO MARIA DOLORES"
+      ],
+      "count": 3,
+      "companies": [
+        {
+          "slug": "acciona",
+          "name": "Acciona"
+        },
+        {
+          "slug": "bankinter",
+          "name": "Bankinter"
+        },
+        {
+          "slug": "puig",
+          "name": "Puig"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "DULA SONIA LILIA",
+      "variants": [
+        "DULA SONIA",
+        "DULA SONIA LILIA"
+      ],
+      "count": 3,
+      "companies": [
+        {
+          "slug": "acciona",
+          "name": "Acciona"
+        },
+        {
+          "slug": "acciona-energia",
+          "name": "Acciona Energía"
+        },
+        {
+          "slug": "bbva",
+          "name": "BBVA"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "GARCIA FAU ANA MARIA",
+      "variants": [
+        "GARCIA FAU ANA MARIA",
+        "GARCIA FAU ANA"
+      ],
+      "count": 3,
+      "companies": [
+        {
+          "slug": "acerinox",
+          "name": "Acerinox"
+        },
+        {
+          "slug": "caixabank",
+          "name": "CaixaBank"
+        },
+        {
+          "slug": "cellnex",
+          "name": "Cellnex Telecom"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "GARCIA PIÑEIRO ROSA MARIA",
+      "variants": [
+        "GARCIA PIÑEIRO ROSA MARIA",
+        "GARCIA GARCIA ROSA MARIA"
+      ],
+      "count": 3,
+      "companies": [
+        {
+          "slug": "acerinox",
+          "name": "Acerinox"
+        },
+        {
+          "slug": "caixabank",
+          "name": "CaixaBank"
+        },
+        {
+          "slug": "mapfre",
+          "name": "Mapfre"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "JOHNSTON GEORGE DONALD",
+      "variants": [
+        "JOHNSTON GEORGE DONALD",
+        "GEORGE DONALD JOHNSTON"
+      ],
+      "count": 3,
+      "companies": [
+        {
+          "slug": "acerinox",
+          "name": "Acerinox"
+        },
+        {
+          "slug": "merlin-properties",
+          "name": "Merlin Properties"
+        },
+        {
+          "slug": "banco-sabadell",
+          "name": "Banco Sabadell"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "PUIG ROCHA MANUEL",
+      "variants": [
+        "PUIG ROCHA MANUEL"
+      ],
+      "count": 3,
+      "companies": [
+        {
+          "slug": "inmobiliaria-colonial",
+          "name": "Inmobiliaria Colonial"
+        },
+        {
+          "slug": "fluidra",
+          "name": "Fluidra"
+        },
+        {
+          "slug": "puig",
+          "name": "Puig"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "CATA SALA AURORA",
+      "variants": [
+        "CATA SALA AURORA"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "repsol",
+          "name": "Repsol"
+        },
+        {
+          "slug": "banco-sabadell",
+          "name": "Banco Sabadell"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "CONSTANS FERNANDEZ JORGE VALENTIN",
+      "variants": [
+        "CONSTANS FERNANDEZ JORGE VALENTIN"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "fluidra",
+          "name": "Fluidra"
+        },
+        {
+          "slug": "puig",
+          "name": "Puig"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "ENTRECANALES DOMECQ JOSE MANUEL",
+      "variants": [
+        "ENTRECANALES DOMECQ JOSE MANUEL"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "acciona",
+          "name": "Acciona"
+        },
+        {
+          "slug": "acciona-energia",
+          "name": "Acciona Energía"
+        }
+      ],
+      "affiliated": true
+    },
+    {
+      "name": "ENTRECANALES FRANCO JUAN IGNACIO",
+      "variants": [
+        "ENTRECANALES FRANCO JUAN IGNACIO"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "acciona",
+          "name": "Acciona"
+        },
+        {
+          "slug": "acciona-energia",
+          "name": "Acciona Energía"
+        }
+      ],
+      "affiliated": true
+    },
+    {
+      "name": "FAINE CASAS ISIDRO",
+      "variants": [
+        "FAINE CASAS ISIDRO"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "acs",
+          "name": "ACS"
+        },
+        {
+          "slug": "telefonica",
+          "name": "Telefónica"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "FANJUL MARTIN OSCAR",
+      "variants": [
+        "FANJUL MARTIN OSCAR"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "cellnex",
+          "name": "Cellnex Telecom"
+        },
+        {
+          "slug": "ferrovial",
+          "name": "Ferrovial"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "GAÑET CIRERA MARIA DEL CARMEN",
+      "variants": [
+        "GAÑET CIRERA MARIA DEL CARMEN"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "fluidra",
+          "name": "Fluidra"
+        },
+        {
+          "slug": "repsol",
+          "name": "Repsol"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "GARCIA-MILA LLOVERAS MARIA TERESA",
+      "variants": [
+        "GARCIA-MILA LLOVERAS MARIA TERESA",
+        "GARCIA MILA LLOVERAS MARIA TERESA"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "repsol",
+          "name": "Repsol"
+        },
+        {
+          "slug": "banco-sabadell",
+          "name": "Banco Sabadell"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "GOMEZ CIRIA ANTONIO",
+      "variants": [
+        "GOMEZ CIRIA ANTONIO"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "mapfre",
+          "name": "Mapfre"
+        },
+        {
+          "slug": "redeia",
+          "name": "Redeia Corporación"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "IGLESIAS HERRAIZ LETICIA",
+      "variants": [
+        "IGLESIAS HERRAIZ LETICIA"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "acerinox",
+          "name": "Acerinox"
+        },
+        {
+          "slug": "aena",
+          "name": "AENA"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "ISASI FERNANDEZ DE BOBADILLA LUIS",
+      "variants": [
+        "ISASI FERNANDEZ DE BOBADILLA LUIS"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "logista",
+          "name": "Logista"
+        },
+        {
+          "slug": "banco-santander",
+          "name": "Banco Santander"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "JORDA CASTRO MARIA LUISA",
+      "variants": [
+        "JORDA CASTRO MARIA LUISA"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "bankinter",
+          "name": "Bankinter"
+        },
+        {
+          "slug": "merlin-properties",
+          "name": "Merlin Properties"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "LOSCHER PETER",
+      "variants": [
+        "LOSCHER PETER"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "caixabank",
+          "name": "CaixaBank"
+        },
+        {
+          "slug": "telefonica",
+          "name": "Telefónica"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "MANRIQUE CECILIA MANUEL",
+      "variants": [
+        "MANRIQUE CECILIA MANUEL"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "repsol",
+          "name": "Repsol"
+        },
+        {
+          "slug": "sacyr",
+          "name": "Sacyr"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "MARTINEZ ALONSO MARTA",
+      "variants": [
+        "MARTINEZ ALONSO MARTA"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "acerinox",
+          "name": "Acerinox"
+        },
+        {
+          "slug": "naturgy",
+          "name": "Naturgy"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "MURTRA MILLAR MARC THOMAS",
+      "variants": [
+        "MURTRA MILLAR MARC",
+        "MURTRA MILLAR MARC THOMAS"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "indra",
+          "name": "Indra"
+        },
+        {
+          "slug": "telefonica",
+          "name": "Telefónica"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "OLIU CREUS JOSEP",
+      "variants": [
+        "OLIU CREUS JOSEP",
+        "OLIU CREUS JOSE"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "puig",
+          "name": "Puig"
+        },
+        {
+          "slug": "banco-sabadell",
+          "name": "Banco Sabadell"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "PAZ-ARES RODRIGUEZ TERESA",
+      "variants": [
+        "PAZ-ARES RODRIGUEZ TERESA",
+        "PAZ ARES RODRIGUEZ TERESA"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "bankinter",
+          "name": "Bankinter"
+        },
+        {
+          "slug": "logista",
+          "name": "Logista"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "PERALTA MORENO ANA CRISTINA",
+      "variants": [
+        "PERALTA MORENO ANA CRISTINA",
+        "PERALTA MORENO ANA"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "bbva",
+          "name": "BBVA"
+        },
+        {
+          "slug": "inmobiliaria-colonial",
+          "name": "Inmobiliaria Colonial"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "PULIDO MENDOZA MARIA TERESA",
+      "variants": [
+        "PULIDO MENDOZA MARIA TERESA"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "bankinter",
+          "name": "Bankinter"
+        },
+        {
+          "slug": "merlin-properties",
+          "name": "Merlin Properties"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "REYNES MASSANET FRANCISCO",
+      "variants": [
+        "REYNES MASSANET FRANCISCO"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "cellnex",
+          "name": "Cellnex Telecom"
+        },
+        {
+          "slug": "naturgy",
+          "name": "Naturgy"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "ROCA JUNYENT MIGUEL",
+      "variants": [
+        "ROCA JUNYENT MIGUEL"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "acs",
+          "name": "ACS"
+        },
+        {
+          "slug": "endesa",
+          "name": "Endesa"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "ROMANA GARCIA BELEN",
+      "variants": [
+        "ROMANA GARCIA BELEN"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "inditex",
+          "name": "Inditex"
+        },
+        {
+          "slug": "banco-santander",
+          "name": "Banco Santander"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "SAINZ DE BARANDA RIVA PEDRO",
+      "variants": [
+        "SAINZ DE BARANDA RIVA PEDRO"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "acerinox",
+          "name": "Acerinox"
+        },
+        {
+          "slug": "naturgy",
+          "name": "Naturgy"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "SALGADO MADRIÑAN MARIA",
+      "variants": [
+        "SALGADO MADRIÑAN MARIA"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "acciona",
+          "name": "Acciona"
+        },
+        {
+          "slug": "acciona-energia",
+          "name": "Acciona Energía"
+        }
+      ],
+      "affiliated": true
+    },
+    {
+      "name": "URQUIJO FERNANDEZ DE ARAOZ GONZALO",
+      "variants": [
+        "URQUIJO FERNANDEZ DE ARAOZ GONZALO",
+        "URQUIJO Y FERNANDEZ DE ARAOZ GONZALO"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "ferrovial",
+          "name": "Ferrovial"
+        },
+        {
+          "slug": "arcelormittal",
+          "name": "ArcelorMittal"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "VEGARA FIGUERAS DAVID",
+      "variants": [
+        "VEGARA FIGUERAS DAVID"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "amadeus-it-group",
+          "name": "Amadeus IT Group"
+        },
+        {
+          "slug": "banco-sabadell",
+          "name": "Banco Sabadell"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "VELAZQUEZ MEDINA MARIA DEL PINO",
+      "variants": [
+        "VELAZQUEZ MEDINA MARIA DEL PINO"
+      ],
+      "count": 2,
+      "companies": [
+        {
+          "slug": "repsol",
+          "name": "Repsol"
+        },
+        {
+          "slug": "sacyr",
+          "name": "Sacyr"
+        }
+      ],
+      "affiliated": false
+    }
+  ],
+  "edges": [
+    {
+      "a": "acciona",
+      "a_name": "Acciona",
+      "b": "acciona-energia",
+      "b_name": "Acciona Energía",
+      "shared": [
+        "DULA SONIA LILIA",
+        "ENTRECANALES DOMECQ JOSE MANUEL",
+        "ENTRECANALES FRANCO JUAN IGNACIO",
+        "SALGADO MADRIÑAN MARIA"
+      ],
+      "affiliated": true
+    },
+    {
+      "a": "acerinox",
+      "a_name": "Acerinox",
+      "b": "caixabank",
+      "b_name": "CaixaBank",
+      "shared": [
+        "GARCIA FAU ANA MARIA",
+        "GARCIA PIÑEIRO ROSA MARIA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acerinox",
+      "a_name": "Acerinox",
+      "b": "naturgy",
+      "b_name": "Naturgy",
+      "shared": [
+        "MARTINEZ ALONSO MARTA",
+        "SAINZ DE BARANDA RIVA PEDRO"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "banco-sabadell",
+      "a_name": "Banco Sabadell",
+      "b": "repsol",
+      "b_name": "Repsol",
+      "shared": [
+        "CATA SALA AURORA",
+        "GARCIA-MILA LLOVERAS MARIA TERESA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "bankinter",
+      "a_name": "Bankinter",
+      "b": "merlin-properties",
+      "b_name": "Merlin Properties",
+      "shared": [
+        "JORDA CASTRO MARIA LUISA",
+        "PULIDO MENDOZA MARIA TERESA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "fluidra",
+      "a_name": "Fluidra",
+      "b": "puig",
+      "b_name": "Puig",
+      "shared": [
+        "PUIG ROCHA MANUEL",
+        "CONSTANS FERNANDEZ JORGE VALENTIN"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "repsol",
+      "a_name": "Repsol",
+      "b": "sacyr",
+      "b_name": "Sacyr",
+      "shared": [
+        "MANRIQUE CECILIA MANUEL",
+        "VELAZQUEZ MEDINA MARIA DEL PINO"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acciona",
+      "a_name": "Acciona",
+      "b": "bankinter",
+      "b_name": "Bankinter",
+      "shared": [
+        "DANCAUSA TREVIÑO MARIA DOLORES"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acciona",
+      "a_name": "Acciona",
+      "b": "puig",
+      "b_name": "Puig",
+      "shared": [
+        "DANCAUSA TREVIÑO MARIA DOLORES"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acciona",
+      "a_name": "Acciona",
+      "b": "bbva",
+      "b_name": "BBVA",
+      "shared": [
+        "DULA SONIA LILIA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acciona-energia",
+      "a_name": "Acciona Energía",
+      "b": "bbva",
+      "b_name": "BBVA",
+      "shared": [
+        "DULA SONIA LILIA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acerinox",
+      "a_name": "Acerinox",
+      "b": "cellnex",
+      "b_name": "Cellnex Telecom",
+      "shared": [
+        "GARCIA FAU ANA MARIA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acerinox",
+      "a_name": "Acerinox",
+      "b": "mapfre",
+      "b_name": "Mapfre",
+      "shared": [
+        "GARCIA PIÑEIRO ROSA MARIA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acerinox",
+      "a_name": "Acerinox",
+      "b": "merlin-properties",
+      "b_name": "Merlin Properties",
+      "shared": [
+        "JOHNSTON GEORGE DONALD"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acerinox",
+      "a_name": "Acerinox",
+      "b": "banco-sabadell",
+      "b_name": "Banco Sabadell",
+      "shared": [
+        "JOHNSTON GEORGE DONALD"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acerinox",
+      "a_name": "Acerinox",
+      "b": "aena",
+      "b_name": "AENA",
+      "shared": [
+        "IGLESIAS HERRAIZ LETICIA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acs",
+      "a_name": "ACS",
+      "b": "telefonica",
+      "b_name": "Telefónica",
+      "shared": [
+        "FAINE CASAS ISIDRO"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "acs",
+      "a_name": "ACS",
+      "b": "endesa",
+      "b_name": "Endesa",
+      "shared": [
+        "ROCA JUNYENT MIGUEL"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "amadeus-it-group",
+      "a_name": "Amadeus IT Group",
+      "b": "banco-sabadell",
+      "b_name": "Banco Sabadell",
+      "shared": [
+        "VEGARA FIGUERAS DAVID"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "arcelormittal",
+      "a_name": "ArcelorMittal",
+      "b": "ferrovial",
+      "b_name": "Ferrovial",
+      "shared": [
+        "URQUIJO FERNANDEZ DE ARAOZ GONZALO"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "banco-sabadell",
+      "a_name": "Banco Sabadell",
+      "b": "merlin-properties",
+      "b_name": "Merlin Properties",
+      "shared": [
+        "JOHNSTON GEORGE DONALD"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "banco-sabadell",
+      "a_name": "Banco Sabadell",
+      "b": "puig",
+      "b_name": "Puig",
+      "shared": [
+        "OLIU CREUS JOSEP"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "banco-santander",
+      "a_name": "Banco Santander",
+      "b": "logista",
+      "b_name": "Logista",
+      "shared": [
+        "ISASI FERNANDEZ DE BOBADILLA LUIS"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "banco-santander",
+      "a_name": "Banco Santander",
+      "b": "inditex",
+      "b_name": "Inditex",
+      "shared": [
+        "ROMANA GARCIA BELEN"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "bankinter",
+      "a_name": "Bankinter",
+      "b": "puig",
+      "b_name": "Puig",
+      "shared": [
+        "DANCAUSA TREVIÑO MARIA DOLORES"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "bankinter",
+      "a_name": "Bankinter",
+      "b": "logista",
+      "b_name": "Logista",
+      "shared": [
+        "PAZ-ARES RODRIGUEZ TERESA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "bbva",
+      "a_name": "BBVA",
+      "b": "inmobiliaria-colonial",
+      "b_name": "Inmobiliaria Colonial",
+      "shared": [
+        "PERALTA MORENO ANA CRISTINA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "caixabank",
+      "a_name": "CaixaBank",
+      "b": "cellnex",
+      "b_name": "Cellnex Telecom",
+      "shared": [
+        "GARCIA FAU ANA MARIA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "caixabank",
+      "a_name": "CaixaBank",
+      "b": "mapfre",
+      "b_name": "Mapfre",
+      "shared": [
+        "GARCIA PIÑEIRO ROSA MARIA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "caixabank",
+      "a_name": "CaixaBank",
+      "b": "telefonica",
+      "b_name": "Telefónica",
+      "shared": [
+        "LOSCHER PETER"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "cellnex",
+      "a_name": "Cellnex Telecom",
+      "b": "ferrovial",
+      "b_name": "Ferrovial",
+      "shared": [
+        "FANJUL MARTIN OSCAR"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "cellnex",
+      "a_name": "Cellnex Telecom",
+      "b": "naturgy",
+      "b_name": "Naturgy",
+      "shared": [
+        "REYNES MASSANET FRANCISCO"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "fluidra",
+      "a_name": "Fluidra",
+      "b": "inmobiliaria-colonial",
+      "b_name": "Inmobiliaria Colonial",
+      "shared": [
+        "PUIG ROCHA MANUEL"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "fluidra",
+      "a_name": "Fluidra",
+      "b": "repsol",
+      "b_name": "Repsol",
+      "shared": [
+        "GAÑET CIRERA MARIA DEL CARMEN"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "indra",
+      "a_name": "Indra",
+      "b": "telefonica",
+      "b_name": "Telefónica",
+      "shared": [
+        "MURTRA MILLAR MARC THOMAS"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "inmobiliaria-colonial",
+      "a_name": "Inmobiliaria Colonial",
+      "b": "puig",
+      "b_name": "Puig",
+      "shared": [
+        "PUIG ROCHA MANUEL"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "mapfre",
+      "a_name": "Mapfre",
+      "b": "redeia",
+      "b_name": "Redeia Corporación",
+      "shared": [
+        "GOMEZ CIRIA ANTONIO"
+      ],
+      "affiliated": false
+    }
+  ],
+  "stats": {
+    "total_people_multi": 34,
+    "cross_group_people": 31,
+    "on_three": 6,
+    "companies_connected": 28,
+    "companies_isolated": 7,
+    "edges_total": 37,
+    "edges_cross_group": 36
+  }
+}

@@ -73,6 +73,18 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://mapasocietario.es/estudios/consejos-cruzados-ibex-35/</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/en/studies/ibex-35-interlocking-boards/</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://mapasocietario.es/about</loc>
     <lastmod>2026-07-09</lastmod>
     <changefreq>monthly</changefreq>
