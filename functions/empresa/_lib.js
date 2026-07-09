@@ -139,10 +139,10 @@ const T = {
   es: {
     htmlLang: 'es',
     ogLocale: 'es_ES',
-    title: (name) => `${name} — Administradores, socios y estructura societaria | Mapa Societario`,
+    title: (name) => `${name} — Socios, administradores y estructura societaria (Registro Mercantil) | Mapa Societario`,
     ogTitle: (name) => `${name} — Estructura societaria`,
     desc: (name, cap, prov) =>
-      `Ficha societaria de ${name}: administradores actuales y cesados, socios, capital social (${cap || 'n/d'})${prov ? `, domicilio en ${prov}` : ''} e historial mercantil oficial (BORME).`,
+      `Ficha del Registro Mercantil (BORME) de ${name}: socios, administradores actuales y cesados, capital social (${cap || 'n/d'})${prov ? `, domicilio en ${prov}` : ''} e historial mercantil completo. Consulta gratuita.`,
     jsonLdDesc: (name) =>
       `Estructura societaria de ${name}: administradores, socios, capital social e historial mercantil oficial (BORME).`,
     home: 'Mapa Societario',
@@ -205,8 +205,8 @@ const T = {
     notFoundH1: 'No hemos encontrado esa empresa',
     notFoundP: (q) => `No existe una ficha para «${q}» en nuestro índice del BORME.`,
     searchLink: 'Buscar empresas →',
-    hubTitle: 'Empresas cotizadas del IBEX 35 — estructura societaria | Mapa Societario',
-    hubDesc: 'Estructura societaria, administradores, socios e historial mercantil oficial (BORME y CNMV) de las 35 empresas del IBEX 35.',
+    hubTitle: 'Empresas del IBEX 35: lista completa con administradores y socios | Mapa Societario',
+    hubDesc: 'Lista completa de las 35 empresas del IBEX 35 con su estructura societaria: administradores, accionistas significativos e historial mercantil oficial (BORME y CNMV).',
     hubH1: 'Empresas cotizadas (IBEX 35)',
     hubLead: 'Administradores, socios y estructura societaria de las empresas del IBEX 35, a partir de datos oficiales del Registro Mercantil (BORME).',
     hubThCompany: 'Empresa',
@@ -263,10 +263,10 @@ const T = {
   en: {
     htmlLang: 'en',
     ogLocale: 'en_GB',
-    title: (name) => `${name} — Directors, shareholders & ownership structure | Mapa Societario`,
-    ogTitle: (name) => `${name} — Ownership structure`,
+    title: (name) => `${name} — Spanish Company Registry Records: Directors, Shareholders & Filings | Mapa Societario`,
+    ogTitle: (name) => `${name} — Spanish company registry records`,
     desc: (name, cap, prov) =>
-      `Company profile for ${name}: current and former directors, shareholders, share capital (${cap || 'n/a'})${prov ? `, registered in ${prov}` : ''} and official Spanish commercial-registry (BORME) history.`,
+      `${name} in the Spanish company register: current and former directors, shareholders, share capital (${cap || 'n/a'})${prov ? `, registered in ${prov}` : ''} and the full official commercial-registry (BORME) filing history. Free registry check.`,
     jsonLdDesc: (name) =>
       `Ownership structure of ${name}: directors, shareholders, share capital and official Spanish commercial-registry (BORME) history.`,
     home: 'Mapa Societario',
@@ -628,8 +628,11 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
   // appears only in name_changes[].new_name (no separate doc → no has_new_name).
   // Show the CURRENT name (latest new_name) as the heading, matching the in-app
   // preview; the former registral name then surfaces as a "prior name" below.
+  // Applies to seed pages too: the sacyr group doc is canonicalized to a
+  // subsidiary name (SACYR CONSTRUCCION SA) while its latest rename is the
+  // listed entity's current denomination (SACYR SA).
   const latestRename =
-    !seed && !renamedTo
+    !renamedTo
       ? (company.name_changes || [])
           .filter((c) => c && typeof c === 'object' && c.new_name)
           .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
@@ -961,6 +964,13 @@ export async function handleCompany({ params }, lang = 'es') {
   const seed = resolved.kind === 'seed' ? resolved.entry : null;
   let name = isFallback ? slugToQuery(slug) : resolved.entry.v3Name;
 
+  // Seed companies resolve by registry identity (hoja → group_key), not by
+  // name: enrichment runs can re-canonicalize a doc's name (e.g. "INDUSTRIA DE
+  // DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)" → "...S.A."), and by-name lookups can
+  // collide with smaller same-named docs (BANKINTER SA exists on 3 hojas). The
+  // hoja never changes, so these indexed pages survive both.
+  const groupKey = seed && seed.hoja ? `H:${seed.hoja.replace(/\s+/g, '-')}` : null;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
 
@@ -970,9 +980,19 @@ export async function handleCompany({ params }, lang = 'es') {
       ? `${API_BASE}/bormes/boe/company-mentions?name=${encodeURIComponent(seed.name || '')}&nif=${encodeURIComponent(seed.nif || '')}&categories=sancion,subvencion,contrato&size=8`
       : null;
     let [profile, eventsResp, cnmvResp, chartSvg, boeResp, gleifResp] = await Promise.all([
-      jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`, controller.signal),
+      jsonOrNull(
+        groupKey
+          ? `${API_BASE}/bormes/v3/company?group_key=${encodeURIComponent(groupKey)}`
+          : `${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`,
+        controller.signal,
+      ),
       // Over-fetch (16) so the group_key post-filter below can still fill 8 slots.
-      jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=16`, controller.signal),
+      jsonOrNull(
+        groupKey
+          ? `${API_BASE}/bormes/v3/events?group_key=${encodeURIComponent(groupKey)}&size=16`
+          : `${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=16`,
+        controller.signal,
+      ),
       // Significant shareholders + history chart: only IBEX seed companies have CNMV data.
       seed ? jsonOrNull(`${API_BASE}/bormes/cnmv/shareholders?company=${encodeURIComponent(slug)}`, controller.signal) : Promise.resolve(null),
       seed ? textOrNull(`${API_BASE}/bormes/cnmv/history-chart?company=${encodeURIComponent(slug)}&lang=${lang}`, controller.signal) : Promise.resolve(null),
@@ -984,6 +1004,17 @@ export async function handleCompany({ params }, lang = 'es') {
     ]);
 
     let company = profile && profile.company ? profile.company : null;
+
+    // Seed rescue: if the group_key lookup ever fails (endpoint outage, hoja
+    // re-keyed), retry the stored v3Name so the indexed page degrades to the
+    // old behaviour instead of 404ing.
+    if (!company && groupKey) {
+      const byName = await jsonOrNull(
+        `${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`,
+        controller.signal,
+      );
+      if (byName && byName.company) company = byName.company;
+    }
 
     // Fallback rescue: the exact name lookup above can't reverse lossy slug
     // substitutions (nameToSlug turns "&"→"y" and "ñ"→"n"), so companies like

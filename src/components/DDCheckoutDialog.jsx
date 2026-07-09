@@ -34,6 +34,7 @@ import {
 } from '../services/playBillingService';
 import { API_URL, PAYMENTS_API } from '../config';
 import { getClientId } from '../utils/clientId';
+import { trackEvent } from '../utils/track';
 import { resolveGroupKey, listCorrections } from '../services/correctionsService';
 
 const DD_PRICE = 22.50;
@@ -302,6 +303,20 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     if (open) setLang(language === 'es' ? 'es' : 'en');
   }, [open, language]);
 
+  // Funnel stage 1: the dialog opening IS the "DD button clicked" signal — all
+  // entry points (graph toolbar, node card, /due-diligence page) route here.
+  // Pairs with begin_checkout below and purchase in OrderStatusPage.
+  useEffect(() => {
+    if (!open) return;
+    trackEvent('view_item', {
+      currency: 'EUR',
+      items: [{ item_name: `DD Report — ${(country || 'es').toUpperCase()}`, item_category: 'Due Diligence', quantity: 1 }],
+      company: companyName || '',
+      page_path: window.location.pathname,
+      platform: isAndroidApp ? 'android' : 'web',
+    });
+  }, [open, companyName, country]);
+
   useEffect(() => {
     if (!open || !isAndroidApp || !ANDROID_PLAY_BILLING_ENABLED) return;
     let cancelled = false;
@@ -485,6 +500,17 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     }
     setError('');
     setLoading(true);
+    // Funnel stage 2: user submitted the checkout form (pre-redirect). The
+    // matching purchase event fires on OrderStatusPage after payment.
+    trackEvent('begin_checkout', {
+      currency: 'EUR',
+      value: freeActive ? 0 : subtotal,
+      items: [{ item_name: `DD Report — ${(country || 'es').toUpperCase()}`, item_category: 'Due Diligence', price: freeActive ? 0 : subtotal, quantity: 1 }],
+      company: companyName || '',
+      include_financials: includeFS,
+      free_report: freeActive,
+      platform: isAndroidApp ? 'android' : 'web',
+    });
     try {
       const canGenerate = await ensureReportCanBeGenerated();
       if (!canGenerate) {

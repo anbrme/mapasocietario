@@ -1,12 +1,20 @@
 import { SEED, V3_TO_SLUG } from '../../functions/empresa/_ibex35.js';
 
 // Resolves a BORME/v3 company name to its IBEX 35 SEED entry, or null if the
-// company is not one of the curated IBEX 35 seed entries. V3_TO_SLUG keys are
-// the exact, already-uppercase v3Name strings verified against api.ncdata.eu.
+// company is not one of the curated IBEX 35 seed entries. Matching is
+// punctuation-insensitive ("BANCO SANTANDER, S.A." ≡ "BANCO SANTANDER, SA"):
+// enrichment runs re-canonicalize doc names between the two forms, so graph
+// nodes can carry either depending on when their doc was last rebuilt.
+const nameKey = (s) =>
+  String(s).toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+
+const KEY_TO_SLUG = Object.fromEntries(
+  Object.entries(V3_TO_SLUG).map(([v3Name, slug]) => [nameKey(v3Name), slug]),
+);
+
 export function matchIbexSeed(companyName) {
   if (!companyName) return null;
-  const normalized = String(companyName).trim().toUpperCase();
-  const slug = V3_TO_SLUG[normalized];
+  const slug = KEY_TO_SLUG[nameKey(companyName)];
   if (!slug) return null;
   return SEED[slug] || null;
 }
