@@ -256,6 +256,9 @@ const T = {
     hubThSector: 'Sector',
     hubThTicker: 'Ticker',
     hubView: 'Ver ficha →',
+    studyTitle: 'Estudio: los consejos cruzados del IBEX 35',
+    studyLead: 'Qué consejeros se sientan en varios consejos del IBEX 35 a la vez, con un mapa interactivo y la tabla completa. A partir de datos del Registro Mercantil (BORME).',
+    studyCta: 'Leer el estudio →',
     hubRelatedTitle: 'Red de consejeros y accionistas del IBEX 35',
     hubRelatedLead: 'Visualización interactiva de los vínculos entre consejeros y accionistas de las empresas del IBEX 35 (en inglés).',
     hubRelatedLink: 'Explore the interactive board-director and shareholder network of the IBEX 35 companies (English) →',
@@ -380,6 +383,9 @@ const T = {
     hubThSector: 'Sector',
     hubThTicker: 'Ticker',
     hubView: 'View profile →',
+    studyTitle: 'Study: the interlocking boards of the IBEX 35',
+    studyLead: 'Which directors sit on more than one IBEX 35 board at once, with an interactive map and the full table. Built from Spanish commercial-registry (BORME) data.',
+    studyCta: 'Read the study →',
     hubRelatedTitle: 'IBEX 35 board-director and shareholder network',
     hubRelatedLead: 'Interactive visualisation of the links between the board directors and shareholders of the IBEX 35 companies.',
     hubRelatedLink: 'Explore the interactive board-director and shareholder network of the IBEX 35 companies (English) →',
@@ -1248,6 +1254,11 @@ ${HUB_STYLE}
     <thead><tr><th>${t.hubThCompany}</th><th>${t.hubThSector}</th><th>${t.hubThTicker}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
+  <section class="related">
+    <h2>${esc(t.studyTitle)}</h2>
+    <p>${esc(t.studyLead)}</p>
+    <p><a href="${lang === 'en' ? '/en/studies/ibex-35-interlocking-boards/' : '/estudios/consejos-cruzados-ibex-35/'}">${esc(t.studyCta)}</a></p>
+  </section>
   <section class="related">
     <h2>${esc(t.hubRelatedTitle)}</h2>
     <p>${esc(t.hubRelatedLead)}</p>

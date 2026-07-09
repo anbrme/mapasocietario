@@ -36,6 +36,7 @@ export const LANDING_COPY = {
     quickLinks: {
       listed: 'Browse IBEX 35 companies',
       dashboard: 'Stats dashboard',
+      study: 'IBEX 35 interlocking boards',
     },
     howItWorks: {
       heading: 'How it works',
@@ -217,6 +218,7 @@ export const LANDING_COPY = {
     quickLinks: {
       listed: 'Ver empresas del IBEX 35',
       dashboard: 'Panel estadístico',
+      study: 'Consejos cruzados del IBEX 35',
     },
     howItWorks: {
       heading: 'Cómo funciona',

@@ -242,6 +242,14 @@ export default function LandingPage({ lang = 'en' }) {
                 >
                   <BarChartIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.dashboard}
                 </Link>
+                <Box component="span" sx={{ color: 'text.disabled', display: { xs: 'none', sm: 'inline' } }}>·</Box>
+                <Link
+                  component="a"
+                  href={lang === 'en' ? '/en/studies/ibex-35-interlocking-boards/' : '/estudios/consejos-cruzados-ibex-35/'}
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.92rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  <HubIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.study}
+                </Link>
               </Box>
               <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, gap: 0.5, color: 'text.disabled', mt: 2 }}>
                 <BookmarkBorderIcon sx={{ fontSize: 15 }} /> {copy.hero.bookmarkTip}
