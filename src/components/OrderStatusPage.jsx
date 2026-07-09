@@ -275,9 +275,12 @@ export default function OrderStatusPage() {
         body: blob,
       });
 
-      // Track purchase in GA4
+      // Track purchase in GA4. transaction_id lets GA4 deduplicate the event
+      // when the buyer refreshes or revisits this page (a remount resets the
+      // in-memory fired-guards, so without it every reload double-counts).
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'purchase', {
+          transaction_id: sessionId,
           currency: 'EUR',
           value: DD_PRICE_EUR,
           items: [{ item_name: `DD Report — ${data.country?.toUpperCase()}`, item_category: 'Due Diligence', price: DD_PRICE_EUR, quantity: 1 }],
@@ -426,6 +429,7 @@ export default function OrderStatusPage() {
       ga4FiredRef.current = true;
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'purchase', {
+          transaction_id: sessionId,
           currency: 'EUR',
           value: DD_PRICE_EUR,
           items: [{ item_name: `DD Report — ${orderDataRef.current?.country?.toUpperCase()}`, item_category: 'Due Diligence', price: DD_PRICE_EUR, quantity: 1 }],
