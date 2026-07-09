@@ -277,6 +277,21 @@ const T = {
     boeSub: 'Contratos públicos, subvenciones y sanciones publicados en el Boletín Oficial del Estado (puede incluir sociedades del grupo).',
     boeCat: { sancion: 'Sanción', subvencion: 'Subvención', contrato: 'Contrato público' },
     boeSource: 'Fuente: BOE — reutilización conforme a las condiciones de la AEBOE. ',
+    subsTitle: 'Subvenciones públicas (SNPSAP)',
+    subsSub: 'Concesiones registradas en el Sistema Nacional de Publicidad de Subvenciones y Ayudas Públicas, consultadas por NIF. Se cargan solo si lo solicitas.',
+    subsBtn: 'Ver subvenciones públicas',
+    subsLoading: 'Cargando…',
+    subsEmpty: 'Sin subvenciones públicas registradas para este NIF.',
+    subsError: 'No se pudieron cargar las subvenciones.',
+    subsRetry: 'Reintentar',
+    subsTotalShown: 'Total de las concesiones mostradas',
+    subsTotalCount: 'concesiones en total',
+    subsThAmount: 'Importe',
+    subsThBody: 'Órgano concedente',
+    subsThProgramme: 'Convocatoria',
+    subsSource: 'Fuente: SNPSAP/IGAE — infosubvenciones.es. Información dinámica; verifique en origen.',
+    subsSearchLink: 'Consultar en infosubvenciones.es',
+    subsAviso: 'Aviso legal',
     gleifTitle: 'Grupo societario (GLEIF)',
     gleifSub: 'Estructura de matrices y filiales según el identificador LEI global (GLEIF). Haz doble clic en un nodo del gráfico para expandir su grupo.',
     gleifParents: 'Matrices',
@@ -404,6 +419,21 @@ const T = {
     boeSub: 'Public contracts, subsidies and sanctions published in the BOE (may include group companies).',
     boeCat: { sancion: 'Sanction', subvencion: 'Subsidy', contrato: 'Public contract' },
     boeSource: 'Source: BOE — reused under the AEBOE reuse conditions. ',
+    subsTitle: 'Public subsidies (SNPSAP)',
+    subsSub: 'Awards recorded in the Spanish national subsidies register (SNPSAP), looked up by tax ID (NIF). Loaded only on request.',
+    subsBtn: 'View public subsidies',
+    subsLoading: 'Loading…',
+    subsEmpty: 'No public subsidies on record for this tax ID.',
+    subsError: 'Could not load the subsidies.',
+    subsRetry: 'Retry',
+    subsTotalShown: 'Total of the awards shown',
+    subsTotalCount: 'awards in total',
+    subsThAmount: 'Amount',
+    subsThBody: 'Granting body',
+    subsThProgramme: 'Programme',
+    subsSource: 'Source: SNPSAP/IGAE — infosubvenciones.es. Dynamic information; verify at source.',
+    subsSearchLink: 'Check at infosubvenciones.es',
+    subsAviso: 'Legal notice',
     gleifTitle: 'Corporate group (GLEIF)',
     gleifSub: 'Parent and subsidiary structure from the global LEI identifier (GLEIF). Double-click a node in the graph to expand its group.',
     gleifParents: 'Parents',
@@ -617,6 +647,9 @@ const STYLE = `<style>
   .cat-sancion{background:#fee2e2;color:#991b1b}
   .cat-subvencion{background:#dcfce7;color:#166534}
   .cat-contrato{background:#dbeafe;color:#1e40af}
+  .subs-btn{font-size:14px;font-weight:600;border:1px solid var(--brand);border-radius:8px;padding:8px 16px;background:#fff;color:var(--brand);cursor:pointer}
+  .subs-btn:hover{background:#eff6ff}
+  .subs-btn:disabled{opacity:.6;cursor:default}
   details summary{cursor:pointer;color:var(--brand);font-size:13px}
   .ids{font-size:13px;color:var(--mut);margin-top:6px;word-break:break-word}
   .chart svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
@@ -824,6 +857,94 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
         <p class="more">${t.boeSource}<a href="https://www.boe.es/" rel="nofollow noopener" target="_blank">boe.es</a>.</p>
       </section>`
     : '';
+  // Public subsidies (SNPSAP) — click-to-load expander, only when a NIF exists.
+  // Pull-not-push: SSR emits an empty shell; the inline script fetches on click.
+  // The endpoint ships behind SUBSIDIES_PANEL_ENABLED; while dark it answers
+  // {disabled:true} and the script hides the whole section.
+  const rawNif = company.nif || company.enriched_nif || '';
+  let subsidiesBlock = '';
+  if (rawNif) {
+    const subsI18n = {
+      loading: t.subsLoading,
+      empty: t.subsEmpty,
+      error: t.subsError,
+      retry: t.subsRetry,
+      totalShown: t.subsTotalShown,
+      totalCount: t.subsTotalCount,
+      thDate: t.thDate,
+      thAmount: t.subsThAmount,
+      thBody: t.subsThBody,
+      thProgramme: t.subsThProgramme,
+      source: t.subsSource,
+      searchLink: t.subsSearchLink,
+      aviso: t.subsAviso,
+    };
+    const subsJson = JSON.stringify(subsI18n)
+      .replace(/</g, '\\u003c')
+      .replace(/[\u2028\u2029]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+    subsidiesBlock = `<section class="subs" id="subs-section">
+        <h2>${t.subsTitle}</h2>
+        <p class="more">${t.subsSub}</p>
+        <button type="button" id="subs-btn" class="subs-btn">${t.subsBtn}</button>
+        <div id="subs-body" data-nif="${esc(rawNif)}" data-lang="${esc(lang)}" data-api="${API_BASE}"></div>
+        <script type="application/json" id="subs-i18n">${subsJson}</script>
+        <script>
+        (function(){
+          var btn=document.getElementById('subs-btn');
+          var body=document.getElementById('subs-body');
+          if(!btn||!body||!window.fetch)return;
+          var L=JSON.parse(document.getElementById('subs-i18n').textContent);
+          var lang=body.getAttribute('data-lang')||'es';
+          function eur(n){try{return new Intl.NumberFormat(lang==='en'?'en-IE':'es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n)}catch(e){return n+' EUR'}}
+          function fdate(d){var m=/^(\\d{4})-(\\d{2})-(\\d{2})/.exec(d||'');return m?m[3]+'/'+m[2]+'/'+m[1]:(d||'')}
+          function note(msg){body.textContent='';var p=document.createElement('p');p.className='more';p.textContent=msg;body.appendChild(p)}
+          function fail(){btn.disabled=false;btn.textContent=L.retry;note(L.error)}
+          function render(j){
+            btn.hidden=true;body.textContent='';
+            var list=j.concessions||[];
+            if(!list.length){note(L.empty);return}
+            var sum=document.createElement('p');sum.className='more';
+            sum.textContent=L.totalShown+': '+eur(j.total_amount_shown||0)+' \\u00b7 '+j.count+' '+L.totalCount;
+            body.appendChild(sum);
+            var table=document.createElement('table');table.className='t';
+            var thead=document.createElement('thead');var trh=document.createElement('tr');
+            [L.thDate,L.thAmount,L.thBody,L.thProgramme].forEach(function(h){var th=document.createElement('th');th.textContent=h;trh.appendChild(th)});
+            thead.appendChild(trh);table.appendChild(thead);
+            var tbody=document.createElement('tbody');
+            list.forEach(function(c){
+              var tr=document.createElement('tr');
+              [fdate(c.date),typeof c.amount==='number'?eur(c.amount):'',c.body||''].forEach(function(v){
+                var td=document.createElement('td');td.textContent=v;tr.appendChild(td)});
+              var tdP=document.createElement('td');
+              var label=c.programme||c.instrument||'';
+              if(c.source_url&&/^https?:\\/\\//.test(c.source_url)){
+                var a=document.createElement('a');a.href=c.source_url;a.rel='nofollow noopener';a.target='_blank';a.textContent=label;tdP.appendChild(a);
+              }else{tdP.textContent=label}
+              tr.appendChild(tdP);tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);body.appendChild(table);
+            var src=document.createElement('p');src.className='more';
+            src.appendChild(document.createTextNode(L.source+' '));
+            var a1=document.createElement('a');a1.href=j.source_url||'https://www.infosubvenciones.es/';a1.rel='nofollow noopener';a1.target='_blank';a1.textContent=L.searchLink;
+            src.appendChild(a1);src.appendChild(document.createTextNode(' \\u00b7 '));
+            var a2=document.createElement('a');a2.href=j.aviso_url||'https://www.infosubvenciones.es/bdnstrans/GE/es/avisolegal';a2.rel='nofollow noopener';a2.target='_blank';a2.textContent=L.aviso;
+            src.appendChild(a2);body.appendChild(src);
+          }
+          btn.addEventListener('click',function(){
+            btn.disabled=true;btn.textContent=L.loading;
+            fetch(body.getAttribute('data-api')+'/bormes/subsidies-by-nif?nif='+encodeURIComponent(body.getAttribute('data-nif'))+'&lang='+encodeURIComponent(lang))
+              .then(function(r){return r.json()})
+              .then(function(j){
+                if(j&&j.disabled){document.getElementById('subs-section').hidden=true;return}
+                if(!j||!j.success){fail();return}
+                render(j);
+              })
+              .catch(fail);
+          });
+        })();
+        </scr${''}ipt>
+      </section>`;
+  }
   // GLEIF corporate group (IBEX seed companies with a verified LEI only).
   const flag = (cc) => (cc && cc !== 'N/A' ? `<span class="chip">${esc(cc)}</span>` : '');
   const gleifEntityRow = (e) =>
@@ -957,6 +1078,8 @@ ${STYLE}
   ${active || resigned ? `<p class="more">${t.officerRoleNote}</p>` : ''}
 
   ${boeBlock}
+
+  ${subsidiesBlock}
 
   ${
     company.capital_history && company.capital_history.length
