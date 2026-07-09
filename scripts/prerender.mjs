@@ -294,15 +294,17 @@ const routes = [
   },
   {
     path: '/spanish-company-register-search',
-    title: 'Spanish Company Register Search | BORME Company Search Spain',
+    title: 'Spanish Company Register Search (Companies House Spain) | Mapa Societario',
     description:
-      'Search Spanish companies and directors using BORME registry data. Understand what the Spanish company register shows, what it omits, and when to order a due diligence report.',
+      'The Spanish company register explained: what BORME — the Companies House Spain equivalent — shows about any company (directors, capital, filings), what it omits, and how to search it free.',
     ogType: 'article',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Spanish company register search, explained</h1>
         <p>Search Spanish companies and directors, understand BORME registry publications, and move from a company lookup to a relationship graph or due diligence report when the registry record needs context.</p>
         ${disclaimerHtmlEn}
+        <h2>Is there a &ldquo;Companies House&rdquo; for Spain?</h2>
+        <p>Spain has no single &ldquo;Companies House&rdquo; portal like the UK. The equivalent public record is split between the <strong>Registro Mercantil</strong> (the Spanish Commercial Registry) and <strong>BORME</strong>, its official gazette. Mapa Societario brings BORME into one searchable place, so you can look up a Spanish company the way you would on Companies House &mdash; by company name or director &mdash; and see its officers, share capital, and filing history for free.</p>
         <h2>Search Spanish companies from BORME data</h2>
         <p>Mapa Societario lets you search Spanish companies and directors, then explore their corporate relationships in an interactive graph. The underlying registry intelligence is built from BORME publications, the official gazette where Spanish Commercial Registry acts are published.</p>
         <h2>What is BORME?</h2>
@@ -324,7 +326,7 @@ const routes = [
           <li>Expand the graph when a director, proxy, or related company needs more context.</li>
           <li>Order a due diligence report only when you need a PDF record.</li>
         </ol>
-        <p><a href="/app">Search a Spanish company</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence reports</a></p>
+        <p><a href="/app">Search a Spanish company</a> | <a href="/en/listed-companies">Browse IBEX 35 listed companies</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence reports</a></p>
       </main>`,
   },
   {
@@ -398,23 +400,25 @@ const routes = [
   },
   {
     path: '/es/informes-due-diligence-empresas',
-    title: 'Informes Due Diligence de Empresas Españolas | Mapa Societario',
+    title: 'Informe Due Diligence y Revisión de Estructura Societaria | Mapa Societario',
     description:
-      'Informes due diligence para empresas españolas con estructura societaria, historial de administradores, eventos BORME, señales de riesgo y PDF profesional.',
+      'Informe due diligence y revisión de estructura societaria de empresas españolas: administradores, socios, eventos BORME, señales de riesgo e informe societario en PDF profesional.',
     ogType: 'article',
     lang: 'es',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Informes due diligence de empresas españolas</h1>
-        <p>Compra un informe due diligence para una sociedad española cuando necesites documentar una revisión de contraparte, proveedor, cliente, inversión o adquisición.</p>
+        <h1>Informe due diligence y revisión de estructura societaria</h1>
+        <p>Compra un informe due diligence para una sociedad española cuando necesites documentar una revisión de contraparte, proveedor, cliente, inversión o adquisición. El informe societario reconstruye la estructura de la empresa a partir de datos oficiales del Registro Mercantil (BORME).</p>
         ${disclaimerHtmlEs}
         <h2>Qué incluye el informe</h2>
         <ul>
-          <li>Estructura societaria, administradores actuales e históricos, socios únicos y participaciones íntegramente poseídas.</li>
+          <li>Revisión de la estructura societaria: administradores actuales e históricos, socios únicos y participaciones íntegramente poseídas.</li>
           <li>Eventos publicados en BORME, cambios de capital, comprobación de sanciones BOE, cruce con diputados del Congreso y señales de riesgo.</li>
-          <li>PDF profesional para compliance, KYC, inversion o revision interna.</li>
+          <li>Informe societario en PDF profesional para compliance, KYC, inversión o revisión interna.</li>
         </ul>
-        <p><a href="/app">Buscar una empresa</a></p>
+        <h2>Cuándo pedir una revisión de estructura societaria</h2>
+        <p>Antes de firmar con una contraparte, incorporar un proveedor, invertir o adquirir una sociedad, una revisión de la estructura societaria muestra quién controla la empresa, qué administradores figuran, cómo ha evolucionado su capital y qué sociedades están vinculadas. Es el contexto que una simple consulta registral no ofrece.</p>
+        <p><a href="/app">Buscar una empresa</a> | <a href="/empresas-cotizadas">Ver empresas del IBEX 35</a></p>
       </main>`,
   },
   {
