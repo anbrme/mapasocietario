@@ -37,3 +37,9 @@ test('section body is empty at SSR time (nothing eager-loaded)', () => {
   const html = render({ nif: 'A46103834' });
   assert.match(html, /<div id="subs-body"[^>]*><\/div>/);
 });
+
+test('data-nif attribute is HTML-escaped', () => {
+  const html = render({ nif: 'A46"><img src=x>' });
+  assert.match(html, /data-nif="A46&quot;&gt;&lt;img src=x&gt;"/);
+  assert.doesNotMatch(html, /data-nif="A46">/);
+});

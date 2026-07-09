@@ -925,9 +925,9 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
             table.appendChild(tbody);body.appendChild(table);
             var src=document.createElement('p');src.className='more';
             src.appendChild(document.createTextNode(L.source+' '));
-            var a1=document.createElement('a');a1.href=j.source_url||'https://www.infosubvenciones.es/';a1.rel='nofollow noopener';a1.target='_blank';a1.textContent=L.searchLink;
+            var a1=document.createElement('a');a1.href=(j.source_url&&/^https?:\\/\\//.test(j.source_url))?j.source_url:'https://www.infosubvenciones.es/';a1.rel='nofollow noopener';a1.target='_blank';a1.textContent=L.searchLink;
             src.appendChild(a1);src.appendChild(document.createTextNode(' \\u00b7 '));
-            var a2=document.createElement('a');a2.href=j.aviso_url||'https://www.infosubvenciones.es/bdnstrans/GE/es/avisolegal';a2.rel='nofollow noopener';a2.target='_blank';a2.textContent=L.aviso;
+            var a2=document.createElement('a');a2.href=(j.aviso_url&&/^https?:\\/\\//.test(j.aviso_url))?j.aviso_url:'https://www.infosubvenciones.es/bdnstrans/GE/es/avisolegal';a2.rel='nofollow noopener';a2.target='_blank';a2.textContent=L.aviso;
             src.appendChild(a2);body.appendChild(src);
           }
           btn.addEventListener('click',function(){
