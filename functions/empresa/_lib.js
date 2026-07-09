@@ -121,6 +121,49 @@ function fmtDate(d, lang) {
   return `${day}/${mo}/${y}`;
 }
 
+// Easter Sunday (anonymous Gregorian algorithm) — so the moving Holy Week
+// holidays are derived, not hardcoded per year.
+function easterSunday(year) {
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+const isoUTC = (dt) => dt.toISOString().slice(0, 10);
+
+// Spanish NATIONAL non-publication days the BORME observes (BORME is published
+// Mon–Fri except national holidays). Regional/local days are not included.
+function spanishNationalHolidays(year) {
+  const fixed = ['01-01', '01-06', '05-01', '08-15', '10-12', '11-01', '12-06', '12-08', '12-25']
+    .map((md) => `${year}-${md}`);
+  const easter = easterSunday(year);
+  const goodFriday = new Date(easter.getTime() - 2 * 86400000);
+  const maundyThursday = new Date(easter.getTime() - 3 * 86400000);
+  return new Set([...fixed, isoUTC(goodFriday), isoUTC(maundyThursday)]);
+}
+
+// Most recent BORME publication day (Europe/Madrid business day). The BORME
+// updates every working day; step back over weekends and national holidays so
+// the shown date reflects reality (e.g. a Madrid holiday when it does not run).
+function latestBormeDateIso() {
+  const madridToday = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  let d = new Date(`${madridToday}T12:00:00Z`);
+  for (let step = 0; step < 12; step++) {
+    const dow = d.getUTCDay();
+    const holidays = spanishNationalHolidays(d.getUTCFullYear());
+    if (dow !== 0 && dow !== 6 && !holidays.has(isoUTC(d))) return isoUTC(d);
+    d = new Date(d.getTime() - 86400000);
+  }
+  return isoUTC(d);
+}
+
 function fmtEur(n, lang) {
   if (typeof n !== 'number') return '';
   const locale = lang === 'en' ? 'en-IE' : 'es-ES';
@@ -1210,7 +1253,7 @@ ${HUB_STYLE}
     <p>${esc(t.hubRelatedLead)}</p>
     <p><a href="https://ibex35dashboard.ncdata.eu" hreflang="en" lang="en" rel="noopener">${esc(t.hubRelatedLink)}</a></p>
   </section>
-  <footer>${t.footer('—')}</footer>
+  <footer>${t.footer(esc(fmtDate(latestBormeDateIso(), lang)))}</footer>
 </div>
 <div class="nav-overlay" id="navOverlay" role="status" aria-live="polite">
   <div class="spin"></div>
