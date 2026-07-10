@@ -113,9 +113,9 @@ export default function AdminPage() {
 
       const data = await res.json();
       setUploadProgress(
-        data.analysisGenerated
-          ? 'Upload complete! OCR + LLM analysis generated.'
-          : 'Upload complete. LLM analysis may have failed — check logs.'
+        data.queued
+          ? 'Uploaded — analysis + report now generating in the background (usually a few minutes). The order shows as ready when done.'
+          : 'Upload complete.'
       );
 
       // Refresh the orders list
