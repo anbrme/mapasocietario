@@ -367,6 +367,10 @@ const SEARCH_COPY = {
     reportVerifyPending: 'Please complete the verification below.',
     reportThanks: 'Thanks — an administrator will review the correction.',
     reportError: (msg) => `Could not send the report: ${msg}`,
+    nifMissingLabel: 'No NIF on record',
+    reportNifMissingCta: 'Suggest one',
+    reportNifMissingTitle: 'Suggest a NIF',
+    reportMissingIntro: 'No NIF is on record for this company. If you know it, suggest it and an administrator will review it.',
     activity: 'Corporate purpose',
     capital: 'Share capital',
     bormeRange: 'BORME publication range',
@@ -627,6 +631,10 @@ const SEARCH_COPY = {
     reportVerifyPending: 'Completa la verificación de abajo.',
     reportThanks: 'Gracias — un administrador revisará la corrección.',
     reportError: (msg) => `No se pudo enviar el reporte: ${msg}`,
+    nifMissingLabel: 'Sin NIF registrado',
+    reportNifMissingCta: 'Sugerir uno',
+    reportNifMissingTitle: 'Sugerir un NIF',
+    reportMissingIntro: 'No consta ningún NIF para esta empresa. Si lo conoces, sugiérelo y un administrador lo revisará.',
     activity: 'Objeto social',
     capital: 'Capital social',
     bormeRange: 'Rango de publicaciones BORME',
@@ -8576,7 +8584,7 @@ const SpanishCompanyNetworkGraph = ({
                           </Box>
                         </Box>
                       )}
-                      {e?.cif && (
+                      {e?.cif ? (
                         <Box>
                           <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -8593,7 +8601,23 @@ const SpanishCompanyNetworkGraph = ({
                             </Tooltip>
                           </Box>
                         </Box>
-                      )}
+                      ) : previewData?.type === 'company' ? (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" color="text.disabled">{text.nifMissingLabel}</Typography>
+                            <Button
+                              size="small"
+                              variant="text"
+                              startIcon={<ReportIcon sx={{ fontSize: 14 }} />}
+                              onClick={() => openReport('nif', '')}
+                              sx={{ textTransform: 'none', fontSize: '0.7rem', p: 0.25, minWidth: 0, color: 'warning.main' }}
+                            >
+                              {text.reportNifMissingCta}
+                            </Button>
+                          </Box>
+                        </Box>
+                      ) : null}
                       {e?.address && (
                         <Box sx={{ gridColumn: e?.cif ? 'auto' : '1 / -1' }}>
                           <Typography variant="caption" color="text.secondary">{text.address}</Typography>
@@ -9362,10 +9386,10 @@ const SpanishCompanyNetworkGraph = ({
         }}
       />
       <Dialog open={!!reportDialog} onClose={() => setReportDialog(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>{text.reportNifTitle}</DialogTitle>
+        <DialogTitle>{reportDialog?.currentValue ? text.reportNifTitle : text.reportNifMissingTitle}</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2, fontSize: '0.85rem', color: 'text.secondary' }}>
-            {text.reportIntro}
+            {reportDialog?.currentValue ? text.reportIntro : text.reportMissingIntro}
           </Typography>
           {reportDialog?.currentValue && (
             <Typography variant="body2" sx={{ mb: 2 }}>
