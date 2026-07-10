@@ -7,7 +7,7 @@ import { API_URL } from '../config';
 // borme_companies_v3 ES field via the backend's _persist_enrichment. Mirrors
 // CnmvReviewTab: same X-Admin-Token gate + plain fetch pattern.
 const BORME_API = API_URL;
-const FIELD_LABEL = { nif: 'NIF/CIF', capital: 'Capital', address: 'Domicilio' };
+const FIELD_LABEL = { nif: 'NIF/CIF', capital: 'Capital', address: 'Domicilio' }; 
 const FIELD_COLOR = { nif: 'primary', capital: 'warning', address: 'success' };
 
 export default function EnrichmentReviewTab({ adminKey }) {
