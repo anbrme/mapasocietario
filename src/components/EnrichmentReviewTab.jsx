@@ -10,7 +10,7 @@ const BORME_API = API_URL;
 const FIELD_LABEL = { nif: 'NIF/CIF', capital: 'Capital', address: 'Domicilio' }; 
 const FIELD_COLOR = { nif: 'primary', capital: 'warning', address: 'success' };
 
-export default function EnrichmentReviewTab({ adminKey }) {
+export default function EnrichmentReviewTab({ adminKey }) { 
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
