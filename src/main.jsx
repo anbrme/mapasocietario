@@ -21,12 +21,16 @@ import useAndroidBackButton from './hooks/useAndroidBackButton';
 import { isNativeApp } from './services/listedCompaniesNav';
 import './index.css';
 
-// Build marker. Bumping this string changes the entry bundle's content hash,
-// which forces every client to fetch a fresh copy — the only way to dislodge a
-// poisoned `immutable`-cached bundle (see the 2026-07-08 blank-page incident:
-// a bad cached copy of index-*.js never executed and, because identical rebuilds
-// keep the same hash, redeploys couldn't invalidate it). Also handy for support.
-if (typeof window !== 'undefined') window.__MS_BUILD__ = '2026-07-11a';
+// Build marker, injected at build time from the git short SHA (see
+// vite.config.js `__APP_BUILD_ID__`). Because it is unique per commit, the entry
+// bundle's content — and thus its hashed filename — changes on every deploy,
+// even when the diff only touches lazy chunks. That is what dislodges a poisoned
+// `immutable`-cached copy of index-*.js (the 2026-07-08 / 2026-07-11 blank-page
+// incidents: a stale cached copy never executed, and identical rebuilds kept the
+// same hash so redeploys couldn't invalidate it). Also handy for support.
+if (typeof window !== 'undefined') {
+  window.__MS_BUILD__ = typeof __APP_BUILD_ID__ !== 'undefined' ? __APP_BUILD_ID__ : 'dev';
+}
 
 // Shown after a FREE DD report is fulfilled: the user stays on the company
 // graph (see the dd_free_report_ready handling in main) and this banner links
