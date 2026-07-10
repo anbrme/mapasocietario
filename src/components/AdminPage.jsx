@@ -41,6 +41,10 @@ export default function AdminPage() {
   const [error, setError] = useState('');
   const [uploadingSession, setUploadingSession] = useState(null);
   const [uploadProgress, setUploadProgress] = useState('');
+  // Sessions whose FS PDF was uploaded this admin session. Async upload returns
+  // 202 immediately, so this drives a persistent "uploaded → generating" marker
+  // on the card (the order lingers in Pending until the queue job completes).
+  const [uploadedSessions, setUploadedSessions] = useState(() => new Set());
   const [expandedAnalysis, setExpandedAnalysis] = useState(null);
   const [analysisCache, setAnalysisCache] = useState({});
   const [deletingSession, setDeletingSession] = useState(null);
@@ -112,6 +116,7 @@ export default function AdminPage() {
       }
 
       const data = await res.json();
+      setUploadedSessions((prev) => new Set(prev).add(sessionId));
       setUploadProgress(
         data.queued
           ? 'Uploaded — analysis + report now generating in the background (usually a few minutes). The order shows as ready when done.'
@@ -381,6 +386,7 @@ export default function AdminPage() {
               <OrderCard
                 key={order.sessionId}
                 order={order}
+                justUploaded={uploadedSessions.has(order.sessionId)}
                 onUpload={handleFileSelect}
                 uploading={uploadingSession === order.sessionId}
                 onDelete={(id) => setConfirmDelete(id)}
@@ -487,7 +493,7 @@ function buildMailtoLink(order) {
   return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onConfirmDelete, onCancelDelete, deleting, onRetry, retrying }) {
+function OrderCard({ order, justUploaded, onUpload, uploading, onDelete, confirmingDelete, onConfirmDelete, onCancelDelete, deleting, onRetry, retrying }) {
   const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   }) : '—';
@@ -551,6 +557,16 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
             <RefundRailHint order={order} />
           </Box>
         )}
+        {order.type !== 'dd_only' && justUploaded && (
+          <Box sx={{ mt: 0.75 }}>
+            <Chip
+              label="✓ Uploaded — analysis & report generating"
+              size="small"
+              color="success"
+              sx={{ fontSize: '0.65rem', height: 22, fontWeight: 700 }}
+            />
+          </Box>
+        )}
       </Box>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
         {ddView?.showRetry && (
@@ -599,20 +615,23 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
         )}
         {order.type !== 'dd_only' && (
           <Button
-            variant="contained"
+            variant={justUploaded ? 'outlined' : 'contained'}
             size="small"
+            color={justUploaded ? 'success' : 'primary'}
             startIcon={uploading ? <CircularProgress size={14} /> : <UploadFileIcon />}
             disabled={uploading}
             onClick={() => onUpload(order.sessionId)}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 600,
-              bgcolor: 'warning.main',
-              color: '#000',
-              '&:hover': { bgcolor: 'warning.dark' },
-            }}
+            sx={justUploaded
+              ? { textTransform: 'none', fontWeight: 600 }
+              : {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  bgcolor: 'warning.main',
+                  color: '#000',
+                  '&:hover': { bgcolor: 'warning.dark' },
+                }}
           >
-            {uploading ? 'Processing...' : 'Upload PDF'}
+            {uploading ? 'Processing...' : justUploaded ? 'Re-upload' : 'Upload PDF'}
           </Button>
         )}
       </Box>
