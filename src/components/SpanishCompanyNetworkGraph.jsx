@@ -1361,6 +1361,61 @@ const SpanishCompanyNetworkGraph = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportDialog, reportSuggested, reportNote]);
 
+  // Report-an-incorrect/missing-NIF modal + confirmation snackbar. Defined once
+  // and rendered in BOTH the embedded and Dialog-mode return branches so the
+  // flag/suggest buttons in the preview always have a mounted dialog to open.
+  const reportModal = (
+    <>
+      <Dialog open={!!reportDialog} onClose={() => setReportDialog(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>{reportDialog?.currentValue ? text.reportNifTitle : text.reportNifMissingTitle}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, fontSize: '0.85rem', color: 'text.secondary' }}>
+            {reportDialog?.currentValue ? text.reportIntro : text.reportMissingIntro}
+          </Typography>
+          {reportDialog?.currentValue && (
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              {text.reportCurrentValue}: <strong>{reportDialog.currentValue}</strong>
+            </Typography>
+          )}
+          <TextField
+            fullWidth
+            size="small"
+            label={text.reportSuggestedLabel}
+            value={reportSuggested}
+            onChange={(e) => setReportSuggested(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            size="small"
+            label={text.reportNoteLabel}
+            multiline
+            minRows={2}
+            value={reportNote}
+            onChange={(e) => setReportNote(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <Box ref={reportTurnstileRef} sx={{ display: 'flex', justifyContent: 'center' }} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReportDialog(null)} disabled={reportSubmitting}>
+            {text.reportCancel}
+          </Button>
+          <Button variant="contained" onClick={submitReport} disabled={reportSubmitting}>
+            {reportSubmitting ? <CircularProgress size={16} /> : text.reportSubmit}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Snackbar
+        open={!!reportSnack}
+        autoHideDuration={5000}
+        onClose={() => setReportSnack('')}
+        message={reportSnack}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
+    </>
+  );
+
   // Deputy (PEP) match cache keyed by officer name. Populated lazily from a
   // `useEffect` further down — declared up here so `nodeCanvasObject` (which
   // also lives above the effect) can close over it without a TDZ error.
@@ -9304,6 +9359,7 @@ const SpanishCompanyNetworkGraph = ({
             setDdCheckoutOpen(true);
           }}
         />
+        {reportModal}
       </Box>
     );
   }
@@ -9385,53 +9441,7 @@ const SpanishCompanyNetworkGraph = ({
           setDdCheckoutOpen(true);
         }}
       />
-      <Dialog open={!!reportDialog} onClose={() => setReportDialog(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>{reportDialog?.currentValue ? text.reportNifTitle : text.reportNifMissingTitle}</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 2, fontSize: '0.85rem', color: 'text.secondary' }}>
-            {reportDialog?.currentValue ? text.reportIntro : text.reportMissingIntro}
-          </Typography>
-          {reportDialog?.currentValue && (
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              {text.reportCurrentValue}: <strong>{reportDialog.currentValue}</strong>
-            </Typography>
-          )}
-          <TextField
-            fullWidth
-            size="small"
-            label={text.reportSuggestedLabel}
-            value={reportSuggested}
-            onChange={(e) => setReportSuggested(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            size="small"
-            label={text.reportNoteLabel}
-            multiline
-            minRows={2}
-            value={reportNote}
-            onChange={(e) => setReportNote(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <Box ref={reportTurnstileRef} sx={{ display: 'flex', justifyContent: 'center' }} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setReportDialog(null)} disabled={reportSubmitting}>
-            {text.reportCancel}
-          </Button>
-          <Button variant="contained" onClick={submitReport} disabled={reportSubmitting}>
-            {reportSubmitting ? <CircularProgress size={16} /> : text.reportSubmit}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Snackbar
-        open={!!reportSnack}
-        autoHideDuration={5000}
-        onClose={() => setReportSnack('')}
-        message={reportSnack}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
+      {reportModal}
     </>
   );
 };
