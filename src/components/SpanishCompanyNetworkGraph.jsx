@@ -54,6 +54,7 @@ import {
   Fullscreen as FullscreenIcon,
   FullscreenExit as FullscreenExitIcon,
   ContentCopy as CopyIcon,
+  OutlinedFlag as ReportIcon,
 
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
@@ -121,6 +122,10 @@ import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
 import { matchIbexSeed, matchAllIbexNodes } from '../utils/ibex35Match';
 import { getIbexCompanyData } from '../services/ibex35DashboardClient';
 import { isAndroidNativeApp } from '../services/playBillingService';
+
+// Cloudflare Turnstile sitekey — shared with AIInvestigationGate. Gates the
+// anonymous enrichment-report submission from the public data preview.
+const REPORT_TURNSTILE_SITEKEY = '0x4AAAAAADp3WnZGNiZai_32';
 
 const CATEGORY_LABELS = {
   es: {
@@ -351,6 +356,17 @@ const SEARCH_COPY = {
     status: 'Status',
     address: 'Address',
     externalEstimate: '(external-source estimate - verify)',
+    reportNifTooltip: 'Report incorrect NIF',
+    reportNifTitle: 'Report incorrect NIF',
+    reportIntro: 'This NIF comes from a web search and may be wrong. Send a correction and an administrator will review it.',
+    reportCurrentValue: 'Current value',
+    reportSuggestedLabel: 'Correct value (if known)',
+    reportNoteLabel: 'Note (optional)',
+    reportCancel: 'Cancel',
+    reportSubmit: 'Send report',
+    reportVerifyPending: 'Please complete the verification below.',
+    reportThanks: 'Thanks — an administrator will review the correction.',
+    reportError: (msg) => `Could not send the report: ${msg}`,
     activity: 'Corporate purpose',
     capital: 'Share capital',
     bormeRange: 'BORME publication range',
@@ -600,6 +616,17 @@ const SEARCH_COPY = {
     status: 'Estado',
     address: 'Domicilio',
     externalEstimate: '(estimación de fuente externa - verificar)',
+    reportNifTooltip: 'Reportar NIF incorrecto',
+    reportNifTitle: 'Reportar NIF incorrecto',
+    reportIntro: 'Este NIF procede de una búsqueda web y puede ser erróneo. Envía una corrección y un administrador la revisará.',
+    reportCurrentValue: 'Valor actual',
+    reportSuggestedLabel: 'Valor correcto (si lo conoces)',
+    reportNoteLabel: 'Nota (opcional)',
+    reportCancel: 'Cancelar',
+    reportSubmit: 'Enviar reporte',
+    reportVerifyPending: 'Completa la verificación de abajo.',
+    reportThanks: 'Gracias — un administrador revisará la corrección.',
+    reportError: (msg) => `No se pudo enviar el reporte: ${msg}`,
     activity: 'Objeto social',
     capital: 'Capital social',
     bormeRange: 'Rango de publicaciones BORME',
@@ -1263,6 +1290,68 @@ const SpanishCompanyNetworkGraph = ({
   const [previewNodeName, setPreviewNodeName] = useState('');
   const [previewNodeType, setPreviewNodeType] = useState('company');
   const [legalDisclaimerOpen, setLegalDisclaimerOpen] = useState(false);
+
+  // "Report an incorrect enriched value" flow. mapasocietario is the public,
+  // login-less app, so submission is Turnstile-gated (mirrors AIInvestigationGate)
+  // and lands in the same admin review queue. Currently wired for the NIF only.
+  const [reportDialog, setReportDialog] = useState(null); // { companyName, field, currentValue } | null
+  const [reportSuggested, setReportSuggested] = useState('');
+  const [reportNote, setReportNote] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSnack, setReportSnack] = useState('');
+  const reportTurnstileRef = useRef(null);
+  const reportWidgetId = useRef(null);
+
+  // Render the Turnstile widget once the report dialog mounts its container
+  // (mirrors AIInvestigationGate). The dialog unmounts its content on close, so
+  // the widget id is reset and re-rendered fresh on each open.
+  useEffect(() => {
+    if (!reportDialog) { reportWidgetId.current = null; return undefined; }
+    const id = setInterval(() => {
+      if (window.turnstile && reportTurnstileRef.current && reportWidgetId.current == null) {
+        reportWidgetId.current = window.turnstile.render(reportTurnstileRef.current, { sitekey: REPORT_TURNSTILE_SITEKEY });
+        clearInterval(id);
+      }
+    }, 200);
+    return () => clearInterval(id);
+  }, [reportDialog]);
+
+  const openReport = useCallback((field, currentValue) => {
+    setReportSuggested('');
+    setReportNote('');
+    reportWidgetId.current = null;
+    setReportDialog({
+      companyName: previewData?.name || previewNodeName || '',
+      field,
+      currentValue: currentValue ? String(currentValue) : '',
+    });
+  }, [previewData, previewNodeName]);
+
+  const submitReport = useCallback(async () => {
+    if (!reportDialog) return;
+    const token = (window.turnstile && reportWidgetId.current != null)
+      ? window.turnstile.getResponse(reportWidgetId.current) : '';
+    if (!token) { setReportSnack(text.reportVerifyPending); return; }
+    setReportSubmitting(true);
+    try {
+      await spanishCompaniesService.reportEnrichment({
+        companyName: reportDialog.companyName,
+        field: reportDialog.field,
+        currentValue: reportDialog.currentValue || null,
+        suggestedValue: reportSuggested.trim() || null,
+        note: reportNote.trim() || null,
+        turnstileToken: token,
+      });
+      setReportDialog(null);
+      setReportSnack(text.reportThanks);
+    } catch (err) {
+      setReportSnack(text.reportError(err.message));
+      if (window.turnstile && reportWidgetId.current != null) window.turnstile.reset(reportWidgetId.current);
+    } finally {
+      setReportSubmitting(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportDialog, reportSuggested, reportNote]);
 
   // Deputy (PEP) match cache keyed by officer name. Populated lazily from a
   // `useEffect` further down — declared up here so `nodeCanvasObject` (which
@@ -8490,7 +8579,19 @@ const SpanishCompanyNetworkGraph = ({
                       {e?.cif && (
                         <Box>
                           <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
-                          <Typography variant="body2" className="registry-ref">{e.cif}</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Typography variant="body2" className="registry-ref">{e.cif}</Typography>
+                            <Tooltip title={text.reportNifTooltip}>
+                              <IconButton
+                                size="small"
+                                onClick={() => openReport('nif', e.cif)}
+                                sx={{ p: 0.25 }}
+                                aria-label={text.reportNifTooltip}
+                              >
+                                <ReportIcon sx={{ fontSize: 14, color: 'warning.main' }} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </Box>
                       )}
                       {e?.address && (
@@ -9259,6 +9360,53 @@ const SpanishCompanyNetworkGraph = ({
           setDdCheckoutCompany(company);
           setDdCheckoutOpen(true);
         }}
+      />
+      <Dialog open={!!reportDialog} onClose={() => setReportDialog(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>{text.reportNifTitle}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, fontSize: '0.85rem', color: 'text.secondary' }}>
+            {text.reportIntro}
+          </Typography>
+          {reportDialog?.currentValue && (
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              {text.reportCurrentValue}: <strong>{reportDialog.currentValue}</strong>
+            </Typography>
+          )}
+          <TextField
+            fullWidth
+            size="small"
+            label={text.reportSuggestedLabel}
+            value={reportSuggested}
+            onChange={(e) => setReportSuggested(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            size="small"
+            label={text.reportNoteLabel}
+            multiline
+            minRows={2}
+            value={reportNote}
+            onChange={(e) => setReportNote(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <Box ref={reportTurnstileRef} sx={{ display: 'flex', justifyContent: 'center' }} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReportDialog(null)} disabled={reportSubmitting}>
+            {text.reportCancel}
+          </Button>
+          <Button variant="contained" onClick={submitReport} disabled={reportSubmitting}>
+            {reportSubmitting ? <CircularProgress size={16} /> : text.reportSubmit}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Snackbar
+        open={!!reportSnack}
+        autoHideDuration={5000}
+        onClose={() => setReportSnack('')}
+        message={reportSnack}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </>
   );

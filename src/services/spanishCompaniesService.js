@@ -2555,6 +2555,49 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
   }
 
   /**
+   * Report that a persisted web-enriched value (currently only the NIF/CIF) is
+   * wrong. mapasocietario is the public, login-less app, so this hits the
+   * anonymous Turnstile-gated backend route; the report lands in the same admin
+   * review queue as authenticated reports and nothing changes until an admin
+   * applies it. Throws on failure so the caller can surface the error.
+   *
+   * @param {Object} params
+   * @param {string} params.companyName - Company as displayed to the reporter
+   * @param {string} params.field - One of 'nif' | 'capital' | 'address'
+   * @param {string|null} [params.currentValue] - The wrong value shown
+   * @param {string|null} [params.suggestedValue] - Reporter's proposed correct value
+   * @param {string|null} [params.note] - Optional free-text context
+   * @param {string} params.turnstileToken - Cloudflare Turnstile token
+   * @returns {Promise<Object>} { success: true, id }
+   */
+  async reportEnrichment({
+    companyName,
+    field,
+    currentValue = null,
+    suggestedValue = null,
+    note = null,
+    turnstileToken,
+  }) {
+    const response = await fetch(`${this.baseUrl}/bormes/enrichment/report-public`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        company_name: companyName,
+        field,
+        turnstile_token: turnstileToken || '',
+        ...(currentValue && { current_value: currentValue }),
+        ...(suggestedValue && { suggested_value: suggestedValue }),
+        ...(note && { note }),
+      }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `Report failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  /**
    * Get the sole shareholder(s) OF a specific company (who owns this company)
    * Uses the /bormes/company-sole-shareholder endpoint
    *
