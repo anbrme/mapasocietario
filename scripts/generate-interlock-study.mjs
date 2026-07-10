@@ -257,8 +257,7 @@ function jsonLd(t, lang) {
     '@context': 'https://schema.org', '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: t.crumbHome, item: `${SITE}/` },
-      { '@type': 'ListItem', position: 2, name: t.crumbStudies },
-      { '@type': 'ListItem', position: 3, name: t.h1 },
+      { '@type': 'ListItem', position: 2, name: t.h1, item: url },
     ],
   };
   const ser = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
