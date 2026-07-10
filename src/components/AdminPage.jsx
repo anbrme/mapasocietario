@@ -22,10 +22,12 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import DescriptionIcon from '@mui/icons-material/Description';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ReplayIcon from '@mui/icons-material/Replay';
 import { Helmet } from 'react-helmet-async';
 import CnmvReviewTab from './CnmvReviewTab';
 import FreeReportsTab from './FreeReportsTab';
 import EnrichmentReviewTab from './EnrichmentReviewTab';
+import { ddStatusView, DdStatusChip } from './AdminDdStatus';
 import { PAYMENTS_API } from '../config';
 
 export default function AdminPage() {
@@ -43,6 +45,8 @@ export default function AdminPage() {
   const [analysisCache, setAnalysisCache] = useState({});
   const [deletingSession, setDeletingSession] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [retryingSession, setRetryingSession] = useState(null);
+  const [regeneratingSession, setRegeneratingSession] = useState(null);
   const [pendingCollapsed, setPendingCollapsed] = useState(false);
   const [completedCollapsed, setCompletedCollapsed] = useState(false);
   const [pendingVisible, setPendingVisible] = useState(5);
@@ -124,6 +128,67 @@ export default function AdminPage() {
       setError(`Upload error: ${err.message}`);
       setUploadingSession(null);
       setUploadProgress('');
+    }
+  };
+
+  const handleRetryDd = async (sessionId) => {
+    setRetryingSession(sessionId);
+    setError('');
+    setUploadProgress('');
+    try {
+      const res = await fetch(`${PAYMENTS_API}/api/stripe/admin-retrigger-dd`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminKey}` },
+        body: JSON.stringify({ sessionId }),
+      });
+      if (res.status === 401) {
+        setError('Unauthorized — check the admin key.');
+        return;
+      }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      setUploadProgress('Base DD generation re-triggered. Refreshing…');
+      await fetchOrders();
+      setTimeout(() => setUploadProgress(''), 4000);
+    } catch (err) {
+      setError(`Retry failed: ${err.message}`);
+    } finally {
+      setRetryingSession(null);
+    }
+  };
+
+  const handleRegenerateFsDd = async (sessionId) => {
+    setRegeneratingSession(sessionId);
+    setError('');
+    setUploadProgress('');
+    try {
+      const res = await fetch(`${PAYMENTS_API}/api/stripe/admin-regenerate-fs-dd`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminKey}` },
+        body: JSON.stringify({ sessionId }),
+      });
+      if (res.status === 401) {
+        setError('Unauthorized — check the admin key.');
+        return;
+      }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json().catch(() => ({}));
+      setUploadProgress(
+        data.generated
+          ? 'Base DD regenerated. Refreshing…'
+          : 'Regeneration ran but produced no PDF — check logs.'
+      );
+      await fetchOrders();
+      setTimeout(() => setUploadProgress(''), 4000);
+    } catch (err) {
+      setError(`Regenerate failed: ${err.message}`);
+    } finally {
+      setRegeneratingSession(null);
     }
   };
 
@@ -323,6 +388,8 @@ export default function AdminPage() {
                 onConfirmDelete={handleDelete}
                 onCancelDelete={() => setConfirmDelete(null)}
                 deleting={deletingSession === order.sessionId}
+                onRetry={handleRetryDd}
+                retrying={retryingSession === order.sessionId}
               />
             ))}
             {pendingOrders.length > pendingVisible && (
@@ -366,6 +433,8 @@ export default function AdminPage() {
                 expanded={expandedAnalysis === order.sessionId}
                 analysis={analysisCache[order.sessionId]}
                 onToggleAnalysis={() => fetchAnalysis(order.sessionId)}
+                onRegenerate={handleRegenerateFsDd}
+                regenerating={regeneratingSession === order.sessionId}
               />
             ))}
             {completedOrders.length > completedVisible && (
@@ -418,11 +487,12 @@ function buildMailtoLink(order) {
   return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onConfirmDelete, onCancelDelete, deleting }) {
+function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onConfirmDelete, onCancelDelete, deleting, onRetry, retrying }) {
   const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   }) : '—';
   const fsDetails = getFinancialStatementOrderDetails(order);
+  const ddView = order.type === 'dd_only' ? ddStatusView(order, Date.now()) : null;
 
   return (
     <Paper
@@ -458,6 +528,11 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
         <Typography variant="caption" sx={{ color: 'text.disabled', fontFamily: 'monospace', fontSize: '0.65rem' }}>
           {order.sessionId}
         </Typography>
+        {ddView && (
+          <Box sx={{ mt: 0.25 }}>
+            <DdStatusChip view={ddView} />
+          </Box>
+        )}
         {order.type !== 'dd_only' && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
             <Chip
@@ -478,6 +553,19 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
         )}
       </Box>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        {ddView?.showRetry && (
+          <Button
+            variant="outlined"
+            size="small"
+            color="warning"
+            startIcon={retrying ? <CircularProgress size={14} /> : <ReplayIcon />}
+            disabled={retrying}
+            onClick={() => onRetry(order.sessionId)}
+            sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.75rem' }}
+          >
+            {retrying ? 'Retrying…' : 'Retry base DD'}
+          </Button>
+        )}
         {confirmingDelete ? (
           <>
             <Button
@@ -532,7 +620,7 @@ function OrderCard({ order, onUpload, uploading, onDelete, confirmingDelete, onC
   );
 }
 
-function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
+function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis, onRegenerate, regenerating }) {
   const date = order.completedAt ? new Date(order.completedAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   }) : '—';
@@ -587,6 +675,27 @@ function CompletedOrderCard({ order, expanded, analysis, onToggleAnalysis }) {
             </Box>
           )}
         </Box>
+        {order.baseDdMissing && (
+          <>
+            <Chip
+              label={`⚠ Base DD missing${order.ddReason ? `: ${order.ddReason}` : ''}`}
+              size="small"
+              color="error"
+              sx={{ fontSize: '0.65rem', height: 22 }}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              color="warning"
+              startIcon={regenerating ? <CircularProgress size={14} /> : <ReplayIcon />}
+              disabled={regenerating}
+              onClick={() => onRegenerate(order.sessionId)}
+              sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.75rem' }}
+            >
+              {regenerating ? 'Regenerating…' : 'Regenerate base DD'}
+            </Button>
+          </>
+        )}
         {order.hasAnalysis && (
           <Button
             size="small"
