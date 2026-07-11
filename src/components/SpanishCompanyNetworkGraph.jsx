@@ -347,6 +347,9 @@ const SEARCH_COPY = {
     dissolved: 'Dissolved',
     concurso: 'Insolvency',
     unipersonal: 'Single-member',
+    soleShareholder: 'Sole shareholder',
+    naturalPersonTag: '(natural person)',
+    companyTag: '(company)',
     loadingData: 'Loading data...',
     name: 'Name',
     date: 'Date',
@@ -611,6 +614,9 @@ const SEARCH_COPY = {
     dissolved: 'Disuelta',
     concurso: 'Concurso',
     unipersonal: 'Unipersonal',
+    soleShareholder: 'Socio único',
+    naturalPersonTag: '(persona física)',
+    companyTag: '(sociedad)',
     loadingData: 'Cargando datos...',
     name: 'Nombre',
     date: 'Fecha',
@@ -4925,6 +4931,10 @@ const SpanishCompanyNetworkGraph = ({
                 ...(company?.previous_sole_shareholders || []),
                 ...(company?.previous_sole_shareholder_individuals || []),
               ],
+              // Split kept separately so the preview can label owner type honestly
+              // (the merged soleShareholders array above loses this distinction).
+              soleShareholdersCorporate: company?.sole_shareholders || [],
+              soleShareholdersIndividual: company?.sole_shareholder_individuals || [],
               // Re-registration trail: >1 entry means the company changed its
               // hoja registral (e.g. a provincial move — CaixaBank 2017).
               hojaHistory: company?.hoja_history || [],
@@ -8717,6 +8727,24 @@ const SpanishCompanyNetworkGraph = ({
                         <Box>
                           <Typography variant="caption" color="text.secondary">{text.publicationsFound}</Typography>
                           <Typography variant="body2" className="registry-ref">{e.eventCount}</Typography>
+                        </Box>
+                      )}
+                      {e?.isUnipersonal &&
+                        ((e?.soleShareholdersCorporate?.length || 0) +
+                          (e?.soleShareholdersIndividual?.length || 0) > 0) && (
+                        <Box sx={{ gridColumn: '1 / -1' }}>
+                          <Typography variant="caption" color="text.secondary">{text.soleShareholder}</Typography>
+                          <Typography variant="body2">
+                            {[
+                              ...e.soleShareholdersCorporate.map((n) => `${n} ${text.companyTag}`),
+                              ...e.soleShareholdersIndividual.map((n) => `${n} ${text.naturalPersonTag}`),
+                            ].join(', ')}
+                          </Typography>
+                          {e?.previousSoleShareholders?.length > 0 && (
+                            <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
+                              {text.previous}: {e.previousSoleShareholders.join(', ')}
+                            </Typography>
+                          )}
                         </Box>
                       )}
                       {e?.hojaHistory?.length > 1 && (
