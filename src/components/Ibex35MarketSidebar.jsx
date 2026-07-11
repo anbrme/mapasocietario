@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Paper, Typography, CircularProgress, Divider } from '@mui/material';
+import { Box, Paper, Typography, CircularProgress, Divider, IconButton, Tooltip } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { getIbexCompanyData } from '../services/ibex35DashboardClient';
 import { buildIbexCardViewModel } from '../utils/ibex35Match';
 import Ibex35MarketCardBody, { IBEX_STRINGS } from './Ibex35MarketCardBody';
 
 // Non-modal, right-anchored, fixed sidebar mirroring ApoderadosSidebar.jsx's
-// positioning. Fully automatic: shown/hidden entirely by the `open`/`seedEntry`
-// props (no close button, no manual dismiss) — the caller (the graph
-// component) owns visibility, keyed to the focused node and precedence
-// against ApoderadosSidebar. Web only — see Ibex35MarketDialog for the
-// Android context-menu-triggered equivalent.
-const Ibex35MarketSidebar = ({ open, seedEntry, lang = 'es' }) => {
+// positioning. Visibility is owned by the caller (the graph component) via the
+// `open`/`seedEntry` props, keyed to the currently-focused company and
+// precedence against ApoderadosSidebar. An optional `onClose` renders a
+// dismiss (X) button; the caller re-opens it on the next IBEX company focus.
+// Web only — see Ibex35MarketDialog for the Android context-menu-triggered
+// equivalent.
+const Ibex35MarketSidebar = ({ open, seedEntry, lang = 'es', onClose }) => {
   const t = IBEX_STRINGS[lang === 'en' ? 'en' : 'es'];
   const [loading, setLoading] = useState(false);
   const [viewModel, setViewModel] = useState(null);
@@ -67,11 +69,20 @@ const Ibex35MarketSidebar = ({ open, seedEntry, lang = 'es' }) => {
         boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
       }}
     >
-      <Box sx={{ p: 2, pb: 1.5 }}>
-        <Typography variant="h6">{t.title}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {seedEntry.name}
-        </Typography>
+      <Box sx={{ p: 2, pb: 1.5, display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="h6">{t.title}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {seedEntry.name}
+          </Typography>
+        </Box>
+        {onClose && (
+          <Tooltip title={t.close}>
+            <IconButton size="small" onClick={onClose} aria-label={t.close} sx={{ mt: -0.5, mr: -0.5 }}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
       <Divider />
       <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>

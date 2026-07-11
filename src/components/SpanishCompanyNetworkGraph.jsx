@@ -1643,6 +1643,7 @@ const SpanishCompanyNetworkGraph = ({
       setSearchQuery('');
       setLastSearchContext(null);
       setPrimarySubject(null);
+      setSelectedSidebarCompany(null);
       setLoadingMore(false);
       setContainerReady(false);
       setHiddenNodesMenuAnchorEl(null);
@@ -1791,6 +1792,8 @@ const SpanishCompanyNetworkGraph = ({
         });
         if (firstCompanyName) {
           setPrimarySubject(prev => prev || firstCompanyName);
+          // Deep-link / initial load: focus the market sidebar on the loaded company.
+          setSelectedSidebarCompany(firstCompanyName);
           // Company⇄cargo: surface the affordance for the initially-loaded company.
           runCargoDetection(firstCompanyName, companyNameToId(firstCompanyName));
         }
@@ -4212,13 +4215,22 @@ const SpanishCompanyNetworkGraph = ({
     return { name: first.name, groupKey: first.groupKey || null };
   }, [graphData.nodes, primarySubject]);
 
-  // The focused company's IBEX 35 SEED entry, or null. Recomputed on every
-  // render (cheap: a map lookup against the ~35-entry SEED) whenever the
-  // focused company changes.
-  const focusedIbexSeed = (() => {
-    const focused = resolveFocusedCompany();
-    return focused ? matchIbexSeed(focused.name) : null;
-  })();
+  // The company the user most recently focused — set on autocomplete selection,
+  // initial/deep-link load, and company-node click. Non-sticky (unlike the DD
+  // subject primarySubject), so the market sidebar follows the current company
+  // and closes for non-IBEX ones. Cleared on graph reset.
+  const [selectedSidebarCompany, setSelectedSidebarCompany] = useState(null);
+  const [ibexSidebarDismissed, setIbexSidebarDismissed] = useState(false);
+
+  // The focused company's IBEX 35 SEED entry, or null. Cheap map lookup against
+  // the ~35-entry SEED, recomputed whenever the focused company changes.
+  const focusedIbexSeed = selectedSidebarCompany ? matchIbexSeed(selectedSidebarCompany) : null;
+
+  // Re-arm the sidebar whenever the focused company changes: a manual dismiss
+  // only hides it for the current company, not for the next IBEX one selected.
+  useEffect(() => {
+    setIbexSidebarDismissed(false);
+  }, [selectedSidebarCompany]);
 
   // Android-only: NIF -> apiRow|null cache for every IBEX 35 company node
   // currently loaded in the graph, populated by the background prefetch
@@ -4450,6 +4462,13 @@ const SpanishCompanyNetworkGraph = ({
       const now = Date.now();
       const last = lastClickRef.current;
       const nodeId = normalizeNodeId(node.id);
+
+      // Selecting a company node focuses the market sidebar on it (opens for an
+      // IBEX company, closes for a non-IBEX one). Officer/person clicks leave
+      // the current focus untouched.
+      if (node.type === 'spanish-company-group' && node.name) {
+        setSelectedSidebarCompany(node.name);
+      }
 
       if (event && (event.shiftKey || event.metaKey || event.ctrlKey)) {
         event.preventDefault?.();
@@ -6131,6 +6150,7 @@ const SpanishCompanyNetworkGraph = ({
     setError(null);
     setLastSearchContext(null);
     setPrimarySubject(null);
+    setSelectedSidebarCompany(null);
     setLoadingMore(false);
     setSimplifyGraph(false);
   };
@@ -6379,6 +6399,16 @@ const SpanishCompanyNetworkGraph = ({
     const isSoleShareholderCorporate = value.type === 'sole_shareholder';
     const isSoleShareholderIndividual =
       value.type === 'officer_sole_shareholder' || value.is_sole_shareholder;
+
+    // The market sidebar follows whatever entity you select (non-sticky, unlike
+    // the DD subject). We set the raw selection name and let matchIbexSeed
+    // decide: an IBEX company name matches and opens the sidebar; anything else
+    // — a non-IBEX company, or a person (autocomplete types some owning
+    // companies as "officer") — doesn't match, so the sidebar closes. Any
+    // selection re-arms a prior manual dismiss (even re-selecting the same one).
+    setSelectedSidebarCompany(displayName);
+    setIbexSidebarDismissed(false);
+
     if (
       (isSoleShareholderCorporate || isSoleShareholderIndividual) &&
       (value.owns_total > 0 || (Array.isArray(value.owns) && value.owns.length > 0))
@@ -8296,9 +8326,10 @@ const SpanishCompanyNetworkGraph = ({
         />
 
         <Ibex35MarketSidebar
-          open={Boolean(focusedIbexSeed) && !apoderadosSidebar.open && !isAndroidNativeApp()}
+          open={Boolean(focusedIbexSeed) && !ibexSidebarDismissed && !apoderadosSidebar.open && !isAndroidNativeApp()}
           seedEntry={focusedIbexSeed}
           lang={uiLanguage}
+          onClose={() => setIbexSidebarDismissed(true)}
         />
 
         <Ibex35MarketDialog
