@@ -22,7 +22,7 @@ export default function LegalDisclaimer({ dense = false, language = 'en', sx = {
     >
       {isSpanish ? (
         <Typography variant={dense ? 'caption' : 'body2'} sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
-          <strong>Información no oficial.</strong> Basado en datos de la{' '}
+          <strong>Servicio independiente basado en fuentes oficiales.</strong> Mapa Societario utiliza datos de la{' '}
           <Link href={BOE_URL} target="_blank" rel="noopener" sx={{ color: 'primary.light' }}>
             Agencia Estatal Boletín Oficial del Estado
           </Link>
@@ -30,8 +30,8 @@ export default function LegalDisclaimer({ dense = false, language = 'en', sx = {
           <Link href={BOE_REUSE_URL} target="_blank" rel="noopener" sx={{ color: 'primary.light' }}>
             condiciones de reutilización
           </Link>
-          . Mapa Societario transforma, combina y analiza publicaciones del BOE/BORME mediante procesos
-          automatizados; no tiene carácter oficial ni está avalado por la AEBOE. La información se ofrece
+          . Mapa Societario transforma, combina y analiza publicaciones oficiales del BOE/BORME mediante procesos
+          automatizados; no es el Registro Mercantil, no emite certificaciones y no está avalado por la AEBOE. La información se ofrece
           "tal cual" y puede contener errores, omisiones o retrasos. Para cualquier decisión relevante,
           consulta siempre la edición oficial del{' '}
           <Link href={BORME_URL} target="_blank" rel="noopener" sx={{ color: 'primary.light' }}>
@@ -41,7 +41,7 @@ export default function LegalDisclaimer({ dense = false, language = 'en', sx = {
         </Typography>
       ) : (
         <Typography variant={dense ? 'caption' : 'body2'} sx={{ color: 'text.secondary', lineHeight: 1.6 }}>
-          <strong>Unofficial information.</strong> Based on data from the{' '}
+          <strong>Independent service based on official sources.</strong> Mapa Societario uses data from the{' '}
           <Link href={BOE_URL} target="_blank" rel="noopener" sx={{ color: 'primary.light' }}>
             Agencia Estatal Boletín Oficial del Estado
           </Link>
@@ -49,8 +49,8 @@ export default function LegalDisclaimer({ dense = false, language = 'en', sx = {
           <Link href={BOE_REUSE_URL} target="_blank" rel="noopener" sx={{ color: 'primary.light' }}>
             reuse conditions
           </Link>
-          . Mapa Societario transforms, combines, and analyzes BOE/BORME publications through automated
-          processes; it is not official and is not endorsed by the AEBOE. The information is provided
+          . Mapa Societario transforms, combines, and analyzes official BOE/BORME publications through automated
+          processes; it is not the Registro Mercantil, does not issue certificates, and is not endorsed by the AEBOE. The information is provided
           "as is" and may contain errors, omissions, or delays. For any material decision, always verify
           the official{' '}
           <Link href={BORME_URL} target="_blank" rel="noopener" sx={{ color: 'primary.light' }}>
@@ -62,4 +62,3 @@ export default function LegalDisclaimer({ dense = false, language = 'en', sx = {
     </Alert>
   );
 }
-

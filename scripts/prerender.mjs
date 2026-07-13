@@ -24,11 +24,11 @@ const canonicalPath = (routePath) => {
 };
 const disclaimerHtmlEs = `
         <section style="border:1px solid rgba(25,118,210,0.35);background:rgba(25,118,210,0.06);padding:0.9rem 1rem;border-radius:8px;margin:1.5rem 0;color:#a9b8cf">
-          <p style="margin:0"><strong>Información no oficial.</strong> Basado en datos de la <a href="https://www.boe.es">Agencia Estatal Boletín Oficial del Estado</a>, reutilizados conforme a sus <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion">condiciones de reutilización</a>. Mapa Societario transforma, combina y analiza publicaciones del BOE/BORME mediante procesos automatizados; no tiene carácter oficial ni está avalado por la AEBOE. La información se ofrece tal cual y puede contener errores, omisiones o retrasos. Para cualquier decisión relevante, consulta siempre la edición oficial del <a href="https://www.boe.es/diario_borme/">BORME</a> y, cuando proceda, solicita documentación actualizada directamente al Registro Mercantil.</p>
+          <p style="margin:0"><strong>Servicio independiente basado en fuentes oficiales.</strong> Mapa Societario utiliza datos de la <a href="https://www.boe.es">Agencia Estatal Boletín Oficial del Estado</a>, reutilizados conforme a sus <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion">condiciones de reutilización</a>. Transforma, combina y analiza publicaciones oficiales del BOE/BORME mediante procesos automatizados; no es el Registro Mercantil, no emite certificaciones y no está avalado por la AEBOE. La información se ofrece tal cual y puede contener errores, omisiones o retrasos. Para cualquier decisión relevante, consulta siempre la edición oficial del <a href="https://www.boe.es/diario_borme/">BORME</a> y, cuando proceda, solicita documentación actualizada directamente al Registro Mercantil.</p>
         </section>`;
 const disclaimerHtmlEn = `
         <section style="border:1px solid rgba(25,118,210,0.35);background:rgba(25,118,210,0.06);padding:0.9rem 1rem;border-radius:8px;margin:1.5rem 0;color:#a9b8cf">
-          <p style="margin:0"><strong>Unofficial information.</strong> Based on data from the <a href="https://www.boe.es">Agencia Estatal Boletín Oficial del Estado</a>, reused under its <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion">reuse conditions</a>. Mapa Societario transforms, combines, and analyzes BOE/BORME publications through automated processes; it is not official and is not endorsed by the AEBOE. The information is provided as is and may contain errors, omissions, or delays. For any material decision, always verify the official <a href="https://www.boe.es/diario_borme/">BORME</a> edition and, where appropriate, obtain current documents directly from the Registro Mercantil.</p>
+          <p style="margin:0"><strong>Independent service based on official sources.</strong> Mapa Societario uses data from the <a href="https://www.boe.es">Agencia Estatal Boletín Oficial del Estado</a>, reused under its <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion">reuse conditions</a>. It transforms, combines, and analyzes official BOE/BORME publications through automated processes; it is not the Registro Mercantil, does not issue certificates, and is not endorsed by the AEBOE. The information is provided as is and may contain errors, omissions, or delays. For any material decision, always verify the official <a href="https://www.boe.es/diario_borme/">BORME</a> edition and, where appropriate, obtain current documents directly from the Registro Mercantil.</p>
         </section>`;
 
 // FAQPage structured data — injected ONLY on the homepage, the single route
@@ -294,31 +294,34 @@ const routes = [
   },
   {
     path: '/spanish-company-register-search',
-    title: 'Spanish Company Register Search (Companies House Spain) | Mapa Societario',
+    title: 'Spanish Company Database & BORME Search | Mapa Societario',
     description:
-      'The Spanish company register explained: what BORME — the Companies House Spain equivalent — shows about any company (directors, capital, filings), what it omits, and how to search it free.',
+      'Search Spanish companies, officers and corporate history in an independent database built from official BORME publications. Explore changes and relationships over time.',
     ogType: 'article',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Spanish company register search, explained</h1>
-        <p>Search Spanish companies and directors, understand BORME registry publications, and move from a company lookup to a relationship graph or due diligence report when the registry record needs context.</p>
+        <h1>Search Spanish companies, officers and BORME history</h1>
+        <p>Explore an independent database built from official Spanish BORME publications. See company history, current and former officers, sole-shareholder declarations and corporate relationships in one searchable graph.</p>
+        <form action="/app" method="get" style="display:flex;gap:0.65rem;flex-wrap:wrap;margin:1.25rem 0">
+          <label for="borme-company-search" style="width:100%;font-weight:700">Spanish company name</label>
+          <input id="borme-company-search" name="search" type="search" required style="flex:1;min-width:240px;padding:0.7rem" />
+          <button type="submit" style="padding:0.7rem 1rem">Search BORME data</button>
+        </form>
         ${disclaimerHtmlEn}
-        <h2>Is there a &ldquo;Companies House&rdquo; for Spain?</h2>
-        <p>Spain has no single &ldquo;Companies House&rdquo; portal like the UK. The equivalent public record is split between the <strong>Registro Mercantil</strong> (the Spanish Commercial Registry) and <strong>BORME</strong>, its official gazette. Mapa Societario brings BORME into one searchable place, so you can look up a Spanish company the way you would on Companies House &mdash; by company name or director &mdash; and see its officers, share capital, and filing history for free.</p>
-        <h2>Search Spanish companies from BORME data</h2>
-        <p>Mapa Societario lets you search Spanish companies and directors, then explore their corporate relationships in an interactive graph. The underlying registry intelligence is built from BORME publications, the official gazette where Spanish Commercial Registry acts are published.</p>
-        <h2>What is BORME?</h2>
-        <p>BORME stands for Boletin Oficial del Registro Mercantil. It publishes corporate acts such as company formations, officer appointments and removals, capital changes, mergers, demergers, dissolutions, registered-office changes, sole-shareholder declarations, and other registry events.</p>
-        <p>BORME is not a simple company directory. It is a chronological public record. Mapa Societario structures those publications so a company search can become a graph of companies, officers, roles, and corporate events.</p>
-        <h2>What you can check</h2>
+        <h2>Official BORME publications, structured for research</h2>
+        <p>Mapa Societario is an independent company-information database built from official BORME publications issued through Spain's BOE publication system. It structures daily corporate notices into searchable company histories and relationship graphs.</p>
+        <h2>What the database can reveal</h2>
+        <p>BORME—the Boletín Oficial del Registro Mercantil—is the official gazette where Spanish Commercial Registry acts are published. Mapa Societario consolidates those chronological publications under each company and officer.</p>
         <ul>
-          <li>Company status, registered office, capital events, and corporate changes.</li>
-          <li>Current and historical administrators, officers, proxies, appointments, and resignations.</li>
-          <li>Sole-shareholder declarations and fully-owned participations where they appear in public filings.</li>
-          <li>Connected companies and officer relationships in a visual graph.</li>
+          <li>Company history, registered-office changes, capital events and other corporate changes.</li>
+          <li>Current and historical administrators, officers, proxies, appointments and resignations.</li>
+          <li>Sole-shareholder declarations and fully owned participations when published.</li>
+          <li>Connected companies and officer relationships in a searchable graph.</li>
         </ul>
-        <h2>What the register does not show</h2>
-        <p>BORME does not publish every piece of commercial intelligence a buyer, supplier, investor, or compliance team may want. Partial shareholders are usually not visible unless a sole-shareholder declaration exists. Annual accounts, beneficial ownership, private contracts, websites, emails, and commercial contact details require separate sources.</p>
+        <h2>How this differs from the Registro Mercantil</h2>
+        <p>The Registro Mercantil is the authoritative source for current certificates and official registry documents. Mapa Societario is not the Registro Mercantil and does not issue certified documents. Its purpose is to make official-source publication history easier to search and analyze across time and relationships.</p>
+        <h2>What the database does not replace</h2>
+        <p>BORME does not publish every piece of commercial intelligence a buyer, supplier, investor or compliance team may want. Partial shareholders are generally not visible unless a sole-shareholder declaration or another relevant act is published. Annual accounts, beneficial ownership, private contracts, websites, emails and commercial contact details require separate sources.</p>
         <h2>How to use Mapa Societario</h2>
         <ol>
           <li>Open the relationship graph and search by company name or officer name.</li>

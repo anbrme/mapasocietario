@@ -26,7 +26,7 @@ const APP_COPY = {
     menu: {
       tooltip: 'Menu',
       guide: 'How it works',
-      registerGuide: 'Company register guide',
+      registerGuide: 'BORME company database',
       listed: 'IBEX 35 companies',
       dashboard: 'Stats dashboard',
       reports: 'Due Diligence reports',

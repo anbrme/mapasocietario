@@ -5,6 +5,7 @@ import {
   Chip,
   Link,
   Paper,
+  TextField,
   Typography,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
@@ -20,35 +21,35 @@ import { useNavigate } from 'react-router-dom';
 import LegalDisclaimer from './LegalDisclaimer';
 
 const SITE_URL = 'https://mapasocietario.es';
-const CANONICAL = `${SITE_URL}/spanish-company-register-search`;
+const CANONICAL = `${SITE_URL}/spanish-company-register-search/`;
 
 const sections = [
   {
-    title: 'Search Spanish companies from BORME data',
+    title: 'Official BORME publications, structured for research',
     body: [
-      'Mapa Societario lets you search Spanish companies and directors, then explore their corporate relationships in an interactive graph. The underlying registry intelligence is built from BORME publications, the official gazette where Spanish Commercial Registry acts are published.',
-      'Use it when you need a practical company search in Spain: find a company, see current and historical officers, follow appointments and resignations, review capital events, and understand who is connected to whom before deciding whether a full due diligence report is needed.',
+      'Mapa Societario is an independent company-information database built from official BORME publications issued through Spain’s BOE publication system. It structures daily corporate notices into searchable company histories and relationship graphs.',
+      'Use it to find a Spanish company, review current and historical officers, follow appointments and resignations, inspect capital changes and sole-shareholder declarations, and understand connections that would otherwise require reading many separate publications.',
     ],
   },
   {
-    title: 'What is BORME?',
+    title: 'What the database can reveal',
     body: [
-      'BORME stands for Boletín Oficial del Registro Mercantil. It is the official Spanish commercial registry gazette. It publishes corporate acts such as company formations, officer appointments and removals, capital increases or reductions, mergers, demergers, dissolutions, registered-office changes, sole-shareholder declarations, and other registry events.',
-      'BORME is not a simple company directory. It is a chronological public record. Mapa Societario structures those publications so a company search can become a graph of companies, officers, roles, and corporate events.',
+      'BORME—the Boletín Oficial del Registro Mercantil—is the official gazette where Spanish Commercial Registry acts are published. These include company formations, officer appointments and removals, capital increases or reductions, mergers, demergers, dissolutions, registered-office changes and sole-shareholder declarations.',
+      'Mapa Societario consolidates those chronological publications under each company and officer, preserving history and turning individual notices into a navigable network of companies, people, roles and corporate events.',
     ],
   },
   {
-    title: 'What you can check',
+    title: 'How this differs from the Registro Mercantil',
     body: [
-      'A Spanish company register search can show whether a company is active, who appears as an administrator or officer, how its registered office and capital have changed, whether it has declared a sole shareholder, whether it fully owns another company, and how often its representation structure changes.',
-      'The relationship graph is free to use. When you need a documented file, the paid report adds a PDF summary, risk indicators, officer history, NIF, relationship context, and checks based on public BOE/BORME sources.',
+      'The Registro Mercantil is the authoritative source for current certificates and official registry documents. Mapa Societario is not the Registro Mercantil and does not issue certified documents.',
+      'Its purpose is different: it makes official-source publication history easier to search and analyze. It can show changes over time, current and former officers, sole-shareholder declarations, fully owned participations and cross-company relationships in one consolidated view.',
     ],
   },
   {
-    title: 'What the register does not show',
+    title: 'What the database does not replace',
     body: [
-      'BORME does not publish every piece of commercial intelligence a buyer, supplier, investor, or compliance team may want. Partial shareholders are not visible, as only sole shareholders are disclosed. Annual accounts, beneficial ownership information, websites, emails, and commercial contact details require separate sources.',
-      'For critical decisions, use BORME-based intelligence as a starting point, then verify current information with the official Commercial Registry (Registro Mercantil), annual accounts, company-provided documents, and other appropriate sources.',
+      'BORME does not publish every piece of commercial intelligence a buyer, supplier, investor or compliance team may want. Partial shareholders are generally not visible unless a sole-shareholder declaration or another relevant act is published. Annual accounts, beneficial ownership information, websites, emails and commercial contact details require separate sources.',
+      'For material decisions, use the database as an official-source research layer, then verify current information in the relevant BORME publication and obtain certificates or updated documents from the Registro Mercantil when required.',
     ],
   },
 ];
@@ -56,29 +57,36 @@ const sections = [
 const cards = [
   {
     icon: <SearchIcon />,
-    title: 'Company search Spain',
-    text: 'Start with a Spanish company name and open its relationship graph from official registry publications.',
+    title: 'Company history',
+    text: 'Bring appointments, resignations, capital events and other BORME notices together in one timeline.',
   },
   {
     icon: <AccountTreeIcon />,
-    title: 'Directors and officers',
-    text: 'Search administrators, directors, proxies, and other registered roles to see company links over time.',
+    title: 'Officers over time',
+    text: 'Search administrators, directors, proxies and other published roles, including historical changes.',
   },
   {
     icon: <DescriptionIcon />,
-    title: 'Due diligence reports',
-    text: 'Turn a registry search into a PDF report when you need a documented review for internal files.',
+    title: 'Corporate relationships',
+    text: 'Follow shared officers, sole shareholders and fully owned participations across connected companies.',
   },
 ];
 
 const limits = [
-  'BORME is an official publication source, but Mapa Societario is a private, independent service. It is not an official government service nor is it endorsed by any government entity.',
+  'The underlying BORME publications are official sources. Mapa Societario is an independent service that structures and analyzes them; it is not the Registro Mercantil and does not issue certificates.',
   'Automated parsing can occasionally miss or misclassify details; verify important findings in official sources (Bear in mind that the BORME itself may have typos or occasional errors).',
   'Public registry data does not replace legal, financial, tax, or accounting advice.',
 ];
 
 export default function EnglishRegisterSearchPage() {
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = React.useState('');
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    const query = searchTerm.trim();
+    navigate(query ? `/app?search=${encodeURIComponent(query)}` : '/app');
+  };
 
   return (
     <Box
@@ -91,24 +99,24 @@ export default function EnglishRegisterSearchPage() {
       }}
     >
       <Helmet htmlAttributes={{ lang: 'en' }}>
-        <title>Spanish Company Register Search | BORME Company Search Spain</title>
+        <title>Spanish Company Database &amp; BORME Search | Mapa Societario</title>
         <meta
           name="description"
-          content="Search Spanish companies and directors using BORME registry data. Understand what the Spanish company register shows, what it omits, and when to order a due diligence report."
+          content="Search Spanish companies, officers and corporate history in an independent database built from official BORME publications. Explore changes and relationships over time."
         />
         <link rel="canonical" href={CANONICAL} />
         <meta property="og:locale" content="en_US" />
-        <meta property="og:title" content="Spanish Company Register Search | Mapa Societario" />
+        <meta property="og:title" content="Spanish Company Database & BORME Search | Mapa Societario" />
         <meta
           property="og:description"
-          content="Search companies in Spain, explore BORME registry events, directors, capital changes, and corporate relationships in a graph."
+          content="Search official-source BORME company history, current and former officers, sole-shareholder declarations and corporate relationships."
         />
         <meta property="og:url" content={CANONICAL} />
         <meta property="og:type" content="article" />
-        <meta name="twitter:title" content="Spanish Company Register Search | Mapa Societario" />
+        <meta name="twitter:title" content="Spanish Company Database & BORME Search | Mapa Societario" />
         <meta
           name="twitter:description"
-          content="A practical guide to searching Spanish companies through BORME data and relationship graphs."
+          content="An independent company database built from official BORME publications, with history and relationship graphs."
         />
       </Helmet>
 
@@ -134,7 +142,7 @@ export default function EnglishRegisterSearchPage() {
               <BusinessIcon />
             </Box>
             <Typography variant="overline" sx={{ color: 'primary.light', fontWeight: 700, letterSpacing: '0.12em', lineHeight: 1.3 }}>
-              Spanish registry guide
+              Official-source BORME database
             </Typography>
           </Box>
           <Typography
@@ -149,20 +157,30 @@ export default function EnglishRegisterSearchPage() {
               mb: 2,
             }}
           >
-            Spanish company register search, explained
+            Search Spanish companies, officers and BORME history
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 760, lineHeight: 1.7, mb: 3 }}>
-            Search Spanish companies and directors, understand BORME registry publications, and move from a company lookup to a relationship graph or due diligence report when the registry record needs context.
+            Explore an independent database built from official Spanish BORME publications. See company history, current and former officers, sole-shareholder declarations and corporate relationships in one searchable graph.
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 4 }}>
-            {['Spanish company search', 'BORME', 'Company register Spain', 'Directors and officers'].map((chip) => (
+            {['Official BORME sources', 'Company history', 'Officers over time', 'Sole shareholders'].map((chip) => (
               <Chip key={chip} label={chip} size="small" variant="outlined" sx={{ borderColor: 'rgba(255,255,255,0.18)' }} />
             ))}
           </Box>
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-            <Button variant="contained" startIcon={<SearchIcon />} onClick={() => navigate('/app')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
-              Search a Spanish company
+          <Paper component="form" onSubmit={submitSearch} elevation={0} sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.25, p: 1.25, mb: 2, maxWidth: 720, bgcolor: 'rgba(255,255,255,0.035)', border: '1px solid rgba(45,212,191,0.24)', borderRadius: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Spanish company name"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              inputProps={{ 'aria-label': 'Spanish company name' }}
+            />
+            <Button type="submit" variant="contained" startIcon={<SearchIcon />} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, whiteSpace: 'nowrap' }}>
+              Search BORME data
             </Button>
+          </Paper>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate('/spanish-company-due-diligence')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, color: 'warning.light', borderColor: 'rgba(255,167,38,0.45)' }}>
               See due diligence reports
             </Button>
