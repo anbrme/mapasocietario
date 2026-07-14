@@ -80,6 +80,7 @@ import HubIcon from '@mui/icons-material/Hub';
 import DDCheckoutDialog from './DDCheckoutDialog';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
+import { normalizeCompanyName } from '../utils/companyName';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 import ApoderadosSidebar from './ApoderadosSidebar';
@@ -164,13 +165,8 @@ const CATEGORY_LAYOUT_ANGLE = {
 const OFFICERS_PER_COMPANY_OPTIONS = [25, 50, 100, 200, 500];
 const COMPANIES_PER_SEARCH_OPTIONS = [10, 25, 50, 100];
 
-// Normalize company name for consistent ID generation across all code paths
-const normalizeCompanyName = name => {
-  return (name || '')
-    .replace(/\s*\(\d{4}\)\.?$/, '') // Remove year suffix like (2024).
-    .replace(/\.$/, '') // Remove trailing period
-    .trim();
-};
+// normalizeCompanyName is imported from ../utils/companyName (shared with the
+// API service so name normalization can never drift between the two paths).
 
 const companyNameToId = name => {
   const clean = normalizeCompanyName(name);

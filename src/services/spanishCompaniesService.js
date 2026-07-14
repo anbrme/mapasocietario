@@ -10,6 +10,7 @@
  */
 
 import { positionCategoryFor } from '../utils/positionCategories';
+import { looksLikeGroupKey, selectGroupKeyId } from '../utils/companyName';
 import { API_URL } from '../config';
 
 const createApiError = (label, response, responseBody = '') => {
@@ -412,7 +413,7 @@ class SpanishCompaniesService {
    * whether an already-available key can be used directly (vs. resolving a name).
    */
   static looksLikeGroupKey(value) {
-    return typeof value === 'string' && /^[A-Za-z]:[A-Za-z0-9.\- ]+$/.test(value.trim());
+    return looksLikeGroupKey(value);
   }
 
   /**
@@ -426,8 +427,9 @@ class SpanishCompaniesService {
    *      directory fallback below is simply skipped.
    *   2. Otherwise resolve the name via the directory autocomplete (which ranks
    *      the correct renamed entity and returns a stable `id`). Prefer the
-   *      suggestion whose company_name_normalized (upper-cased) EXACTLY equals
-   *      the name; if none is exact, take the top-ranked suggestion.
+   *      suggestion whose punctuation-normalized name equals the query (with a
+   *      real group_key winning ties over hash duplicates); if none is exact,
+   *      take the top-ranked usable suggestion, skipping nameless hash dupes.
    *
    * Returns the group_key string, or null when nothing confident is found
    * (callers then fall back to name-based lookups).
@@ -455,16 +457,13 @@ class SpanishCompaniesService {
     if (!name) return null;
 
     // Step 2: resolve the name via directory autocomplete (stable `id`).
+    // Match on the punctuation-normalized name (so "COCUNAT S.L" resolves the
+    // registered "COCUNAT S.L.") and skip the directory's nameless opaque-hash
+    // duplicate docs, which carry no events and would strand the caller on
+    // undated data. See selectGroupKeyId for the full precedence.
     try {
       const res = await this.autocompleteCompanies(name, { limit: 5 });
-      const suggestions = res.suggestions || [];
-      if (suggestions.length === 0) return null;
-      const wanted = name.trim().toUpperCase();
-      const exact = suggestions.find(
-        s => (s.company_name_normalized || s.name || '').trim().toUpperCase() === wanted
-      );
-      const chosen = exact || suggestions[0];
-      return chosen?.id || null;
+      return selectGroupKeyId(name, res.suggestions || []);
     } catch {
       return null;
     }
