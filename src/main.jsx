@@ -39,6 +39,16 @@ function FreeReportBanner() {
   const [sessionId, setSessionId] = React.useState(() => {
     try { return sessionStorage.getItem('dd_free_report_ready'); } catch { return null; }
   });
+  // Surface the banner in place when a free/waived order is placed without a
+  // reload (DDCheckoutDialog dispatches this), so the user's graph survives.
+  React.useEffect(() => {
+    const onReady = (e) => {
+      const id = e?.detail || (() => { try { return sessionStorage.getItem('dd_free_report_ready'); } catch { return null; } })();
+      if (id) setSessionId(id);
+    };
+    window.addEventListener('dd-free-report-ready', onReady);
+    return () => window.removeEventListener('dd-free-report-ready', onReady);
+  }, []);
   if (!sessionId) return null;
 
   const isEs = /[?&]lang=es\b/.test(window.location.search) || window.location.pathname.startsWith('/es');
@@ -57,7 +67,7 @@ function FreeReportBanner() {
         boxShadow: '0 2px 10px rgba(0,0,0,0.4)', fontSize: '0.9rem',
       }}
     >
-      <span>{isEs ? '✓ Tu informe gratuito está listo.' : '✓ Your free report is ready.'}</span>
+      <span>{isEs ? '✓ Pedido recibido. Tu informe gratuito se está preparando.' : '✓ Order received. Your free report is being prepared.'}</span>
       <Button
         component={RouterLink}
         to={`/order/${sessionId}`}
@@ -66,7 +76,7 @@ function FreeReportBanner() {
         variant="contained"
         sx={{ textTransform: 'none', fontWeight: 700, color: 'success.dark', bgcolor: '#fff', '&:hover': { bgcolor: '#eee' } }}
       >
-        {isEs ? 'Ver informe' : 'View report'}
+        {isEs ? 'Ver estado' : 'View status'}
       </Button>
       <Button onClick={clear} size="small" aria-label={isEs ? 'Cerrar' : 'Dismiss'} sx={{ minWidth: 0, px: 1, color: '#fff', opacity: 0.85 }}>✕</Button>
     </Box>

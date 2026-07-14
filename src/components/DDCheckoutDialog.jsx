@@ -519,7 +519,12 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     // it after the awaits below trips the browser's popup blocker. If the popup
     // is blocked (checkoutTab === null) we fall back to a same-tab redirect so
     // the sale still completes. Android uses its own in-app flow — no new tab.
-    const checkoutTab = isAndroidApp ? null : window.open('', '_blank');
+    // Free/waived orders are fulfilled server-side with no payment page, so they
+    // never need a tab either (handled in place below) — only a real paid Stripe
+    // redirect does. (Server-side waivers we can't detect here still briefly open
+    // and immediately close a tab; that flash is the unavoidable cost of the
+    // popup-blocker constraint.)
+    const checkoutTab = (isAndroidApp || freeActive) ? null : window.open('', '_blank');
     try {
       const canGenerate = await ensureReportCanBeGenerated();
       if (!canGenerate) {
@@ -607,6 +612,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       });
       const data = await res.json();
       const freeBlockedErrors = ['free_report_already_used', 'free_report_blocked', 'free_report_email_required'];
+      // A free/waived order (cs_free_*) is fulfilled server-side with no payment
+      // page — the backend returns our own app URL, not a Stripe one.
+      const isFreeOrder = typeof data.sessionId === 'string' && data.sessionId.startsWith('cs_free_');
       if (freeBlockedErrors.includes(data.error)) {
         // The free offer is no longer valid for this email — fall back to paid.
         checkoutTab?.close();
@@ -614,6 +622,16 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         setFreeEligible(false);
         setFreeEligibilityReason(data.error === 'free_report_blocked' ? 'blocked' : 'already_used');
         setError(copy.freeReportBlockedRetry);
+      } else if (isFreeOrder) {
+        // Free/waived order: already placed on the server. Do NOT navigate or
+        // reload — that would wipe the in-memory graph. Keep the user exactly
+        // where they are (graph fully intact) and surface the report via the
+        // global banner in place, then close the dialog. The banner links to the
+        // persistent /order page, which shows live generation status.
+        checkoutTab?.close();
+        try { sessionStorage.setItem('dd_free_report_ready', data.sessionId); } catch { /* ignore */ }
+        window.dispatchEvent(new CustomEvent('dd-free-report-ready', { detail: data.sessionId }));
+        onClose?.();
       } else if (data.url) {
         localStorage.setItem('dd_return_url', window.location.href);
         if (includeFS) {
