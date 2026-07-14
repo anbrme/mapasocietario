@@ -511,9 +511,19 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       free_report: freeActive,
       platform: isAndroidApp ? 'android' : 'web',
     });
+    // Open Stripe checkout in a NEW tab so the user's graph — which can hold
+    // many plotted companies, their layout, merges and corrections, all in
+    // in-memory React state — survives. A same-tab redirect unmounts the SPA
+    // and wipes it, forcing the user to rebuild the graph to buy each report.
+    // The tab MUST be opened here, synchronously in the click gesture; opening
+    // it after the awaits below trips the browser's popup blocker. If the popup
+    // is blocked (checkoutTab === null) we fall back to a same-tab redirect so
+    // the sale still completes. Android uses its own in-app flow — no new tab.
+    const checkoutTab = isAndroidApp ? null : window.open('', '_blank');
     try {
       const canGenerate = await ensureReportCanBeGenerated();
       if (!canGenerate) {
+        checkoutTab?.close();
         setLoading(false);
         return;
       }
@@ -599,6 +609,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       const freeBlockedErrors = ['free_report_already_used', 'free_report_blocked', 'free_report_email_required'];
       if (freeBlockedErrors.includes(data.error)) {
         // The free offer is no longer valid for this email — fall back to paid.
+        checkoutTab?.close();
         setUseFreeReport(false);
         setFreeEligible(false);
         setFreeEligibilityReason(data.error === 'free_report_blocked' ? 'blocked' : 'already_used');
@@ -608,11 +619,22 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         if (includeFS) {
           localStorage.setItem('dd_include_fs', 'true');
         }
-        window.location.href = data.url;
+        if (checkoutTab) {
+          // Send the pre-opened tab to Stripe; the graph tab stays intact.
+          checkoutTab.location.href = data.url;
+          // Dismiss the dialog so the user lands back on their intact graph.
+          onClose?.();
+        } else {
+          // Popup blocked — complete the sale via same-tab redirect. The graph
+          // is lost in this fallback, but a completed purchase matters more.
+          window.location.href = data.url;
+        }
       } else {
+        checkoutTab?.close();
         setError(copy.createCheckoutFailed);
       }
     } catch (err) {
+      checkoutTab?.close();
       console.error('DD checkout error:', err);
       setError(err.message || copy.connectionError);
     } finally {
