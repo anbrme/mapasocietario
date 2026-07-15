@@ -11,6 +11,7 @@ import HubIcon from '@mui/icons-material/Hub';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
+import StickyNote2Icon from '@mui/icons-material/StickyNote2';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
@@ -348,7 +349,10 @@ export default function LandingPage({ lang = 'en' }) {
                   justifyContent: 'center',
                 }}
               >
-                <SaveAltIcon />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                  <StickyNote2Icon sx={{ fontSize: 21 }} />
+                  <SaveAltIcon sx={{ fontSize: 21 }} />
+                </Box>
               </Box>
               <Box>
                 <Typography variant="overline" sx={{ color: 'primary.light', fontWeight: 700, letterSpacing: '0.1em', fontSize: '0.64rem' }}>
@@ -360,6 +364,16 @@ export default function LandingPage({ lang = 'en' }) {
                 <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, display: 'block', maxWidth: 720 }}>
                   {copy.howItWorks.snapshot.desc}
                 </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 1.5 }}>
+                  {copy.howItWorks.snapshot.features.map((feature) => (
+                    <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                      <CheckCircleOutlineIcon sx={{ fontSize: 15, color: 'primary.light' }} />
+                      <Typography variant="caption" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                        {feature}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
               </Box>
               <Box sx={{ display: 'flex', flexDirection: { xs: 'row', sm: 'column' }, alignItems: { xs: 'center', sm: 'flex-end' }, gap: 1 }}>
                 <Chip

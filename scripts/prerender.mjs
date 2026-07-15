@@ -184,6 +184,8 @@ const routes = [
           <li><strong>1.7 million</strong> company formations recorded</li>
           <li>Continuous coverage <strong>since January 2009</strong>, updated on business days</li>
         </ul>
+        <h2>Annotate and save your investigation</h2>
+        <p>Add private notes to important graph nodes, filter the graph by note text, and export the complete investigation &mdash; including notes, data, links, filters, hidden nodes and layout. Import it later exactly as you left it without fetching the same data again.</p>
         <h2>Relationship graph vs. Due Diligence report</h2>
         <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
           <thead>
@@ -193,6 +195,8 @@ const routes = [
             <tr><td>Company &amp; officer search</td><td align="center">Yes</td><td align="center">Yes</td></tr>
             <tr><td>Interactive relationship graph</td><td align="center">Yes</td><td align="center">Yes</td></tr>
             <tr><td>Officer history timeline</td><td align="center">Yes</td><td align="center">Yes</td></tr>
+            <tr><td>Private node notes &amp; note search</td><td align="center">Yes</td><td align="center">&mdash;</td></tr>
+            <tr><td>Export &amp; import saved investigations</td><td align="center">Yes</td><td align="center">&mdash;</td></tr>
             <tr><td>Sanctions &amp; PEP screening</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
             <tr><td>AI risk analysis &amp; red flags</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
             <tr><td>Capital-events summary</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
@@ -387,6 +391,8 @@ const routes = [
         <h1>Mapa Societario &mdash; Inteligencia de relaciones societarias en España</h1>
         <p>Busca una empresa o administrador y entiende quién está conectado con quién mediante un grafo interactivo basado en publicaciones oficiales del BORME (Boletín Oficial del Registro Mercantil). Genera informes due diligence cuando necesites documentación.</p>
         ${disclaimerHtmlEs}
+        <h2>Anota y guarda tu investigación</h2>
+        <p>Añade notas privadas a los nodos importantes, filtra el grafo por el texto de las notas y exporta la investigación completa &mdash; incluidas las notas, datos, enlaces, filtros, nodos ocultos y disposición. Impórtala después exactamente como la dejaste, sin volver a consultar los mismos datos.</p>
         <h2>Explorar</h2>
         <ul>
           <li><a href="/app">Abrir el grafo de relaciones societarias</a></li>
