@@ -16,6 +16,7 @@ import { resolveSlug } from './_resolve.js';
 import { nameToSlug, pickSlugMatch } from './_slug.js';
 import { renderConfirmationBlock } from './_confirmation.js';
 import { CONFIRMATIONS } from './_confirmations.js';
+import { buildTrademarksBlock } from './_trademarks.js';
 // The canonical position classifier shared with the graph + officer-capping
 // service (backed by src/data/terms.json, swept by test/position-categories.test.mjs).
 // Pure module (no React/DOM/SPA deps — its purity is guarded by that node test),
@@ -292,6 +293,26 @@ const T = {
     subsSource: 'Fuente: SNPSAP/IGAE — infosubvenciones.es. Información dinámica; verifique en origen.',
     subsSearchLink: 'Consultar en infosubvenciones.es',
     subsAviso: 'Aviso legal',
+    marksTitle: 'Marcas registradas',
+    marksSub: 'Marcas de la UE de esta empresa (EUIPO) y marcas nacionales españolas que llevan su nombre. Se cargan solo si lo solicitas.',
+    marksBtn: 'Ver marcas registradas',
+    marksLoading: 'Cargando…',
+    marksEmpty: 'No se han encontrado marcas para esta empresa.',
+    marksError: 'No se pudieron cargar las marcas.',
+    marksRetry: 'Reintentar',
+    marksThMark: 'Marca',
+    marksThStatus: 'Estado',
+    marksThClasses: 'Clases de Niza',
+    marksThDate: 'Fecha',
+    marksSource: 'Fuente: EUIPO / TMview.',
+    marksSearchLink: 'Consultar en TMview',
+    marksCoverage:
+      'Muestra las marcas de la UE de esta empresa y las marcas nacionales españolas que llevan su nombre. Una marca nacional con una denominación distinta puede no aparecer — consulta el registro completo de la OEPM.',
+    marksPartial: 'Algunas fuentes no estaban disponibles; los resultados pueden estar incompletos.',
+    marksBadgeEu: 'UE',
+    marksBadgeEs: 'ES',
+    marksDisclaimer:
+      'Datos: EUIPO / TMview. Información no oficial, puede estar incompleta; verifique en origen. No afiliado a la EUIPO ni respaldado por ella.',
     gleifTitle: 'Grupo societario (GLEIF)',
     gleifSub: 'Estructura de matrices y filiales según el identificador LEI global (GLEIF). Haz doble clic en un nodo del gráfico para expandir su grupo.',
     gleifParents: 'Matrices',
@@ -434,6 +455,26 @@ const T = {
     subsSource: 'Source: SNPSAP/IGAE — infosubvenciones.es. Dynamic information; verify at source.',
     subsSearchLink: 'Check at infosubvenciones.es',
     subsAviso: 'Legal notice',
+    marksTitle: 'Registered trademarks',
+    marksSub: "This company's EU trademarks (EUIPO) plus Spanish national marks bearing its name. Loaded only on request.",
+    marksBtn: 'View registered trademarks',
+    marksLoading: 'Loading…',
+    marksEmpty: 'No trademarks found for this company.',
+    marksError: 'Could not load the trademarks.',
+    marksRetry: 'Retry',
+    marksThMark: 'Mark',
+    marksThStatus: 'Status',
+    marksThClasses: 'Nice classes',
+    marksThDate: 'Date',
+    marksSource: 'Source: EUIPO / TMview.',
+    marksSearchLink: 'Check on TMview',
+    marksCoverage:
+      'Shows this company’s EU trademarks plus Spanish national marks bearing its name. A national mark under a different brand name may not appear — search the full OEPM register.',
+    marksPartial: 'Some sources were unavailable; results may be incomplete.',
+    marksBadgeEu: 'EU',
+    marksBadgeEs: 'ES',
+    marksDisclaimer:
+      'Data: EUIPO / TMview. Unofficial, may be incomplete; verify at source. Not affiliated with or endorsed by EUIPO.',
     gleifTitle: 'Corporate group (GLEIF)',
     gleifSub: 'Parent and subsidiary structure from the global LEI identifier (GLEIF). Double-click a node in the graph to expand its group.',
     gleifParents: 'Parents',
@@ -945,6 +986,12 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
         </scr${''}ipt>
       </section>`;
   }
+  // Trademarks / Marcas — click-to-load panel, renders for every company
+  // (name always exists). Backend fan-out (EUIPO + OEPM) behind the
+  // TRADEMARKS_PANEL_ENABLED flag; while dark it answers {disabled:true} and
+  // the section hides itself. See functions/empresa/_trademarks.js.
+  const marksBlock = buildTrademarksBlock({ company, t, lang, apiBase: API_BASE, esc });
+
   // GLEIF corporate group (IBEX seed companies with a verified LEI only).
   const flag = (cc) => (cc && cc !== 'N/A' ? `<span class="chip">${esc(cc)}</span>` : '');
   const gleifEntityRow = (e) =>
@@ -1080,6 +1127,8 @@ ${STYLE}
   ${boeBlock}
 
   ${subsidiesBlock}
+
+  ${marksBlock}
 
   ${
     company.capital_history && company.capital_history.length
