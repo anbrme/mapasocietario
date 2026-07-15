@@ -119,7 +119,9 @@ Two independent backend adapters behind one endpoint, so OEPM's fiddlier Axis-1.
 
 ## Prerequisites (human, cannot be automated)
 
-- **EUIPO API Platform** (Phase 1): register at `dev.euipo.europa.eu` (sandbox first: `dev-sandbox.euipo.europa.eu`), register an API client, subscribe to the Trademark Search API → obtain `client_id` / `client_secret`. Stored as Flask env vars `EUIPO_CLIENT_ID` / `EUIPO_CLIENT_SECRET`. **Deploy gate for Phase 1.**
+- **EUIPO API Platform** (Phase 1) — two-stage, because production subscriptions require manual EUIPO approval + documentation:
+  - **Development (no approval needed):** register an app in the **Sandbox** (`dev-sandbox.euipo.europa.eu`), subscribe to **Trademark Search** there → sandbox `client_id`/`client_secret`. EUIPO explicitly allows API evaluation in Sandbox **without documentation**. All Phase-1 build + testing happens here. Caveat: sandbox may return synthetic/limited data — it validates the OAuth flow and response *shape*, not real EUTM coverage.
+  - **Production go-live (deploy gate):** request the production Trademark Search subscription and **email the required documentation to `docs.apiplatform@euipo.europa.eu`**; wait for approval. The filing-API integration tests EUIPO describes do **not** apply (we use the read-only Search API, no DB writes). Production creds stored as Flask env vars `EUIPO_CLIENT_ID` / `EUIPO_CLIENT_SECRET` (sandbox creds used in staging).
 - **OEPM Localizador** (Phase 2): register for web-service credentials via the OEPM access form; endpoint `https://consultas2.oepm.es/WSLocalizador/LDMWS` (WSDL at `?wsdl`). Stored as `OEPM_WS_USER` / `OEPM_WS_PASS`. **Deploy gate for Phase 2.**
 
 ## Error handling & resilience
@@ -128,6 +130,23 @@ Two independent backend adapters behind one endpoint, so OEPM's fiddlier Axis-1.
 - Timeouts on both upstream calls (e.g. 8s) so the panel never hangs.
 - Cache successful responses (per `name`+`nif`, ~24h) to protect OEPM/EUIPO from repeated hits and keep the panel fast — same rationale as the subsidies cache.
 - Feature flag `TRADEMARKS_PANEL_ENABLED` defaults **off**; while off, endpoint returns `{ disabled: true }` and the section hides itself, so the frontend can ship ahead of the backend.
+
+## Compliance & terms (EUIPO Conditions of Use of APIs, v2, 29/01/2026)
+
+Reviewed against our public-facing reuse. **Verdict: compatible**, subject to these must-dos (baked into the design):
+
+- **Licence (§3.4a):** "revocable, non-exclusive, non-transferable, non-assignable and royalty-free licence." Free reuse permitted, no non-commercial restriction. Because it's **revocable**, the `TRADEMARKS_PANEL_ENABLED` flag is also our kill-switch if the licence is withdrawn.
+- **No implied endorsement (§3.2b iii):** must not imply association with or endorsement by EUIPO. → Attribute source as "Data: EUIPO / TMview" in plain text; **do not** use the EUIPO logo/branding; add "not affiliated with or endorsed by EUIPO."
+- **Accuracy / no warranty (§8, §12):** data is as-is. → Show an "unofficial, may be incomplete, verify at source" disclaimer, consistent with the site's existing framing. Must not present misleading data (§3.2b iv).
+- **Credentials confidential, server-side only (§3.6a):** never expose `client_secret` or tokens to the browser — already enforced by the backend fan-out design; secrets live only as Flask env vars.
+- **Rate limits (§3.6c):** Office may impose/change limits at will; must not circumvent. → The 24h cache + graceful backoff already serve this; add polite retry/backoff, no parallel hammering.
+- **Data protection — GDPR/EUDPR (§3.5):** the **user is the controller of the API Client** (§3.5d); trademark data can include **personal data of natural-person applicants**. Mitigations for v1:
+  - The panel keys off a *company* name match, so holders are overwhelmingly legal persons.
+  - Display holder **name + mark data only**; **do not display applicant postal addresses**.
+  - Consider suppressing marks whose holder is clearly a natural person (mirrors the existing BORME officer-privacy stance) — decide during implementation.
+  - **Action:** read EUIPO's published data-protection statement before go-live (§3.5f, user responsibility).
+
+These obligations extend the frontend copy requirements: the panel's source/disclaimer line must state data origin, unofficial status, and non-endorsement. (OEPM terms — Ley 37/2007 / RD 1495/2011 reuse — reviewed separately in the scope section; add the equivalent OEPM attribution in Phase 2.)
 
 ## Testing
 
