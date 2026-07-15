@@ -128,6 +128,11 @@ import {
   parseGraphSnapshot,
 } from '../utils/graphSnapshot';
 import {
+  clearGraphAutosave,
+  loadGraphAutosave,
+  saveGraphAutosave,
+} from '../utils/graphAutosave';
+import {
   getNodeNoteMarkerGeometry,
   hasNodeNote,
   mergeNodeNotes,
@@ -146,6 +151,18 @@ import { isAndroidNativeApp } from '../services/playBillingService';
 // Cloudflare Turnstile sitekey — shared with AIInvestigationGate. Gates the
 // anonymous enrichment-report submission from the public data preview.
 const REPORT_TURNSTILE_SITEKEY = '0x4AAAAAADp3WnZGNiZai_32';
+
+const formatAutosaveTimestamp = (value, language, includeDate = false) => {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const locale = language === 'es' ? 'es-ES' : 'en-GB';
+  return new Intl.DateTimeFormat(
+    locale,
+    includeDate
+      ? { dateStyle: 'medium', timeStyle: 'short' }
+      : { hour: '2-digit', minute: '2-digit' }
+  ).format(date);
+};
 
 const CATEGORY_LABELS = {
   es: {
@@ -282,6 +299,7 @@ const SEARCH_COPY = {
     exportGraph: 'Export graph snapshot',
     importGraph: 'Import graph snapshot',
     importedSnapshot: 'Imported snapshot',
+    restoredSession: 'Restored session',
     snapshotExported: count => `Graph snapshot exported (${count} nodes).`,
     snapshotImported: (nodes, links) => `Snapshot imported: ${nodes} nodes and ${links} links.`,
     snapshotEmpty: 'Add at least one node before exporting a snapshot.',
@@ -289,6 +307,15 @@ const SEARCH_COPY = {
     snapshotExportError: message => `Could not export the graph snapshot: ${message}`,
     snapshotImportError: message => `Could not import the graph snapshot: ${message}`,
     snapshotPreviewNotice: 'Showing data stored in the imported snapshot. No new lookup was made.',
+    autosaveSaving: 'Saving locally…',
+    autosaveSavedAt: time => `Saved locally · ${time}`,
+    autosaveUnavailable: 'Local autosave unavailable',
+    autosaveRestoreTitle: 'Restore your previous session?',
+    autosaveRestoreBody: (nodes, links, savedAt) => `A graph saved on this device at ${savedAt} contains ${nodes} nodes and ${links} links.`,
+    autosaveDeviceOnly: 'This recovery copy stays in this browser. Export the graph when you need a portable backup.',
+    autosaveRestore: 'Restore session',
+    autosaveStartFresh: 'Start fresh',
+    autosaveRestored: (nodes, links) => `Local session restored: ${nodes} nodes and ${links} links.`,
     fullscreenExit: 'Exit fullscreen',
     fullscreenEmbedded: 'Fullscreen (needed to manage nodes with right click)',
     fullscreen: 'Fullscreen',
@@ -575,6 +602,7 @@ const SEARCH_COPY = {
     exportGraph: 'Exportar instantánea del grafo',
     importGraph: 'Importar instantánea del grafo',
     importedSnapshot: 'Instantánea importada',
+    restoredSession: 'Sesión restaurada',
     snapshotExported: count => `Instantánea exportada (${count} nodos).`,
     snapshotImported: (nodes, links) => `Instantánea importada: ${nodes} nodos y ${links} enlaces.`,
     snapshotEmpty: 'Añade al menos un nodo antes de exportar una instantánea.',
@@ -582,6 +610,15 @@ const SEARCH_COPY = {
     snapshotExportError: message => `No se pudo exportar la instantánea: ${message}`,
     snapshotImportError: message => `No se pudo importar la instantánea: ${message}`,
     snapshotPreviewNotice: 'Se muestran los datos guardados en la instantánea. No se ha realizado una nueva consulta.',
+    autosaveSaving: 'Guardando localmente…',
+    autosaveSavedAt: time => `Guardado localmente · ${time}`,
+    autosaveUnavailable: 'Guardado local no disponible',
+    autosaveRestoreTitle: '¿Restaurar la sesión anterior?',
+    autosaveRestoreBody: (nodes, links, savedAt) => `Un grafo guardado en este dispositivo a las ${savedAt} contiene ${nodes} nodos y ${links} enlaces.`,
+    autosaveDeviceOnly: 'Esta copia de recuperación permanece en este navegador. Exporta el grafo cuando necesites una copia portátil.',
+    autosaveRestore: 'Restaurar sesión',
+    autosaveStartFresh: 'Empezar de cero',
+    autosaveRestored: (nodes, links) => `Sesión local restaurada: ${nodes} nodos y ${links} enlaces.`,
     fullscreenExit: 'Salir de pantalla completa',
     fullscreenEmbedded: 'Pantalla completa (necesaria para gestionar nodos con clic derecho)',
     fullscreen: 'Pantalla completa',
@@ -1282,7 +1319,15 @@ const SpanishCompanyNetworkGraph = ({
   const snapshotInputRef = useRef(null);
   const pendingSnapshotCameraRef = useRef(null);
   const [snapshotMode, setSnapshotMode] = useState(false);
+  const [snapshotSource, setSnapshotSource] = useState(null);
   const [snapshotNotice, setSnapshotNotice] = useState('');
+  const [autosaveStatus, setAutosaveStatus] = useState('idle');
+  const [autosaveSavedAt, setAutosaveSavedAt] = useState(null);
+  const [pendingAutosaveRecord, setPendingAutosaveRecord] = useState(null);
+  const [autosaveRevision, setAutosaveRevision] = useState(0);
+  const autosaveReadyRef = useRef(false);
+  const autosaveTimerRef = useRef(null);
+  const autosaveWriteIdRef = useRef(0);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -1717,6 +1762,7 @@ const SpanishCompanyNetworkGraph = ({
     if (!embedded && !visible) {
       setGraphData({ nodes: [], links: [] });
       setSnapshotMode(false);
+      setSnapshotSource(null);
       pendingSnapshotCameraRef.current = null;
       setError(null);
       setSearchQuery('');
@@ -2264,6 +2310,7 @@ const SpanishCompanyNetworkGraph = ({
 
     // A deliberate new search leaves offline snapshot mode and may use live data.
     setSnapshotMode(false);
+    setSnapshotSource(null);
     setIsSearching(true);
     setError(null);
     setLastSearchContext(null);
@@ -5441,6 +5488,7 @@ const SpanishCompanyNetworkGraph = ({
         });
         dragFreezeRef.current = null;
       }
+      setAutosaveRevision(revision => revision + 1);
     },
     [graphData.nodes]
   );
@@ -6509,8 +6557,18 @@ const SpanishCompanyNetworkGraph = ({
   };
 
   const clearGraph = () => {
+    if (embedded) {
+      autosaveWriteIdRef.current += 1;
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      autosaveReadyRef.current = true;
+      setPendingAutosaveRecord(null);
+      setAutosaveSavedAt(null);
+      setAutosaveStatus('idle');
+      clearGraphAutosave().catch(() => setAutosaveStatus('error'));
+    }
     setGraphData({ nodes: [], links: [] });
     setSnapshotMode(false);
+    setSnapshotSource(null);
     pendingSnapshotCameraRef.current = null;
     setPinnedNodeIds(new Set());
     setHiddenNodeIds(new Set());
@@ -6683,72 +6741,44 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, [visibleTableRows, text, uiLanguage]);
 
-  const exportGraphSnapshot = useCallback(() => {
-    if (graphData.nodes.length === 0) {
-      setError(text.snapshotEmpty);
-      return;
-    }
-    try {
-      const snapshot = createGraphSnapshot({
-        graphData,
-        view: {
-          searchQuery,
-          searchType,
-          labelFilterText,
-          statusFilters: Array.from(statusFilters),
-          positionFilters: Array.from(positionFilters),
-          officersPerCompany,
-          companiesPerSearch,
-          pinnedNodeIds: Array.from(pinnedNodeIds),
-          hiddenNodeIds: Array.from(hiddenNodeIds),
-          activeNodeId,
-          investigationSet: Array.from(investigationSet),
-          showShareholders,
-          showPreviousShareholders,
-          nodeSize,
-          labelSize,
-          linkDistance,
-          chargeStrength,
-          spacing,
-          simplifyGraph,
-          colorByCluster,
-          showSharedConnections,
-          tablePosition,
-          isTableCollapsed,
-          dateFilter,
-          camera: cameraState,
-          pathfinder: {
-            active: pathfinderActive,
-            startNodeId: pathfinderStartNode?.id || null,
-            endNodeId: pathfinderEndNode?.id || null,
-            detailsExpanded: pathDetailsExpanded,
-          },
-        },
-        context: { primarySubject },
-        enrichments: { officerDeputyMatches },
-      });
-      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      const subject = (primarySubject || graphData.nodes[0]?.name || 'graph')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/gi, '-')
-        .replace(/^-+|-+$/g, '')
-        .toLowerCase()
-        .slice(0, 60) || 'graph';
-      anchor.href = url;
-      anchor.download = `mapasocietario-${subject}-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-      setError(null);
-      setSnapshotNotice(text.snapshotExported(graphData.nodes.length));
-    } catch (err) {
-      setError(text.snapshotExportError(err.message));
-    }
-  }, [
+  const buildCurrentGraphSnapshot = useCallback(() => createGraphSnapshot({
+    graphData,
+    view: {
+      searchQuery,
+      searchType,
+      labelFilterText,
+      statusFilters: Array.from(statusFilters),
+      positionFilters: Array.from(positionFilters),
+      officersPerCompany,
+      companiesPerSearch,
+      pinnedNodeIds: Array.from(pinnedNodeIds),
+      hiddenNodeIds: Array.from(hiddenNodeIds),
+      activeNodeId,
+      investigationSet: Array.from(investigationSet),
+      showShareholders,
+      showPreviousShareholders,
+      nodeSize,
+      labelSize,
+      linkDistance,
+      chargeStrength,
+      spacing,
+      simplifyGraph,
+      colorByCluster,
+      showSharedConnections,
+      tablePosition,
+      isTableCollapsed,
+      dateFilter,
+      camera: cameraState,
+      pathfinder: {
+        active: pathfinderActive,
+        startNodeId: pathfinderStartNode?.id || null,
+        endNodeId: pathfinderEndNode?.id || null,
+        detailsExpanded: pathDetailsExpanded,
+      },
+    },
+    context: { primarySubject },
+    enrichments: { officerDeputyMatches },
+  }), [
     graphData,
     searchQuery,
     searchType,
@@ -6781,8 +6811,118 @@ const SpanishCompanyNetworkGraph = ({
     pathDetailsExpanded,
     primarySubject,
     officerDeputyMatches,
-    text,
   ]);
+
+  const exportGraphSnapshot = useCallback(() => {
+    if (graphData.nodes.length === 0) {
+      setError(text.snapshotEmpty);
+      return;
+    }
+    try {
+      const snapshot = buildCurrentGraphSnapshot();
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      const subject = (primarySubject || graphData.nodes[0]?.name || 'graph')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase()
+        .slice(0, 60) || 'graph';
+      anchor.href = url;
+      anchor.download = `mapasocietario-${subject}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      setError(null);
+      setSnapshotNotice(text.snapshotExported(graphData.nodes.length));
+    } catch (err) {
+      setError(text.snapshotExportError(err.message));
+    }
+  }, [buildCurrentGraphSnapshot, graphData.nodes, primarySubject, text]);
+
+  const applyGraphSnapshot = useCallback((snapshot, notice, source = 'imported') => {
+    const view = snapshot.view || {};
+    const nodeById = new Map(
+      snapshot.graph.nodes.map(node => [normalizeNodeId(node.id), node])
+    );
+    const finiteOr = (value, fallback) => Number.isFinite(value) ? value : fallback;
+    const camera = {
+      x: finiteOr(view.camera?.x, 0),
+      y: finiteOr(view.camera?.y, 0),
+      k: Math.max(0.05, finiteOr(view.camera?.k, 1)),
+    };
+    const importedSpacing = Math.min(2.5, Math.max(0.5, finiteOr(view.spacing, 1)));
+    const importedOfficerCap = Math.max(1, Math.round(finiteOr(view.officersPerCompany, 100)));
+
+    pendingSnapshotCameraRef.current = camera;
+    prevSpacingRef.current = importedSpacing;
+    officersCapRef.current = importedOfficerCap;
+    prevNodeCountRef.current = snapshot.graph.nodes.length;
+    setSnapshotMode(true);
+    setSnapshotSource(source);
+    setGraphData(snapshot.graph);
+    setSearchQuery(typeof view.searchQuery === 'string' ? view.searchQuery : '');
+    setSearchType(view.searchType === 'officer' ? 'officer' : 'company');
+    setLabelFilterText(typeof view.labelFilterText === 'string' ? view.labelFilterText : '');
+    setStatusFilters(new Set(Array.isArray(view.statusFilters) ? view.statusFilters : []));
+    setPositionFilters(new Set(Array.isArray(view.positionFilters) ? view.positionFilters : []));
+    setOfficersPerCompany(importedOfficerCap);
+    setCompaniesPerSearch(Math.max(1, Math.round(finiteOr(view.companiesPerSearch, 25))));
+    setPinnedNodeIds(new Set(Array.isArray(view.pinnedNodeIds) ? view.pinnedNodeIds.map(normalizeNodeId) : []));
+    setHiddenNodeIds(new Set(Array.isArray(view.hiddenNodeIds) ? view.hiddenNodeIds.map(normalizeNodeId) : []));
+    setActiveNodeId(view.activeNodeId ?? null);
+    setInvestigationSet(new Set(Array.isArray(view.investigationSet) ? view.investigationSet : []));
+    setShowShareholders(view.showShareholders !== false);
+    setShowPreviousShareholders(view.showPreviousShareholders !== false);
+    setNodeSize(Math.min(28, Math.max(4, finiteOr(view.nodeSize, 9))));
+    setLabelSize(Math.min(18, Math.max(3, finiteOr(view.labelSize, 4.5))));
+    setLinkDistance(Math.max(1, finiteOr(view.linkDistance, 80)));
+    setChargeStrength(finiteOr(view.chargeStrength, -350));
+    setSpacing(importedSpacing);
+    setSimplifyGraph(view.simplifyGraph !== false);
+    setColorByCluster(!!view.colorByCluster);
+    setShowSharedConnections(!!view.showSharedConnections);
+    setTablePosition(
+      view.tablePosition && typeof view.tablePosition === 'object'
+        ? { x: view.tablePosition.x ?? null, y: view.tablePosition.y ?? null }
+        : { x: null, y: null }
+    );
+    setIsTableCollapsed(view.isTableCollapsed !== false);
+    setDateFilter(view.dateFilter && typeof view.dateFilter === 'object' ? view.dateFilter : null);
+    setCameraState(camera);
+    setZoomLevel(camera.k);
+    setPathfinderActive(!!view.pathfinder?.active);
+    setPathfinderStartNode(nodeById.get(normalizeNodeId(view.pathfinder?.startNodeId)) || null);
+    setPathfinderEndNode(nodeById.get(normalizeNodeId(view.pathfinder?.endNodeId)) || null);
+    setPathDetailsExpanded(!!view.pathfinder?.detailsExpanded);
+    setShortestPathNodes(new Set());
+    setShortestPathLinks(new Set());
+    setShortestPathArray([]);
+    setPrimarySubject(snapshot.context?.primarySubject || null);
+    setLastSearchContext(null);
+    setLoadingMore(false);
+    setSelectedSidebarCompany(null);
+    setPendingSubsidiaries(null);
+    setApoderadosSidebar({ open: false, company: null });
+    setAutocompleteOptions([]);
+    setSelectedAutocomplete(null);
+    setOfficerDeputyMatches(
+      snapshot.enrichments?.officerDeputyMatches && typeof snapshot.enrichments.officerDeputyMatches === 'object'
+        ? snapshot.enrichments.officerDeputyMatches
+        : {}
+    );
+    setPreviewOpen(false);
+    setPreviewData(null);
+    setIsNodeNoteDialogOpen(false);
+    setNodeNotePreviewId(null);
+    setNodeNoteTargetId(null);
+    setNodeContextMenu(null);
+    setError(null);
+    setSnapshotNotice(notice || '');
+  }, []);
 
   const importGraphSnapshot = useCallback(async event => {
     const file = event.target.files?.[0];
@@ -6791,88 +6931,134 @@ const SpanishCompanyNetworkGraph = ({
     try {
       if (file.size > MAX_GRAPH_SNAPSHOT_BYTES) throw new Error(text.snapshotTooLarge);
       const snapshot = parseGraphSnapshot(await file.text());
-      const view = snapshot.view || {};
-      const nodeById = new Map(
-        snapshot.graph.nodes.map(node => [normalizeNodeId(node.id), node])
+      applyGraphSnapshot(
+        snapshot,
+        text.snapshotImported(snapshot.graph.nodes.length, snapshot.graph.links.length)
       );
-      const finiteOr = (value, fallback) => Number.isFinite(value) ? value : fallback;
-      const camera = {
-        x: finiteOr(view.camera?.x, 0),
-        y: finiteOr(view.camera?.y, 0),
-        k: Math.max(0.05, finiteOr(view.camera?.k, 1)),
-      };
-      const importedSpacing = Math.min(2.5, Math.max(0.5, finiteOr(view.spacing, 1)));
-      const importedOfficerCap = Math.max(1, Math.round(finiteOr(view.officersPerCompany, 100)));
-
-      pendingSnapshotCameraRef.current = camera;
-      prevSpacingRef.current = importedSpacing;
-      officersCapRef.current = importedOfficerCap;
-      prevNodeCountRef.current = snapshot.graph.nodes.length;
-      setSnapshotMode(true);
-      setGraphData(snapshot.graph);
-      setSearchQuery(typeof view.searchQuery === 'string' ? view.searchQuery : '');
-      setSearchType(view.searchType === 'officer' ? 'officer' : 'company');
-      setLabelFilterText(typeof view.labelFilterText === 'string' ? view.labelFilterText : '');
-      setStatusFilters(new Set(Array.isArray(view.statusFilters) ? view.statusFilters : []));
-      setPositionFilters(new Set(Array.isArray(view.positionFilters) ? view.positionFilters : []));
-      setOfficersPerCompany(importedOfficerCap);
-      setCompaniesPerSearch(Math.max(1, Math.round(finiteOr(view.companiesPerSearch, 25))));
-      setPinnedNodeIds(new Set(Array.isArray(view.pinnedNodeIds) ? view.pinnedNodeIds.map(normalizeNodeId) : []));
-      setHiddenNodeIds(new Set(Array.isArray(view.hiddenNodeIds) ? view.hiddenNodeIds.map(normalizeNodeId) : []));
-      setActiveNodeId(view.activeNodeId ?? null);
-      setInvestigationSet(new Set(Array.isArray(view.investigationSet) ? view.investigationSet : []));
-      setShowShareholders(view.showShareholders !== false);
-      setShowPreviousShareholders(view.showPreviousShareholders !== false);
-      setNodeSize(Math.min(28, Math.max(4, finiteOr(view.nodeSize, 9))));
-      setLabelSize(Math.min(18, Math.max(3, finiteOr(view.labelSize, 4.5))));
-      setLinkDistance(Math.max(1, finiteOr(view.linkDistance, 80)));
-      setChargeStrength(finiteOr(view.chargeStrength, -350));
-      setSpacing(importedSpacing);
-      setSimplifyGraph(view.simplifyGraph !== false);
-      setColorByCluster(!!view.colorByCluster);
-      setShowSharedConnections(!!view.showSharedConnections);
-      setTablePosition(
-        view.tablePosition && typeof view.tablePosition === 'object'
-          ? { x: view.tablePosition.x ?? null, y: view.tablePosition.y ?? null }
-          : { x: null, y: null }
-      );
-      setIsTableCollapsed(view.isTableCollapsed !== false);
-      setDateFilter(view.dateFilter && typeof view.dateFilter === 'object' ? view.dateFilter : null);
-      setCameraState(camera);
-      setZoomLevel(camera.k);
-      setPathfinderActive(!!view.pathfinder?.active);
-      setPathfinderStartNode(nodeById.get(normalizeNodeId(view.pathfinder?.startNodeId)) || null);
-      setPathfinderEndNode(nodeById.get(normalizeNodeId(view.pathfinder?.endNodeId)) || null);
-      setPathDetailsExpanded(!!view.pathfinder?.detailsExpanded);
-      setShortestPathNodes(new Set());
-      setShortestPathLinks(new Set());
-      setShortestPathArray([]);
-      setPrimarySubject(snapshot.context?.primarySubject || null);
-      setLastSearchContext(null);
-      setLoadingMore(false);
-      setSelectedSidebarCompany(null);
-      setPendingSubsidiaries(null);
-      setApoderadosSidebar({ open: false, company: null });
-      setAutocompleteOptions([]);
-      setSelectedAutocomplete(null);
-      setOfficerDeputyMatches(
-        snapshot.enrichments?.officerDeputyMatches && typeof snapshot.enrichments.officerDeputyMatches === 'object'
-          ? snapshot.enrichments.officerDeputyMatches
-          : {}
-      );
-      setPreviewOpen(false);
-      setPreviewData(null);
-      setIsNodeNoteDialogOpen(false);
-      setNodeNotePreviewId(null);
-      setNodeNoteTargetId(null);
-      setNodeContextMenu(null);
-      setError(null);
-      setSnapshotNotice(text.snapshotImported(snapshot.graph.nodes.length, snapshot.graph.links.length));
     } catch (err) {
       const message = err.message === text.snapshotTooLarge ? err.message : text.snapshotImportError(err.message);
       setError(message);
     }
-  }, [text]);
+  }, [applyGraphSnapshot, text]);
+
+  useEffect(() => {
+    if (!embedded) {
+      autosaveReadyRef.current = true;
+      return undefined;
+    }
+
+    const hasInitialRequest = Boolean(
+      initialCompanyData || initialOfficerData || initialCompanyName
+    );
+    if (hasInitialRequest) {
+      autosaveReadyRef.current = true;
+      return undefined;
+    }
+
+    let cancelled = false;
+    loadGraphAutosave()
+      .then(record => {
+        if (cancelled) return;
+        if (!record) {
+          autosaveReadyRef.current = true;
+          return;
+        }
+        const snapshot = parseGraphSnapshot(record.snapshot);
+        if (snapshot.graph.nodes.length === 0) {
+          autosaveReadyRef.current = true;
+          clearGraphAutosave().catch(() => {});
+          return;
+        }
+        setPendingAutosaveRecord({ ...record, snapshot });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        autosaveReadyRef.current = true;
+        setAutosaveStatus('error');
+        clearGraphAutosave().catch(() => {});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [embedded, initialCompanyData, initialOfficerData, initialCompanyName]);
+
+  const startFreshAutosaveSession = useCallback(() => {
+    autosaveWriteIdRef.current += 1;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveReadyRef.current = true;
+    setPendingAutosaveRecord(null);
+    setAutosaveSavedAt(null);
+    setAutosaveStatus('idle');
+    clearGraphAutosave().catch(() => setAutosaveStatus('error'));
+  }, []);
+
+  const restoreAutosavedSession = useCallback(() => {
+    if (!pendingAutosaveRecord) return;
+    const snapshot = pendingAutosaveRecord.snapshot;
+    applyGraphSnapshot(
+      snapshot,
+      text.autosaveRestored(snapshot.graph.nodes.length, snapshot.graph.links.length),
+      'autosave'
+    );
+    autosaveReadyRef.current = true;
+    setAutosaveSavedAt(pendingAutosaveRecord.savedAt);
+    setAutosaveStatus('saved');
+    setPendingAutosaveRecord(null);
+  }, [applyGraphSnapshot, pendingAutosaveRecord, text]);
+
+  useEffect(() => {
+    if (!embedded || !autosaveReadyRef.current || graphData.nodes.length === 0) {
+      return undefined;
+    }
+
+    const writeId = autosaveWriteIdRef.current + 1;
+    autosaveWriteIdRef.current = writeId;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    setAutosaveStatus('saving');
+
+    autosaveTimerRef.current = setTimeout(() => {
+      try {
+        const snapshot = buildCurrentGraphSnapshot();
+        const savedAt = new Date().toISOString();
+        saveGraphAutosave(snapshot, { savedAt })
+          .then(() => {
+            if (autosaveWriteIdRef.current !== writeId) return;
+            setAutosaveSavedAt(savedAt);
+            setAutosaveStatus('saved');
+          })
+          .catch(() => {
+            if (autosaveWriteIdRef.current === writeId) setAutosaveStatus('error');
+          });
+      } catch {
+        if (autosaveWriteIdRef.current === writeId) setAutosaveStatus('error');
+      }
+    }, 900);
+
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [autosaveRevision, buildCurrentGraphSnapshot, embedded, graphData.nodes.length]);
+
+  useEffect(() => {
+    if (!embedded) return undefined;
+    const flushAutosave = () => {
+      if (!autosaveReadyRef.current || graphData.nodes.length === 0) return;
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      try {
+        saveGraphAutosave(buildCurrentGraphSnapshot()).catch(() => {});
+      } catch {
+        // Best-effort page-exit save; the last completed autosave remains available.
+      }
+    };
+    window.addEventListener('pagehide', flushAutosave);
+    return () => window.removeEventListener('pagehide', flushAutosave);
+  }, [buildCurrentGraphSnapshot, embedded, graphData.nodes.length]);
+
+  const autosaveTimeLabel = React.useMemo(
+    () => autosaveSavedAt ? formatAutosaveTimestamp(autosaveSavedAt, uiLanguage) : '',
+    [autosaveSavedAt, uiLanguage]
+  );
 
   // Toggle fullscreen. The CSS overlay (position:fixed / inset:0, applied by the
   // embedded container below when isFullscreen) is what ACTUALLY fills the screen,
@@ -7989,9 +8175,29 @@ const SpanishCompanyNetworkGraph = ({
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+          {embedded && graphData.nodes.length > 0 && autosaveStatus !== 'idle' && (
+            <Chip
+              label={
+                autosaveStatus === 'saving'
+                  ? text.autosaveSaving
+                  : autosaveStatus === 'saved'
+                    ? text.autosaveSavedAt(autosaveTimeLabel)
+                    : text.autosaveUnavailable
+              }
+              icon={
+                autosaveStatus === 'saving'
+                  ? <CircularProgress size={12} color="inherit" />
+                  : undefined
+              }
+              size="small"
+              color={autosaveStatus === 'error' ? 'error' : autosaveStatus === 'saved' ? 'success' : 'default'}
+              variant="outlined"
+              sx={{ height: 22, fontSize: '0.68rem' }}
+            />
+          )}
           {snapshotMode && (
             <Chip
-              label={text.importedSnapshot}
+              label={snapshotSource === 'autosave' ? text.restoredSession : text.importedSnapshot}
               size="small"
               color="info"
               variant="outlined"
@@ -8635,6 +8841,38 @@ const SpanishCompanyNetworkGraph = ({
     const overlayContainer = embedded && isFullscreen ? fullscreenContainerRef.current : undefined;
     return (
       <>
+        <Dialog
+          open={embedded && Boolean(pendingAutosaveRecord)}
+          maxWidth="xs"
+          fullWidth
+          disableEscapeKeyDown
+          container={overlayContainer}
+        >
+          <DialogTitle>{text.autosaveRestoreTitle}</DialogTitle>
+          <DialogContent>
+            {pendingAutosaveRecord && (
+              <>
+                <Typography variant="body2" sx={{ mb: 1.5 }}>
+                  {text.autosaveRestoreBody(
+                    pendingAutosaveRecord.snapshot.graph.nodes.length,
+                    pendingAutosaveRecord.snapshot.graph.links.length,
+                    formatAutosaveTimestamp(pendingAutosaveRecord.savedAt, uiLanguage, true)
+                  )}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                  {text.autosaveDeviceOnly}
+                </Typography>
+              </>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={startFreshAutosaveSession}>{text.autosaveStartFresh}</Button>
+            <Button variant="contained" onClick={restoreAutosavedSession}>
+              {text.autosaveRestore}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         <Menu
           open={Boolean(hiddenNodesMenuAnchorEl)}
           anchorEl={hiddenNodesMenuAnchorEl}
