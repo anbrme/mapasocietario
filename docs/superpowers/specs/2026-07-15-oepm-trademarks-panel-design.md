@@ -157,6 +157,16 @@ These obligations extend the frontend copy requirements: the panel's source/disc
 - **Backend (ncdata-bormes):** adapter unit tests with recorded EUIPO/OEPM fixtures — status/type normalization, name-match filtering (true positives kept, obvious false positives dropped), merge/dedupe, partial-failure behavior.
 - **Manual verification:** confirm end-to-end on a live allowlisted origin (localhost fetch fails on CORS) using a company with known EUTMs (Phase 1) and known ES national marks (Phase 2).
 
+## Confirmed EUIPO sandbox API (probed 2026-07-15)
+
+Base: `https://api-sandbox.euipo.europa.eu` (prod: `https://api.euipo.europa.eu`). OAuth2 `client_credentials`, `Authorization: Bearer`.
+
+- **`GET /persons/applicants?name=<company>&country=ES&page=&size=`** → `{ applicants: [{ identifier, name, address, … }], totalElements, … }`. (Sibling of the verified `/persons/representatives`, same shape.) Use to resolve company name → applicant `identifier`(s); filter by normalized-name match. **Do not surface `address`.**
+- **`GET /trademark-search/trademarks?query=applicants.identifier==<id>&page=&size=`** → `{ trademarks: [ … ], totalElements, totalPages, size, page }`. Each trademark: `applicationNumber`, `markFeature` (WORD/FIGURATIVE/…), `markKind`, `markBasis`, `wordMarkSpecification.verbalElement` (WORD marks only), `niceClasses[]`, `applicants[]:{office,identifier}`, `applicationDate`, `registrationDate`, `expiryDate`, `status` (e.g. REGISTERED). **No applicant name and no image URL in this payload** — name comes from the Persons step; images (figurative marks) need the details endpoint / image URL pattern (confirm during build).
+- **`GET /trademark-search/trademarks/{applicationNumber}`** → adds `goodsAndServices[]`, `statusDate`, languages. Optional enrichment.
+
+Both `/persons` and `/trademark-search` are **separate API products** — subscribe to both.
+
 ## Open questions to resolve during implementation
 
 - Exact EUIPO Trademark Search query parameters for applicant-name filtering (verify in sandbox): field name, exact vs. contains, pagination.
