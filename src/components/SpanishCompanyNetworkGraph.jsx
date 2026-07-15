@@ -75,6 +75,8 @@ import {
   VerifiedUser as VerifiedUserIcon,
   Download as DownloadIcon,
   UploadFile as UploadFileIcon,
+  StickyNote2 as NoteIcon,
+  DeleteSweep as RemoveNoteIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
@@ -125,6 +127,16 @@ import {
   MAX_GRAPH_SNAPSHOT_BYTES,
   parseGraphSnapshot,
 } from '../utils/graphSnapshot';
+import {
+  getNodeNoteMarkerGeometry,
+  hasNodeNote,
+  mergeNodeNotes,
+  nodeMatchesFilterTerms,
+  NODE_NOTE_FLAGS,
+  NODE_NOTE_MAX_LENGTH,
+  removeNodeNote,
+  setNodeNote,
+} from '../utils/nodeNotes';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
 import { matchIbexSeed, matchAllIbexNodes } from '../utils/ibex35Match';
@@ -218,8 +230,8 @@ const SEARCH_COPY = {
     sharedConnections: 'Shared connections',
     myCorrectionsTooltip: 'Your corrections for this company\'s "Custom" report',
     myCorrections: count => `My corrections (${count})`,
-    filterNodes: 'Filter nodes',
-    filterPlaceholder: 'e.g. Garcia, Telefonica',
+    filterNodes: 'Filter nodes and notes',
+    filterPlaceholder: 'e.g. Garcia, relevant manager',
     legalTooltip: 'Source and legal notice',
     legalLabel: 'Source and legal notice',
     pathfinderTooltip: 'Find connection path (Pathfinder)',
@@ -326,6 +338,22 @@ const SEARCH_COPY = {
     unifyCargosError: msg => `Could not unify cargos: ${msg}`,
     expandNode: 'Expand node',
     editNode: 'Edit node',
+    addPrivateNote: 'Add private note',
+    editPrivateNote: 'Edit private note',
+    removePrivateNote: 'Remove private note',
+    privateNoteTitle: 'Private node note',
+    privateNoteLabel: 'Private note',
+    privateNoteHelp: 'This is your annotation, not BORME or Registro Mercantil data. It stays with the graph and is included in exported graph snapshots, but never in reports.',
+    privateNotePreviewHelp: 'Read-only · Right-click the node to edit or remove.',
+    noteFlag: 'Flag colour',
+    noteFlagNone: 'No flag',
+    noteFlagAmber: 'Amber',
+    noteFlagRed: 'Red',
+    noteFlagBlue: 'Blue',
+    noteFlagGreen: 'Green',
+    saveNote: 'Save note',
+    noteSaved: 'Private note saved',
+    noteRemoved: 'Private note removed',
     mergeNode: 'Merge node',
     noMergeCandidates: 'No compatible nodes to merge',
     dataPreview: 'Data preview',
@@ -495,8 +523,8 @@ const SEARCH_COPY = {
     sharedConnections: 'Conexiones compartidas',
     myCorrectionsTooltip: 'Tus correcciones para el informe "Custom" de esta empresa',
     myCorrections: count => `Mis correcciones (${count})`,
-    filterNodes: 'Filtrar nodos',
-    filterPlaceholder: 'ej: Garcia, Telefonica',
+    filterNodes: 'Filtrar nodos y notas',
+    filterPlaceholder: 'ej: Garcia, directivo relevante',
     legalTooltip: 'Fuente y aviso legal',
     legalLabel: 'Fuente y aviso legal',
     pathfinderTooltip: 'Buscar camino de conexión (Pathfinder)',
@@ -603,6 +631,22 @@ const SEARCH_COPY = {
     unifyCargosError: msg => `No se pudieron unificar los cargos: ${msg}`,
     expandNode: 'Expandir nodo',
     editNode: 'Modificar nodo',
+    addPrivateNote: 'Añadir nota privada',
+    editPrivateNote: 'Editar nota privada',
+    removePrivateNote: 'Eliminar nota privada',
+    privateNoteTitle: 'Nota privada del nodo',
+    privateNoteLabel: 'Nota privada',
+    privateNoteHelp: 'Esta es tu anotación, no un dato del BORME ni del Registro Mercantil. Se conserva con el grafo y se incluye en las instantáneas exportadas, pero nunca en los informes.',
+    privateNotePreviewHelp: 'Solo lectura · Haz clic derecho en el nodo para editar o eliminar.',
+    noteFlag: 'Color de marca',
+    noteFlagNone: 'Sin marca',
+    noteFlagAmber: 'Ámbar',
+    noteFlagRed: 'Rojo',
+    noteFlagBlue: 'Azul',
+    noteFlagGreen: 'Verde',
+    saveNote: 'Guardar nota',
+    noteSaved: 'Nota privada guardada',
+    noteRemoved: 'Nota privada eliminada',
     mergeNode: 'Fusionar nodo',
     noMergeCandidates: 'Sin nodos compatibles para fusionar',
     dataPreview: 'Vista previa de datos',
@@ -1273,6 +1317,11 @@ const SpanishCompanyNetworkGraph = ({
   // Re-render the chip as the entitlement ticks; loadToken() is read at render.
   const [entitlementTick, setEntitlementTick] = useState(0);
   const [isEditNodeDialogOpen, setIsEditNodeDialogOpen] = useState(false);
+  const [isNodeNoteDialogOpen, setIsNodeNoteDialogOpen] = useState(false);
+  const [nodeNotePreviewId, setNodeNotePreviewId] = useState(null);
+  const [nodeNoteTargetId, setNodeNoteTargetId] = useState(null);
+  const [nodeNoteText, setNodeNoteText] = useState('');
+  const [nodeNoteFlag, setNodeNoteFlag] = useState('none');
   const [isMergeNodeDialogOpen, setIsMergeNodeDialogOpen] = useState(false);
   const [isDeleteNodeDialogOpen, setIsDeleteNodeDialogOpen] = useState(false);
   const [editNodeName, setEditNodeName] = useState('');
@@ -1680,6 +1729,9 @@ const SpanishCompanyNetworkGraph = ({
       setActiveNodeId(null);
       setNodeContextMenu(null);
       setIsEditNodeDialogOpen(false);
+      setIsNodeNoteDialogOpen(false);
+      setNodeNotePreviewId(null);
+      setNodeNoteTargetId(null);
       setIsMergeNodeDialogOpen(false);
       setIsDeleteNodeDialogOpen(false);
       setMergeTargetOption(null);
@@ -3983,6 +4035,17 @@ const SpanishCompanyNetworkGraph = ({
     return graphData.nodes.find(n => isSameNodeId(n.id, activeNodeId)) || null;
   }, [activeNodeId, graphData.nodes]);
 
+  const nodeNoteTarget = React.useMemo(() => {
+    if (!nodeNoteTargetId) return null;
+    return graphData.nodes.find(n => isSameNodeId(n.id, nodeNoteTargetId)) || null;
+  }, [nodeNoteTargetId, graphData.nodes]);
+
+  const nodeNotePreview = React.useMemo(() => {
+    if (!nodeNotePreviewId) return null;
+    const node = graphData.nodes.find(n => isSameNodeId(n.id, nodeNotePreviewId)) || null;
+    return hasNodeNote(node) ? node : null;
+  }, [nodeNotePreviewId, graphData.nodes]);
+
   // Drives the persistent toolbar toggle (like "Simplify"): the company node that
   // either is currently unified (cargos merged onto it) OR has a detected cargo
   // presence (cargoCount > 0) waiting to be unified. A unified node takes
@@ -4157,6 +4220,7 @@ const SpanishCompanyNetworkGraph = ({
           expanded: !!(targetNode.expanded || sourceNode.expanded),
           data: targetNode.data || sourceNode.data,
           companySummary: mergeCompanySummary(targetNode.companySummary, sourceNode.companySummary),
+          userNote: mergeNodeNotes(targetNode.userNote, sourceNode.userNote),
         };
 
         if (targetNode.positions || sourceNode.positions) {
@@ -4473,7 +4537,7 @@ const SpanishCompanyNetworkGraph = ({
       }
 
       const MENU_ESTIMATED_WIDTH = 340;
-      const MENU_ESTIMATED_HEIGHT = 460;
+      const MENU_ESTIMATED_HEIGHT = 540;
       const VIEWPORT_MARGIN = 10;
       menuX = Math.min(
         Math.max(menuX, VIEWPORT_MARGIN),
@@ -4504,12 +4568,44 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, []);
 
+  const isNodeNoteMarkerClick = useCallback((node, event) => {
+    if (!hasNodeNote(node) || !event || !fgRef.current) return false;
+
+    const marker = getNodeNoteMarkerGeometry(node, nodeSize);
+    const markerPoint = fgRef.current.graph2ScreenCoords(marker.x, marker.y);
+    const markerEdgePoint = fgRef.current.graph2ScreenCoords(marker.x + marker.radius, marker.y);
+    if (!Number.isFinite(markerPoint?.x) || !Number.isFinite(markerPoint?.y)) return false;
+
+    let clickX = Number(event.offsetX);
+    let clickY = Number(event.offsetY);
+    if ((!Number.isFinite(clickX) || !Number.isFinite(clickY)) && containerEl) {
+      const rect = containerEl.getBoundingClientRect();
+      clickX = Number(event.clientX) - rect.left;
+      clickY = Number(event.clientY) - rect.top;
+    }
+    if (!Number.isFinite(clickX) || !Number.isFinite(clickY)) return false;
+
+    const renderedRadius = Number.isFinite(markerEdgePoint?.x)
+      ? Math.abs(markerEdgePoint.x - markerPoint.x)
+      : marker.radius;
+    const hitRadius = Math.max(8, renderedRadius + 3);
+    return Math.hypot(clickX - markerPoint.x, clickY - markerPoint.y) <= hitRadius;
+  }, [containerEl, nodeSize]);
+
   // Click/tap handler — desktop: double-click expands; mobile: single tap opens context menu, double tap expands
   const handleNodeClick = useCallback(
     (node, event) => {
       const now = Date.now();
       const last = lastClickRef.current;
       const nodeId = normalizeNodeId(node.id);
+
+      if (isNodeNoteMarkerClick(node, event)) {
+        event.preventDefault?.();
+        lastClickRef.current = { nodeId: null, time: 0 };
+        setActiveNodeId(nodeId);
+        setNodeNotePreviewId(nodeId);
+        return;
+      }
 
       // Selecting a company node focuses the market sidebar on it (opens for an
       // IBEX company, closes for a non-IBEX one). Officer/person clicks leave
@@ -4556,7 +4652,7 @@ const SpanishCompanyNetworkGraph = ({
         lastClickRef.current = { nodeId, time: now };
       }
     },
-    [expandNode, embedded, isFullscreen, handleNodeRightClick, toggleInvestigationNode]
+    [expandNode, embedded, isFullscreen, handleNodeRightClick, toggleInvestigationNode, isNodeNoteMarkerClick]
   );
 
   const openEditNodeDialog = useCallback(() => {
@@ -4566,6 +4662,46 @@ const SpanishCompanyNetworkGraph = ({
     setIsEditNodeDialogOpen(true);
     closeNodeContextMenu();
   }, [contextNode, closeNodeContextMenu]);
+
+  const openNodeNoteDialog = useCallback(() => {
+    if (!contextNode) return;
+    setNodeNoteTargetId(normalizeNodeId(contextNode.id));
+    setNodeNoteText(contextNode.userNote?.text || '');
+    setNodeNoteFlag(
+      Object.prototype.hasOwnProperty.call(NODE_NOTE_FLAGS, contextNode.userNote?.flag)
+        ? contextNode.userNote.flag
+        : 'none'
+    );
+    setIsNodeNoteDialogOpen(true);
+    closeNodeContextMenu();
+  }, [contextNode, closeNodeContextMenu]);
+
+  const closeNodeNoteDialog = useCallback(() => {
+    setIsNodeNoteDialogOpen(false);
+    setNodeNotePreviewId(null);
+    setNodeNoteTargetId(null);
+    setNodeNoteText('');
+    setNodeNoteFlag('none');
+  }, []);
+
+  const saveContextNodeNote = useCallback(() => {
+    if (!nodeNoteTargetId || !nodeNoteText.trim()) return;
+    setGraphData(prev => setNodeNote(prev, nodeNoteTargetId, {
+      text: nodeNoteText,
+      flag: nodeNoteFlag,
+    }));
+    closeNodeNoteDialog();
+    setSnapshotNotice(text.noteSaved);
+  }, [nodeNoteTargetId, nodeNoteText, nodeNoteFlag, closeNodeNoteDialog, text]);
+
+  const removeContextNodeNote = useCallback(() => {
+    const targetId = nodeNoteTargetId || contextNode?.id;
+    if (!targetId) return;
+    setGraphData(prev => removeNodeNote(prev, targetId));
+    closeNodeNoteDialog();
+    closeNodeContextMenu();
+    setSnapshotNotice(text.noteRemoved);
+  }, [nodeNoteTargetId, contextNode, closeNodeNoteDialog, closeNodeContextMenu, text]);
 
   const openMergeNodeDialog = useCallback(() => {
     if (!contextNode) return;
@@ -5535,8 +5671,7 @@ const SpanishCompanyNetworkGraph = ({
       // Find nodes matching filter terms (NOT pinned — pinned are added separately)
       const filterMatchIds = new Set();
       activeNodes.forEach(node => {
-        const name = (node.name || '').toLowerCase();
-        if (filterTerms.some(term => name.includes(term))) {
+        if (nodeMatchesFilterTerms(node, filterTerms)) {
           filterMatchIds.add(normalizeNodeId(node.id));
         }
       });
@@ -6128,6 +6263,29 @@ const SpanishCompanyNetworkGraph = ({
         ctx.restore();
       }
 
+      // Private analyst-note marker. It stays visually separate from registry
+      // status colours and is always fully opaque, even when Pathfinder dims
+      // the underlying network.
+      if (hasNodeNote(node)) {
+        const noteColor = NODE_NOTE_FLAGS[node.userNote.flag] || NODE_NOTE_FLAGS.none;
+        const marker = getNodeNoteMarkerGeometry(node, nodeRadius);
+        ctx.save();
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(marker.x, marker.y, marker.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = noteColor;
+        ctx.fill();
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = Math.max(0.8, 1 / globalScale);
+        ctx.stroke();
+        ctx.font = `700 ${Math.min(Math.max(marker.radius * 1.25, 6), 10)}px Sans-Serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText('✎', marker.x, marker.y + 0.25);
+        ctx.restore();
+      }
+
       ctx.globalAlpha = 1.0;
     },
     [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet]
@@ -6363,6 +6521,8 @@ const SpanishCompanyNetworkGraph = ({
     setLoadingMore(false);
     setSimplifyGraph(false);
     setCameraState({ x: 0, y: 0, k: 1 });
+    setIsNodeNoteDialogOpen(false);
+    setNodeNoteTargetId(null);
   };
 
   // Compute table data from graph links
@@ -6702,6 +6862,9 @@ const SpanishCompanyNetworkGraph = ({
       );
       setPreviewOpen(false);
       setPreviewData(null);
+      setIsNodeNoteDialogOpen(false);
+      setNodeNotePreviewId(null);
+      setNodeNoteTargetId(null);
       setNodeContextMenu(null);
       setError(null);
       setSnapshotNotice(text.snapshotImported(snapshot.graph.nodes.length, snapshot.graph.links.length));
@@ -7882,6 +8045,12 @@ const SpanishCompanyNetworkGraph = ({
               ctx.beginPath();
               ctx.arc(node.x, node.y, nodeSize, 0, 2 * Math.PI, false);
               ctx.fill();
+              if (hasNodeNote(node)) {
+                const marker = getNodeNoteMarkerGeometry(node, nodeSize);
+                ctx.beginPath();
+                ctx.arc(marker.x, marker.y, marker.radius + 2, 0, 2 * Math.PI, false);
+                ctx.fill();
+              }
             }}
             onNodeClick={handleNodeClick}
             onNodeRightClick={handleNodeRightClick}
@@ -8530,6 +8699,31 @@ const SpanishCompanyNetworkGraph = ({
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
                 {contextNode.name}
               </Typography>
+              {hasNodeNote(contextNode) && (
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75, mt: 0.75 }}>
+                  <NoteIcon
+                    sx={{
+                      fontSize: 15,
+                      color: NODE_NOTE_FLAGS[contextNode.userNote.flag] || NODE_NOTE_FLAGS.none,
+                      flexShrink: 0,
+                      mt: '2px',
+                    }}
+                  />
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      lineHeight: 1.35,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {contextNode.userNote.text}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           )}
           <Divider />
@@ -8579,6 +8773,29 @@ const SpanishCompanyNetworkGraph = ({
             </ListItemIcon>
             <ListItemText>{text.editNode}</ListItemText>
           </MenuItem>
+          <MenuItem onClick={openNodeNoteDialog}>
+            <ListItemIcon>
+              <NoteIcon
+                fontSize="small"
+                sx={{
+                  color: hasNodeNote(contextNode)
+                    ? (NODE_NOTE_FLAGS[contextNode.userNote.flag] || NODE_NOTE_FLAGS.none)
+                    : 'text.secondary',
+                }}
+              />
+            </ListItemIcon>
+            <ListItemText>
+              {hasNodeNote(contextNode) ? text.editPrivateNote : text.addPrivateNote}
+            </ListItemText>
+          </MenuItem>
+          {hasNodeNote(contextNode) && (
+            <MenuItem onClick={removeContextNodeNote}>
+              <ListItemIcon>
+                <RemoveNoteIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>{text.removePrivateNote}</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem
             onClick={openMergeNodeDialog}
             disabled={!contextNode || mergeCandidateOptions.length === 0}
@@ -8825,6 +9042,140 @@ const SpanishCompanyNetworkGraph = ({
             <Button onClick={() => setIsEditNodeDialogOpen(false)}>{text.cancel}</Button>
             <Button variant="contained" onClick={saveNodeEdit}>
               {text.saveChanges}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={!!nodeNotePreview}
+          onClose={() => setNodeNotePreviewId(null)}
+          maxWidth="sm"
+          fullWidth
+          container={overlayContainer}
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <NoteIcon
+              sx={{
+                color: nodeNotePreview
+                  ? (NODE_NOTE_FLAGS[nodeNotePreview.userNote.flag] || NODE_NOTE_FLAGS.none)
+                  : NODE_NOTE_FLAGS.none,
+              }}
+            />
+            {text.privateNoteTitle}
+          </DialogTitle>
+          <DialogContent>
+            {nodeNotePreview && (
+              <>
+                <Typography variant="body2" sx={{ fontWeight: 700, mb: 1.5 }}>
+                  {nodeNotePreview.name}
+                </Typography>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2.25,
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'anywhere',
+                    bgcolor: 'rgba(148, 163, 184, 0.06)',
+                  }}
+                >
+                  <Typography variant="body1" sx={{ lineHeight: 1.65 }}>
+                    {nodeNotePreview.userNote.text}
+                  </Typography>
+                </Paper>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    mt: 1.25,
+                    color: 'text.secondary',
+                  }}
+                >
+                  <InfoIcon sx={{ fontSize: 15, flexShrink: 0 }} />
+                  <Typography variant="caption">{text.privateNotePreviewHelp}</Typography>
+                </Box>
+              </>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setNodeNotePreviewId(null)}>{text.close}</Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={isNodeNoteDialogOpen}
+          onClose={closeNodeNoteDialog}
+          maxWidth="sm"
+          fullWidth
+          container={overlayContainer}
+        >
+          <DialogTitle>{text.privateNoteTitle}</DialogTitle>
+          <DialogContent>
+            {nodeNoteTarget && (
+              <Typography variant="body2" sx={{ fontWeight: 700, mb: 1.5 }}>
+                {nodeNoteTarget.name}
+              </Typography>
+            )}
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {text.privateNoteHelp}
+            </Alert>
+            <TextField
+              label={text.privateNoteLabel}
+              value={nodeNoteText}
+              onChange={event => setNodeNoteText(event.target.value)}
+              inputProps={{ maxLength: NODE_NOTE_MAX_LENGTH }}
+              helperText={`${nodeNoteText.length} / ${NODE_NOTE_MAX_LENGTH}`}
+              multiline
+              minRows={5}
+              fullWidth
+              autoFocus
+            />
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel>{text.noteFlag}</InputLabel>
+              <Select
+                label={text.noteFlag}
+                value={nodeNoteFlag}
+                onChange={event => setNodeNoteFlag(event.target.value)}
+              >
+                {[
+                  ['none', text.noteFlagNone],
+                  ['amber', text.noteFlagAmber],
+                  ['red', text.noteFlagRed],
+                  ['blue', text.noteFlagBlue],
+                  ['green', text.noteFlagGreen],
+                ].map(([value, label]) => (
+                  <MenuItem key={value} value={value}>
+                    <Box
+                      component="span"
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        bgcolor: NODE_NOTE_FLAGS[value],
+                        border: '1px solid rgba(255,255,255,0.65)',
+                        mr: 1.25,
+                        flexShrink: 0,
+                      }}
+                    />
+                    {label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </DialogContent>
+          <DialogActions>
+            {hasNodeNote(nodeNoteTarget) && (
+              <Button color="error" onClick={removeContextNodeNote} sx={{ mr: 'auto' }}>
+                {text.removePrivateNote}
+              </Button>
+            )}
+            <Button onClick={closeNodeNoteDialog}>{text.cancel}</Button>
+            <Button
+              variant="contained"
+              onClick={saveContextNodeNote}
+              disabled={!nodeNoteText.trim()}
+            >
+              {text.saveNote}
             </Button>
           </DialogActions>
         </Dialog>

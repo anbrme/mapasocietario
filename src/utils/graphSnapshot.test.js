@@ -41,6 +41,30 @@ describe('graph snapshots', () => {
     });
   });
 
+  it('preserves private node notes in the exported investigation', () => {
+    const source = createGraphSnapshot({
+      graphData: {
+        nodes: [
+          {
+            id: 'a',
+            userNote: {
+              text: 'Verify the connection before reporting.',
+              flag: 'red',
+              updatedAt: '2026-07-15T12:00:00.000Z',
+            },
+          },
+        ],
+        links: [],
+      },
+    });
+
+    expect(parseGraphSnapshot(JSON.stringify(source)).graph.nodes[0].userNote).toEqual({
+      text: 'Verify the connection before reporting.',
+      flag: 'red',
+      updatedAt: '2026-07-15T12:00:00.000Z',
+    });
+  });
+
   it('rejects snapshots with missing link endpoints', () => {
     expect(() => parseGraphSnapshot({
       format: GRAPH_SNAPSHOT_FORMAT,
