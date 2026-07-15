@@ -59,6 +59,13 @@ export const LANDING_COPY = {
           desc: 'Open a company’s data preview to read its current officers, address, share capital and corporate events, then order a report only when you need a PDF record.',
         },
       ],
+      snapshot: {
+        eyebrow: 'Portable investigations',
+        title: 'Save the graph. Reopen it later.',
+        desc: 'Export the complete investigation — companies, officers, links, filters, hidden nodes and layout — and import it later exactly as you left it. The saved graph opens locally, so the same data does not have to be fetched again.',
+        badge: 'Free · no account',
+        cta: 'Try it in the graph',
+      },
     },
     reports: {
       heading: 'Reports after exploration',
@@ -241,6 +248,13 @@ export const LANDING_COPY = {
           desc: 'Abre la vista previa de una empresa para ver administradores, domicilio, capital social y eventos societarios, y pide un informe solo cuando necesites un PDF documental.',
         },
       ],
+      snapshot: {
+        eyebrow: 'Investigaciones continuas',
+        title: 'Guarda el grafo y retómalo cuando quieras',
+        desc: 'Exporta la investigación completa — empresas, administradores, enlaces, filtros, nodos ocultos y disposición — e impórtala después exactamente como la dejaste. El grafo guardado se abre localmente, sin volver a consultar los mismos datos.',
+        badge: 'Gratis · sin cuenta',
+        cta: 'Probarlo en el grafo',
+      },
     },
     reports: {
       heading: 'Informes después de explorar',

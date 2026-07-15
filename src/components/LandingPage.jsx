@@ -10,6 +10,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import HubIcon from '@mui/icons-material/Hub';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
@@ -320,6 +321,62 @@ export default function LandingPage({ lang = 'en' }) {
                 </Box>
               ))}
             </Box>
+
+            <Paper
+              elevation={0}
+              sx={{
+                mt: 2.5,
+                p: { xs: 2.5, sm: 3 },
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'auto 1fr auto' },
+                alignItems: 'center',
+                gap: { xs: 2, sm: 2.5 },
+                bgcolor: 'rgba(20,184,166,0.07)',
+                border: '1px solid rgba(20,184,166,0.30)',
+                borderRadius: 2,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 2,
+                  bgcolor: 'rgba(20,184,166,0.14)',
+                  color: 'primary.light',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <SaveAltIcon />
+              </Box>
+              <Box>
+                <Typography variant="overline" sx={{ color: 'primary.light', fontWeight: 700, letterSpacing: '0.1em', fontSize: '0.64rem' }}>
+                  {copy.howItWorks.snapshot.eyebrow}
+                </Typography>
+                <Typography variant="body1" component="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  {copy.howItWorks.snapshot.title}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, display: 'block', maxWidth: 720 }}>
+                  {copy.howItWorks.snapshot.desc}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'row', sm: 'column' }, alignItems: { xs: 'center', sm: 'flex-end' }, gap: 1 }}>
+                <Chip
+                  label={copy.howItWorks.snapshot.badge}
+                  size="small"
+                  sx={{ bgcolor: 'rgba(255,255,255,0.07)', color: 'text.secondary', border: '1px solid rgba(255,255,255,0.10)' }}
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={openGraph}
+                  sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
+                >
+                  {copy.howItWorks.snapshot.cta}
+                </Button>
+              </Box>
+            </Paper>
           </Section>
         </Box>
 
