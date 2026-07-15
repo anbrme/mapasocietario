@@ -92,7 +92,10 @@ Success:
 
 Name-based (no NIF keying available):
 
-- **EUIPO adapter**: query Trademark Search API filtered by applicant name = the canonical company name. Keep results whose owner, after normalization, matches the company. (Confirm exact query params — applicant/owner field, exact vs. contains — against the EUIPO sandbox during implementation.)
+- **EUIPO adapter — two-step** (the Trademark Search response carries applicants only as `{office, identifier}`, **not** names, so name-matching happens via the Persons API):
+  1. **Persons API** (`/persons`): search by name = canonical company name → collect matching applicant `identifier`(s). Normalize + filter to keep true matches.
+  2. **Trademark Search API** (`/trademark-search/trademarks`): `query=applicants.identifier==<id>` (one call per identifier, or an OR'd RSQL set) → the applicant's marks.
+  - Mark name comes from `wordMarkSpecification.verbalElement` (WORD marks); figurative marks (`markFeature` != WORD) have no verbal element — label by type + image. Status from `status`; Nice from `niceClasses`; dates from `applicationDate`/`registrationDate`/`expiryDate`.
 - **OEPM adapter**: `buscarSignoDistintivo` with `denominacion` = company name, criterio `CONTENGA` or `COMIENCE_POR`; keep results where `primerTitular` normalizes to the company name.
 - **Normalization**: reuse the same normalization rules as `src/utils/companyName.js` (`normalizeCompanyName`) — reimplemented server-side in `ncdata-bormes` (uppercase, strip legal-form suffixes/punctuation) — to reduce false positives.
 - **Coverage note** (localized), shown under the results:
@@ -120,7 +123,7 @@ Two independent backend adapters behind one endpoint, so OEPM's fiddlier Axis-1.
 ## Prerequisites (human, cannot be automated)
 
 - **EUIPO API Platform** (Phase 1) — two-stage, because production subscriptions require manual EUIPO approval + documentation:
-  - **Development (no approval needed):** register an app in the **Sandbox** (`dev-sandbox.euipo.europa.eu`), subscribe to **Trademark Search** there → sandbox `client_id`/`client_secret`. EUIPO explicitly allows API evaluation in Sandbox **without documentation**. All Phase-1 build + testing happens here. Caveat: sandbox may return synthetic/limited data — it validates the OAuth flow and response *shape*, not real EUTM coverage.
+  - **Development (no approval needed):** register an app in the **Sandbox** (`dev-sandbox.euipo.europa.eu`), subscribe to **both Trademark Search AND Persons** (name→applicant-identifier resolution) → sandbox `client_id`/`client_secret`. EUIPO explicitly allows API evaluation in Sandbox **without documentation**. All Phase-1 build + testing happens here. Caveat: sandbox may return synthetic/limited data — it validates the OAuth flow and response *shape*, not real EUTM coverage.
   - **Production go-live (deploy gate):** request the production Trademark Search subscription and **email the required documentation to `docs.apiplatform@euipo.europa.eu`**; wait for approval. The filing-API integration tests EUIPO describes do **not** apply (we use the read-only Search API, no DB writes). Production creds stored as Flask env vars `EUIPO_CLIENT_ID` / `EUIPO_CLIENT_SECRET` (sandbox creds used in staging).
 - **OEPM Localizador** (Phase 2): register for web-service credentials via the OEPM access form; endpoint `https://consultas2.oepm.es/WSLocalizador/LDMWS` (WSDL at `?wsdl`). Stored as `OEPM_WS_USER` / `OEPM_WS_PASS`. **Deploy gate for Phase 2.**
 
