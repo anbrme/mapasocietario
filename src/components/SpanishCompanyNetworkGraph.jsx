@@ -73,6 +73,8 @@ import {
   FactCheck as FactCheckIcon,
   PictureAsPdf as PictureAsPdfIcon,
   VerifiedUser as VerifiedUserIcon,
+  Download as DownloadIcon,
+  UploadFile as UploadFileIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
@@ -118,6 +120,11 @@ import {
 } from '../utils/networkAnalysis';
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
+import {
+  createGraphSnapshot,
+  MAX_GRAPH_SNAPSHOT_BYTES,
+  parseGraphSnapshot,
+} from '../utils/graphSnapshot';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
 import { matchIbexSeed, matchAllIbexNodes } from '../utils/ibex35Match';
@@ -260,6 +267,16 @@ const SEARCH_COPY = {
     zoomOut: 'Zoom out',
     center: 'Center',
     clearGraph: 'Clear graph',
+    exportGraph: 'Export graph snapshot',
+    importGraph: 'Import graph snapshot',
+    importedSnapshot: 'Imported snapshot',
+    snapshotExported: count => `Graph snapshot exported (${count} nodes).`,
+    snapshotImported: (nodes, links) => `Snapshot imported: ${nodes} nodes and ${links} links.`,
+    snapshotEmpty: 'Add at least one node before exporting a snapshot.',
+    snapshotTooLarge: 'The selected snapshot is larger than 100 MB.',
+    snapshotExportError: message => `Could not export the graph snapshot: ${message}`,
+    snapshotImportError: message => `Could not import the graph snapshot: ${message}`,
+    snapshotPreviewNotice: 'Showing data stored in the imported snapshot. No new lookup was made.',
     fullscreenExit: 'Exit fullscreen',
     fullscreenEmbedded: 'Fullscreen (needed to manage nodes with right click)',
     fullscreen: 'Fullscreen',
@@ -527,6 +544,16 @@ const SEARCH_COPY = {
     zoomOut: 'Alejar',
     center: 'Centrar',
     clearGraph: 'Limpiar grafo',
+    exportGraph: 'Exportar instantánea del grafo',
+    importGraph: 'Importar instantánea del grafo',
+    importedSnapshot: 'Instantánea importada',
+    snapshotExported: count => `Instantánea exportada (${count} nodos).`,
+    snapshotImported: (nodes, links) => `Instantánea importada: ${nodes} nodos y ${links} enlaces.`,
+    snapshotEmpty: 'Añade al menos un nodo antes de exportar una instantánea.',
+    snapshotTooLarge: 'La instantánea seleccionada supera los 100 MB.',
+    snapshotExportError: message => `No se pudo exportar la instantánea: ${message}`,
+    snapshotImportError: message => `No se pudo importar la instantánea: ${message}`,
+    snapshotPreviewNotice: 'Se muestran los datos guardados en la instantánea. No se ha realizado una nueva consulta.',
     fullscreenExit: 'Salir de pantalla completa',
     fullscreenEmbedded: 'Pantalla completa (necesaria para gestionar nodos con clic derecho)',
     fullscreen: 'Pantalla completa',
@@ -1208,6 +1235,10 @@ const SpanishCompanyNetworkGraph = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const fgRef = useRef();
+  const snapshotInputRef = useRef(null);
+  const pendingSnapshotCameraRef = useRef(null);
+  const [snapshotMode, setSnapshotMode] = useState(false);
+  const [snapshotNotice, setSnapshotNotice] = useState('');
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -1485,6 +1516,7 @@ const SpanishCompanyNetworkGraph = ({
   const prevSpacingRef = useRef(1);
   const [showNodeLabels] = useState(true); // Renamed for clarity
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [cameraState, setCameraState] = useState({ x: 0, y: 0, k: 1 });
   const [simplifyGraph, setSimplifyGraph] = useState(true);
   const [positionFiltersExpanded, setPositionFiltersExpanded] = useState(false);
 
@@ -1635,6 +1667,8 @@ const SpanishCompanyNetworkGraph = ({
   useEffect(() => {
     if (!embedded && !visible) {
       setGraphData({ nodes: [], links: [] });
+      setSnapshotMode(false);
+      pendingSnapshotCameraRef.current = null;
       setError(null);
       setSearchQuery('');
       setLastSearchContext(null);
@@ -1876,7 +1910,7 @@ const SpanishCompanyNetworkGraph = ({
   const prevNodeCountRef = useRef(0);
   useEffect(() => {
     const count = graphData.nodes.length;
-    if (count > 0 && count !== prevNodeCountRef.current) {
+    if (!snapshotMode && count > 0 && count !== prevNodeCountRef.current) {
       prevNodeCountRef.current = count;
       // Delay to let ForceGraph2D process new data and simulation settle
       const timer = setTimeout(() => {
@@ -1886,7 +1920,7 @@ const SpanishCompanyNetworkGraph = ({
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [graphData.nodes.length]);
+  }, [graphData.nodes.length, snapshotMode]);
 
   // Re-fit graph when container dimensions change significantly (e.g. after table renders)
   const prevDimRef = useRef(containerDimensions);
@@ -1895,13 +1929,28 @@ const SpanishCompanyNetworkGraph = ({
     prevDimRef.current = containerDimensions;
     const dw = Math.abs(prev.width - containerDimensions.width);
     const dh = Math.abs(prev.height - containerDimensions.height);
-    if ((dw > 50 || dh > 50) && graphData.nodes.length > 0 && fgRef.current) {
+    if (!snapshotMode && (dw > 50 || dh > 50) && graphData.nodes.length > 0 && fgRef.current) {
       const timer = setTimeout(() => {
         fgRef.current?.zoomToFit(400, 50);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [containerDimensions, graphData.nodes.length]);
+  }, [containerDimensions, graphData.nodes.length, snapshotMode]);
+
+  // Imported snapshots carry their own camera. Apply it after ForceGraph has
+  // attached to the canvas and consumed the restored graph data.
+  useEffect(() => {
+    const camera = pendingSnapshotCameraRef.current;
+    if (!snapshotMode || !containerReady || !camera || !fgRef.current || graphData.nodes.length === 0) return;
+    const timer = setTimeout(() => {
+      const fg = fgRef.current;
+      if (!fg) return;
+      if (Number.isFinite(camera.x) && Number.isFinite(camera.y)) fg.centerAt(camera.x, camera.y, 0);
+      if (Number.isFinite(camera.k) && camera.k > 0) fg.zoom(camera.k, 0);
+      pendingSnapshotCameraRef.current = null;
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [snapshotMode, containerReady, graphData.nodes.length]);
 
   // Fullscreen change listener (browser API, for embedded mode)
   useEffect(() => {
@@ -2161,6 +2210,8 @@ const SpanishCompanyNetworkGraph = ({
 
     const effectiveSearchType = searchTypeOverride || searchType;
 
+    // A deliberate new search leaves offline snapshot mode and may use live data.
+    setSnapshotMode(false);
     setIsSearching(true);
     setError(null);
     setLastSearchContext(null);
@@ -4243,6 +4294,7 @@ const SpanishCompanyNetworkGraph = ({
   });
 
   useEffect(() => {
+    if (snapshotMode) return undefined;
     if (!isAndroidNativeApp()) return undefined;
     const matches = matchAllIbexNodes(graphData.nodes);
     const toFetch = matches.filter(m => !androidIbexCheckedRef.current.has(m.nif));
@@ -4281,7 +4333,7 @@ const SpanishCompanyNetworkGraph = ({
         if (!settled.has(m.nif)) androidIbexCheckedRef.current.delete(m.nif);
       });
     };
-  }, [graphData.nodes]);
+  }, [graphData.nodes, snapshotMode]);
 
   // Resolve (and cache) the subject company's group_key on demand. Graph nodes
   // are name-keyed, not group_key-keyed, so we resolve via directory autocomplete.
@@ -4622,7 +4674,149 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, [markResignedNode, markResignedDate, recordCorrection, applyOfficerStatusToGraph, text]);
 
-  // Data preview: fetch company or officer data and show in modal
+  const buildSnapshotPreview = useCallback(node => {
+    if (!node) return null;
+    const nodeId = normalizeNodeId(node.id);
+    const nodesById = new Map(
+      graphData.nodes.map(item => [normalizeNodeId(item.id), item])
+    );
+    const connectedLinks = graphData.links.filter(link => {
+      const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
+      const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
+      return sourceId === nodeId || targetId === nodeId;
+    });
+
+    if (node.type === 'officer') {
+      const officers = [];
+      const whollyOwned = [];
+      const seen = new Set();
+      connectedLinks.forEach(link => {
+        const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
+        const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
+        const otherNode = nodesById.get(sourceId === nodeId ? targetId : sourceId);
+        if (!otherNode) return;
+        if (link.type === 'ownership' && sourceId === nodeId) {
+          whollyOwned.push({
+            company_name: otherNode.name,
+            shareholder_type: node.subtype === 'company' ? 'company' : 'individual',
+            category: link.category,
+            date: link.date || null,
+          });
+          return;
+        }
+        if (link.type && link.type !== 'officer-company') return;
+        const events = Array.isArray(link.events) && link.events.length > 0
+          ? link.events
+          : [{
+              position: link.relationship || node.position,
+              category: link.category,
+              date: link.date,
+            }];
+        events.forEach(event => {
+          const position = event.position || event.relationship || link.relationship || node.position || '';
+          const category = event.category || link.category || '';
+          const date = event.date || link.date || null;
+          const key = `${otherNode.name}|${position}|${category}|${date || ''}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          officers.push({
+            officer_name: node.name,
+            company_name: otherNode.name,
+            specific_role: position,
+            event_type: category,
+            status: isActiveCategory(category) ? 'active' : 'ceased',
+            date,
+          });
+        });
+      });
+      return {
+        type: 'officer',
+        name: node.name,
+        officers,
+        whollyOwned,
+        total: officers.length,
+        nameVariants: node.nameVariants,
+        snapshotLocal: true,
+      };
+    }
+
+    const entries = node.companySummary?.entries || [];
+    let parsed = null;
+    if (entries.length > 0) {
+      try {
+        parsed = parseSpanishCompanyData(entries[0]);
+      } catch (err) {
+        console.warn('[Snapshot Preview] Could not parse stored company entry:', err.message);
+      }
+    }
+    const officers = {
+      nombramientos: [],
+      reelecciones: [],
+      ceses_dimisiones: [],
+      revocaciones: [],
+    };
+    const currentByName = new Map();
+    connectedLinks.forEach(link => {
+      if (link.type && link.type !== 'officer-company') return;
+      const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
+      const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
+      const officerNode = nodesById.get(sourceId === nodeId ? targetId : sourceId);
+      if (!officerNode || officerNode.type !== 'officer') return;
+      const events = Array.isArray(link.events) && link.events.length > 0
+        ? link.events
+        : [{ position: link.relationship, category: link.category, date: link.date }];
+      events.forEach(event => {
+        const category = String(event.category || link.category || '').toLowerCase();
+        let bucket = 'nombramientos';
+        if (category.includes('reelecc')) bucket = 'reelecciones';
+        else if (category.includes('revoc')) bucket = 'revocaciones';
+        else if (category.includes('cese') || category.includes('dimis')) bucket = 'ceses_dimisiones';
+        officers[bucket].push({
+          name: officerNode.name,
+          position: event.position || link.relationship || officerNode.position || '',
+          date: event.date || link.date || null,
+        });
+      });
+      if (getOfficerLinkStatus(link) === 'active') {
+        const nameKey = (officerNode.name || '').toUpperCase();
+        const current = currentByName.get(nameKey) || { name: officerNode.name, positions: [] };
+        current.positions.push({ position: link.relationship || officerNode.position || '', date: link.date || '' });
+        currentByName.set(nameKey, current);
+      }
+    });
+
+    return {
+      type: 'company',
+      name: node.name,
+      entries,
+      parsed,
+      company: null,
+      snapshotLocal: true,
+      enriched: {
+        capital: parsed?.capital || node.capital || null,
+        address: parsed?.address || node.address || null,
+        activity: parsed?.activity || node.activity || null,
+        cif: parsed?.cif || node.cif || node.nif || null,
+        firstSeen: node.companySummary?.dateRange?.earliest || null,
+        lastSeen: node.companySummary?.dateRange?.latest || null,
+        previousNames: node.companySummary?.previousNames || node.previousNames || [],
+        nameChanges: [],
+        isDissolved: !!node.isDissolved,
+        isInConcurso: !!node.isInConcurso,
+        isUnipersonal: !!node.isUnipersonal,
+        soleShareholders: [],
+        previousSoleShareholders: [],
+        soleShareholdersCorporate: [],
+        soleShareholdersIndividual: [],
+        hojaHistory: [],
+        officers,
+        currentOfficers: Array.from(currentByName.values()),
+        eventCount: entries.length,
+      },
+    };
+  }, [graphData.nodes, graphData.links]);
+
+  // Data preview: fetch live data normally, or read only the imported snapshot.
   const openDataPreview = useCallback(async () => {
     if (!contextNode) return;
     const name = contextNode.name;
@@ -4634,6 +4828,14 @@ const SpanishCompanyNetworkGraph = ({
     setPreviewError(null);
     setPreviewLoading(true);
     setPreviewOpen(true);
+
+    if (snapshotMode) {
+      const localPreview = buildSnapshotPreview(contextNode);
+      if (localPreview) setPreviewData(localPreview);
+      else setPreviewError(text.noCompanyPreview);
+      setPreviewLoading(false);
+      return;
+    }
 
     try {
       if (isOfficer) {
@@ -4966,7 +5168,7 @@ const SpanishCompanyNetworkGraph = ({
     } finally {
       setPreviewLoading(false);
     }
-  }, [contextNode, closeNodeContextMenu, text, uiLanguage]);
+  }, [contextNode, closeNodeContextMenu, text, uiLanguage, snapshotMode, buildSnapshotPreview]);
 
   const saveNodeEdit = useCallback(() => {
     if (!contextNode) return;
@@ -5033,8 +5235,16 @@ const SpanishCompanyNetworkGraph = ({
   }, [contextNode, mergeTargetOption, exactTypedMergeOption, mergeNodes, recordCorrection, text]);
 
   // Handle zoom changes
-  const handleZoom = useCallback(zoom => {
-    setZoomLevel(zoom);
+  const handleZoom = useCallback(transform => {
+    const k = typeof transform === 'number' ? transform : transform?.k;
+    if (Number.isFinite(k) && k > 0) setZoomLevel(k);
+    if (
+      transform && typeof transform === 'object' &&
+      Number.isFinite(transform.x) && Number.isFinite(transform.y) &&
+      Number.isFinite(k) && k > 0
+    ) {
+      setCameraState({ x: transform.x, y: transform.y, k });
+    }
   }, []);
 
   // Freeze all other nodes during drag to avoid graph drift and restore after drag.
@@ -5664,8 +5874,9 @@ const SpanishCompanyNetworkGraph = ({
   }, [pathfinderActive, pathfinderStartNode, pathfinderEndNode, filteredGraphData.nodes, filteredGraphData.links]);
 
   useEffect(() => {
+    if (snapshotMode) return;
     setPathDetailsExpanded(false);
-  }, [pathfinderStartNode?.id, pathfinderEndNode?.id]);
+  }, [pathfinderStartNode?.id, pathfinderEndNode?.id, snapshotMode]);
 
   const pathSegments = React.useMemo(() => {
     if (shortestPathArray.length < 2) return [];
@@ -6141,6 +6352,8 @@ const SpanishCompanyNetworkGraph = ({
 
   const clearGraph = () => {
     setGraphData({ nodes: [], links: [] });
+    setSnapshotMode(false);
+    pendingSnapshotCameraRef.current = null;
     setPinnedNodeIds(new Set());
     setHiddenNodeIds(new Set());
     setError(null);
@@ -6149,6 +6362,7 @@ const SpanishCompanyNetworkGraph = ({
     setSelectedSidebarCompany(null);
     setLoadingMore(false);
     setSimplifyGraph(false);
+    setCameraState({ x: 0, y: 0, k: 1 });
   };
 
   // Compute table data from graph links
@@ -6238,6 +6452,7 @@ const SpanishCompanyNetworkGraph = ({
   // open preview that isn't already cached. `null` in the cache = "checked, no
   // match" so we don't refetch the same name on every re-render.
   useEffect(() => {
+    if (snapshotMode) return undefined;
     const officerNodeNames = filteredGraphData.nodes
       .filter(n => n.type === 'officer')
       .map(n => n.name);
@@ -6277,7 +6492,7 @@ const SpanishCompanyNetworkGraph = ({
     return () => {
       cancelled = true;
     };
-  }, [visibleTableRows, filteredGraphData.nodes, previewData, officerDeputyMatches]);
+  }, [visibleTableRows, filteredGraphData.nodes, previewData, officerDeputyMatches, snapshotMode]);
 
   // Clear the date filter automatically if the underlying rows no longer contain any match
   // (e.g. user collapsed a node or changed filters).
@@ -6307,6 +6522,194 @@ const SpanishCompanyNetworkGraph = ({
       setError(text.copyTableError);
     });
   }, [visibleTableRows, text, uiLanguage]);
+
+  const exportGraphSnapshot = useCallback(() => {
+    if (graphData.nodes.length === 0) {
+      setError(text.snapshotEmpty);
+      return;
+    }
+    try {
+      const snapshot = createGraphSnapshot({
+        graphData,
+        view: {
+          searchQuery,
+          searchType,
+          labelFilterText,
+          statusFilters: Array.from(statusFilters),
+          positionFilters: Array.from(positionFilters),
+          officersPerCompany,
+          companiesPerSearch,
+          pinnedNodeIds: Array.from(pinnedNodeIds),
+          hiddenNodeIds: Array.from(hiddenNodeIds),
+          activeNodeId,
+          investigationSet: Array.from(investigationSet),
+          showShareholders,
+          showPreviousShareholders,
+          nodeSize,
+          labelSize,
+          linkDistance,
+          chargeStrength,
+          spacing,
+          simplifyGraph,
+          colorByCluster,
+          showSharedConnections,
+          tablePosition,
+          isTableCollapsed,
+          dateFilter,
+          camera: cameraState,
+          pathfinder: {
+            active: pathfinderActive,
+            startNodeId: pathfinderStartNode?.id || null,
+            endNodeId: pathfinderEndNode?.id || null,
+            detailsExpanded: pathDetailsExpanded,
+          },
+        },
+        context: { primarySubject },
+        enrichments: { officerDeputyMatches },
+      });
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      const subject = (primarySubject || graphData.nodes[0]?.name || 'graph')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase()
+        .slice(0, 60) || 'graph';
+      anchor.href = url;
+      anchor.download = `mapasocietario-${subject}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      setError(null);
+      setSnapshotNotice(text.snapshotExported(graphData.nodes.length));
+    } catch (err) {
+      setError(text.snapshotExportError(err.message));
+    }
+  }, [
+    graphData,
+    searchQuery,
+    searchType,
+    labelFilterText,
+    statusFilters,
+    positionFilters,
+    officersPerCompany,
+    companiesPerSearch,
+    pinnedNodeIds,
+    hiddenNodeIds,
+    activeNodeId,
+    investigationSet,
+    showShareholders,
+    showPreviousShareholders,
+    nodeSize,
+    labelSize,
+    linkDistance,
+    chargeStrength,
+    spacing,
+    simplifyGraph,
+    colorByCluster,
+    showSharedConnections,
+    tablePosition,
+    isTableCollapsed,
+    dateFilter,
+    cameraState,
+    pathfinderActive,
+    pathfinderStartNode,
+    pathfinderEndNode,
+    pathDetailsExpanded,
+    primarySubject,
+    officerDeputyMatches,
+    text,
+  ]);
+
+  const importGraphSnapshot = useCallback(async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      if (file.size > MAX_GRAPH_SNAPSHOT_BYTES) throw new Error(text.snapshotTooLarge);
+      const snapshot = parseGraphSnapshot(await file.text());
+      const view = snapshot.view || {};
+      const nodeById = new Map(
+        snapshot.graph.nodes.map(node => [normalizeNodeId(node.id), node])
+      );
+      const finiteOr = (value, fallback) => Number.isFinite(value) ? value : fallback;
+      const camera = {
+        x: finiteOr(view.camera?.x, 0),
+        y: finiteOr(view.camera?.y, 0),
+        k: Math.max(0.05, finiteOr(view.camera?.k, 1)),
+      };
+      const importedSpacing = Math.min(2.5, Math.max(0.5, finiteOr(view.spacing, 1)));
+      const importedOfficerCap = Math.max(1, Math.round(finiteOr(view.officersPerCompany, 100)));
+
+      pendingSnapshotCameraRef.current = camera;
+      prevSpacingRef.current = importedSpacing;
+      officersCapRef.current = importedOfficerCap;
+      prevNodeCountRef.current = snapshot.graph.nodes.length;
+      setSnapshotMode(true);
+      setGraphData(snapshot.graph);
+      setSearchQuery(typeof view.searchQuery === 'string' ? view.searchQuery : '');
+      setSearchType(view.searchType === 'officer' ? 'officer' : 'company');
+      setLabelFilterText(typeof view.labelFilterText === 'string' ? view.labelFilterText : '');
+      setStatusFilters(new Set(Array.isArray(view.statusFilters) ? view.statusFilters : []));
+      setPositionFilters(new Set(Array.isArray(view.positionFilters) ? view.positionFilters : []));
+      setOfficersPerCompany(importedOfficerCap);
+      setCompaniesPerSearch(Math.max(1, Math.round(finiteOr(view.companiesPerSearch, 25))));
+      setPinnedNodeIds(new Set(Array.isArray(view.pinnedNodeIds) ? view.pinnedNodeIds.map(normalizeNodeId) : []));
+      setHiddenNodeIds(new Set(Array.isArray(view.hiddenNodeIds) ? view.hiddenNodeIds.map(normalizeNodeId) : []));
+      setActiveNodeId(view.activeNodeId ?? null);
+      setInvestigationSet(new Set(Array.isArray(view.investigationSet) ? view.investigationSet : []));
+      setShowShareholders(view.showShareholders !== false);
+      setShowPreviousShareholders(view.showPreviousShareholders !== false);
+      setNodeSize(Math.min(28, Math.max(4, finiteOr(view.nodeSize, 9))));
+      setLabelSize(Math.min(18, Math.max(3, finiteOr(view.labelSize, 4.5))));
+      setLinkDistance(Math.max(1, finiteOr(view.linkDistance, 80)));
+      setChargeStrength(finiteOr(view.chargeStrength, -350));
+      setSpacing(importedSpacing);
+      setSimplifyGraph(view.simplifyGraph !== false);
+      setColorByCluster(!!view.colorByCluster);
+      setShowSharedConnections(!!view.showSharedConnections);
+      setTablePosition(
+        view.tablePosition && typeof view.tablePosition === 'object'
+          ? { x: view.tablePosition.x ?? null, y: view.tablePosition.y ?? null }
+          : { x: null, y: null }
+      );
+      setIsTableCollapsed(view.isTableCollapsed !== false);
+      setDateFilter(view.dateFilter && typeof view.dateFilter === 'object' ? view.dateFilter : null);
+      setCameraState(camera);
+      setZoomLevel(camera.k);
+      setPathfinderActive(!!view.pathfinder?.active);
+      setPathfinderStartNode(nodeById.get(normalizeNodeId(view.pathfinder?.startNodeId)) || null);
+      setPathfinderEndNode(nodeById.get(normalizeNodeId(view.pathfinder?.endNodeId)) || null);
+      setPathDetailsExpanded(!!view.pathfinder?.detailsExpanded);
+      setShortestPathNodes(new Set());
+      setShortestPathLinks(new Set());
+      setShortestPathArray([]);
+      setPrimarySubject(snapshot.context?.primarySubject || null);
+      setLastSearchContext(null);
+      setLoadingMore(false);
+      setSelectedSidebarCompany(null);
+      setPendingSubsidiaries(null);
+      setApoderadosSidebar({ open: false, company: null });
+      setAutocompleteOptions([]);
+      setSelectedAutocomplete(null);
+      setOfficerDeputyMatches(
+        snapshot.enrichments?.officerDeputyMatches && typeof snapshot.enrichments.officerDeputyMatches === 'object'
+          ? snapshot.enrichments.officerDeputyMatches
+          : {}
+      );
+      setPreviewOpen(false);
+      setPreviewData(null);
+      setNodeContextMenu(null);
+      setError(null);
+      setSnapshotNotice(text.snapshotImported(snapshot.graph.nodes.length, snapshot.graph.links.length));
+    } catch (err) {
+      const message = err.message === text.snapshotTooLarge ? err.message : text.snapshotImportError(err.message);
+      setError(message);
+    }
+  }, [text]);
 
   // Toggle fullscreen. The CSS overlay (position:fixed / inset:0, applied by the
   // embedded container below when isFullscreen) is what ACTUALLY fills the screen,
@@ -7353,11 +7756,13 @@ const SpanishCompanyNetworkGraph = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 0.5,
           px: 1,
           py: 0.25,
         }}
       >
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
           <Tooltip title={text.zoomIn}>
             <IconButton onClick={zoomIn} size="small">
               <ZoomInIcon />
@@ -7378,6 +7783,33 @@ const SpanishCompanyNetworkGraph = ({
               <RefreshIcon />
             </IconButton>
           </Tooltip>
+          <Tooltip title={text.exportGraph}>
+            <span>
+              <IconButton
+                onClick={exportGraphSnapshot}
+                size="small"
+                disabled={graphData.nodes.length === 0 || isSearching || isLoading || loadingMore || loadingSubsidiaries}
+              >
+                <DownloadIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={text.importGraph}>
+            <IconButton
+              onClick={() => snapshotInputRef.current?.click()}
+              size="small"
+              disabled={isSearching || isLoading || loadingMore || loadingSubsidiaries}
+            >
+              <UploadFileIcon />
+            </IconButton>
+          </Tooltip>
+          <input
+            ref={snapshotInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={importGraphSnapshot}
+            hidden
+          />
           <Tooltip
             title={
               isFullscreen
@@ -7393,7 +7825,16 @@ const SpanishCompanyNetworkGraph = ({
           </Tooltip>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+          {snapshotMode && (
+            <Chip
+              label={text.importedSnapshot}
+              size="small"
+              color="info"
+              variant="outlined"
+              sx={{ height: 22, fontSize: '0.68rem' }}
+            />
+          )}
           {hiddenNodeIds.size > 0 && (
             <Tooltip title={text.manageHiddenNodes}>
               <Button
@@ -7418,6 +7859,13 @@ const SpanishCompanyNetworkGraph = ({
           {isLoading && !isSearching && <CircularProgress size={16} />}
         </Box>
       </Box>
+      <Snackbar
+        open={!!snapshotNotice}
+        autoHideDuration={4500}
+        onClose={() => setSnapshotNotice('')}
+        message={snapshotNotice}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
       {/* Graph Container (full width, table floats on top) */}
       <Box
         ref={containerCallbackRef}
@@ -8322,7 +8770,7 @@ const SpanishCompanyNetworkGraph = ({
         />
 
         <Ibex35MarketSidebar
-          open={Boolean(focusedIbexSeed) && !ibexSidebarDismissed && !apoderadosSidebar.open && !isAndroidNativeApp()}
+          open={Boolean(focusedIbexSeed) && !snapshotMode && !ibexSidebarDismissed && !apoderadosSidebar.open && !isAndroidNativeApp()}
           seedEntry={focusedIbexSeed}
           lang={uiLanguage}
           onClose={() => setIbexSidebarDismissed(true)}
@@ -8581,6 +9029,9 @@ const SpanishCompanyNetworkGraph = ({
             )}
             {previewError && (
               <Alert severity="warning" sx={{ my: 2 }}>{previewError}</Alert>
+            )}
+            {previewData?.snapshotLocal && (
+              <Alert severity="info" sx={{ mb: 2 }}>{text.snapshotPreviewNotice}</Alert>
             )}
             {previewData && previewData.type === 'company' && (() => {
               const e = previewData.enriched;
