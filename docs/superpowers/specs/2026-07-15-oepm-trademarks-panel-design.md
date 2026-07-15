@@ -74,11 +74,13 @@ Success:
     }
   ],
   "counts": { "euipo": 3, "oepm": 5, "total": 8 },
+  "partial": false,
   "coverageNote": "<localized string>",
   "source_url": "https://www.tmdn.org/tmview/"
 }
 ```
 
+- `partial` (boolean, default `false`) is `true` when one source succeeded and the other errored/timed out — the panel still renders the results it has plus a "some sources unavailable" note.
 - Feature flag dark → `{ "disabled": true }` (frontend hides the whole section, exactly like subsidies).
 - Error → `{ "success": false }` (frontend shows retry + error copy).
 - `status` is a **normalized enum**: `Registered | Pending | Opposed | Expired | Withdrawn | Unknown` (map EUIPO's status codes and OEPM's free-text `situacion` into this set; unmapped → `Unknown` with the raw text preserved for display).
@@ -106,7 +108,7 @@ Name-based (no NIF keying available):
   - Inline IIFE: on click, disable button → show loading → `fetch(data-api + '/bormes/trademarks-by-company?name=…&nif=…&lang=…')` → handle `{disabled:true}` (hide section), `{success:false}` (retry + error), else render.
 - **Render**: a list/table of marks. Per mark: a **source badge** (`EU` for EUIPO / `ES` for OEPM), denomination, status chip, Nice classes, date, a thumbnail `<img>` if `imageUrl` is a valid `https://` URL, and a link to `officeUrl`. Followed by the localized `coverageNote` and a source link.
 - **XSS-safe**: DOM construction only (`textContent`, `createElement`, attribute checks on URLs with `/^https?:\/\//`) — never `innerHTML`. Follow the subsidies IIFE precisely.
-- **i18n**: new keys added to both the `es` and `en` `t` dictionaries in `_lib.js` (mirroring the `subs*` keys): `marksTitle`, `marksSub`, `marksBtn`, `marksLoading`, `marksEmpty`, `marksError`, `marksRetry`, `marksThMark`, `marksThStatus`, `marksThClasses`, `marksThDate`, `marksSource`, `marksSearchLink`, `marksCoverage`, `marksBadgeEu`, `marksBadgeEs`.
+- **i18n**: new keys added to both the `es` and `en` `t` dictionaries in `_lib.js` (mirroring the `subs*` keys): `marksTitle`, `marksSub`, `marksBtn`, `marksLoading`, `marksEmpty`, `marksError`, `marksRetry`, `marksThMark`, `marksThStatus`, `marksThClasses`, `marksThDate`, `marksSource`, `marksSearchLink`, `marksCoverage`, `marksPartial`, `marksBadgeEu`, `marksBadgeEs`.
 
 ## Phasing
 
