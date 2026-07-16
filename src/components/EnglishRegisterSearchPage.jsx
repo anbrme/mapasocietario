@@ -25,14 +25,21 @@ const CANONICAL = `${SITE_URL}/spanish-company-register-search/`;
 
 const sections = [
   {
+    title: 'Looking for Spanish company register information?',
+    body: [
+      'Mapa Societario is an independent company search service built from official BORME publications. It consolidates company history, current and former officers, capital events, sole-shareholder declarations and corporate relationships.',
+      'It is not the Registro Mercantil and does not issue certified documents. Use the official registry when you need a certificate or currently authoritative registry document.',
+    ],
+  },
+  {
     title: 'Official BORME publications, structured for research',
     body: [
-      'Mapa Societario is an independent company-information database built from official BORME publications issued through Spain’s BOE publication system. It structures daily corporate notices into searchable company histories and relationship graphs.',
+      'Mapa Societario uses official BORME publications issued through Spain’s BOE publication system. It structures daily corporate notices into searchable company histories and relationship graphs.',
       'Use it to find a Spanish company, review current and historical officers, follow appointments and resignations, inspect capital changes and sole-shareholder declarations, and understand connections that would otherwise require reading many separate publications.',
     ],
   },
   {
-    title: 'What the database can reveal',
+    title: 'What the search can reveal',
     body: [
       'BORME—the Boletín Oficial del Registro Mercantil—is the official gazette where Spanish Commercial Registry acts are published. These include company formations, officer appointments and removals, capital increases or reductions, mergers, demergers, dissolutions, registered-office changes and sole-shareholder declarations.',
       'Mapa Societario consolidates those chronological publications under each company and officer, preserving history and turning individual notices into a navigable network of companies, people, roles and corporate events.',
@@ -46,10 +53,10 @@ const sections = [
     ],
   },
   {
-    title: 'What the database does not replace',
+    title: 'What the service does not replace',
     body: [
       'BORME does not publish every piece of commercial intelligence a buyer, supplier, investor or compliance team may want. Partial shareholders are generally not visible unless a sole-shareholder declaration or another relevant act is published. Annual accounts, beneficial ownership information, websites, emails and commercial contact details require separate sources.',
-      'For material decisions, use the database as an official-source research layer, then verify current information in the relevant BORME publication and obtain certificates or updated documents from the Registro Mercantil when required.',
+      'For material decisions, use the service as an official-source research layer, then verify current information in the relevant BORME publication and obtain certificates or updated documents from the Registro Mercantil when required.',
     ],
   },
 ];
@@ -99,24 +106,24 @@ export default function EnglishRegisterSearchPage() {
       }}
     >
       <Helmet htmlAttributes={{ lang: 'en' }}>
-        <title>Spanish Company Database &amp; BORME Search | Mapa Societario</title>
+        <title>Spanish Company Search &amp; BORME History | Mapa Societario</title>
         <meta
           name="description"
-          content="Search Spanish companies, officers and corporate history in an independent database built from official BORME publications. Explore changes and relationships over time."
+          content="Search Spanish companies and officers using official BORME publications. Find company register information, corporate history, sole shareholders and relationships."
         />
         <link rel="canonical" href={CANONICAL} />
         <meta property="og:locale" content="en_US" />
-        <meta property="og:title" content="Spanish Company Database & BORME Search | Mapa Societario" />
+        <meta property="og:title" content="Spanish Company Search & BORME History | Mapa Societario" />
         <meta
           property="og:description"
           content="Search official-source BORME company history, current and former officers, sole-shareholder declarations and corporate relationships."
         />
         <meta property="og:url" content={CANONICAL} />
         <meta property="og:type" content="article" />
-        <meta name="twitter:title" content="Spanish Company Database & BORME Search | Mapa Societario" />
+        <meta name="twitter:title" content="Spanish Company Search & BORME History | Mapa Societario" />
         <meta
           name="twitter:description"
-          content="An independent company database built from official BORME publications, with history and relationship graphs."
+          content="Independent company search built from official BORME publications, with officer history and relationship graphs."
         />
       </Helmet>
 
@@ -142,7 +149,7 @@ export default function EnglishRegisterSearchPage() {
               <BusinessIcon />
             </Box>
             <Typography variant="overline" sx={{ color: 'primary.light', fontWeight: 700, letterSpacing: '0.12em', lineHeight: 1.3 }}>
-              Official-source BORME database
+              Official-source BORME search
             </Typography>
           </Box>
           <Typography
@@ -160,7 +167,7 @@ export default function EnglishRegisterSearchPage() {
             Search Spanish companies, officers and BORME history
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 760, lineHeight: 1.7, mb: 3 }}>
-            Explore an independent database built from official Spanish BORME publications. See company history, current and former officers, sole-shareholder declarations and corporate relationships in one searchable graph.
+            Search official Spanish BORME publications by company or officer. See company history, current and former officers, sole-shareholder declarations and corporate relationships in one searchable graph.
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 4 }}>
             {['Official BORME sources', 'Company history', 'Officers over time', 'Sole shareholders'].map((chip) => (
