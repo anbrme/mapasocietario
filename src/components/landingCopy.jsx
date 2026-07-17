@@ -200,13 +200,13 @@ export const LANDING_COPY = {
 
   es: {
     meta: {
-      title: 'Inteligencia de Relaciones Societarias en España | Mapa Societario',
+      title: 'Mapa de Relaciones Societarias en España | Mapa Societario',
       description:
         'Entiende quién está conectado con quién en empresas españolas. Explora relaciones societarias en un grafo BORME interactivo y pide informes due diligence cuando necesites documentación. Gratis; sin cuenta.',
       ogDescription:
         'Busca empresas y administradores españoles, explora quién está conectado con quién y convierte publicaciones BORME en inteligencia societaria accionable.',
       twitterDescription:
-        'Inteligencia de relaciones societarias en España: busca empresas, explora el grafo BORME y pide informes cuando los necesites.',
+        'Mapa de relaciones societarias en España: busca empresas, explora el grafo BORME y pide informes cuando los necesites.',
       ogLocale: 'es_ES',
     },
     topLinks: [
@@ -218,8 +218,8 @@ export const LANDING_COPY = {
       { label: 'English', href: '/', alignRight: true },
     ],
     hero: {
-      eyebrow: 'Relaciones societarias, no solo fichas',
-      h1: 'Inteligencia de relaciones societarias en España',
+      eyebrow: 'Relaciones societarias, más que una ficha registral',
+      h1: 'Mapa de relaciones societarias en España',
       subtitle:
         'Busca una empresa o administrador y entiende quién está conectado con quién en un grafo BORME interactivo. Convierte los hallazgos en informes due diligence cuando necesites documentación.',
       intro:

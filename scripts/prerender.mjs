@@ -384,14 +384,14 @@ const routes = [
   },
   {
     path: '/es',
-    title: 'Mapa Societario | Inteligencia de Relaciones Societarias en España',
+    title: 'Mapa Societario | Mapa de Relaciones Societarias en España',
     description:
       'Entiende quién está conectado con quién en empresas españolas. Grafo interactivo de relaciones societarias basado en BORME e informes due diligence desde 22,50 EUR.',
     ogType: 'website',
     lang: 'es',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Mapa Societario &mdash; Inteligencia de relaciones societarias en España</h1>
+        <h1>Mapa Societario &mdash; Mapa de Relaciones Societarias en España</h1>
         <p>Busca una empresa o administrador y entiende quién está conectado con quién mediante un grafo interactivo basado en publicaciones oficiales del BORME (Boletín Oficial del Registro Mercantil). Genera informes due diligence cuando necesites documentación.</p>
         ${disclaimerHtmlEs}
         <h2>Anota y guarda tu investigación</h2>
