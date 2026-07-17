@@ -398,7 +398,7 @@ const routes = [
         <p>Añade notas privadas a los nodos importantes, filtra el grafo por el texto de las notas y exporta la investigación completa &mdash; incluidas las notas, datos, enlaces, filtros, nodos ocultos y disposición. Impórtala después exactamente como la dejaste, sin volver a consultar los mismos datos.</p>
         <h2>Explorar</h2>
         <ul>
-          <li><a href="/app">Abrir el grafo de relaciones societarias</a></li>
+          <li><a href="/app">Buscar relaciones societarias</a></li>
           <li><a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></li>
           <li><a href="/due-diligence">Informes due diligence</a></li>
           <li><a href="/es/informes-due-diligence-empresas/">Informes due diligence de empresas</a></li>
@@ -464,7 +464,7 @@ const routes = [
         ${disclaimerHtmlEs}
         <h2>Del boletín al grafo</h2>
         <p>Las sociedades y personas son nodos, y los cargos, socios únicos, participaciones al 100% o relaciones societarias actúan como enlaces que permiten explorar la red.</p>
-        <p><a href="/app">Abrir el grafo</a></p>
+        <p><a href="/app">Buscar en el gráfico</a></p>
       </main>`,
   },
   {

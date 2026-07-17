@@ -224,8 +224,8 @@ export const LANDING_COPY = {
         'Busca una empresa o administrador y entiende quién está conectado con quién en un grafo BORME interactivo. Convierte los hallazgos en informes due diligence cuando necesites documentación.',
       intro:
         'Mapa Societario es un buscador gratuito de empresas españolas para investigar empresas, administradores, estructuras de propiedad, relaciones societarias, publicaciones del BORME y cambios históricos en la administración.',
-      openCta: 'Abrir el grafo de relaciones',
-      bookmarkTip: 'Consejo: guarda el grafo en marcadores para entrar directamente al análisis de relaciones la próxima vez.',
+      openCta: 'Abrir el gráfico de relaciones',
+      bookmarkTip: 'Consejo: guarda el gráfico en marcadores para entrar directamente al análisis de relaciones la próxima vez.',
     },
     quickLinks: {
       listed: 'Ver empresas del IBEX 35',
@@ -297,7 +297,7 @@ export const LANDING_COPY = {
       body: 'Esta página presenta el flujo de trabajo. Tu espacio real es el grafo interactivo de relaciones: guárdalo en marcadores para entrar directamente la próxima vez:',
       url: 'mapasocietario.es/app',
       shortcut: 'Pulsa ⌘/Ctrl + D para guardar',
-      cta: 'Abrir el grafo de relaciones',
+      cta: 'Abrir el gráfico de relaciones',
     },
     stats: {
       heading: 'Construido sobre datos oficiales del BORME',
