@@ -110,7 +110,7 @@ const DD_COPY = {
     total: 'Total',
     shownAtStripe: 'Shown at Stripe Checkout',
     invoice:
-      'Invoiced by Nurnberg Consulting SL · NIF B86829538 · Madrid, Spain.',
+      'Mapa Societario is powered by NC Data, a service of Nurnberg Consulting SL. Your report is issued under the NC Data brand; the invoice is issued by Nurnberg Consulting SL · NIF B86829538 · Madrid, Spain.',
     androidPayments:
       'Android payments are processed by Google Play, which calculates and remits VAT per country. The final price may differ from EUR 22.50.',
     stripePayments:
@@ -209,7 +209,7 @@ const DD_COPY = {
     total: 'Total',
     shownAtStripe: 'Mostrado en Stripe Checkout',
     invoice:
-      'Factura emitida por Nurnberg Consulting SL · NIF B86829538 · Madrid, España.',
+      'Mapa Societario está impulsado por NC Data, un servicio de Nurnberg Consulting SL. El informe se emite bajo la marca NC Data; la factura la emite Nurnberg Consulting SL · NIF B86829538 · Madrid, España.',
     androidPayments:
       'Los pagos Android se procesan con Google Play, que calcula y liquida el IVA por país. El precio final puede diferir de EUR 22,50.',
     stripePayments:

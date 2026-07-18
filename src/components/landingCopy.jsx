@@ -183,7 +183,7 @@ export const LANDING_COPY = {
     ],
     footer: {
       productOf: 'A product of',
-      productOfSuffix: ' (Madrid, Spain) · Data sourced from BORME (Boletín Oficial del Registro Mercantil)',
+      productOfSuffix: ' (Madrid, Spain) · Powered by the NC Data platform · Data sourced from BORME (Boletín Oficial del Registro Mercantil)',
       basedOnPrefix: 'Based on data from the ',
       basedOnSuffix: '. This service is unofficial and is not endorsed by the AEBOE.',
       ddReports: 'Due Diligence Reports',
@@ -377,7 +377,7 @@ export const LANDING_COPY = {
     ],
     footer: {
       productOf: 'Un producto de',
-      productOfSuffix: ' (Madrid, España) · Datos procedentes del BORME',
+      productOfSuffix: ' (Madrid, España) · Impulsado por la plataforma NC Data · Datos procedentes del BORME',
       basedOnPrefix: 'Basado en datos de la ',
       basedOnSuffix: '. Este servicio no es oficial ni está avalado por la AEBOE.',
       ddReports: 'Informes due diligence',
