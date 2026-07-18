@@ -213,7 +213,7 @@ export default function LandingPage({ lang = 'en' }) {
               >
                 {copy.hero.intro}
               </Typography>
-              <Box sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
+              <Box sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, flexWrap: 'wrap', gap: 1.25 }}>
                 <Button
                   variant="contained"
                   size="large"
@@ -222,6 +222,17 @@ export default function LandingPage({ lang = 'en' }) {
                   sx={{ textTransform: 'none', fontWeight: 600, px: 4.5, py: 1.5, fontSize: '1.05rem', borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#0d9488' } }}
                 >
                   {copy.hero.openCta}
+                </Button>
+                <Button
+                  component="a"
+                  href={nav.userGuidePdf}
+                  download="mapa-societario-user-guide-en-es.pdf"
+                  variant="outlined"
+                  size="large"
+                  startIcon={<SaveAltIcon />}
+                  sx={{ textTransform: 'none', fontWeight: 600, px: 2.5, py: 1.5, borderRadius: 2 }}
+                >
+                  {copy.hero.userGuidePdfCta}
                 </Button>
               </Box>
               {/* Secondary destinations that the search-first redesign had buried —

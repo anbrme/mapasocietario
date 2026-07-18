@@ -26,6 +26,7 @@ const APP_COPY = {
     menu: {
       tooltip: 'Menu',
       guide: 'How it works',
+      userGuidePdf: 'User guide (PDF)',
       registerGuide: 'BORME company search',
       listed: 'IBEX 35 companies',
       dashboard: 'Stats dashboard',
@@ -48,6 +49,7 @@ const APP_COPY = {
     menu: {
       tooltip: 'Menú',
       guide: 'Cómo funciona',
+      userGuidePdf: 'Guía de usuario (PDF)',
       registerGuide: 'Guía BORME',
       reports: 'Informes due diligence',
       connectClaude: 'Usar en Claude',
@@ -82,8 +84,9 @@ export default function App() {
   // Secondary navigation for the workspace, so /app is self-sufficient: a
   // returning visitor (redirected past the guide) can still reach the guide,
   // reports, pricing, FAQ and the legal pages without leaving the graph.
-  // Links are language-aware (siteNav) and all open in the SAME tab — SPA
-  // routes via navigate(), static .html pages via a full-page load.
+  // Links are language-aware (siteNav). The downloadable guide opens in a new
+  // tab so the current graph remains intact; ordinary destinations stay in the
+  // same tab (SPA routes via navigate(), static .html pages via full-page load).
   const nav = siteNav(language);
   const go = (url) => {
     setMenuAnchor(null);
@@ -96,6 +99,7 @@ export default function App() {
   };
   const navItems = [
     { label: copy.menu.guide, url: nav.guide },
+    { label: copy.menu.userGuidePdf, url: nav.userGuidePdf, newTab: true },
     { label: copy.menu.registerGuide, url: nav.registerGuide },
     { label: copy.menu.listed, url: nav.listed },
     { label: copy.menu.dashboard, url: nav.dashboard },
@@ -214,7 +218,15 @@ export default function App() {
               ) : (
                 <MenuItem
                   key={item.label}
-                  onClick={() => go(item.url)}
+                  {...(item.newTab
+                    ? {
+                        component: 'a',
+                        href: item.url,
+                        target: '_blank',
+                        rel: 'noopener noreferrer',
+                        onClick: () => setMenuAnchor(null),
+                      }
+                    : { onClick: () => go(item.url) })}
                   sx={{ fontSize: '0.85rem' }}
                 >
                   {item.label}

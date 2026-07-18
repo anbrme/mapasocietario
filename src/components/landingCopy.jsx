@@ -31,6 +31,7 @@ export const LANDING_COPY = {
       intro:
         'Mapa Societario is a free Spanish company search engine to investigate companies, directors, ownership structures, corporate relationships, BORME filings and historical management changes.',
       openCta: 'Open the relationship graph',
+      userGuidePdfCta: 'Download the 2-page guide (PDF)',
       bookmarkTip: 'Tip: bookmark the graph so you can jump straight into relationship analysis next time.',
     },
     quickLinks: {
@@ -225,6 +226,7 @@ export const LANDING_COPY = {
       intro:
         'Mapa Societario es un buscador gratuito de empresas españolas para investigar empresas, administradores, estructuras de propiedad, relaciones societarias, publicaciones del BORME y cambios históricos en la administración.',
       openCta: 'Abrir el gráfico de relaciones',
+      userGuidePdfCta: 'Descargar la guía de 2 páginas (PDF)',
       bookmarkTip: 'Consejo: guarda el gráfico en marcadores para entrar directamente al análisis de relaciones la próxima vez.',
     },
     quickLinks: {
