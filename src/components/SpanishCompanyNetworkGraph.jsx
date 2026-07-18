@@ -64,6 +64,7 @@ import {
   Edit as EditIcon,
   DeleteOutline as DeleteOutlineIcon,
   CallMerge as CallMergeIcon,
+  CallSplit as CallSplitIcon,
   Description as DescriptionIcon,
   Preview as PreviewIcon,
   Info as InfoIcon,
@@ -383,6 +384,7 @@ const SEARCH_COPY = {
     noteSaved: 'Private note saved',
     noteRemoved: 'Private note removed',
     mergeNode: 'Merge node',
+    unmergeNode: 'Undo merge (unmerge)',
     noMergeCandidates: 'No compatible nodes to merge',
     userMergedBadge: 'User-created grouping',
     userMergedTooltip:
@@ -690,6 +692,7 @@ const SEARCH_COPY = {
     noteSaved: 'Nota privada guardada',
     noteRemoved: 'Nota privada eliminada',
     mergeNode: 'Fusionar nodo',
+    unmergeNode: 'Deshacer fusión',
     noMergeCandidates: 'Sin nodos compatibles para fusionar',
     userMergedBadge: 'Agrupación creada por el usuario',
     userMergedTooltip:
@@ -4249,7 +4252,7 @@ const SpanishCompanyNetworkGraph = ({
   );
 
   const mergeNodes = useCallback(
-    (sourceNodeId, targetNodeId) => {
+    (sourceNodeId, targetNodeId, snapshot = null) => {
       setGraphData(prev => {
         const sourceNode = prev.nodes.find(node => isSameNodeId(node.id, sourceNodeId));
         const targetNode = prev.nodes.find(node => isSameNodeId(node.id, targetNodeId));
@@ -4279,8 +4282,14 @@ const SpanishCompanyNetworkGraph = ({
           companySummary: mergeCompanySummary(targetNode.companySummary, sourceNode.companySummary),
           userNote: mergeNodeNotes(targetNode.userNote, sourceNode.userNote),
           // Provenance: this identity grouping was decided by the user, not by
-          // BORME data. Surfaced as a badge in the data preview.
+          // BORME data. Surfaced as a badge in the data preview + a canvas ring.
           userMerged: true,
+          // Pre-merge snapshots (LIFO) so the merge stays reversible at any time
+          // via the "Deshacer fusión" action, not only through the transient toast.
+          mergeHistory: [
+            ...(targetNode.mergeHistory || []),
+            ...(snapshot ? [snapshot] : []),
+          ],
         };
 
         if (targetNode.positions || sourceNode.positions) {
@@ -5421,7 +5430,7 @@ const SpanishCompanyNetworkGraph = ({
     const undoGraph = snapshot
       ? () => setGraphData(prev => restoreMergeSnapshot(prev, snapshot))
       : null;
-    mergeNodes(sourceNode.id, targetNode.id);
+    mergeNodes(sourceNode.id, targetNode.id, snapshot);
     setIsMergeNodeDialogOpen(false);
     setMergeTargetOption(null);
     setMergeSearchText('');
@@ -5444,6 +5453,39 @@ const SpanishCompanyNetworkGraph = ({
       });
     }
   }, [contextNode, mergeTargetOption, exactTypedMergeOption, graphData, mergeNodes, recordCorrection, text]);
+
+  // Persistent unmerge: pop the most recent pre-merge snapshot from the node's
+  // history and restore that neighborhood, so a merge can be undone at any time
+  // (not only within the toast window). Also removes the persisted overlay row
+  // for officer merges so the graph and the Custom DD report stay in sync.
+  const unmergeNode = useCallback(async () => {
+    const node = contextNode;
+    closeNodeContextMenu();
+    const history = node?.mergeHistory || [];
+    if (!history.length) return;
+    const snapshot = history[history.length - 1];
+    setGraphData(prev => restoreMergeSnapshot(prev, snapshot));
+
+    const sourceName = snapshot.sourceNode?.name;
+    const targetName = snapshot.targetNode?.name;
+    if (node.type === 'officer' && sourceName && targetName && subjectCompanyName) {
+      try {
+        const groupKey = await resolveSubjectGroupKey(subjectCompanyName);
+        if (groupKey) {
+          const rows = await listCorrections(groupKey);
+          const row = rows.find(
+            c => c.action === 'merge' && c.name_a === sourceName && c.name_b === targetName
+          );
+          if (row) {
+            await deleteCorrection(row.id);
+            setCorrectionsCount(c => Math.max(0, c - 1));
+          }
+        }
+      } catch (e) {
+        // Graph is already unmerged; the overlay-row cleanup is best-effort.
+      }
+    }
+  }, [contextNode, subjectCompanyName, resolveSubjectGroupKey]);
 
   // Handle zoom changes
   const handleZoom = useCallback(transform => {
@@ -6336,6 +6378,21 @@ const SpanishCompanyNetworkGraph = ({
         ctx.lineWidth = 2 / globalScale;
         ctx.setLineDash([]);
         ctx.stroke();
+        ctx.restore();
+      }
+
+      // User-created merge marker: an amber dashed ring so a merged node is
+      // visibly distinct from a registry-sourced one at a glance (right-click
+      // for "Deshacer fusión", or open the preview for the provenance badge).
+      if (node.userMerged) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius + 4.5, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#f59e0b'; // amber = user-created grouping
+        ctx.lineWidth = 1.5 / globalScale;
+        ctx.setLineDash([3 / globalScale, 2 / globalScale]);
+        ctx.stroke();
+        ctx.setLineDash([]);
         ctx.restore();
       }
 
@@ -9075,6 +9132,14 @@ const SpanishCompanyNetworkGraph = ({
                 : text.noMergeCandidates}
             </ListItemText>
           </MenuItem>
+          {contextNode && contextNode.mergeHistory?.length > 0 && (
+            <MenuItem onClick={unmergeNode}>
+              <ListItemIcon>
+                <CallSplitIcon fontSize="small" color="warning" />
+              </ListItemIcon>
+              <ListItemText>{text.unmergeNode}</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem onClick={openDataPreview}>
             <ListItemIcon>
               <PreviewIcon fontSize="small" color="info" />
