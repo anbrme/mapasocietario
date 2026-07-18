@@ -85,6 +85,7 @@ import DDCheckoutDialog from './DDCheckoutDialog';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { normalizeCompanyName } from '../utils/companyName';
+import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 import ApoderadosSidebar from './ApoderadosSidebar';
@@ -383,6 +384,10 @@ const SEARCH_COPY = {
     noteRemoved: 'Private note removed',
     mergeNode: 'Merge node',
     noMergeCandidates: 'No compatible nodes to merge',
+    userMergedBadge: 'User-created grouping',
+    userMergedTooltip:
+      'You grouped these records manually. The grouping is your working hypothesis — it is not confirmed by BORME data.',
+    nodesMergedToast: (from, to) => `Merged: ${from} → ${to}`,
     dataPreview: 'Data preview',
     timeline: 'Timeline',
     markResigned: 'Mark as ceased',
@@ -686,6 +691,10 @@ const SEARCH_COPY = {
     noteRemoved: 'Nota privada eliminada',
     mergeNode: 'Fusionar nodo',
     noMergeCandidates: 'Sin nodos compatibles para fusionar',
+    userMergedBadge: 'Agrupación creada por el usuario',
+    userMergedTooltip:
+      'Has agrupado estos registros manualmente. La agrupación es tu hipótesis de trabajo — no está confirmada por los datos del BORME.',
+    nodesMergedToast: (from, to) => `Fusionados: ${from} → ${to}`,
     dataPreview: 'Vista previa de datos',
     timeline: 'Línea temporal',
     markResigned: 'Marcar como cesado',
@@ -1424,6 +1433,7 @@ const SpanishCompanyNetworkGraph = ({
   const [previewData, setPreviewData] = useState(null);
   const [previewNodeName, setPreviewNodeName] = useState('');
   const [previewNodeType, setPreviewNodeType] = useState('company');
+  const [previewUserMerged, setPreviewUserMerged] = useState(false);
   const [legalDisclaimerOpen, setLegalDisclaimerOpen] = useState(false);
 
   // "Report an incorrect enriched value" flow. mapasocietario is the public,
@@ -4268,6 +4278,9 @@ const SpanishCompanyNetworkGraph = ({
           data: targetNode.data || sourceNode.data,
           companySummary: mergeCompanySummary(targetNode.companySummary, sourceNode.companySummary),
           userNote: mergeNodeNotes(targetNode.userNote, sourceNode.userNote),
+          // Provenance: this identity grouping was decided by the user, not by
+          // BORME data. Surfaced as a badge in the data preview.
+          userMerged: true,
         };
 
         if (targetNode.positions || sourceNode.positions) {
@@ -4491,8 +4504,9 @@ const SpanishCompanyNetworkGraph = ({
     setCorrectionsCount(0);
   }, [subjectCompanyName]);
 
-  // Undo from the toast: delete the persisted correction and revert the graph
-  // for reversible actions (hide). Merge/mark-resigned only remove the overlay row.
+  // Undo from the toast: delete the persisted correction (when one exists) and
+  // revert the graph for reversible actions (hide, merge via pre-merge
+  // snapshot). Mark-resigned only removes the overlay row.
   const undoCorrectionFromSnackbar = useCallback(async () => {
     const snack = correctionsSnackbar;
     setCorrectionsSnackbar(null);
@@ -5007,6 +5021,7 @@ const SpanishCompanyNetworkGraph = ({
     closeNodeContextMenu();
     setPreviewNodeName(name);
     setPreviewNodeType(isOfficer ? 'officer' : 'company');
+    setPreviewUserMerged(!!contextNode.userMerged);
     setPreviewData(null);
     setPreviewError(null);
     setPreviewLoading(true);
@@ -5400,22 +5415,35 @@ const SpanishCompanyNetworkGraph = ({
     }
     const sourceNode = contextNode;
     const targetNode = effectiveTarget.node;
+    // Snapshot the pre-merge neighborhood so the undo toast can restore the
+    // graph itself, not just delete the persisted overlay row.
+    const snapshot = captureMergeSnapshot(graphData, sourceNode.id, targetNode.id);
+    const undoGraph = snapshot
+      ? () => setGraphData(prev => restoreMergeSnapshot(prev, snapshot))
+      : null;
     mergeNodes(sourceNode.id, targetNode.id);
     setIsMergeNodeDialogOpen(false);
     setMergeTargetOption(null);
     setMergeSearchText('');
     // Persist as a DD correction only when both are officers. name_a (the merged
-    // duplicate) collapses into name_b (the canonical spelling). Graph merge is
-    // not auto-reversible, so undo only removes the persisted overlay row.
+    // duplicate) collapses into name_b (the canonical spelling).
     if (sourceNode.type === 'officer' && targetNode.type === 'officer' && sourceNode.name && targetNode.name) {
       recordCorrection({
         action: 'merge',
         nameA: sourceNode.name,
         nameB: targetNode.name,
+        undoGraph,
         label: text.mergedOfficerCorrection(sourceNode.name, targetNode.name),
       });
+    } else if (undoGraph) {
+      // Non-officer merges have no overlay row, but the graph undo still applies.
+      setCorrectionsSnackbar({
+        id: null,
+        message: text.nodesMergedToast(sourceNode.name, targetNode.name),
+        undoGraph,
+      });
     }
-  }, [contextNode, mergeTargetOption, exactTypedMergeOption, mergeNodes, recordCorrection, text]);
+  }, [contextNode, mergeTargetOption, exactTypedMergeOption, graphData, mergeNodes, recordCorrection, text]);
 
   // Handle zoom changes
   const handleZoom = useCallback(transform => {
@@ -9572,6 +9600,11 @@ const SpanishCompanyNetworkGraph = ({
                 color={previewNodeType === 'officer' ? 'warning' : 'primary'}
                 variant="outlined"
               />
+              {previewUserMerged && (
+                <Tooltip title={text.userMergedTooltip}>
+                  <Chip label={text.userMergedBadge} size="small" color="warning" variant="outlined" />
+                </Tooltip>
+              )}
               {previewData?.type === 'company' && previewData.enriched?.isDissolved && (
                 <Chip label={text.dissolved} size="small" color="error" />
               )}
