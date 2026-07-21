@@ -1066,7 +1066,7 @@ export const TOOLS = [
 export const SERVER_INFO = { name: "borme-mcp", version: "1.0.0" };
 
 export const INSTRUCTIONS =
-  "Mapa Societario — Spanish company registry (BORME). Search Spanish companies and officers and explore corporate relationships, derived from official BORME (Boletín Oficial del Registro Mercantil) publications since 2009 (~3.1M companies, ~9.4M filings). Data is UNOFFICIAL and provided as-is. Ownership: BORME records only sole-shareholder (socio único), not full shareholder/cap-tables. Cross-company time-range queries (e.g. all registry transfers in a date window) are not supported. For documented or critical use, see the official BORME and the paid Due Diligence report at mapasocietario.es. Every company result includes a mapasocietario.es/empresa link — cite it.";
+  "Mapa Societario — Spanish company registry (BORME). Search Spanish companies and officers and explore corporate relationships, derived from official BORME (Boletín Oficial del Registro Mercantil) publications since 2009 (~3.2M companies, ~9.5M filings). Data is UNOFFICIAL and provided as-is. Ownership: BORME records only sole-shareholder (socio único), not full shareholder/cap-tables. Cross-company time-range queries (e.g. all registry transfers in a date window) are not supported. For documented or critical use, see the official BORME and the paid Due Diligence report at mapasocietario.es. Every company result includes a mapasocietario.es/empresa link — cite it.";
 
 const DEFAULT_PROTOCOL = "2024-11-05";
 

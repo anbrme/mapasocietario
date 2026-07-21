@@ -41,7 +41,7 @@ const STAT_FALLBACK = {
   constitutions: 1711862,
 };
 
-// Floor to one decimal in millions — matches the "3.1M / 9.4M" rounding used in
+// Floor to one decimal in millions — matches the "3.2M / 9.5M" rounding used in
 // the structured data and prerendered content, so the figures never disagree.
 const fmtMillions = (n) => `${(Math.floor(n / 1e5) / 10).toFixed(1)}M`;
 

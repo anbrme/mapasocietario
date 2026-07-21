@@ -14,7 +14,7 @@
 
 - **Fallback only when not curated:** the change applies only when `resolveSlug(slug).kind === 'notfound'`. Curated/IBEX resolution is untouched.
 - **Exact round-trip guard:** a fallback page is served ONLY if `nameToSlug(company.company_name) === slug`; otherwise 404. This prevents wrong-entity/lossy matches.
-- **Decision 1 — noindex:** every fallback (non-curated) page renders `<meta name="robots" content="noindex, follow">`. Curated + IBEX pages keep `index, follow`. (Protects SEO — no 3.1M thin indexed pages.)
+- **Decision 1 — noindex:** every fallback (non-curated) page renders `<meta name="robots" content="noindex, follow">`. Curated + IBEX pages keep `index, follow`. (Protects SEO — no 3.2M thin indexed pages.)
 - **Decision 2 — universal link:** `fullCompanyPageHref` drops the curated gate; it returns a path for ANY non-empty name (the curated/seed slug when known, else `nameToSlug(name)`), `null` only for an empty name.
 - **Decision 3 — hoja tiebreaker deferred:** true slug-twins (two distinct names colliding only on `&`/`ñ`/punctuation, e.g. `A & B SL` vs `A Y B SL`) are NOT disambiguated in this version — the lookup returns one twin, the guard still passes, and serving one is acceptable for v1. No hoja suffix logic here.
 - **No backend/data change:** read-only use of the existing `/bormes/v3/company/{name}` endpoint.

@@ -86,7 +86,7 @@ A `search_events` tool answering **cross-company, event-type + date-range** ques
 
 - Every company object includes `empresa_url`; the model is encouraged (via tool descriptions) to cite it.
 - `source_note` on company-level results: unofficial, BORME-derived.
-- The MCP **server instructions** (returned at initialize) state plainly: coverage (3.1M companies, 9.4M filings since 2009), that data is BORME-derived and unofficial, that ownership is sole-shareholder-only, and that for documented/critical use the paid Due Diligence report and the official BORME exist. This sets accurate expectations up front.
+- The MCP **server instructions** (returned at initialize) state plainly: coverage (3.2M companies, 9.5M filings since 2009), that data is BORME-derived and unofficial, that ownership is sole-shareholder-only, and that for documented/critical use the paid Due Diligence report and the official BORME exist. This sets accurate expectations up front.
 - No emojis, no marketing language in tool output.
 
 ## Rate limiting & abuse control
