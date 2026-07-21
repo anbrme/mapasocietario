@@ -123,7 +123,7 @@ export const LANDING_COPY = {
       items: [
         {
           q: 'What is Mapa Societario?',
-          a: 'Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.1 million companies and 9.4 million registry filings since 2009 — and generates optional due diligence reports from EUR 22.50.',
+          a: 'Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.2 million companies and 9.5 million registry filings since 2009 — and generates optional due diligence reports from EUR 22.50.',
         },
         {
           q: 'Do I need an account to use this?',
