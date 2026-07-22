@@ -305,13 +305,19 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Spanish company register guide and BORME publication search</h1>
-        <p>Search the daily BORME publications issued after Spanish Commercial Registry acts. Mapa Societario does not search the live Registro Mercantil or provide certified current registry records.</p>
-        <form action="/app" method="get" style="display:flex;gap:0.65rem;flex-wrap:wrap;margin:1.25rem 0">
-          <label for="borme-company-search" style="width:100%;font-weight:700">Spanish company name</label>
-          <input id="borme-company-search" name="search" type="search" required style="flex:1;min-width:240px;padding:0.7rem" />
-          <input name="source" type="hidden" value="register_guide" />
-          <button type="submit" style="padding:0.7rem 1rem">Search BORME publications</button>
-        </form>
+        <p>Explore the daily BORME publications issued after Spanish Commercial Registry acts. Mapa Societario does not search the live Registro Mercantil or provide certified current registry records.</p>
+        <p><a href="/app?source=register_guide">Open the relationship graph</a></p>
+        <h2>Which source should you use?</h2>
+        <p>The three services answer different questions. Registry history requires a paid offline request; Mapa Societario makes BORME publication history immediately explorable as a relationship graph.</p>
+        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+          <thead><tr><th align="left">Source</th><th align="left">Best for</th><th align="left">Historical view</th><th align="left">Access</th><th align="left">Graph</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Registro Mercantil</strong></td><td>Authoritative current extracts, certificates and filed documents</td><td>No immediately searchable online history; an offline request typically takes 3&ndash;5 days</td><td>Paid; historical requests typically cost EUR 20&ndash;30 or more</td><td>No</td></tr>
+            <tr><td><strong>BORME</strong></td><td>Reading the original official notices published each day</td><td>Separate daily gazette editions</td><td>Free</td><td>No</td></tr>
+            <tr><td><strong>Mapa Societario</strong></td><td>Exploring published company and officer history across sources</td><td>Consolidated BORME publication history since 2009</td><td>Free to explore</td><td>Yes</td></tr>
+          </tbody>
+        </table>
+        <p>Consult the <a href="https://www.boe.es/diario_borme/">official BORME editions</a> or the <a href="https://www.mjusticia.gob.es/es/ciudadania/registros/propiedad-mercantiles/registro-mercantil">Ministry of Justice registry guidance</a> when you need the original publication or official registry services.</p>
         ${disclaimerHtmlEn}
         <h2>What this search is—and is not</h2>
         <p>Mapa Societario searches a structured index of acts published in the daily BORME editions. Those publications report acts that Spain's provincial Commercial Registries have recorded, such as incorporations, appointments, resignations, capital changes and dissolutions.</p>
@@ -327,16 +333,6 @@ const routes = [
           <li>Sole-shareholder declarations and fully owned participations when they are published.</li>
           <li>Connected companies and officer relationships derived from those publications.</li>
         </ul>
-        <h2>Registro Mercantil, BORME and Mapa Societario compared</h2>
-        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
-          <thead><tr><th align="left">Source</th><th align="left">What it provides</th><th align="left">Relationship to this search</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Registro Mercantil</strong></td><td>Authoritative current extracts, certificates and filed documents. Official documents are paid and accessed company by company rather than as a free consolidated historical timeline.</td><td>Not searched directly by Mapa Societario; it does not provide a cross-company relationship graph.</td></tr>
-            <tr><td><strong>BORME</strong></td><td>Free daily official gazette notices of acts recorded by Spain's Commercial Registries.</td><td>The source publications indexed by Mapa Societario, normally read as separate daily notices.</td></tr>
-            <tr><td><strong>Mapa Societario</strong></td><td>Free exploration of consolidated BORME publication history since 2009, with company and officer relationship graphs.</td><td>Independent historical-research tool; not a live registry or certificate service.</td></tr>
-          </tbody>
-        </table>
-        <p>Consult the <a href="https://www.boe.es/diario_borme/">official BORME editions</a> or the <a href="https://www.mjusticia.gob.es/es/ciudadania/registros/propiedad-mercantiles/registro-mercantil">Ministry of Justice registry guidance</a> when you need the original publication or official registry services.</p>
         <h2>When to use the Registro Mercantil instead</h2>
         <p>Use the relevant Registro Mercantil when you need a certified document, an authoritative current extract, filed annual accounts or information that may be held on the registry sheet but was not published in BORME.</p>
         <p>Use Mapa Societario to research published changes over time, find current and former officers inferred from those publications, inspect sole-shareholder declarations and explore cross-company relationships in one consolidated view.</p>
@@ -349,7 +345,7 @@ const routes = [
           <li>Expand the graph when a director, proxy, or related company needs more context.</li>
           <li>Order a due diligence report only when you need a PDF record.</li>
         </ol>
-        <p><a href="/app">Search a Spanish company</a> | <a href="/en/listed-companies">Browse IBEX 35 listed companies</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence reports</a></p>
+        <p><a href="/app?source=register_guide">Open the relationship graph</a> | <a href="/en/listed-companies">Browse IBEX 35 listed companies</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence reports</a></p>
       </main>`,
   },
   {
