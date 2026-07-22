@@ -86,6 +86,7 @@ import DDCheckoutDialog from './DDCheckoutDialog';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { normalizeCompanyName } from '../utils/companyName';
+import { trackEvent } from '../utils/track';
 import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
@@ -1319,6 +1320,7 @@ const SpanishCompanyNetworkGraph = ({
   initialSearchType,
   language = 'es',
   embedded = false,
+  entrySource = 'direct',
 }) => {
   const uiLanguage = language === 'en' ? 'en' : 'es';
   const text = SEARCH_COPY[uiLanguage];
@@ -1355,6 +1357,10 @@ const SpanishCompanyNetworkGraph = ({
   const [companiesPerSearch, setCompaniesPerSearch] = useState(25);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastSearchContext, setLastSearchContext] = useState(null);
+  const graphEnteredAtRef = useRef(Date.now());
+  const searchFocusTrackedRef = useRef(false);
+  const searchTypingTrackedRef = useRef(false);
+  const suggestionsTrackedRef = useRef(false);
 
   // Track pinned node IDs (nodes added by direct search — always shown regardless of filter)
   const [pinnedNodeIds, setPinnedNodeIds] = useState(new Set());
@@ -1959,7 +1965,7 @@ const SpanishCompanyNetworkGraph = ({
         setSearchType('officer');
       }
       setSearchQuery(initialCompanyName);
-      handleSearch(initialCompanyName, true, initialSearchType || null);
+      handleSearch(initialCompanyName, true, initialSearchType || null, null, 'deep_link');
     }
   }, [initialCompanyName, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1971,7 +1977,7 @@ const SpanishCompanyNetworkGraph = ({
     if (officersCapRef.current === officersPerCompany) return; // skip initial mount
     officersCapRef.current = officersPerCompany;
     if (lastSearchContext?.searchType === 'company' && lastSearchContext.query) {
-      handleSearch(lastSearchContext.query, lastSearchContext.exactMatch || false, 'company');
+      handleSearch(lastSearchContext.query, lastSearchContext.exactMatch || false, 'company', null, 'settings_refetch');
     }
   }, [officersPerCompany]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2269,6 +2275,17 @@ const SpanishCompanyNetworkGraph = ({
         const results = [...companyItems.slice(0, 14), ...officerItems.slice(0, 6)];
 
         setAutocompleteOptions(results);
+        if (!suggestionsTrackedRef.current) {
+          suggestionsTrackedRef.current = true;
+          trackEvent('graph_search_suggestions', {
+            entry_source: entrySource,
+            result_state: results.length > 0 ? 'shown' : 'empty',
+            suggestion_count: results.length,
+            company_suggestion_count: companyItems.length,
+            officer_suggestion_count: officerItems.length,
+            time_to_suggestions_ms: Date.now() - graphEnteredAtRef.current,
+          });
+        }
 
         // Enrich officer options with Congreso deputy match in the background.
         const officerOptions = results.filter(r => r.type === 'officer' && r.name);
@@ -2287,6 +2304,15 @@ const SpanishCompanyNetworkGraph = ({
       } catch (error) {
         console.error('Autocomplete error:', error);
         setAutocompleteOptions([]);
+        if (!suggestionsTrackedRef.current) {
+          suggestionsTrackedRef.current = true;
+          trackEvent('graph_search_suggestions', {
+            entry_source: entrySource,
+            result_state: 'error',
+            suggestion_count: 0,
+            time_to_suggestions_ms: Date.now() - graphEnteredAtRef.current,
+          });
+        }
       } finally {
         setAutocompleteLoading(false);
       }
@@ -2312,7 +2338,13 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, []);
 
-  const handleSearch = async (queryOverride = null, exactMatch = false, searchTypeOverride = null, groupKeyOverride = null) => {
+  const handleSearch = async (
+    queryOverride = null,
+    exactMatch = false,
+    searchTypeOverride = null,
+    groupKeyOverride = null,
+    analyticsOrigin = 'user_selection'
+  ) => {
     const query = (queryOverride || searchQuery).trim();
     if (!query) {
       setError(text.searchEmpty);
@@ -2320,6 +2352,16 @@ const SpanishCompanyNetworkGraph = ({
     }
 
     const effectiveSearchType = searchTypeOverride || searchType;
+    const trackSearchResult = (resultState, resultCount = 0) => {
+      if (analyticsOrigin === 'settings_refetch') return;
+      trackEvent('graph_search_result', {
+        entry_source: entrySource,
+        search_origin: analyticsOrigin,
+        entity_type: effectiveSearchType,
+        result_state: resultState,
+        result_count: resultCount,
+      });
+    };
 
     // A deliberate new search leaves offline snapshot mode and may use live data.
     setSnapshotMode(false);
@@ -2342,6 +2384,7 @@ const SpanishCompanyNetworkGraph = ({
         const fetchedCount = data.officers?.length || 0;
         if (data.success && fetchedCount > 0) {
           await addOfficerToGraph(data.officers, query);
+          trackSearchResult('success', fetchedCount);
           // Pin the officer node so it survives filtering
           const officerId = officerIdFor(query);
           setPinnedNodeIds(prev => new Set([...prev, officerId]));
@@ -2356,6 +2399,7 @@ const SpanishCompanyNetworkGraph = ({
           });
           setSearchQuery('');
         } else {
+          trackSearchResult('no_results');
           setError(text.officerNoResults(query));
         }
       } else {
@@ -2412,6 +2456,7 @@ const SpanishCompanyNetworkGraph = ({
 
           if (merged.length > 0) {
             await addCompanyWithOfficersToGraph(merged, null, aliasMap);
+            trackSearchResult('success', merged.length);
             const pinnedIds = [];
             merged.forEach(company => {
               const companyName = normalizeCompanyName(company.name || company.company_name || '');
@@ -2471,14 +2516,17 @@ const SpanishCompanyNetworkGraph = ({
               runCargoDetection(primaryName, pinnedIds[0]);
             }
           } else {
+            trackSearchResult('no_precise_match');
             setError(text.noPreciseMatch(query));
           }
         } else {
+          trackSearchResult('no_results');
           setError(text.noResults(query));
         }
       }
     } catch (err) {
       console.error('Search error:', err);
+      trackSearchResult(isDataIndexUnavailableError(err) ? 'maintenance' : 'error');
       if (isDataIndexUnavailableError(err)) {
         setError({
           kind: 'maintenance',
@@ -7217,7 +7265,7 @@ const SpanishCompanyNetworkGraph = ({
   // used to dump an arbitrary relevance-capped slice of companies onto the graph).
   // Each option carries its own `type`, so we route per-item — companies, people
   // and sole-shareholders all dispatch correctly without a mode toggle.
-  const applySelectedOption = value => {
+  const applySelectedOption = (value, selectionMethod = 'autocomplete') => {
     if (!value || typeof value !== 'object') return;
     setSelectedAutocomplete(value);
     // Display: new/current name; Search: canonical key (original_name for aliases).
@@ -7225,6 +7273,19 @@ const SpanishCompanyNetworkGraph = ({
     // so downstream lookups must use that (e.g. "CACTUS CAPITAL" → search
     // "EJEVAERN CONSULTING" to find the actual profile).
     const displayName = value.name || value.company_name || value.value || '';
+    const selectionIndex = autocompleteOptions.findIndex(option =>
+      option === value || (
+        (option.id || option.value || option.label) === (value.id || value.value || value.label)
+        && option.type === value.type
+      )
+    );
+    trackEvent('graph_search_selection', {
+      entry_source: entrySource,
+      entity_type: value.type || 'unknown',
+      selection_method: selectionMethod,
+      selection_rank: selectionIndex >= 0 ? selectionIndex + 1 : 0,
+      time_to_selection_ms: Date.now() - graphEnteredAtRef.current,
+    });
 
     // Sole shareholder selection: plot the shareholder node and stage its
     // participadas behind a confirmation pill. Avoids N silent parallel v3
@@ -7250,6 +7311,13 @@ const SpanishCompanyNetworkGraph = ({
       const entityId = plotBareShareholderNode(displayName, entityKind);
       const total = value.owns_total || value.owns?.length || 0;
       setPendingSubsidiaries({ entityName: displayName, entityId, entityKind, count: total });
+      trackEvent('graph_search_result', {
+        entry_source: entrySource,
+        search_origin: 'user_selection',
+        entity_type: entityKind,
+        result_state: 'success',
+        result_count: total,
+      });
       setSearchQuery('');
       return;
     }
@@ -7344,6 +7412,13 @@ const SpanishCompanyNetworkGraph = ({
           onInputChange={(event, newValue, reason) => {
             setSearchQuery(newValue);
             if (reason === 'input') {
+              if (newValue && !searchTypingTrackedRef.current) {
+                searchTypingTrackedRef.current = true;
+                trackEvent('graph_search_typing_started', {
+                  entry_source: entrySource,
+                  time_to_type_ms: Date.now() - graphEnteredAtRef.current,
+                });
+              }
               setLastSearchContext(null);
               setSelectedAutocomplete(null);
               handleAutocomplete(newValue);
@@ -7354,7 +7429,7 @@ const SpanishCompanyNetworkGraph = ({
           }}
           onChange={(event, value) => {
             if (value && typeof value === 'object') {
-              applySelectedOption(value);
+              applySelectedOption(value, 'autocomplete');
             } else if (typeof value === 'string') {
               // Free-typed text (freeSolo) is not a real entity — never search it.
               setSearchQuery(value);
@@ -7481,6 +7556,14 @@ const SpanishCompanyNetworkGraph = ({
               {...params}
               size="small"
               placeholder={text.searchUnifiedPlaceholder}
+              onFocus={() => {
+                if (searchFocusTrackedRef.current) return;
+                searchFocusTrackedRef.current = true;
+                trackEvent('graph_search_focus', {
+                  entry_source: entrySource,
+                  time_to_focus_ms: Date.now() - graphEnteredAtRef.current,
+                });
+              }}
               InputProps={{
                 ...params.InputProps,
                 startAdornment: (
@@ -7504,7 +7587,7 @@ const SpanishCompanyNetworkGraph = ({
 
         <Button
           variant="contained"
-          onClick={() => autocompleteOptions.length > 0 && applySelectedOption(autocompleteOptions[0])}
+          onClick={() => autocompleteOptions.length > 0 && applySelectedOption(autocompleteOptions[0], 'search_button')}
           disabled={isSearching || autocompleteOptions.length === 0}
           startIcon={isSearching ? <CircularProgress size={16} /> : <SearchIcon />}
         >

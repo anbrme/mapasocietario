@@ -9,6 +9,7 @@ import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph'
 import FeedbackWidget from './components/FeedbackWidget';
 import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
 import { openListedCompanies } from './services/listedCompaniesNav';
+import { trackEvent } from './utils/track';
 import {
   getBrowserLanguage,
   getStoredSearchLanguage,
@@ -20,14 +21,14 @@ const APP_COPY = {
   en: {
     title: 'Relationship Graph | Mapa Societario',
     description:
-      'Search Spanish companies and officers to see who is connected to whom in an interactive relationship graph based on official BORME data.',
+      'Search Spanish company and officer histories compiled from daily BORME publications and explore their relationships in an interactive graph.',
     breadcrumb: 'Relationship graph',
     languageLabel: 'Language',
     menu: {
       tooltip: 'Menu',
       guide: 'How it works',
       userGuidePdf: 'User guide (PDF)',
-      registerGuide: 'BORME company search',
+      registerGuide: 'Spanish company register & BORME guide',
       listed: 'IBEX 35 companies',
       dashboard: 'Stats dashboard',
       reports: 'Due Diligence reports',
@@ -122,6 +123,21 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return (params.get('search') || '').trim() || undefined;
   }, []);
+  const graphEntrySource = React.useMemo(() => {
+    const value = new URLSearchParams(window.location.search).get('source') || '';
+    return /^[a-z0-9_]{1,40}$/.test(value) ? value : 'direct';
+  }, []);
+  const graphViewTrackedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (graphViewTrackedRef.current) return;
+    graphViewTrackedRef.current = true;
+    trackEvent('graph_view', {
+      entry_source: graphEntrySource,
+      language,
+      has_prefilled_search: Boolean(initialSearch),
+    });
+  }, [graphEntrySource, initialSearch, language]);
 
   React.useEffect(() => {
     persistSearchLanguage(language);
@@ -263,6 +279,7 @@ export default function App() {
         embedded={true}
         initialCompanyName={initialSearch}
         language={language}
+        entrySource={graphEntrySource}
       />
       <FeedbackWidget lang={language} />
     </Box>

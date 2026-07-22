@@ -7,15 +7,15 @@ export const LANDING_COPY = {
     meta: {
       title: 'Spanish Company Search | Mapa Societario',
       description:
-        'Search Spanish companies and directors, explore BORME corporate relationships in an interactive graph, and order due diligence reports when you need documentation. Free to use; no account.',
+        'Search Spanish company and officer histories compiled from daily BORME publications, explore relationships in an interactive graph, and order reports when needed. Free; no account.',
       ogDescription:
-        'Search Spanish companies and directors, explore who is connected to whom, and turn BORME filings into actionable corporate intelligence.',
+        'Search Spanish company and officer histories compiled from daily BORME publications and explore who is connected to whom.',
       twitterDescription:
         'Relationship intelligence for Spain: search companies, explore the BORME graph, order reports when needed.',
       ogLocale: 'en_US',
     },
     topLinks: [
-      { label: 'BORME company search', href: '/spanish-company-register-search' },
+      { label: 'Spanish company register & BORME guide', href: '/spanish-company-register-search' },
       { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence' },
       { label: 'Pricing', href: '/pricing' },
       { label: 'About', href: '/about.html' },
@@ -29,7 +29,7 @@ export const LANDING_COPY = {
       subtitle:
         'Search a company or officer and see who is connected to whom in an interactive BORME graph. Turn findings into due diligence reports when you need documentation.',
       intro:
-        'Mapa Societario is a free Spanish company search engine to investigate companies, directors, ownership structures, corporate relationships, BORME filings and historical management changes.',
+        'Mapa Societario is a free search and relationship graph built from daily BORME publications. It is not a direct search of the live Registro Mercantil and does not provide registry certificates.',
       openCta: 'Open the relationship graph',
       userGuidePdfCta: 'Download the 2-page guide (PDF)',
       bookmarkTip: 'Tip: bookmark the graph so you can jump straight into relationship analysis next time.',
@@ -49,7 +49,7 @@ export const LANDING_COPY = {
       steps: [
         {
           title: '1 · Start with a company or officer',
-          desc: 'Search any Spanish company or director to explore its ownership, management history, corporate relationships and official BORME filings. Use the toggle to switch between company and officer search, then pick a suggestion to open it in the graph.',
+          desc: 'Search any Spanish company or director to explore its published history and corporate relationships compiled from daily BORME notices. Pick a company or officer suggestion to open it in the graph.',
         },
         {
           title: '2 · Explore the graph',
@@ -107,13 +107,13 @@ export const LANDING_COPY = {
       cta: 'Open the relationship graph',
     },
     stats: {
-      heading: 'Built on official BORME data',
+      heading: 'Built from official BORME publications',
       sub: 'The graph connects companies, officers, and corporate events drawn from Spain’s official commercial registry gazette.',
       sinceLabel: 'Continuous coverage since',
       sinceValue: '2009',
       items: [
         { key: 'companies', label: 'Spanish companies (tracking name changes, mergers and spin-offs)' },
-        { key: 'events', label: 'BORME registry filings' },
+        { key: 'events', label: 'BORME publication records' },
         { key: 'officerChanges', label: 'Director / officer changes' },
         { key: 'formations', label: 'Company formations' },
       ],
@@ -123,7 +123,7 @@ export const LANDING_COPY = {
       items: [
         {
           q: 'What is Mapa Societario?',
-          a: 'Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.2 million companies and 9.5 million registry filings since 2009 — and generates optional due diligence reports from EUR 22.50.',
+          a: 'Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications — covering 3.2 million companies and 9.5 million published records since 2009 — and generates optional due diligence reports from EUR 22.50.',
         },
         {
           q: 'Do I need an account to use this?',
@@ -143,7 +143,7 @@ export const LANDING_COPY = {
         },
         {
           q: 'What about shareholders? Can I see who owns a company?',
-          a: 'The Spanish corporate registry provides information about sole shareholders only. We track this and show 100% shareholders and participations, which is all what the Spanish registry offers.',
+          a: 'BORME publishes sole-shareholder declarations, not a complete shareholder register. We track those declarations and show 100% shareholders and fully owned participations when they were published.',
         },
         {
           q: 'What does the due diligence report include?',
@@ -175,7 +175,7 @@ export const LANDING_COPY = {
         },
       ],
     },
-    operatedBy: 'Operated by Nurnberg Consulting SL, Madrid, since 2013. Unofficial service based on public BOE/BORME data.',
+    operatedBy: 'Operated by Nurnberg Consulting SL, Madrid, since 2013. Unofficial service built from public BOE/BORME publications; not a Registro Mercantil search.',
     proofItems: [
       'By Nurnberg Consulting SL (Madrid, since 2013)',
       'Based on official BORME publications',

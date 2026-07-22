@@ -62,7 +62,7 @@ const DD_COPY = {
     googlePlayProductsError:
       'Google Play products are not available yet. Check Play Console product setup.',
     missingCompany: companyName =>
-      `We could not find "${companyName}" in our Spanish corporate registry. ` +
+      `We could not find "${companyName}" in our BORME publication index. ` +
       'This usually means it is a foreign entity that appears only as a shareholder of Spanish companies. ' +
       'We do not hold a corporate profile for it, so a Due Diligence report cannot be generated. ' +
       'If you believe this is wrong, please email mapasocietario@ncdata.eu.',

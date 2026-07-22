@@ -20,6 +20,7 @@ import { LANDING_COPY } from './landingCopy';
 import { siteNav } from '../utils/siteNav';
 import { statsService } from '../services/statsService';
 import { openListedCompanies } from '../services/listedCompaniesNav';
+import { trackEvent } from '../utils/track';
 
 const SITE_URL = 'https://mapasocietario.es';
 
@@ -103,7 +104,13 @@ export default function LandingPage({ lang = 'en' }) {
 
   React.useEffect(() => {
     if (redirecting) {
-      navigate(lang === 'es' ? '/app?lang=es' : '/app', { replace: true });
+      trackEvent('home_graph_auto_redirect', { language: lang });
+      navigate(
+        lang === 'es'
+          ? '/app?lang=es&source=returning_home_redirect'
+          : '/app?source=returning_home_redirect',
+        { replace: true }
+      );
       return;
     }
     try {
@@ -127,8 +134,13 @@ export default function LandingPage({ lang = 'en' }) {
   const canonical = lang === 'es' ? `${SITE_URL}/es/` : `${SITE_URL}/`;
   const nav = siteNav(lang);
   const appHref = lang === 'es' ? '/app?lang=es' : '/app';
-  const demoHref = `/app?search=${encodeURIComponent(DEMO_COMPANY)}${lang === 'es' ? '&lang=es' : ''}`;
-  const openGraph = () => navigate(appHref);
+  const graphHref = (placement) => `${appHref}${appHref.includes('?') ? '&' : '?'}source=home_${placement}`;
+  const demoHref = `/app?search=${encodeURIComponent(DEMO_COMPANY)}${lang === 'es' ? '&lang=es' : ''}&source=home_demo`;
+  const openGraph = (placement) => {
+    trackEvent('home_graph_click', { placement, language: lang });
+    navigate(graphHref(placement));
+  };
+  const trackDemoClick = () => trackEvent('home_graph_click', { placement: 'demo', language: lang });
 
   // Returning visitor: render nothing while the effect redirects to /app.
   if (redirecting) return null;
@@ -218,7 +230,7 @@ export default function LandingPage({ lang = 'en' }) {
                   variant="contained"
                   size="large"
                   startIcon={<SearchIcon />}
-                  onClick={openGraph}
+                  onClick={() => openGraph('hero')}
                   sx={{ textTransform: 'none', fontWeight: 600, px: 4.5, py: 1.5, fontSize: '1.05rem', borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#0d9488' } }}
                 >
                   {copy.hero.openCta}
@@ -275,6 +287,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <Box
                   component="a"
                   href={demoHref}
+                  onClick={trackDemoClick}
                   aria-label={copy.howItWorks.demoCta}
                   sx={{
                     display: 'block', position: 'relative', width: '100%', aspectRatio: '16 / 9',
@@ -286,7 +299,7 @@ export default function LandingPage({ lang = 'en' }) {
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                 <Typography variant="caption" sx={{ color: 'text.disabled' }}>{copy.howItWorks.demoCaption}</Typography>
-                <Link href={demoHref} variant="caption" sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                <Link href={demoHref} onClick={trackDemoClick} variant="caption" sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
                   {copy.howItWorks.demoCta}
                 </Link>
               </Box>
@@ -395,7 +408,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={openGraph}
+                  onClick={() => openGraph('snapshot')}
                   sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
                 >
                   {copy.howItWorks.snapshot.cta}
@@ -508,7 +521,7 @@ export default function LandingPage({ lang = 'en' }) {
                 variant="contained"
                 size="large"
                 startIcon={<SearchIcon />}
-                onClick={openGraph}
+                onClick={() => openGraph('bookmark')}
                 sx={{ textTransform: 'none', fontWeight: 600, px: 4, py: 1.5, borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#0d9488' } }}
               >
                 {copy.bookmark.cta}

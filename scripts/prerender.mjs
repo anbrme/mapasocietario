@@ -43,7 +43,7 @@ const homepageFaqSchema = `    <script type="application/ld+json">
         {
           "@type": "Question",
           "name": "What is Mapa Societario?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data — covering 3.2 million companies and 9.5 million registry filings since 2009 — and generates optional due diligence reports from EUR 22.50." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications — covering 3.2 million companies and 9.5 million published records since 2009 — and generates optional due diligence reports from EUR 22.50. It is not a direct search of the live Registro Mercantil." }
         },
         {
           "@type": "Question",
@@ -169,17 +169,17 @@ const routes = [
     path: '/',
     title: 'Spanish Company Search | Mapa Societario',
     description:
-      'Search Spanish companies and directors, explore BORME corporate relationships in an interactive graph, and order due diligence reports when you need documentation.',
+      'Search Spanish company and officer histories compiled from daily BORME publications, explore relationships in an interactive graph, and order reports when needed.',
     ogType: 'website',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa Societario &mdash; Spanish Company Search</h1>
-        <p>Search a Spanish company or director and see who is connected to whom in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data.</p>
+        <p>Search Spanish company and officer histories compiled from daily BORME (Boletín Oficial del Registro Mercantil) publications and see who is connected to whom. This is not a direct search of the live Registro Mercantil.</p>
         ${disclaimerHtmlEn}
         <h2>Coverage by the numbers</h2>
         <ul>
           <li><strong>3.2 million</strong> Spanish companies indexed</li>
-          <li><strong>9.5 million</strong> official BORME registry filings</li>
+          <li><strong>9.5 million</strong> BORME publication records</li>
           <li><strong>6.3 million</strong> director and officer changes tracked</li>
           <li><strong>1.7 million</strong> company formations recorded</li>
           <li>Continuous coverage <strong>since January 2009</strong>, updated on business days</li>
@@ -210,13 +210,13 @@ const routes = [
           <li><a href="/es/">Mapa societario de empresas espa&ntilde;olas</a></li>
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
-          <li><a href="/spanish-company-register-search/">Spanish company register search and BORME guide</a></li>
+          <li><a href="/spanish-company-register-search/">Spanish company register guide and BORME publication search</a></li>
           <li><a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></li>
           <li><a href="${FACEBOOK_URL}">Mapa Societario on Facebook</a></li>
         </ul>
         <h2>Frequently asked questions</h2>
         <h3>What is Mapa Societario?</h3>
-        <p>A relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from official BORME (Boletín Oficial del Registro Mercantil) data &mdash; 3.2 million companies and 9.5 million registry filings since 2009 &mdash; and generates optional due-diligence reports from &euro;22.50.</p>
+        <p>A relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications &mdash; 3.2 million companies and 9.5 million published records since 2009 &mdash; and generates optional due-diligence reports from &euro;22.50. It is not a direct search of the live Registro Mercantil.</p>
         <h3>Do I need an account?</h3>
         <p>No. Mapa Societario is completely free to use without registration or login. Due Diligence reports are an optional paid feature purchased per company. Only an email address is required to receive the report. The payment is processed securely through Stripe.</p>
         <h3>Can I search by officer name?</h3>
@@ -231,12 +231,12 @@ const routes = [
     path: '/app',
     title: 'Relationship Graph | Mapa Societario',
     description:
-      'Search Spanish companies and officers to see who is connected to whom in an interactive relationship graph based on official BORME data.',
+      'Search Spanish company and officer histories compiled from daily BORME publications and explore their relationships in an interactive graph.',
     ogType: 'website',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa Societario &mdash; Spanish Company Relationship Graph</h1>
-        <p>Search for any Spanish company or officer and understand who is connected to whom in an interactive network graph.</p>
+        <p>Search Spanish company and officer histories compiled from daily BORME publications and understand who is connected to whom. This is not a direct search of the live Registro Mercantil.</p>
         ${disclaimerHtmlEn}
         <ul>
           <li>Search by company name (e.g. Inditex, Repsol)</li>
@@ -244,7 +244,7 @@ const routes = [
           <li>Visualize corporate relationships in real time</li>
           <li>Purchase Due Diligence reports from the search toolbar</li>
         </ul>
-        <p><a href="/">Back to Mapa Societario</a> | <a href="/spanish-company-register-search">Spanish company register guide</a> | <a href="${FACEBOOK_URL}">Facebook</a></p>
+        <p><a href="/">Back to Mapa Societario</a> | <a href="/spanish-company-register-search">Spanish company register and BORME publication guide</a> | <a href="${FACEBOOK_URL}">Facebook</a></p>
       </main>`,
   },
   {
@@ -293,46 +293,59 @@ const routes = [
         <h2>API access and higher-touch investigations</h2>
         <p>The self-serve report is the fast mid-tier option. For third-party data integrations, Spanish registry intelligence is available through NC Data API access and data feeds. For higher-stakes matters, Nurnberg Consulting SL can add human analyst work, source retrieval, document review, and bespoke conclusions.</p>
         <p><a href="mailto:mapasocietario@ncdata.eu?subject=NC%20Data%20Spanish%20API">Discuss NC Data API access</a> | <a href="https://nurnbergconsulting.com">Human-led investigations</a></p>
-        <p><a href="/app">Open the relationship graph</a> | <a href="/due-diligence">See report details</a> | <a href="/spanish-company-register-search">Spanish company register information</a></p>
+        <p><a href="/app">Open the relationship graph</a> | <a href="/due-diligence">See report details</a> | <a href="/spanish-company-register-search">Spanish company register and BORME publication guide</a></p>
       </main>`,
   },
   {
     path: '/spanish-company-register-search',
-    title: 'Spanish Company Search & BORME History | Mapa Societario',
+    title: 'Spanish Company Register Guide & BORME Search | Mapa Societario',
     description:
-      'Search Spanish companies and officers using official BORME publications. Find company register information, corporate history, sole shareholders and relationships.',
+      "Understand Spain's company register and search daily BORME publications by company or officer. This is not a live Registro Mercantil or certificate search.",
     ogType: 'article',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Search Spanish companies, officers and BORME history</h1>
-        <p>Search official Spanish BORME publications by company or officer. See company history, current and former officers, sole-shareholder declarations and corporate relationships in one searchable graph.</p>
+        <h1>Spanish company register guide and BORME publication search</h1>
+        <p>Search the daily BORME publications issued after Spanish Commercial Registry acts. Mapa Societario does not search the live Registro Mercantil or provide certified current registry records.</p>
         <form action="/app" method="get" style="display:flex;gap:0.65rem;flex-wrap:wrap;margin:1.25rem 0">
           <label for="borme-company-search" style="width:100%;font-weight:700">Spanish company name</label>
           <input id="borme-company-search" name="search" type="search" required style="flex:1;min-width:240px;padding:0.7rem" />
-          <button type="submit" style="padding:0.7rem 1rem">Search BORME data</button>
+          <input name="source" type="hidden" value="register_guide" />
+          <button type="submit" style="padding:0.7rem 1rem">Search BORME publications</button>
         </form>
         ${disclaimerHtmlEn}
-        <h2>Looking for Spanish company register information?</h2>
-        <p>Mapa Societario is an independent company search service built from official BORME publications. It consolidates company history, current and former officers, capital events, sole-shareholder declarations and corporate relationships.</p>
-        <p>It is not the Registro Mercantil and does not issue certified documents. Use the official registry when you need a certificate or currently authoritative registry document.</p>
-        <h2>Official BORME publications, structured for research</h2>
-        <p>Mapa Societario uses official BORME publications issued through Spain's BOE publication system. It structures daily corporate notices into searchable company histories and relationship graphs.</p>
-        <h2>What the search can reveal</h2>
-        <p>BORME—the Boletín Oficial del Registro Mercantil—is the official gazette where Spanish Commercial Registry acts are published. Mapa Societario consolidates those chronological publications under each company and officer.</p>
+        <h2>What this search is—and is not</h2>
+        <p>Mapa Societario searches a structured index of acts published in the daily BORME editions. Those publications report acts that Spain's provincial Commercial Registries have recorded, such as incorporations, appointments, resignations, capital changes and dissolutions.</p>
+        <p>This is not a direct search of the live Registro Mercantil, a company's registry sheet, or the Registro Mercantil Central. Mapa Societario does not issue certificates or current authoritative registry extracts. Use the relevant official registry when you need those documents.</p>
+        <h2>How Spanish company-register acts reach BORME</h2>
+        <p>The Registro Mercantil records company acts. Notices of many of those acts are then published in the BORME (Boletín Oficial del Registro Mercantil), the official commercial-registry gazette distributed through Spain's BOE publication system.</p>
+        <p>Mapa Societario structures those daily notices into searchable company histories and relationship graphs. Its coverage therefore reflects what was published in BORME; it is not a mirror of every field or document held by the Commercial Registry.</p>
+        <h2>What the BORME publication search can reveal</h2>
+        <p>Published acts can include company formations, officer appointments and removals, capital increases or reductions, mergers, demergers, dissolutions, registered-office changes and sole-shareholder declarations.</p>
         <ul>
-          <li>Company history, registered-office changes, capital events and other corporate changes.</li>
-          <li>Current and historical administrators, officers, proxies, appointments and resignations.</li>
-          <li>Sole-shareholder declarations and fully owned participations when published.</li>
-          <li>Connected companies and officer relationships in a searchable graph.</li>
+          <li>Published company history, registered-office changes, capital events and other corporate changes.</li>
+          <li>Administrators, officers, proxies, appointments and resignations reported in BORME.</li>
+          <li>Sole-shareholder declarations and fully owned participations when they are published.</li>
+          <li>Connected companies and officer relationships derived from those publications.</li>
         </ul>
-        <h2>How this differs from the Registro Mercantil</h2>
-        <p>The Registro Mercantil is the authoritative source for current certificates and official registry documents. Mapa Societario is not the Registro Mercantil and does not issue certified documents. Its purpose is to make official-source publication history easier to search and analyze across time and relationships.</p>
+        <h2>Registro Mercantil, BORME and Mapa Societario compared</h2>
+        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+          <thead><tr><th align="left">Source</th><th align="left">What it provides</th><th align="left">Relationship to this search</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Registro Mercantil</strong></td><td>Authoritative current extracts, certificates and filed documents. Official documents are paid and accessed company by company.</td><td>Not searched directly by Mapa Societario; it does not provide a cross-company relationship graph.</td></tr>
+            <tr><td><strong>BORME</strong></td><td>Free daily official gazette notices of acts recorded by Spain's Commercial Registries.</td><td>The source publications indexed by Mapa Societario, normally read as separate daily notices.</td></tr>
+            <tr><td><strong>Mapa Societario</strong></td><td>Free exploration of consolidated BORME publication history since 2009, with company and officer relationship graphs.</td><td>Independent historical-research tool; not a live registry or certificate service.</td></tr>
+          </tbody>
+        </table>
+        <p>Consult the <a href="https://www.boe.es/diario_borme/">official BORME editions</a> or the <a href="https://www.mjusticia.gob.es/es/ciudadania/registros/propiedad-mercantiles/registro-mercantil">Ministry of Justice registry guidance</a> when you need the original publication or official registry services.</p>
+        <h2>When to use the Registro Mercantil instead</h2>
+        <p>Use the relevant Registro Mercantil when you need a certified document, an authoritative current extract, filed annual accounts or information that may be held on the registry sheet but was not published in BORME.</p>
+        <p>Use Mapa Societario to research published changes over time, find current and former officers inferred from those publications, inspect sole-shareholder declarations and explore cross-company relationships in one consolidated view.</p>
         <h2>What the service does not replace</h2>
-        <p>BORME does not publish every piece of commercial intelligence a buyer, supplier, investor or compliance team may want. Partial shareholders are generally not visible unless a sole-shareholder declaration or another relevant act is published. Annual accounts, beneficial ownership, private contracts, websites, emails and commercial contact details require separate sources.</p>
+        <p>BORME does not publish every piece of information held by the Commercial Registry or every fact a buyer, supplier, investor or compliance team may want. Partial shareholders are generally not visible unless a sole-shareholder declaration or another relevant act is published. Annual accounts, beneficial ownership information, websites, emails and commercial contact details require separate sources.</p>
         <h2>How to use Mapa Societario</h2>
         <ol>
           <li>Open the relationship graph and search by company name or officer name.</li>
-          <li>Review the company profile, officers, capital events, and connected companies.</li>
+          <li>Review the company profile, officers, capital events and connected companies derived from BORME publications.</li>
           <li>Expand the graph when a director, proxy, or related company needs more context.</li>
           <li>Order a due diligence report only when you need a PDF record.</li>
         </ol>
