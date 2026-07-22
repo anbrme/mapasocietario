@@ -7550,7 +7550,20 @@ const SpanishCompanyNetworkGraph = ({
             </Box>
             );
           }}
-          sx={{ flexGrow: 1, minWidth: 200 }}
+          sx={{
+            flexGrow: 1,
+            minWidth: 200,
+            '& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'primary.main',
+            },
+            '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'primary.light',
+            },
+            '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'primary.main',
+              borderWidth: 2,
+            },
+          }}
           renderInput={params => (
             <TextField
               {...params}
