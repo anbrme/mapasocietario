@@ -16,7 +16,7 @@ export function siteNav(lang = 'en') {
     home: es ? '/es' : '/',
     guide: es ? '/es?guide=1' : '/?guide=1',
     userGuidePdf: '/mapa-societario-user-guide-en-es.pdf',
-    registerGuide: es ? '/es/borme-grafo-empresas' : '/spanish-company-register-search',
+    registerGuide: es ? '/es/busqueda-registro-mercantil' : '/spanish-company-register-search',
     // Due Diligence product page is bilingual (?lang=es). The English-targeted
     // /spanish-company-due-diligence SEO page is NOT the ES destination.
     reports: es ? '/due-diligence?lang=es' : '/due-diligence',

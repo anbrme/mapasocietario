@@ -30,6 +30,7 @@ const sitemapRoutes = [
   { path: '/pricing/', changefreq: 'monthly', priority: '0.8' },
   { path: '/dashboard/', changefreq: 'daily', priority: '0.7' },
   { path: '/es/', changefreq: 'weekly', priority: '0.9' },
+  { path: '/es/busqueda-registro-mercantil/', changefreq: 'weekly', priority: '0.9' },
   { path: '/es/informes-due-diligence-empresas/', changefreq: 'weekly', priority: '0.8' },
   { path: '/es/buscar-administradores-empresas/', changefreq: 'weekly', priority: '0.8' },
   { path: '/es/borme-grafo-empresas/', changefreq: 'weekly', priority: '0.8' },

@@ -312,9 +312,9 @@ const routes = [
         <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
           <thead><tr><th align="left">Source</th><th align="left">Best for</th><th align="left">Historical view</th><th align="left">Access</th><th align="left">Graph</th></tr></thead>
           <tbody>
-            <tr><td><strong>Registro Mercantil</strong></td><td>Authoritative current extracts, certificates and filed documents</td><td>No immediately searchable online history; an offline request typically takes 3&ndash;5 days</td><td>Paid; historical requests typically cost EUR 20&ndash;30 or more</td><td>No</td></tr>
+            <tr><td><strong>Mapa Societario</strong></td><td>Exploring published company and officer history in one place</td><td>Consolidated BORME publication history since 2009</td><td>Free to explore</td><td>Yes</td></tr>
             <tr><td><strong>BORME</strong></td><td>Reading the original official notices published each day</td><td>Separate daily gazette editions</td><td>Free</td><td>No</td></tr>
-            <tr><td><strong>Mapa Societario</strong></td><td>Exploring published company and officer history across sources</td><td>Consolidated BORME publication history since 2009</td><td>Free to explore</td><td>Yes</td></tr>
+            <tr><td><strong>Registro Mercantil</strong></td><td>Authoritative current extracts, certificates and filed documents</td><td>No immediately searchable online history; an offline request typically takes 3&ndash;5 days</td><td>Paid; historical requests typically cost EUR 20&ndash;30 or more</td><td>No</td></tr>
           </tbody>
         </table>
         <p>Consult the <a href="https://www.boe.es/diario_borme/">official BORME editions</a> or the <a href="https://www.mjusticia.gob.es/es/ciudadania/registros/propiedad-mercantiles/registro-mercantil">Ministry of Justice registry guidance</a> when you need the original publication or official registry services.</p>
@@ -346,6 +346,51 @@ const routes = [
           <li>Order a due diligence report only when you need a PDF record.</li>
         </ol>
         <p><a href="/app?source=register_guide">Open the relationship graph</a> | <a href="/en/listed-companies">Browse IBEX 35 listed companies</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence reports</a></p>
+      </main>`,
+  },
+  {
+    path: '/es/busqueda-registro-mercantil',
+    title: 'Registro Mercantil, BORME y Mapa Societario | Comparativa',
+    description:
+      'Compara el Registro Mercantil, el BORME y Mapa Societario por historial, coste y grafo, y explora publicaciones mercantiles desde 2009.',
+    ogType: 'article',
+    lang: 'es',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Registro Mercantil, BORME y Mapa Societario: qu&eacute; fuente usar</h1>
+        <p>Explora las publicaciones diarias del BORME posteriores a actos del Registro Mercantil. Mapa Societario no es una consulta directa del Registro ni ofrece certificaciones registrales actuales.</p>
+        <p><a href="/app?lang=es&amp;source=register_guide">Abrir el grafo de relaciones</a></p>
+        <h2>&iquest;Qu&eacute; fuente debes utilizar?</h2>
+        <p>Las tres fuentes responden a necesidades distintas. El historial del Registro exige una solicitud offline de pago; Mapa Societario permite explorar inmediatamente el historial publicado en BORME como un grafo de relaciones.</p>
+        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+          <thead><tr><th align="left">Fuente</th><th align="left">Mejor para</th><th align="left">Visi&oacute;n hist&oacute;rica</th><th align="left">Acceso</th><th align="left">Grafo</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Mapa Societario</strong></td><td>Explorar en un solo lugar el historial publicado de empresas y administradores</td><td>Historial consolidado de publicaciones BORME desde 2009</td><td>Exploraci&oacute;n gratuita</td><td>S&iacute;</td></tr>
+            <tr><td><strong>BORME</strong></td><td>Leer los anuncios oficiales originales publicados cada d&iacute;a</td><td>Ediciones diarias separadas</td><td>Gratis</td><td>No</td></tr>
+            <tr><td><strong>Registro Mercantil</strong></td><td>Notas, certificaciones y documentos oficiales actuales</td><td>No ofrece un historial consultable en l&iacute;nea de forma inmediata; una solicitud offline suele tardar 3&ndash;5 d&iacute;as</td><td>De pago; las solicitudes hist&oacute;ricas suelen costar 20&ndash;30 EUR o m&aacute;s</td><td>No</td></tr>
+          </tbody>
+        </table>
+        <p>Consulta las <a href="https://www.boe.es/diario_borme/">ediciones oficiales del BORME</a> o la <a href="https://www.mjusticia.gob.es/es/ciudadania/registros/propiedad-mercantiles/registro-mercantil">informaci&oacute;n del Ministerio de Justicia sobre el Registro Mercantil</a> cuando necesites el anuncio original o servicios registrales oficiales.</p>
+        ${disclaimerHtmlEs}
+        <h2>Qu&eacute; busca esta herramienta y qu&eacute; no</h2>
+        <p>Mapa Societario busca en un &iacute;ndice estructurado de actos publicados en las ediciones diarias del BORME. Esas publicaciones recogen actos inscritos por los Registros Mercantiles provinciales, como constituciones, nombramientos, ceses, cambios de capital y disoluciones.</p>
+        <p>No es una consulta directa del Registro Mercantil en vivo, de la hoja registral de una sociedad ni del Registro Mercantil Central. Mapa Societario no emite certificaciones ni notas registrales actuales con valor oficial.</p>
+        <h2>C&oacute;mo llegan los actos registrales al BORME</h2>
+        <p>El Registro Mercantil inscribe los actos societarios. Muchos de esos actos se publican despu&eacute;s en el BORME, el bolet&iacute;n oficial mercantil distribuido a trav&eacute;s del sistema de publicaci&oacute;n del BOE.</p>
+        <p>Mapa Societario estructura esos anuncios diarios como historiales de empresas y grafos de relaciones. Su cobertura refleja lo publicado en BORME; no reproduce todos los campos ni documentos conservados por el Registro Mercantil.</p>
+        <h2>Qu&eacute; puede revelar el historial publicado</h2>
+        <p>Los actos publicados pueden incluir constituciones, nombramientos y ceses, ampliaciones o reducciones de capital, fusiones, escisiones, disoluciones, cambios de domicilio y declaraciones de socio &uacute;nico.</p>
+        <h2>Cu&aacute;ndo utilizar el Registro Mercantil</h2>
+        <p>Utiliza el Registro Mercantil correspondiente cuando necesites una certificaci&oacute;n, una nota actual con valor oficial, cuentas depositadas o informaci&oacute;n que pueda constar en la hoja registral pero no se haya publicado en BORME.</p>
+        <p>Utiliza Mapa Societario para investigar cambios publicados a lo largo del tiempo, localizar administradores actuales y anteriores, revisar declaraciones de socio &uacute;nico y explorar relaciones entre empresas en una sola vista.</p>
+        <h2>C&oacute;mo utilizar Mapa Societario</h2>
+        <ol>
+          <li>Abre el grafo de relaciones y busca por nombre de empresa o de administrador.</li>
+          <li>Revisa la ficha, los cargos, los eventos de capital, las declaraciones de socio &uacute;nico y las sociedades conectadas.</li>
+          <li>Ampl&iacute;a el grafo cuando un administrador, apoderado o empresa relacionada necesite m&aacute;s contexto.</li>
+          <li>Solicita un informe due diligence cuando necesites un PDF documental.</li>
+        </ol>
+        <p><a href="/app?lang=es&amp;source=register_guide">Abrir el grafo de relaciones</a> | <a href="/empresas-cotizadas">Empresas del IBEX 35</a> | <a href="/due-diligence?lang=es">Informes due diligence</a></p>
       </main>`,
   },
   {
@@ -567,12 +612,16 @@ function removeNoscriptFallback(html) {
   return html.replace(/\s*<noscript>[\s\S]*?<\/noscript>/i, '');
 }
 
+function removeHreflangLinks(html) {
+  return html.replace(/\s*<link\b(?=[^>]*\brel="alternate")(?=[^>]*\bhreflang=)[^>]*>/gi, '');
+}
+
 // ---------------------------------------------------------------------------
 // Generate one HTML file per route
 // ---------------------------------------------------------------------------
 
 for (const route of routes) {
-  let html = removeNoscriptFallback(baseHtml);
+  let html = removeHreflangLinks(removeNoscriptFallback(baseHtml));
 
   const routeCanonicalPath = canonicalPath(route.path);
   const pageUrl = `${siteUrl}${routeCanonicalPath}`;
@@ -592,15 +641,20 @@ for (const route of routes) {
     /(<link\s+rel="canonical"[^>]*href=")[^"]*(")/, `$1${pageUrl}$2`,
   );
 
-  // hreflang reciprocity: only the homepage pair (/ and /es) are true
-  // translations of each other, so only they carry alternate links. The
-  // other /es/* guide pages have no English equivalents.
+  // hreflang reciprocity for the true translation pairs.
   if (route.path === '/' || route.path === '/es') {
     html = injectHeadLinks(
       html,
       `    <link rel="alternate" hreflang="en" href="${siteUrl}/" />
     <link rel="alternate" hreflang="es" href="${siteUrl}/es/" />
     <link rel="alternate" hreflang="x-default" href="${siteUrl}/" />`,
+    );
+  } else if (route.path === '/spanish-company-register-search' || route.path === '/es/busqueda-registro-mercantil') {
+    html = injectHeadLinks(
+      html,
+      `    <link rel="alternate" hreflang="en" href="${siteUrl}/spanish-company-register-search/" />
+    <link rel="alternate" hreflang="es" href="${siteUrl}/es/busqueda-registro-mercantil/" />
+    <link rel="alternate" hreflang="x-default" href="${siteUrl}/spanish-company-register-search/" />`,
     );
   }
 

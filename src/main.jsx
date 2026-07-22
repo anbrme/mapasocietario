@@ -94,6 +94,7 @@ function AppRoutes() {
       <Route path="/es" element={<LandingPage lang="es" />} />
       <Route path="/connect-claude" element={<Suspense fallback={null}><ConnectClaudePage lang="en" /></Suspense>} />
       <Route path="/es/conectar-claude" element={<Suspense fallback={null}><ConnectClaudePage lang="es" /></Suspense>} />
+      <Route path="/es/busqueda-registro-mercantil" element={<Suspense fallback={null}><EnglishRegisterSearchPage language="es" /></Suspense>} />
       <Route path="/es/:slug" element={<Suspense fallback={null}><SpanishSeoPage /></Suspense>} />
       <Route path="/app" element={<App />} />
       <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
