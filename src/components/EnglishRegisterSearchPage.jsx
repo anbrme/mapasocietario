@@ -64,7 +64,7 @@ const sections = [
 const sourceComparison = [
   {
     source: 'Registro Mercantil',
-    provides: 'Authoritative current extracts, certificates and filed documents. Official documents are paid and accessed company by company.',
+    provides: 'Authoritative current extracts, certificates and filed documents. Official documents are paid and accessed company by company rather than as a free consolidated historical timeline.',
     relationship: 'Not searched directly by Mapa Societario; it does not provide a cross-company relationship graph.',
   },
   {

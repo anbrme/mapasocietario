@@ -331,7 +331,7 @@ const routes = [
         <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
           <thead><tr><th align="left">Source</th><th align="left">What it provides</th><th align="left">Relationship to this search</th></tr></thead>
           <tbody>
-            <tr><td><strong>Registro Mercantil</strong></td><td>Authoritative current extracts, certificates and filed documents. Official documents are paid and accessed company by company.</td><td>Not searched directly by Mapa Societario; it does not provide a cross-company relationship graph.</td></tr>
+            <tr><td><strong>Registro Mercantil</strong></td><td>Authoritative current extracts, certificates and filed documents. Official documents are paid and accessed company by company rather than as a free consolidated historical timeline.</td><td>Not searched directly by Mapa Societario; it does not provide a cross-company relationship graph.</td></tr>
             <tr><td><strong>BORME</strong></td><td>Free daily official gazette notices of acts recorded by Spain's Commercial Registries.</td><td>The source publications indexed by Mapa Societario, normally read as separate daily notices.</td></tr>
             <tr><td><strong>Mapa Societario</strong></td><td>Free exploration of consolidated BORME publication history since 2009, with company and officer relationship graphs.</td><td>Independent historical-research tool; not a live registry or certificate service.</td></tr>
           </tbody>
