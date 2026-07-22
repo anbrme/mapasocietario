@@ -9,6 +9,7 @@
 import { CONFIRMATIONS } from '../functions/empresa/_confirmations.js';
 import { resolveSlug } from '../functions/empresa/_resolve.js';
 import { nameIsOfficer, confirmationProvenanceError } from '../functions/empresa/_confirmation.js';
+import { fetchJsonWithRetry } from './fetch-json-with-retry.mjs';
 
 const API = 'https://api.ncdata.eu';
 let failures = 0;
@@ -22,11 +23,10 @@ for (const [slug, rec] of Object.entries(CONFIRMATIONS)) {
   }
   const name = resolved.entry.v3Name;
   try {
-    const ac = new AbortController();
-    const timeout = setTimeout(() => ac.abort(), 10_000);
-    const r = await fetch(`${API}/bormes/v3/company/${encodeURIComponent(name)}`, { signal: ac.signal });
-    clearTimeout(timeout);
-    const data = r.ok ? await r.json() : null;
+    const data = await fetchJsonWithRetry(
+      `${API}/bormes/v3/company/${encodeURIComponent(name)}`,
+      { label: slug },
+    );
     const company = data && data.company;
     if (!company) {
       console.error(`✗ ${slug}: '${name}' returned no company`);

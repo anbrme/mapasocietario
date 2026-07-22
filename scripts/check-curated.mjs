@@ -4,30 +4,25 @@
  *  - SEED (IBEX 35) entries resolve by hoja → group_key, mirroring the
  *    page's lookup in functions/empresa/_lib.js. This catches enrichment
  *    re-canonicalizations that silently 404'd 5 indexed pages in July 2026.
- * Fails the build (exit 1) on any entry that returns no company.
+ * Fails the build (exit 1) on any entry that returns no company or repeatedly
+ * fails after transient network retries.
  * Run: node scripts/check-curated.mjs
  */
 import { CURATED } from '../functions/empresa/_curated.js';
 import { SEED } from '../functions/empresa/_ibex35.js';
+import { fetchJsonWithRetry } from './fetch-json-with-retry.mjs';
 
 const API = 'https://api.ncdata.eu';
 let failures = 0;
 
-async function fetchCompany(url) {
-  const ac = new AbortController();
-  const timeout = setTimeout(() => ac.abort(), 10_000);
-  try {
-    const r = await fetch(url, { signal: ac.signal });
-    const data = r.ok ? await r.json() : null;
-    return (data && data.company) || null;
-  } finally {
-    clearTimeout(timeout);
-  }
+async function fetchCompany(url, label) {
+  const data = await fetchJsonWithRetry(url, { label });
+  return (data && data.company) || null;
 }
 
 for (const [slug, entry] of Object.entries(CURATED)) {
   try {
-    const company = await fetchCompany(`${API}/bormes/v3/company/${encodeURIComponent(entry.v3Name)}`);
+    const company = await fetchCompany(`${API}/bormes/v3/company/${encodeURIComponent(entry.v3Name)}`, slug);
     if (!company) {
       console.error(`✗ ${slug}: v3Name '${entry.v3Name}' returned no company`);
       failures++;
@@ -43,7 +38,7 @@ for (const [slug, entry] of Object.entries(CURATED)) {
 for (const [slug, entry] of Object.entries(SEED)) {
   const groupKey = `H:${entry.hoja.replace(/\s+/g, '-')}`;
   try {
-    const company = await fetchCompany(`${API}/bormes/v3/company?group_key=${encodeURIComponent(groupKey)}`);
+    const company = await fetchCompany(`${API}/bormes/v3/company?group_key=${encodeURIComponent(groupKey)}`, slug);
     if (!company) {
       console.error(`✗ ${slug}: group_key '${groupKey}' returned no company`);
       failures++;

@@ -5,6 +5,13 @@ on:
     branches:
       - main
 
+# Back-to-back commits previously launched overlapping builds, each running the
+# same live API validation suite. Keep only the newest production deployment so
+# an older commit cannot overload the API or deploy after a newer one.
+concurrency:
+  group: mapasocietario-production
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
