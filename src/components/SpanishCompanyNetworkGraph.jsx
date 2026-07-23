@@ -1358,9 +1358,33 @@ const SpanishCompanyNetworkGraph = ({
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastSearchContext, setLastSearchContext] = useState(null);
   const graphEnteredAtRef = useRef(Date.now());
+  const lastSuccessfulSearchAtRef = useRef(null);
   const searchFocusTrackedRef = useRef(false);
   const searchTypingTrackedRef = useRef(false);
   const suggestionsTrackedRef = useRef(false);
+
+  const graphInteractionParams = useCallback(
+    node => {
+      const lastSearchAt = lastSuccessfulSearchAtRef.current;
+      return {
+        entry_source: entrySource,
+        node_type: node ? getNodeGroupType(node) : 'none',
+        has_completed_search: Boolean(lastSearchAt),
+        time_since_search_ms: lastSearchAt ? Math.max(0, Date.now() - lastSearchAt) : 0,
+      };
+    },
+    [entrySource]
+  );
+
+  const trackGraphToolbarAction = useCallback(
+    action => {
+      trackEvent('graph_toolbar_action', {
+        ...graphInteractionParams(),
+        toolbar_action: action,
+      });
+    },
+    [graphInteractionParams]
+  );
 
   // Track pinned node IDs (nodes added by direct search — always shown regardless of filter)
   const [pinnedNodeIds, setPinnedNodeIds] = useState(new Set());
@@ -2354,6 +2378,9 @@ const SpanishCompanyNetworkGraph = ({
     const effectiveSearchType = searchTypeOverride || searchType;
     const trackSearchResult = (resultState, resultCount = 0) => {
       if (analyticsOrigin === 'settings_refetch') return;
+      if (resultState === 'success') {
+        lastSuccessfulSearchAtRef.current = Date.now();
+      }
       trackEvent('graph_search_result', {
         entry_source: entrySource,
         search_origin: analyticsOrigin,
@@ -4101,8 +4128,15 @@ const SpanishCompanyNetworkGraph = ({
 
   // Expand a node (called on double-click)
   const expandNode = useCallback(
-    async node => {
-      if (node.expanded) return;
+    async (node, expandOrigin = 'unknown') => {
+      if (node.expanded) {
+        trackEvent('graph_node_expand', {
+          ...graphInteractionParams(node),
+          expand_origin: expandOrigin,
+          expand_result: 'already_expanded',
+        });
+        return;
+      }
 
       setIsLoading(true);
       try {
@@ -4118,18 +4152,28 @@ const SpanishCompanyNetworkGraph = ({
         if (!found) {
           setError(text.noAdditionalResults(node.name));
         }
+        trackEvent('graph_node_expand', {
+          ...graphInteractionParams(node),
+          expand_origin: expandOrigin,
+          expand_result: found ? 'success' : 'empty',
+        });
         // Note: node.expanded = true was set above via direct mutation.
         // Do NOT call setGraphData here to re-create node objects — that breaks
         // ForceGraph2D's internal references (x, y, fx, fy get lost), causing
         // the node to detach from its edges on drag.
       } catch (err) {
         console.error('Error expanding node:', err);
+        trackEvent('graph_node_expand', {
+          ...graphInteractionParams(node),
+          expand_origin: expandOrigin,
+          expand_result: 'error',
+        });
         setError(text.expandError(err.message));
       } finally {
         setIsLoading(false);
       }
     },
-    [expandOfficerNode, expandCompanyNode, text]
+    [expandOfficerNode, expandCompanyNode, graphInteractionParams, text]
   );
 
   // handleNodeClick is defined after handleNodeRightClick (below) for mobile touch support
@@ -4216,6 +4260,19 @@ const SpanishCompanyNetworkGraph = ({
   const closeNodeContextMenu = useCallback(() => {
     setNodeContextMenu(null);
   }, []);
+
+  const runContextAction = useCallback(
+    (contextAction, handler) => {
+      if (contextNode) {
+        trackEvent('graph_context_action', {
+          ...graphInteractionParams(contextNode),
+          context_action: contextAction,
+        });
+      }
+      if (typeof handler === 'function') handler();
+    },
+    [contextNode, graphInteractionParams]
+  );
 
   const openHiddenNodesMenu = useCallback(event => {
     setHiddenNodesMenuAnchorEl(event.currentTarget);
@@ -4666,6 +4723,14 @@ const SpanishCompanyNetworkGraph = ({
         window.innerHeight - MENU_ESTIMATED_HEIGHT - VIEWPORT_MARGIN
       );
 
+      const interactionSource =
+        options.interactionSource ||
+        (event?.type === 'contextmenu' ? 'right_click' : isTouchDevice ? 'touch' : 'pointer');
+      trackEvent('graph_context_menu_open', {
+        ...graphInteractionParams(node),
+        interaction_source: interactionSource,
+      });
+
       setActiveNodeId(nodeId);
       setNodeContextMenu({
         mouseX: menuX,
@@ -4674,7 +4739,7 @@ const SpanishCompanyNetworkGraph = ({
         statusCategory: options.statusCategory || null,
       });
     },
-    [closeHiddenNodesMenu, containerEl]
+    [closeHiddenNodesMenu, containerEl, graphInteractionParams, isTouchDevice]
   );
 
   const toggleInvestigationNode = useCallback((rawId) => {
@@ -4720,6 +4785,11 @@ const SpanishCompanyNetworkGraph = ({
       if (isNodeNoteMarkerClick(node, event)) {
         event.preventDefault?.();
         lastClickRef.current = { nodeId: null, time: 0 };
+        trackEvent('graph_node_click', {
+          ...graphInteractionParams(node),
+          interaction_source: isTouchDevice ? 'touch' : 'mouse',
+          click_action: 'note_marker',
+        });
         setActiveNodeId(nodeId);
         setNodeNotePreviewId(nodeId);
         return;
@@ -4734,6 +4804,11 @@ const SpanishCompanyNetworkGraph = ({
 
       if (event && (event.shiftKey || event.metaKey || event.ctrlKey)) {
         event.preventDefault?.();
+        trackEvent('graph_node_click', {
+          ...graphInteractionParams(node),
+          interaction_source: isTouchDevice ? 'touch' : 'mouse',
+          click_action: 'investigation_toggle',
+        });
         toggleInvestigationNode(nodeId);
         return;
       }
@@ -4755,6 +4830,11 @@ const SpanishCompanyNetworkGraph = ({
         } else {
           // First tap — just select/highlight the node
           lastClickRef.current = { nodeId, time: now };
+          trackEvent('graph_node_click', {
+            ...graphInteractionParams(node),
+            interaction_source: 'touch',
+            click_action: 'select',
+          });
           setActiveNodeId(nodeId);
         }
         return;
@@ -4765,13 +4845,34 @@ const SpanishCompanyNetworkGraph = ({
         (isSameNodeId(last.nodeId, nodeId) && now - last.time < threshold)
       ) {
         lastClickRef.current = { nodeId: null, time: 0 };
-        expandNode(node);
+        expandNode(node, 'double_click');
       } else {
         lastClickRef.current = { nodeId, time: now };
+        trackEvent('graph_node_click', {
+          ...graphInteractionParams(node),
+          interaction_source: 'mouse',
+          click_action: 'select',
+        });
       }
     },
-    [expandNode, embedded, isFullscreen, handleNodeRightClick, toggleInvestigationNode, isNodeNoteMarkerClick]
+    [
+      expandNode,
+      embedded,
+      graphInteractionParams,
+      isFullscreen,
+      handleNodeRightClick,
+      isNodeNoteMarkerClick,
+      isTouchDevice,
+      toggleInvestigationNode,
+    ]
   );
+
+  const handleBackgroundClick = useCallback(() => {
+    trackEvent('graph_background_click', {
+      ...graphInteractionParams(),
+      interaction_source: isTouchDevice ? 'touch' : 'mouse',
+    });
+  }, [graphInteractionParams, isTouchDevice]);
 
   const openEditNodeDialog = useCallback(() => {
     if (!contextNode) return;
@@ -6707,6 +6808,7 @@ const SpanishCompanyNetworkGraph = ({
     setHiddenNodeIds(new Set());
     setError(null);
     setLastSearchContext(null);
+    lastSuccessfulSearchAtRef.current = null;
     setPrimarySubject(null);
     setSelectedSidebarCompany(null);
     setLoadingMore(false);
@@ -7036,6 +7138,7 @@ const SpanishCompanyNetworkGraph = ({
     setShortestPathArray([]);
     setPrimarySubject(snapshot.context?.primarySubject || null);
     setLastSearchContext(null);
+    lastSuccessfulSearchAtRef.current = null;
     setLoadingMore(false);
     setSelectedSidebarCompany(null);
     setPendingSubsidiaries(null);
@@ -7318,6 +7421,7 @@ const SpanishCompanyNetworkGraph = ({
         result_state: 'success',
         result_count: total,
       });
+      lastSuccessfulSearchAtRef.current = Date.now();
       setSearchQuery('');
       return;
     }
@@ -7620,6 +7724,7 @@ const SpanishCompanyNetworkGraph = ({
               boxShadow: '0 2px 10px rgba(20,184,166,0.35)',
             }}
             onClick={() => {
+              trackGraphToolbarAction('due_diligence');
               // DD is per-company. Prefer the sticky subject (always a company,
               // and may carry corrections for the Custom option); fall back to the
               // latest company search — never an officer query.
@@ -7648,7 +7753,10 @@ const SpanishCompanyNetworkGraph = ({
                   startIcon={relResolving ? <CircularProgress size={14} /> : <AccountTreeIcon />}
                   disabled={relResolving}
                   sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(20,184,166,0.35)' }}
-                  onClick={openRelationshipReport}>
+                  onClick={() => {
+                    trackGraphToolbarAction('relationship_report');
+                    openRelationshipReport();
+                  }}>
                   {text.relationshipReport}
                 </Button>
               </Badge>
@@ -7662,7 +7770,10 @@ const SpanishCompanyNetworkGraph = ({
               color="info" size="small"
               startIcon={<HubIcon />}
               sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
-              onClick={() => setShowSharedConnections(v => !v)}>
+              onClick={() => {
+                trackGraphToolbarAction('toggle_shared_connections');
+                setShowSharedConnections(v => !v);
+              }}>
               {showSharedConnections ? `${text.sharedConnections} ✓` : text.sharedConnections}
             </Button>
           </Tooltip>
@@ -7697,7 +7808,10 @@ const SpanishCompanyNetworkGraph = ({
         />
         <Tooltip title={text.legalTooltip}>
           <IconButton
-            onClick={() => setLegalDisclaimerOpen(true)}
+            onClick={() => {
+              trackGraphToolbarAction('legal_info');
+              setLegalDisclaimerOpen(true);
+            }}
             size="small"
             aria-label={text.legalLabel}
           >
@@ -7706,7 +7820,10 @@ const SpanishCompanyNetworkGraph = ({
         </Tooltip>
         <Tooltip title={text.pathfinderTooltip}>
           <IconButton
-            onClick={() => setPathfinderActive(!pathfinderActive)}
+            onClick={() => {
+              trackGraphToolbarAction('toggle_pathfinder');
+              setPathfinderActive(!pathfinderActive);
+            }}
             color={pathfinderActive ? "primary" : "default"}
             size="small"
             aria-label={text.pathfinderTooltip}
@@ -7716,7 +7833,10 @@ const SpanishCompanyNetworkGraph = ({
         </Tooltip>
         <Tooltip title={text.graphSettingsTitle}>
           <IconButton
-            onClick={() => setShowSettings(!showSettings)}
+            onClick={() => {
+              trackGraphToolbarAction('toggle_settings');
+              setShowSettings(!showSettings);
+            }}
             color={showSettings ? 'primary' : 'default'}
             aria-label={text.graphSettingsTitle}
           >
@@ -8294,29 +8414,29 @@ const SpanishCompanyNetworkGraph = ({
       >
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
           <Tooltip title={text.zoomIn}>
-            <IconButton onClick={zoomIn} size="small">
+            <IconButton onClick={() => { trackGraphToolbarAction('zoom_in'); zoomIn(); }} size="small">
               <ZoomInIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title={text.zoomOut}>
-            <IconButton onClick={zoomOut} size="small">
+            <IconButton onClick={() => { trackGraphToolbarAction('zoom_out'); zoomOut(); }} size="small">
               <ZoomOutIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title={text.center}>
-            <IconButton onClick={centerGraph} size="small">
+            <IconButton onClick={() => { trackGraphToolbarAction('center_graph'); centerGraph(); }} size="small">
               <CenterIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title={text.clearGraph}>
-            <IconButton onClick={clearGraph} size="small">
+            <IconButton onClick={() => { trackGraphToolbarAction('clear_graph'); clearGraph(); }} size="small">
               <RefreshIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title={text.exportGraph}>
             <span>
               <IconButton
-                onClick={exportGraphSnapshot}
+                onClick={() => { trackGraphToolbarAction('export_graph'); exportGraphSnapshot(); }}
                 size="small"
                 disabled={graphData.nodes.length === 0 || isSearching || isLoading || loadingMore || loadingSubsidiaries}
               >
@@ -8326,7 +8446,10 @@ const SpanishCompanyNetworkGraph = ({
           </Tooltip>
           <Tooltip title={text.importGraph}>
             <IconButton
-              onClick={() => snapshotInputRef.current?.click()}
+              onClick={() => {
+                trackGraphToolbarAction('import_graph');
+                snapshotInputRef.current?.click();
+              }}
               size="small"
               disabled={isSearching || isLoading || loadingMore || loadingSubsidiaries}
             >
@@ -8349,7 +8472,13 @@ const SpanishCompanyNetworkGraph = ({
                   : text.fullscreen
             }
           >
-            <IconButton onClick={toggleFullscreen} size="small">
+            <IconButton
+              onClick={() => {
+                trackGraphToolbarAction(isFullscreen ? 'exit_fullscreen' : 'enter_fullscreen');
+                toggleFullscreen();
+              }}
+              size="small"
+            >
               {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
             </IconButton>
           </Tooltip>
@@ -8390,7 +8519,10 @@ const SpanishCompanyNetworkGraph = ({
               <Button
                 size="small"
                 variant="outlined"
-                onClick={openHiddenNodesMenu}
+                onClick={event => {
+                  trackGraphToolbarAction('manage_hidden_nodes');
+                  openHiddenNodesMenu(event);
+                }}
                 startIcon={<VisibilityIcon sx={{ fontSize: 14 }} />}
                 sx={{ fontSize: '0.7rem', py: 0, textTransform: 'none' }}
               >
@@ -8441,6 +8573,7 @@ const SpanishCompanyNetworkGraph = ({
             }}
             onNodeClick={handleNodeClick}
             onNodeRightClick={handleNodeRightClick}
+            onBackgroundClick={handleBackgroundClick}
             onNodeDrag={handleNodeDrag}
             onNodeDragEnd={handleNodeDragEnd}
             onZoom={handleZoom}
@@ -8799,7 +8932,7 @@ const SpanishCompanyNetworkGraph = ({
                         <TableCell
                           onClick={
                             row.companyNode
-                              ? (e) => handleNodeRightClick(row.companyNode, e)
+                              ? (e) => handleNodeRightClick(row.companyNode, e, { interactionSource: 'table_row' })
                               : undefined
                           }
                           sx={{
@@ -8822,7 +8955,10 @@ const SpanishCompanyNetworkGraph = ({
                         <TableCell
                           onClick={
                             row.officerNode
-                              ? (e) => handleNodeRightClick(row.officerNode, e, { statusCategory: row.category })
+                              ? (e) => handleNodeRightClick(row.officerNode, e, {
+                                  statusCategory: row.category,
+                                  interactionSource: 'table_row',
+                                })
                               : undefined
                           }
                           sx={{
@@ -9146,7 +9282,19 @@ const SpanishCompanyNetworkGraph = ({
             </Box>
           )}
           <Divider />
-          <MenuItem onClick={() => { if (contextNode) toggleInvestigationNode(contextNode.id); closeNodeContextMenu(); }}>
+          <MenuItem
+            onClick={() =>
+              runContextAction(
+                investigationSet.has(normalizeNodeId(contextNode?.id))
+                  ? 'investigation_remove'
+                  : 'investigation_add',
+                () => {
+                  if (contextNode) toggleInvestigationNode(contextNode.id);
+                  closeNodeContextMenu();
+                }
+              )
+            }
+          >
             <ListItemIcon><PsychologyIcon fontSize="small" /></ListItemIcon>
             <ListItemText>
               {investigationSet.has(normalizeNodeId(contextNode?.id))
@@ -9154,7 +9302,14 @@ const SpanishCompanyNetworkGraph = ({
                 : text.investigationAdd}
             </ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => { closeNodeContextMenu(); if (contextNode) expandNode(contextNode); }}>
+          <MenuItem
+            onClick={() =>
+              runContextAction('expand', () => {
+                closeNodeContextMenu();
+                if (contextNode) expandNode(contextNode, 'context_menu');
+              })
+            }
+          >
             <ListItemIcon>
               <NetworkIcon fontSize="small" color="primary" />
             </ListItemIcon>
@@ -9163,8 +9318,10 @@ const SpanishCompanyNetworkGraph = ({
           {contextNode && contextNode.type !== 'officer' && contextNode.cargoCount > 0 && !contextNode.unified && (
             <MenuItem
               onClick={() => {
-                closeNodeContextMenu();
-                unifyCargosForNode(contextNode.id, contextNode.name);
+                runContextAction('unify_cargos', () => {
+                  closeNodeContextMenu();
+                  unifyCargosForNode(contextNode.id, contextNode.name);
+                });
               }}
             >
               <ListItemIcon>
@@ -9176,8 +9333,10 @@ const SpanishCompanyNetworkGraph = ({
           {contextNode && contextNode.unified && (
             <MenuItem
               onClick={() => {
-                closeNodeContextMenu();
-                undoCargoUnifyForNode(contextNode.id);
+                runContextAction('undo_unify_cargos', () => {
+                  closeNodeContextMenu();
+                  undoCargoUnifyForNode(contextNode.id);
+                });
               }}
             >
               <ListItemIcon>
@@ -9186,13 +9345,20 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.cargoUndo}</ListItemText>
             </MenuItem>
           )}
-          <MenuItem onClick={openEditNodeDialog}>
+          <MenuItem onClick={() => runContextAction('edit_node', openEditNodeDialog)}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>{text.editNode}</ListItemText>
           </MenuItem>
-          <MenuItem onClick={openNodeNoteDialog}>
+          <MenuItem
+            onClick={() =>
+              runContextAction(
+                hasNodeNote(contextNode) ? 'edit_note' : 'add_note',
+                openNodeNoteDialog
+              )
+            }
+          >
             <ListItemIcon>
               <NoteIcon
                 fontSize="small"
@@ -9208,7 +9374,7 @@ const SpanishCompanyNetworkGraph = ({
             </ListItemText>
           </MenuItem>
           {hasNodeNote(contextNode) && (
-            <MenuItem onClick={removeContextNodeNote}>
+            <MenuItem onClick={() => runContextAction('remove_note', removeContextNodeNote)}>
               <ListItemIcon>
                 <RemoveNoteIcon fontSize="small" />
               </ListItemIcon>
@@ -9216,7 +9382,7 @@ const SpanishCompanyNetworkGraph = ({
             </MenuItem>
           )}
           <MenuItem
-            onClick={openMergeNodeDialog}
+            onClick={() => runContextAction('merge', openMergeNodeDialog)}
             disabled={!contextNode || mergeCandidateOptions.length === 0}
           >
             <ListItemIcon>
@@ -9229,14 +9395,14 @@ const SpanishCompanyNetworkGraph = ({
             </ListItemText>
           </MenuItem>
           {contextNode && contextNode.mergeHistory?.length > 0 && (
-            <MenuItem onClick={unmergeNode}>
+            <MenuItem onClick={() => runContextAction('unmerge', unmergeNode)}>
               <ListItemIcon>
                 <CallSplitIcon fontSize="small" color="warning" />
               </ListItemIcon>
               <ListItemText>{text.unmergeNode}</ListItemText>
             </MenuItem>
           )}
-          <MenuItem onClick={openDataPreview}>
+          <MenuItem onClick={() => runContextAction('data_preview', openDataPreview)}>
             <ListItemIcon>
               <PreviewIcon fontSize="small" color="info" />
             </ListItemIcon>
@@ -9246,6 +9412,7 @@ const SpanishCompanyNetworkGraph = ({
             <MenuItem
               disabled={timelineLoading}
               onClick={async () => {
+                runContextAction('officer_timeline');
                 const name = contextNode.name;
                 closeNodeContextMenu();
                 if (!name) return;
@@ -9294,7 +9461,7 @@ const SpanishCompanyNetworkGraph = ({
             </MenuItem>
           )}
           {contextNode && contextNode.type === 'officer' && contextOfficerCanMarkCeased && (
-            <MenuItem onClick={openMarkResignedDialog}>
+            <MenuItem onClick={() => runContextAction('mark_resigned', openMarkResignedDialog)}>
               <ListItemIcon>
                 <EventBusyIcon fontSize="small" color="warning" />
               </ListItemIcon>
@@ -9302,7 +9469,7 @@ const SpanishCompanyNetworkGraph = ({
             </MenuItem>
           )}
           {contextNode && contextNode.type === 'officer' && contextOfficerCanMarkActive && (
-            <MenuItem onClick={markContextOfficerActive}>
+            <MenuItem onClick={() => runContextAction('mark_active', markContextOfficerActive)}>
               <ListItemIcon>
                 <EventAvailableIcon fontSize="small" color="success" />
               </ListItemIcon>
@@ -9312,11 +9479,13 @@ const SpanishCompanyNetworkGraph = ({
           {contextNode && contextNode.type !== 'officer' && (
             <MenuItem
               onClick={() => {
-                closeNodeContextMenu();
-                const name = contextNode.name;
-                if (!name) return;
-                setDdCheckoutCompany(name);
-                setDdCheckoutOpen(true);
+                runContextAction('buy_due_diligence', () => {
+                  closeNodeContextMenu();
+                  const name = contextNode.name;
+                  if (!name) return;
+                  setDdCheckoutCompany(name);
+                  setDdCheckoutOpen(true);
+                });
               }}
             >
               <ListItemIcon>
@@ -9328,9 +9497,11 @@ const SpanishCompanyNetworkGraph = ({
           {contextNode && contextNode.type === 'spanish-company-group' && (
             <MenuItem
               onClick={() => {
-                const n = contextNode;
-                closeNodeContextMenu();
-                if (n) setApoderadosSidebar({ open: true, company: { name: n.name, groupKey: n.groupKey || null } });
+                runContextAction('show_apoderados', () => {
+                  const n = contextNode;
+                  closeNodeContextMenu();
+                  if (n) setApoderadosSidebar({ open: true, company: { name: n.name, groupKey: n.groupKey || null } });
+                });
               }}
             >
               <ListItemIcon>
@@ -9346,8 +9517,10 @@ const SpanishCompanyNetworkGraph = ({
             return (
               <MenuItem
                 onClick={() => {
-                  closeNodeContextMenu();
-                  setIbexMarketDialog({ open: true, seedEntry: ibexSeed, apiRow: ibexData });
+                  runContextAction('market_data', () => {
+                    closeNodeContextMenu();
+                    setIbexMarketDialog({ open: true, seedEntry: ibexSeed, apiRow: ibexData });
+                  });
                 }}
               >
                 <ListItemIcon>
@@ -9357,20 +9530,20 @@ const SpanishCompanyNetworkGraph = ({
               </MenuItem>
             );
           })()}
-          <MenuItem onClick={hideNodeFromMenu}>
+          <MenuItem onClick={() => runContextAction('hide_node', hideNodeFromMenu)}>
             <ListItemIcon>
               <VisibilityOffIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>{text.hideNodeOnly}</ListItemText>
           </MenuItem>
-          <MenuItem onClick={hideNodeWithRelationsFromMenu}>
+          <MenuItem onClick={() => runContextAction('hide_node_relations', hideNodeWithRelationsFromMenu)}>
             <ListItemIcon>
               <VisibilityOffIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>{text.hideNodeRelations}</ListItemText>
           </MenuItem>
           <Divider />
-          <MenuItem onClick={openDeleteNodeDialog} sx={{ color: 'error.main' }}>
+          <MenuItem onClick={() => runContextAction('delete_node', openDeleteNodeDialog)} sx={{ color: 'error.main' }}>
             <ListItemIcon>
               <DeleteOutlineIcon fontSize="small" color="error" />
             </ListItemIcon>
