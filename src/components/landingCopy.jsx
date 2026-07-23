@@ -326,7 +326,7 @@ export const LANDING_COPY = {
         },
         {
           q: '¿Puedo buscar por nombre de administrador?',
-          a: 'Sí. La búsqueda por persona te permite encontrar a alguien y ver todas las empresas a las que está vinculado, a partir de 6,3 millones de cambios de administradores registrados. Sin embargo, ten en cuenta que el BORME no ofrece un identificador para los administradores, por lo que la búsqueda se basa en la coincidencia de nombres. En el caso de nombres comunes, esto puede dar lugar a falsos positivos (usamos varias técnicas para limitarlo y las relaciones incorrectas no son habituales, pero creemos importante que conozcas esta limitación).',
+          a: 'Sí. El cuadro de búsqueda es el mismo para personas y para empresas. Para personas, te permite encontrar a alguien y ver todas las empresas a las que está vinculado, a partir de 6,3 millones de cambios de administradores registrados. Sin embargo, ten en cuenta que el BORME no ofrece un identificador para los administradores, por lo que la búsqueda se basa en la coincidencia de nombres. En el caso de nombres comunes, esto puede dar lugar a falsos positivos (usamos varias técnicas para limitarlo y las relaciones incorrectas no son habituales, pero creemos importante que conozcas esta limitación).',
         },
         {
           q: '¿Los datos son precisos y oficiales?',
