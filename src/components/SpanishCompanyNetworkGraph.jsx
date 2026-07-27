@@ -145,6 +145,7 @@ import {
   removeNodeNote,
   setNodeNote,
 } from '../utils/nodeNotes';
+import { rebindLinksAfterNodeUpdate } from '../utils/graphLinkBinding';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
 import { matchIbexSeed, matchAllIbexNodes } from '../utils/ibex35Match';
@@ -2502,25 +2503,33 @@ const SpanishCompanyNetworkGraph = ({
                 .map(c => companyNameToId(normalizeCompanyName(c.company_name || c.name || '')))
             );
             if (dissolvedIds.size > 0 || groupKey) {
-              setGraphData(prev => ({
-                ...prev,
-                nodes: prev.nodes.map(n => {
+              setGraphData(prev => {
+                const nextNodes = prev.nodes.map(n => {
                   const updates = {};
                   if (dissolvedIds.has(n.id)) updates.isDissolved = true;
                   if (groupKey && pinnedIds.includes(n.id) && !n.groupKey) updates.groupKey = groupKey;
                   return Object.keys(updates).length > 0 ? { ...n, ...updates } : n;
-                }),
-              }));
+                });
+                return {
+                  ...prev,
+                  nodes: nextNodes,
+                  links: rebindLinksAfterNodeUpdate(prev.links, prev.nodes, nextNodes),
+                };
+              });
             } else if (groupKey && pinnedIds.length > 0) {
               // Stamp the resolved group_key onto the searched company node so a
               // later preview/expand reuses it (step 1 of resolveCompanyGroupKey)
               // instead of re-resolving the name.
-              setGraphData(prev => ({
-                ...prev,
-                nodes: prev.nodes.map(n =>
+              setGraphData(prev => {
+                const nextNodes = prev.nodes.map(n =>
                   pinnedIds.includes(n.id) && !n.groupKey ? { ...n, groupKey } : n
-                ),
-              }));
+                );
+                return {
+                  ...prev,
+                  nodes: nextNodes,
+                  links: rebindLinksAfterNodeUpdate(prev.links, prev.nodes, nextNodes),
+                };
+              });
             }
             setLastSearchContext({
               query,
@@ -3765,12 +3774,16 @@ const SpanishCompanyNetworkGraph = ({
     try {
       const res = await detectCargoPresence(spanishCompaniesService, companyName);
       if (!res.hasCargo || res.count <= 0) return;
-      setGraphData(prev => ({
-        ...prev,
-        nodes: prev.nodes.map(n =>
+      setGraphData(prev => {
+        const nextNodes = prev.nodes.map(n =>
           n.id === companyId && !n.unified ? { ...n, cargoCount: res.count } : n
-        ),
-      }));
+        );
+        return {
+          ...prev,
+          nodes: nextNodes,
+          links: rebindLinksAfterNodeUpdate(prev.links, prev.nodes, nextNodes),
+        };
+      });
     } catch {
       // Non-fatal — detection is best-effort.
     }
@@ -4108,12 +4121,16 @@ const SpanishCompanyNetworkGraph = ({
           // mark its officer links as companyDissolved (mirrors handleSearch path).
           if (v3.company.is_dissolved) {
             const nodeId = companyNode.id;
-            setGraphData(prev => ({
-              ...prev,
-              nodes: prev.nodes.map(n =>
+            setGraphData(prev => {
+              const nextNodes = prev.nodes.map(n =>
                 n.id === nodeId && !n.isDissolved ? { ...n, isDissolved: true } : n
-              ),
-            }));
+              );
+              return {
+                ...prev,
+                nodes: nextNodes,
+                links: rebindLinksAfterNodeUpdate(prev.links, prev.nodes, nextNodes),
+              };
+            });
           }
           return true;
         }
@@ -5559,7 +5576,14 @@ const SpanishCompanyNetworkGraph = ({
         }
         return node;
       });
-      return { ...prev, nodes: updatedNodes };
+      // Renaming replaces node objects, so every edge touching one of them has to
+      // be re-resolved — otherwise the links stay bound to the pre-rename objects
+      // and the nodes drag away from their edges.
+      return {
+        ...prev,
+        nodes: updatedNodes,
+        links: rebindLinksAfterNodeUpdate(prev.links, prev.nodes, updatedNodes),
+      };
     });
 
     setIsEditNodeDialogOpen(false);

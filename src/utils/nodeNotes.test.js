@@ -34,6 +34,43 @@ describe('node notes', () => {
     expect(hasNodeNote(updated.nodes[0])).toBe(true);
   });
 
+  // force-graph rewrites link.source/link.target from ids into live node object
+  // references once the simulation starts. A note must not leave a link bound to
+  // the pre-note node object, or the edge stops following the node on drag.
+  const simulatedGraph = () => {
+    const companyNode = { id: 'company-a', name: 'A', x: 10, y: 10 };
+    const officerNode = { id: 'officer-b', name: 'B', x: 40, y: 40 };
+    return {
+      nodes: [companyNode, officerNode],
+      links: [{ id: 'a-b', source: companyNode, target: officerNode }],
+    };
+  };
+
+  const resolveEndpoint = (graphData, endpoint) => (
+    endpoint && typeof endpoint === 'object'
+      ? endpoint
+      : graphData.nodes.find(node => String(node.id) === String(endpoint))
+  );
+
+  it('keeps links bound to the live node object after a note is added', () => {
+    const live = simulatedGraph();
+    const updated = setNodeNote(live, 'company-a', { text: 'Check this', flag: 'red' });
+
+    expect(updated.nodes[0]).not.toBe(live.nodes[0]);
+    expect(resolveEndpoint(updated, updated.links[0].source)).toBe(updated.nodes[0]);
+    expect(resolveEndpoint(updated, updated.links[0].target)).toBe(updated.nodes[1]);
+  });
+
+  it('keeps links bound to the live node object after a note is removed', () => {
+    const live = simulatedGraph();
+    const withNote = setNodeNote(live, 'company-a', { text: 'Check this', flag: 'red' });
+    const updated = removeNodeNote(withNote, 'company-a');
+
+    expect(updated.nodes[0]).not.toBe(withNote.nodes[0]);
+    expect(resolveEndpoint(updated, updated.links[0].source)).toBe(updated.nodes[0]);
+    expect(resolveEndpoint(updated, updated.links[0].target)).toBe(updated.nodes[1]);
+  });
+
   it('removes only the selected node note', () => {
     const withNote = setNodeNote(graph, 'company-a', { text: 'Check this', flag: 'red' });
     const updated = removeNodeNote(withNote, 'company-a');

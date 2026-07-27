@@ -1,3 +1,5 @@
+import { rebindLinkEndpoints } from './graphLinkBinding';
+
 export const NODE_NOTE_MAX_LENGTH = 2000;
 
 export const NODE_NOTE_FLAGS = Object.freeze({
@@ -61,19 +63,31 @@ export const setNodeNote = (graphData, nodeId, draft, updatedAt) => {
     nodes: (graphData?.nodes || []).map(node => (
       normalizeNodeId(node.id) === targetId ? { ...node, userNote: note } : node
     )),
+    // The annotated node is a NEW object, so its edges must be re-resolved or
+    // they stay bound to the pre-note object and stop following it on drag.
+    links: rebindLinkEndpoints(graphData?.links, [targetId]),
   };
 };
 
 export const removeNodeNote = (graphData, nodeId) => {
   const targetId = normalizeNodeId(nodeId);
   if (!targetId) return graphData;
+
+  let didRemoveNote = false;
+  const nodes = (graphData?.nodes || []).map(node => {
+    if (normalizeNodeId(node.id) !== targetId || !node.userNote) return node;
+    didRemoveNote = true;
+    const { userNote, ...withoutNote } = node;
+    return withoutNote;
+  });
+  if (!didRemoveNote) return graphData;
+
   return {
     ...graphData,
-    nodes: (graphData?.nodes || []).map(node => {
-      if (normalizeNodeId(node.id) !== targetId || !node.userNote) return node;
-      const { userNote, ...withoutNote } = node;
-      return withoutNote;
-    }),
+    nodes,
+    // Same reason as setNodeNote: the node object was replaced, so its edges
+    // have to be re-resolved against it.
+    links: rebindLinkEndpoints(graphData?.links, [targetId]),
   };
 };
 
