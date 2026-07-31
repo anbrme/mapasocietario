@@ -7,6 +7,7 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
 import FeedbackWidget from './components/FeedbackWidget';
+import { ThemeModeToggle } from './theme/ThemeModeToggle';
 import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
 import { openListedCompanies } from './services/listedCompaniesNav';
 import { trackEvent } from './utils/track';
@@ -40,6 +41,10 @@ const APP_COPY = {
       terms: 'Terms',
       privacy: 'Privacy',
     },
+    themeToggle: {
+      toLight: 'Switch to light mode',
+      toDark: 'Switch to dark mode',
+    },
   },
   es: {
     title: 'Grafo de Relaciones | Mapa Societario',
@@ -62,6 +67,10 @@ const APP_COPY = {
       facebook: 'Facebook',
       terms: 'Términos',
       privacy: 'Privacidad',
+    },
+    themeToggle: {
+      toLight: 'Cambiar a modo claro',
+      toDark: 'Cambiar a modo oscuro',
     },
   },
 };
@@ -217,6 +226,7 @@ export default function App() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+          <ThemeModeToggle label={copy.themeToggle} />
           <Tooltip title={copy.menu.tooltip}>
             <IconButton
               size="small"
