@@ -8,6 +8,7 @@ describe('createAppTheme', () => {
     expect(theme.palette.mode).toBe('dark');
     expect(theme.palette.background.default).toBe(DARK_TOKENS.background.default);
     expect(theme.palette.graph).toEqual(DARK_TOKENS.graph);
+    expect(theme.palette.accent).toEqual(DARK_TOKENS.accent);
   });
 
   it('builds a light theme carrying the light graph tokens', () => {
@@ -15,6 +16,7 @@ describe('createAppTheme', () => {
     expect(theme.palette.mode).toBe('light');
     expect(theme.palette.background.default).toBe(LIGHT_TOKENS.background.default);
     expect(theme.palette.graph).toEqual(LIGHT_TOKENS.graph);
+    expect(theme.palette.accent).toEqual(LIGHT_TOKENS.accent);
   });
 
   it('falls back to dark for an unrecognised mode', () => {

@@ -13,6 +13,7 @@ export function createAppTheme(mode) {
     palette: {
       mode: safeMode,
       primary: { ...tokens.primary },
+      accent: { ...tokens.accent },
       background: { ...tokens.background },
       graph: tokens.graph,
     },

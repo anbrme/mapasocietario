@@ -19,7 +19,7 @@ export function ThemeModeToggle({ label }) {
         size="small"
         onClick={toggleMode}
         aria-label={title}
-        sx={{ color: 'text.secondary', '&:hover': { color: 'primary.light' } }}
+        sx={{ color: 'text.secondary', '&:hover': { color: 'accent.primary' } }}
       >
         {isLight
           ? <DarkModeIcon sx={{ fontSize: 20 }} />

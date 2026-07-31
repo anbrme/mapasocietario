@@ -843,7 +843,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 />
               }
               label={
-                <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.light' }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: 'accent.warning' }}>
                   {copy.freeReportToggle}
                 </Typography>
               }
@@ -901,7 +901,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                     border: '1px dashed',
                     borderColor: (theme) => alpha(theme.palette.warning.main, 0.5),
                   }}>
-                    <Typography variant="caption" sx={{ display: 'block', color: 'warning.light', fontSize: '0.72rem', fontWeight: 700 }}>
+                    <Typography variant="caption" sx={{ display: 'block', color: 'accent.warning', fontSize: '0.72rem', fontWeight: 700 }}>
                       {copy.freeReportConfirm}
                     </Typography>
                     <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.68rem', mt: 0.25 }}>
@@ -940,7 +940,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             }}
           >
             <Typography component="span" sx={{ fontSize: 18, lineHeight: 1 }}>🚀</Typography>
-            <Typography variant="caption" sx={{ color: 'warning.light', fontSize: '0.78rem', lineHeight: 1.45 }}>
+            <Typography variant="caption" sx={{ color: 'accent.warning', fontSize: '0.78rem', lineHeight: 1.45 }}>
               <strong>Product Hunt launch:</strong> enter code{' '}
               <Box component="span" sx={{ fontWeight: 700, color: 'warning.main', letterSpacing: '0.04em' }}>
                 {LAUNCH_PROMO_CODE}
@@ -988,7 +988,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               alignItems: 'center',
               gap: 0.5,
               mt: 1,
-              color: 'warning.light',
+              color: 'accent.warning',
               fontSize: '0.78rem',
               fontWeight: 600,
               textDecoration: 'none',
@@ -1036,7 +1036,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25, ml: 3 }}>
                   {copy.financialStatementsDescription}
                 </Typography>
-                <Typography variant="caption" sx={{ color: includeFS ? 'primary.light' : 'text.secondary', display: 'block', mt: 0.25, ml: 3, fontWeight: 600 }}>
+                <Typography variant="caption" sx={{ color: includeFS ? 'accent.primary' : 'text.secondary', display: 'block', mt: 0.25, ml: 3, fontWeight: 600 }}>
                   + EUR {FS_PRICE.toFixed(2)}
                 </Typography>
               </Box>
@@ -1158,8 +1158,8 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             borderColor: (theme) => alpha(theme.palette.success.main, 0.25),
           }}
         >
-          <VerifiedUserIcon sx={{ fontSize: 18, color: 'success.light', mt: '1px', flexShrink: 0 }} />
-          <Typography variant="caption" sx={{ color: 'success.light', fontSize: '0.74rem', lineHeight: 1.45 }}>
+          <VerifiedUserIcon sx={{ fontSize: 18, color: 'accent.success', mt: '1px', flexShrink: 0 }} />
+          <Typography variant="caption" sx={{ color: 'accent.success', fontSize: '0.74rem', lineHeight: 1.45 }}>
             <strong>{copy.guaranteeTitle}</strong> {copy.guarantee}
           </Typography>
         </Box>
@@ -1249,7 +1249,7 @@ function FallbackRadioOption({ value, label, description }) {
           size="small"
           sx={{
             color: 'text.disabled',
-            '&.Mui-checked': { color: 'primary.light' },
+            '&.Mui-checked': { color: 'accent.primary' },
           }}
         />
       }
@@ -1271,10 +1271,10 @@ function FallbackRadioOption({ value, label, description }) {
         bgcolor: 'action.hover',
         alignItems: 'flex-start',
         '&:has(.Mui-checked)': {
-          // Mirrors the Radio's own '&.Mui-checked' color (primary.light,
+          // Mirrors the Radio's own '&.Mui-checked' color (accent.primary,
           // above) so the ring and the dot it surrounds always match — fix
           // round 1, task-10.
-          borderColor: (theme) => alpha(theme.palette.primary.light, 0.5),
+          borderColor: (theme) => alpha(theme.palette.accent.primary, 0.5),
           bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
         },
       }}

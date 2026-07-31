@@ -174,9 +174,10 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
                     borderColor: (theme) => alpha(theme.palette.primary.main, 0.3),
                   }}>
                     {/* Matches this box's own primary-tinted bg/border above —
-                        mirrors the 'Web/Press' section's warning.light label
-                        pattern below (fix round 1, task-10). */}
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.light' }}>
+                        mirrors the 'Web/Press' section's accent.warning label
+                        pattern below (fix round 1, task-10; accent.* swap for
+                        light-mode legibility, final review). */}
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'accent.primary' }}>
                       {language === 'en' ? 'From the registry (BORME)' : 'Del registro (BORME)'}
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 0.5 }}>{answer.answer.registry}</Typography>
@@ -189,7 +190,7 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
                     border: '1px solid',
                     borderColor: (theme) => alpha(theme.palette.warning.main, 0.3),
                   }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'warning.light' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'accent.warning' }}>
                       {language === 'en' ? 'Web / Press' : 'Web / Prensa'}
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 0.5 }}>{answer.answer.web}</Typography>

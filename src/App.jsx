@@ -208,7 +208,7 @@ export default function App() {
               alignItems: 'center',
               gap: 0.5,
               cursor: 'pointer',
-              color: 'primary.light',
+              color: 'accent.primary',
               fontWeight: 600,
               '&:hover': { textDecoration: 'underline' },
             }}
@@ -232,7 +232,7 @@ export default function App() {
               size="small"
               onClick={(e) => setMenuAnchor(e.currentTarget)}
               aria-label={copy.menu.tooltip}
-              sx={{ color: 'text.secondary', '&:hover': { color: 'primary.light' } }}
+              sx={{ color: 'text.secondary', '&:hover': { color: 'accent.primary' } }}
             >
               <MenuIcon sx={{ fontSize: 20 }} />
             </IconButton>

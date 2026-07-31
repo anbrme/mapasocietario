@@ -6510,8 +6510,9 @@ const SpanishCompanyNetworkGraph = ({
           ctx.font = `${glyphSize}px Sans-Serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          // Glyph deliberately shares the chip outline colour (white-on-dark-fill
-          // in both modes) rather than a dedicated token — not a copy-paste slip.
+          // Glyph deliberately shares the chip outline colour (white ring/glyph
+          // on the dark canvas, dark-ink ring/glyph on the light canvas) rather
+          // than a dedicated token — not a copy-paste slip.
           ctx.fillStyle = graphPalette.chip.outline;
           ctx.fillText('🏛', chipX, chipY);
         }
@@ -7749,7 +7750,7 @@ const SpanishCompanyNetworkGraph = ({
               borderColor: 'primary.main',
             },
             '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'primary.light',
+              borderColor: 'accent.primary',
             },
             '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
               borderColor: 'primary.main',
@@ -8194,7 +8195,7 @@ const SpanishCompanyNetworkGraph = ({
             gap: 1.5,
             bgcolor: 'warning.50',
             border: '1px solid',
-            borderColor: 'warning.light',
+            borderColor: 'accent.warning',
             borderRadius: 1,
           }}
         >
@@ -8695,9 +8696,11 @@ const SpanishCompanyNetworkGraph = ({
             linkDirectionalParticles={link => (isDirectionalLink(link) ? 2 : 0)}
             linkDirectionalParticleSpeed={0.006}
             linkDirectionalParticleWidth={3}
-            // Bright, edge-matched particle color so the flow is visible on the dark
+            // Bright, edge-matched particle color so the flow is visible against the
             // canvas (the default particle color is a faint link tint). Mirrors the
-            // linkCanvasObject color rules: amber ownership, red ceased, teal active.
+            // linkCanvasObject color rules: amber ownership, red ceased, green
+            // appointment, slate unknown (uncategorised links fall through to
+            // unknown here too, not appointment — finding 3, final review).
             linkDirectionalParticleColor={link => {
               const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
               if (link.type === 'ownership' || cat.startsWith('socio')) return graphPalette.link.ownership;
@@ -8706,7 +8709,10 @@ const SpanishCompanyNetworkGraph = ({
                 cat.includes('cese') || cat.includes('dimision') || cat.includes('dimisión') ||
                 cat.includes('revocacion') || cat.includes('revocación')
               ) return graphPalette.link.dissolved;
-              return graphPalette.link.appointment;
+              if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
+                return graphPalette.link.appointment;
+              }
+              return graphPalette.link.unknown;
             }}
             d3AlphaDecay={0.08}
             d3VelocityDecay={0.8}
@@ -8744,7 +8750,7 @@ const SpanishCompanyNetworkGraph = ({
               pointerEvents: 'none',
             }}
           >
-            <CircularProgress size={40} thickness={4} sx={{ color: 'primary.light' }} />
+            <CircularProgress size={40} thickness={4} sx={{ color: 'accent.primary' }} />
             <Typography variant="body2" sx={{ color: (t) => alpha(t.palette.graph.surface.label, 0.75), letterSpacing: 0.3 }}>
               {searchQuery ? text.searching(searchQuery) : text.loadingData}
             </Typography>
@@ -8769,12 +8775,13 @@ const SpanishCompanyNetworkGraph = ({
                 disabled={!launch.canLaunch}
                 // Empty-state launcher is an enabled CTA (focuses the primary
                 // company) sitting on the translucent Paper above — brighten it
-                // to primary.light with a visible border so it reads on both themes.
+                // to accent.primary with a visible border so it reads on both
+                // themes (accent.* swap for light-mode legibility, final review).
                 sx={count > 0 ? undefined : {
-                  color: 'primary.light',
-                  borderColor: (t) => alpha(t.palette.primary.light, 0.7),
+                  color: 'accent.primary',
+                  borderColor: (t) => alpha(t.palette.accent.primary, 0.7),
                   '&:hover': {
-                    borderColor: 'primary.light',
+                    borderColor: 'accent.primary',
                     backgroundColor: (t) => alpha(t.palette.primary.light, 0.12),
                   },
                 }}
@@ -10364,11 +10371,18 @@ const SpanishCompanyNetworkGraph = ({
                         alignItems: 'center',
                         gap: 0.5,
                         mb: 3,
-                        color: 'primary.light',
+                        // accent.primary in both directions, hover included: the
+                        // old primary.light -> primary.main hover DIMMED the link
+                        // in dark mode (light.dark's "light" shade is brighter than
+                        // its "main"), while accent.primary's light-mode value is
+                        // already darkened to primary.dark for the 4.5:1 text floor
+                        // (finding 1), leaving no further token to darken toward on
+                        // hover. Dropping the hover colour swap avoids reintroducing
+                        // a wrong-direction change in either mode (finding 6).
+                        color: 'accent.primary',
                         fontWeight: 600,
                         textDecoration: 'underline',
-                        textDecorationColor: (t) => alpha(t.palette.primary.light, 0.5),
-                        '&:hover': { color: 'primary.main', textDecorationColor: 'primary.main' },
+                        textDecorationColor: (t) => alpha(t.palette.accent.primary, 0.5),
                       }}
                     >
                       {uiLanguage === 'en' ? 'View full profile' : 'Ver ficha completa'}
@@ -10730,8 +10744,8 @@ const SpanishCompanyNetworkGraph = ({
                   border: (t) => `1px solid ${alpha(t.palette.success.main, 0.25)}`,
                 }}
               >
-                <VerifiedUserIcon sx={{ fontSize: 18, color: 'success.light', mt: '1px', flexShrink: 0 }} />
-                <Typography variant="caption" sx={{ color: 'success.light', fontSize: '0.74rem', lineHeight: 1.45 }}>
+                <VerifiedUserIcon sx={{ fontSize: 18, color: 'accent.success', mt: '1px', flexShrink: 0 }} />
+                <Typography variant="caption" sx={{ color: 'accent.success', fontSize: '0.74rem', lineHeight: 1.45 }}>
                   {text.previewGuarantee}
                 </Typography>
               </Box>

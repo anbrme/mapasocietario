@@ -80,7 +80,21 @@ describe('palette parity', () => {
   });
 });
 
+// accent.* is text/icon/border colour, not a canvas draw colour, so it is
+// checked against background.paper (the surface it actually renders on) at
+// the WCAG 1.4.3 4.5:1 text floor rather than the graph's 3:1 non-text floor.
+const TEXT_MIN_CONTRAST = 4.5;
+
 describe.each([['dark', DARK_TOKENS], ['light', LIGHT_TOKENS]])('%s tokens', (mode, tokens) => {
+  it('clears the 4.5:1 text contrast floor against background.paper for every accent colour', () => {
+    const paper = tokens.background.paper;
+    for (const [key, value] of Object.entries(tokens.accent)) {
+      const ratio = contrastRatio(value, paper);
+      expect(ratio, `${mode}.accent.${key} (${value}) vs paper ${paper}`)
+        .toBeGreaterThanOrEqual(TEXT_MIN_CONTRAST);
+    }
+  });
+
   it('uses only parseable colour values', () => {
     for (const [path, value] of flatten(tokens)) {
       expect(parseColor(value), `${mode}.${path} = ${value}`).not.toBeNull();

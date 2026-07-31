@@ -25,6 +25,12 @@ const deepFreeze = (obj) => {
 
 export const DARK_TOKENS = deepFreeze({
   primary: { main: '#14b8a6', light: '#2dd4bf', dark: '#0d9488' },
+  // Text/icon/border accent colours, contrast-verified against background.paper
+  // at the WCAG 4.5:1 text floor (palette.test.js enforces this). MUI's own
+  // `.light` shades are tuned for dark surfaces and fail that floor in light
+  // mode — accent.* is the mode-aware replacement. Dark values here are the
+  // same hex as the `.light` shades above, so dark mode is unchanged.
+  accent: { primary: '#2dd4bf', success: '#81c784', warning: '#ffb74d', info: '#64b5f6' },
   background: { default: '#0a0e1a', paper: '#121828' },
   graph: {
     surface: {
@@ -80,6 +86,8 @@ export const DARK_TOKENS = deepFreeze({
 
 export const LIGHT_TOKENS = deepFreeze({
   primary: { main: '#0d9488', light: '#14b8a6', dark: '#0f766e' },
+  // 700-ish shades, dark enough to clear 4.5:1 against the white paper.
+  accent: { primary: '#0f766e', success: '#2e7d32', warning: '#b45309', info: '#1d4ed8' },
   background: { default: '#f8fafc', paper: '#ffffff' },
   graph: {
     surface: {
@@ -122,7 +130,14 @@ export const LIGHT_TOKENS = deepFreeze({
       cargo: '#b45309',
       cargoText: '#ffffff',
     },
-    chip: { active: '#b45309', former: '#64748b', outline: '#ffffff' },
+    // Punch-out ring around the deputy chip badge. The badge sits on the
+    // officer node's boundary (partly over nodeFill, partly over bare
+    // canvas), so a fixed white ring — correct in dark mode against the
+    // #0d1220 canvas — is ~1:1 invisible against the #f8fafc light canvas.
+    // Reuses graph.marker.noteOutline's light value: the same "dark ink
+    // outline that pops on the light canvas" the note marker already
+    // solved this with (final review, finding 5).
+    chip: { active: '#b45309', former: '#64748b', outline: '#1e293b' },
     ring: { investigation: '#6d28d9', merged: '#b45309' },
     marker: { noteOutline: '#1e293b', noteGlyph: '#ffffff' },
     noteFlag: {
