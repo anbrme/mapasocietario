@@ -2644,6 +2644,13 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
         sole_shareholder_individuals: result.sole_shareholder_individuals || [],
         previous_sole_shareholders: result.previous_sole_shareholders || [],
         previous_sole_shareholder_individuals: result.previous_sole_shareholder_individuals || [],
+        // Identity overlay for the corporate owners above. Each declared name
+        // is a snapshot from its declaration act, so an owner renamed since
+        // then is stale; these entries carry the entity's CURRENT name and its
+        // stable group_key. Empty on an older backend — callers fall back to
+        // the declared strings.
+        sole_shareholders_resolved: result.sole_shareholders_resolved || [],
+        previous_sole_shareholders_resolved: result.previous_sole_shareholders_resolved || [],
         sole_shareholder_lost: result.sole_shareholder_lost || false,
         company_name: companyName,
       };

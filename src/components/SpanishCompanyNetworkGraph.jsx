@@ -432,6 +432,8 @@ const SEARCH_COPY = {
     date: 'Date',
     summary: 'Summary',
     legalName: 'Legal name',
+    // Caption for an owner renamed since it was declared socio único.
+    declaredAs: 'declared as',
     previous: 'Previous',
     status: 'Status',
     address: 'Address',
@@ -740,6 +742,8 @@ const SEARCH_COPY = {
     date: 'Fecha',
     summary: 'Resumen',
     legalName: 'Denominación',
+    // Caption for an owner renamed since it was declared socio único.
+    declaredAs: 'declarado como',
     previous: 'Antes',
     status: 'Estado',
     address: 'Domicilio',
@@ -2770,11 +2774,39 @@ const SpanishCompanyNetworkGraph = ({
       });
       if (!result?.success) return;
 
-      const companyShareholders = (result.sole_shareholders || []).map(s => ({
-        name: typeof s === 'string' ? s : (s?.name || s?.shareholder_name || ''),
-        kind: 'company',
-        historical: false,
-      }));
+      // A declared owner name is a snapshot from its declaration act. The
+      // backend resolves each one to the entity that bears it TODAY; without
+      // that, a renamed owner (ACCIONA ENERGIA SA, renamed 2021 to ACCIONA
+      // GENERACION RENOVABLE SA) is drawn under a dead name AND keyed on that
+      // string, so it never merges with its own real node on the canvas.
+      const resolvedByDeclaredName = new Map(
+        [
+          ...(result.sole_shareholders_resolved || []),
+          ...(result.previous_sole_shareholders_resolved || []),
+        ]
+          .filter(r => r?.declared_name)
+          .map(r => [r.declared_name, r])
+      );
+      // Corporate owners only: the resolution maps names onto company
+      // entities, and an individual is not one.
+      const toCompanyShareholder = (s, historical) => {
+        const declaredName = typeof s === 'string' ? s : (s?.name || s?.shareholder_name || '');
+        const resolved = resolvedByDeclaredName.get(declaredName);
+        return {
+          name: resolved?.current_name || declaredName,
+          // Only set when the entity has actually been renamed since the
+          // declaration — that is the only case worth captioning.
+          declaredName: resolved?.renamed ? declaredName : null,
+          declaredDate: resolved?.renamed ? resolved.declared_date || null : null,
+          groupKey: resolved?.group_key || null,
+          kind: 'company',
+          historical,
+        };
+      };
+
+      const companyShareholders = (result.sole_shareholders || []).map(
+        s => toCompanyShareholder(s, false)
+      );
       const individualShareholders = (result.sole_shareholder_individuals || []).map(s => ({
         name: typeof s === 'string' ? s : (s?.name || s?.shareholder_name || ''),
         kind: 'individual',
@@ -2782,11 +2814,9 @@ const SpanishCompanyNetworkGraph = ({
       }));
       // Previous (superseded) sole shareholders — after a "cambio de socio
       // único". Drawn set apart as historical so they don't read as current.
-      const prevCompanyShareholders = (result.previous_sole_shareholders || []).map(s => ({
-        name: typeof s === 'string' ? s : (s?.name || s?.shareholder_name || ''),
-        kind: 'company',
-        historical: true,
-      }));
+      const prevCompanyShareholders = (result.previous_sole_shareholders || []).map(
+        s => toCompanyShareholder(s, true)
+      );
       const prevIndividualShareholders = (result.previous_sole_shareholder_individuals || []).map(
         s => ({
           name: typeof s === 'string' ? s : (s?.name || s?.shareholder_name || ''),
@@ -2850,7 +2880,15 @@ const SpanishCompanyNetworkGraph = ({
                   id: shId,
                   name: shName,
                   type: 'spanish-company-group',
-                  previousNames: [],
+                  // Stable registry id when the declared name resolved, so a
+                  // click opens the right entity instead of re-running a
+                  // name search that a rename can send astray.
+                  groupKey: sh.groupKey || null,
+                  // The name BORME actually published, kept as the audit trail
+                  // back to the act when the owner has since been renamed.
+                  declaredAs: sh.declaredName || null,
+                  declaredDate: sh.declaredDate || null,
+                  previousNames: sh.declaredName ? [sh.declaredName] : [],
                   companySummary: {
                     entries: [],
                     totalEntries: 0,
@@ -5523,7 +5561,22 @@ const SpanishCompanyNetworkGraph = ({
               ],
               // Split kept separately so the preview can label owner type honestly
               // (the merged soleShareholders array above loses this distinction).
-              soleShareholdersCorporate: company?.sole_shareholders || [],
+              // Owners are shown under the name they hold TODAY. The declared
+              // strings are snapshots from their declaration acts, so a
+              // renamed owner would otherwise be presented as a company that
+              // no longer exists under that name.
+              soleShareholdersCorporate: (company?.sole_shareholders_resolved?.length
+                ? company.sole_shareholders_resolved.map(r => r.current_name)
+                : company?.sole_shareholders) || [],
+              // The audit trail back to the act, for the owners that were
+              // actually renamed since being declared.
+              soleShareholderRenames: (company?.sole_shareholders_resolved || [])
+                .filter(r => r?.renamed)
+                .map(r => ({
+                  currentName: r.current_name,
+                  declaredName: r.declared_name,
+                  declaredDate: r.declared_date || null,
+                })),
               soleShareholdersIndividual: company?.sole_shareholder_individuals || [],
               // Re-registration trail: >1 entry means the company changed its
               // hoja registral (e.g. a provincial move — CaixaBank 2017).
@@ -10198,6 +10251,20 @@ const SpanishCompanyNetworkGraph = ({
                               ...e.soleShareholdersIndividual.map((n) => `${n} ${text.naturalPersonTag}`),
                             ].join(', ')}
                           </Typography>
+                          {/* Owners renamed since they were declared: show the
+                              act's wording so the current label stays traceable
+                              to what BORME actually published. */}
+                          {e?.soleShareholderRenames?.map((r, idx) => (
+                            <Typography
+                              key={idx}
+                              variant="caption"
+                              display="block"
+                              sx={{ color: 'text.secondary', fontStyle: 'italic' }}
+                            >
+                              {text.declaredAs} «{r.declaredName}»
+                              {r.declaredDate ? ` (${formatDate(r.declaredDate, uiLanguage)})` : ''}
+                            </Typography>
+                          ))}
                           {e?.previousSoleShareholders?.length > 0 && (
                             <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
                               {text.previous}: {e.previousSoleShareholders.join(', ')}
