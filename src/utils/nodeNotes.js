@@ -10,6 +10,11 @@ export const NODE_NOTE_FLAGS = Object.freeze({
   green: '#22c55e',
 });
 
+// Flag NAMES are the persistence contract — a saved note stores 'amber', never a
+// hex value — which is what lets each theme map flags to its own colours.
+// Colours live in src/theme/palette.js under graph.noteFlag.
+export const NODE_NOTE_FLAG_KEYS = Object.freeze(Object.keys(NODE_NOTE_FLAGS));
+
 const normalizeNodeId = id => (id == null ? '' : String(id));
 
 export const hasNodeNote = node => (

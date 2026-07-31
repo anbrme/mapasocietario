@@ -123,4 +123,26 @@ describe('node notes', () => {
       updatedAt: '2026-07-15T13:00:00.000Z',
     });
   });
+
+  it('exposes flag keys that match the palette note-flag tokens', async () => {
+    const { NODE_NOTE_FLAG_KEYS } = await import('./nodeNotes');
+    const { DARK_TOKENS, LIGHT_TOKENS } = await import('../theme/palette');
+
+    expect([...NODE_NOTE_FLAG_KEYS].sort()).toEqual(
+      Object.keys(DARK_TOKENS.graph.noteFlag).sort()
+    );
+    expect([...NODE_NOTE_FLAG_KEYS].sort()).toEqual(
+      Object.keys(LIGHT_TOKENS.graph.noteFlag).sort()
+    );
+  });
+
+  it('persists the flag name rather than a colour, so themes can remap freely', () => {
+    const updated = setNodeNote(
+      graph,
+      'company-a',
+      { text: 'Check this', flag: 'amber' },
+      '2026-07-31T00:00:00.000Z'
+    );
+    expect(updated.nodes[0].userNote.flag).toBe('amber');
+  });
 });
