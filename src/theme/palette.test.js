@@ -120,4 +120,21 @@ describe.each([['dark', DARK_TOKENS], ['light', LIGHT_TOKENS]])('%s tokens', (mo
     expect(contrastRatio(tokens.graph.surface.label, tokens.graph.surface.nodeFill))
       .toBeGreaterThanOrEqual(4.5);
   });
+
+  it('deeply freezes nested token groups to prevent accidental mutation', () => {
+    // Verify nested objects are frozen, not just the top level.
+    expect(Object.isFrozen(tokens.graph)).toBe(true);
+    expect(Object.isFrozen(tokens.graph.node)).toBe(true);
+    expect(Object.isFrozen(tokens.graph.link)).toBe(true);
+    expect(Object.isFrozen(tokens.graph.surface)).toBe(true);
+
+    // Verify that attempting to mutate a nested token does not succeed.
+    const originalValue = tokens.graph.node.company;
+    try {
+      tokens.graph.node.company = '#ffffff';
+    } catch {
+      // TypeError in strict mode, silent failure otherwise
+    }
+    expect(tokens.graph.node.company).toBe(originalValue);
+  });
 });

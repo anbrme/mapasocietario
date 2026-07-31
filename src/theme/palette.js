@@ -11,7 +11,19 @@
 // red = cessation, amber = sole shareholder — so the legend and the reader's
 // learned associations survive the switch. Light values are darkened, not re-hued.
 
-export const DARK_TOKENS = Object.freeze({
+// Recursively freeze an object and all nested objects to prevent accidental
+// mutation of the colour token singletons.
+const deepFreeze = (obj) => {
+  Object.freeze(obj);
+  for (const value of Object.values(obj)) {
+    if (value && typeof value === 'object') {
+      deepFreeze(value);
+    }
+  }
+  return obj;
+};
+
+export const DARK_TOKENS = deepFreeze({
   primary: { main: '#14b8a6', light: '#2dd4bf', dark: '#0d9488' },
   background: { default: '#0a0e1a', paper: '#121828' },
   graph: {
@@ -64,7 +76,7 @@ export const DARK_TOKENS = Object.freeze({
   },
 });
 
-export const LIGHT_TOKENS = Object.freeze({
+export const LIGHT_TOKENS = deepFreeze({
   primary: { main: '#0d9488', light: '#14b8a6', dark: '#0f766e' },
   background: { default: '#f8fafc', paper: '#ffffff' },
   graph: {
@@ -119,7 +131,7 @@ export const LIGHT_TOKENS = Object.freeze({
   },
 });
 
-export const TOKENS_BY_MODE = Object.freeze({
+export const TOKENS_BY_MODE = deepFreeze({
   dark: DARK_TOKENS,
   light: LIGHT_TOKENS,
 });
