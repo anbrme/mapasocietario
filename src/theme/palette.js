@@ -38,6 +38,8 @@ export const DARK_TOKENS = deepFreeze({
       labelHalo: 'rgba(0, 0, 0, 0.7)',
       badgeHalo: 'rgba(4, 18, 31, 0.9)',
       arrowOutline: '#0d1220',
+      edgeLabelBg: 'rgba(18, 24, 40, 0.75)',
+      edgeLabelText: 'rgba(200, 200, 200, 0.9)',
     },
     node: {
       company: '#33bdad',
@@ -90,6 +92,8 @@ export const LIGHT_TOKENS = deepFreeze({
       labelHalo: 'rgba(255, 255, 255, 0.85)',
       badgeHalo: 'rgba(255, 255, 255, 0.9)',
       arrowOutline: '#ffffff',
+      edgeLabelBg: 'rgba(255, 255, 255, 0.85)',
+      edgeLabelText: 'rgba(51, 65, 85, 0.9)',
     },
     node: {
       company: '#0f766e',

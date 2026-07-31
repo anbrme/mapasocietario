@@ -6507,6 +6507,8 @@ const SpanishCompanyNetworkGraph = ({
           ctx.font = `${glyphSize}px Sans-Serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
+          // Glyph deliberately shares the chip outline colour (white-on-dark-fill
+          // in both modes) rather than a dedicated token — not a copy-paste slip.
           ctx.fillStyle = graphPalette.chip.outline;
           ctx.fillText('🏛', chipX, chipY);
         }
@@ -6835,14 +6837,14 @@ const SpanishCompanyNetworkGraph = ({
             const textWidth = ctx.measureText(text).width;
             const paddingX = 2;
             const paddingY = 1;
-            ctx.fillStyle = 'rgba(18, 24, 40, 0.75)';
+            ctx.fillStyle = graphPalette.surface.edgeLabelBg;
             ctx.fillRect(
               midX - textWidth / 2 - paddingX,
               midY - fontSize / 2 - paddingY,
               textWidth + paddingX * 2,
               fontSize + paddingY * 2
             );
-            ctx.fillStyle = 'rgba(200, 200, 200, 0.9)';
+            ctx.fillStyle = graphPalette.surface.edgeLabelText;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(text, midX, midY);
