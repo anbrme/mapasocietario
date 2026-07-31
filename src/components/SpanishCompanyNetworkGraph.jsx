@@ -38,6 +38,7 @@ import {
   Snackbar,
   Badge,
   Checkbox,
+  useTheme,
 } from '@mui/material';
 import TuneIcon from '@mui/icons-material/Tune';
 import {
@@ -1677,17 +1678,22 @@ const SpanishCompanyNetworkGraph = ({
   const MAX_NODE_DRIFT = 5000;
   const MAX_NODE_SPEED = 30;
 
+  const theme = useTheme();
+  const graphPalette = theme.palette.graph;
+
   // Node colors and shapes
+  // Snake_case keys are kept: they are matched against node type strings
+  // elsewhere in this file. Only the colour source changes.
   const nodeColors = React.useMemo(
     () => ({
-      company: '#33bdad',
-      officer_individual: '#cd87c0',
-      officer_company: '#8a86d4',
-      expanded: '#56b387',
-      selected: '#e26d9a',
-      searchOrigin: '#5fd6c6',
+      company: graphPalette.node.company,
+      officer_individual: graphPalette.node.officerIndividual,
+      officer_company: graphPalette.node.officerCompany,
+      expanded: graphPalette.node.expanded,
+      selected: graphPalette.node.selected,
+      searchOrigin: graphPalette.node.searchOrigin,
     }),
-    []
+    [graphPalette]
   );
 
   // Constants for label visibility control
@@ -1697,7 +1703,7 @@ const SpanishCompanyNetworkGraph = ({
   const NODE_LABEL_VISIBILITY_SCALE_DENSE = 1.1; // Requires extra zoom only when very dense
   const LINK_LABEL_VISIBILITY_SCALE_NORMAL = 0.75;
   const LINK_LABEL_VISIBILITY_SCALE_DENSE = 1.2; // Requires extra zoom only when very dense
-  const PATH_HIGHLIGHT_COLOR = '#4dd0e1';
+  const PATH_HIGHLIGHT_COLOR = graphPalette.link.pathHighlight;
   const PATH_DIM_ALPHA = 0.28;
 
   // Configure forces and reheat — combined into one effect so reheat always
@@ -6455,7 +6461,7 @@ const SpanishCompanyNetworkGraph = ({
 
       // Hollow/outlined nodes to match the hero network: a dark fill with the
       // node's color as the outline — the identity is the border, not a solid fill.
-      ctx.fillStyle = '#0d1220';
+      ctx.fillStyle = graphPalette.surface.nodeFill;
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
 
@@ -6491,9 +6497,9 @@ const SpanishCompanyNetworkGraph = ({
           const chipY = node.y - nodeRadius * 0.7;
           ctx.beginPath();
           ctx.arc(chipX, chipY, chipR, 0, 2 * Math.PI, false);
-          ctx.fillStyle = isFormer ? '#9ca3af' : '#f59e0b';
+          ctx.fillStyle = isFormer ? graphPalette.chip.former : graphPalette.chip.active;
           ctx.fill();
-          ctx.strokeStyle = '#fff';
+          ctx.strokeStyle = graphPalette.chip.outline;
           ctx.lineWidth = 1;
           ctx.stroke();
           // Cap glyph size so it stays legible at any zoom
@@ -6501,7 +6507,7 @@ const SpanishCompanyNetworkGraph = ({
           ctx.font = `${glyphSize}px Sans-Serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#fff';
+          ctx.fillStyle = graphPalette.chip.outline;
           ctx.fillText('🏛', chipX, chipY);
         }
       }
@@ -6515,7 +6521,7 @@ const SpanishCompanyNetworkGraph = ({
         const badgeText = isUnified
           ? `⚭${node.unifiedCargoCount ? ' ' + node.unifiedCargoCount : ''}`
           : `+${node.cargoCount}`;
-        const bg = isUnified ? '#14b8a6' : '#f59e0b';
+        const bg = isUnified ? graphPalette.badge.unified : graphPalette.badge.cargo;
         const s = nodeRadius * 1.55; // half-side of the company rounded square
         const pillH = Math.min(Math.max(nodeRadius * 0.9, 6), 12);
         const glyphSize = pillH * 0.72;
@@ -6536,10 +6542,10 @@ const SpanishCompanyNetworkGraph = ({
         ctx.closePath();
         ctx.fillStyle = bg;
         ctx.fill();
-        ctx.strokeStyle = 'rgba(4, 18, 31, 0.9)';
+        ctx.strokeStyle = graphPalette.surface.badgeHalo;
         ctx.lineWidth = Math.max(0.5, 1 / globalScale);
         ctx.stroke();
-        ctx.fillStyle = isUnified ? '#04121f' : '#1a1206';
+        ctx.fillStyle = isUnified ? graphPalette.badge.unifiedText : graphPalette.badge.cargoText;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(badgeText, pillX + pillW / 2, pillY + pillH / 2 + 0.5);
@@ -6569,11 +6575,11 @@ const SpanishCompanyNetworkGraph = ({
           const labelY = node.y + nodeRadius + fontSize * 0.85;
 
           // Draw text with subtle dark outline for readability on dark background
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+          ctx.strokeStyle = graphPalette.surface.labelHalo;
           ctx.lineWidth = 3 / globalScale;
           ctx.lineJoin = 'round';
           ctx.strokeText(truncatedLabel, node.x, labelY);
-          ctx.fillStyle = '#e0e0e0';
+          ctx.fillStyle = graphPalette.surface.label;
           ctx.fillText(truncatedLabel, node.x, labelY);
 
           // Show previous names as subtitle "(antes: ...)"
@@ -6587,10 +6593,10 @@ const SpanishCompanyNetworkGraph = ({
               ? subtitleText.substring(0, maxSubLen) + '...)'
               : subtitleText;
             const subtitleY = labelY + subtitleFontSize * 1.3;
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.strokeStyle = graphPalette.surface.labelHalo;
             ctx.lineWidth = 2.5 / globalScale;
             ctx.strokeText(truncatedSubtitle, node.x, subtitleY);
-            ctx.fillStyle = 'rgba(180, 180, 180, 0.85)';
+            ctx.fillStyle = graphPalette.surface.labelSubtle;
             ctx.fillText(truncatedSubtitle, node.x, subtitleY);
           }
         }
@@ -6600,7 +6606,7 @@ const SpanishCompanyNetworkGraph = ({
         ctx.save();
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeRadius + 2.5, 0, 2 * Math.PI);
-        ctx.strokeStyle = '#7c4dff'; // distinct from status colors
+        ctx.strokeStyle = graphPalette.ring.investigation; // distinct from status colors
         ctx.lineWidth = 2 / globalScale;
         ctx.setLineDash([]);
         ctx.stroke();
@@ -6614,7 +6620,7 @@ const SpanishCompanyNetworkGraph = ({
         ctx.save();
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeRadius + 4.5, 0, 2 * Math.PI);
-        ctx.strokeStyle = '#f59e0b'; // amber = user-created grouping
+        ctx.strokeStyle = graphPalette.ring.merged; // amber = user-created grouping
         ctx.lineWidth = 1.5 / globalScale;
         ctx.setLineDash([3 / globalScale, 2 / globalScale]);
         ctx.stroke();
@@ -6626,7 +6632,7 @@ const SpanishCompanyNetworkGraph = ({
       // status colours and is always fully opaque, even when Pathfinder dims
       // the underlying network.
       if (hasNodeNote(node)) {
-        const noteColor = NODE_NOTE_FLAGS[node.userNote.flag] || NODE_NOTE_FLAGS.none;
+        const noteColor = graphPalette.noteFlag[node.userNote.flag] || graphPalette.noteFlag.none;
         const marker = getNodeNoteMarkerGeometry(node, nodeRadius);
         ctx.save();
         ctx.globalAlpha = 1;
@@ -6634,20 +6640,20 @@ const SpanishCompanyNetworkGraph = ({
         ctx.arc(marker.x, marker.y, marker.radius, 0, 2 * Math.PI);
         ctx.fillStyle = noteColor;
         ctx.fill();
-        ctx.strokeStyle = '#f8fafc';
+        ctx.strokeStyle = graphPalette.marker.noteOutline;
         ctx.lineWidth = Math.max(0.8, 1 / globalScale);
         ctx.stroke();
         ctx.font = `700 ${Math.min(Math.max(marker.radius * 1.25, 6), 10)}px Sans-Serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#0f172a';
+        ctx.fillStyle = graphPalette.marker.noteGlyph;
         ctx.fillText('✎', marker.x, marker.y + 0.25);
         ctx.restore();
       }
 
       ctx.globalAlpha = 1.0;
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette]
   );
 
   const linkCanvasObject = useCallback(
@@ -6683,21 +6689,21 @@ const SpanishCompanyNetworkGraph = ({
       } else if (link.type === 'ownership') {
         linkColor =
           cat === 'socio_anterior'
-            ? '#94a3b8' // Slate — previous (superseded) sole shareholder
+            ? graphPalette.link.ownershipPrevious // Slate — previous (superseded) sole shareholder
             : cat === 'socio_perdido'
-              ? '#c79a3a'
-              : '#fbbf24'; // Amber — current sole shareholder
+              ? graphPalette.link.ownershipLost
+              : graphPalette.link.ownership; // Amber — current sole shareholder
       } else if (link.companyDissolved) {
-        linkColor = '#f87171'; // Red — officer link to a DISSOLVED company is not current
+        linkColor = graphPalette.link.dissolved; // Red — officer link to a DISSOLVED company is not current
       } else if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
-        linkColor = '#34d399'; // Green — appointments and re-elections
+        linkColor = graphPalette.link.appointment; // Green — appointments and re-elections
       } else if (
         cat.includes('cese') || cat.includes('dimision') || cat.includes('dimisión') ||
         cat.includes('revocacion') || cat.includes('revocación')
       ) {
-        linkColor = '#f87171'; // Red — resignations and revocations
+        linkColor = graphPalette.link.cessation; // Red — resignations and revocations
       } else {
-        linkColor = '#64748b'; // Slate for unknown / company-company
+        linkColor = graphPalette.link.unknown; // Slate for unknown / company-company
       }
 
       // Pathfinder alpha control
@@ -6775,7 +6781,7 @@ const SpanishCompanyNetworkGraph = ({
         // reads as a crisp arrow rather than a blob fused to the stroke.
         ctx.lineJoin = 'round';
         ctx.lineWidth = Math.max(0.4, 0.9 / globalScale);
-        ctx.strokeStyle = '#0d1220';
+        ctx.strokeStyle = graphPalette.surface.arrowOutline;
         ctx.stroke();
         ctx.fillStyle = linkColor;
         ctx.fill();
@@ -6845,7 +6851,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds]
+    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, graphPalette]
   );
 
   // Graph controls
@@ -8628,7 +8634,7 @@ const SpanishCompanyNetworkGraph = ({
       {/* Graph Container (full width, table floats on top) */}
       <Box
         ref={containerCallbackRef}
-        sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: '#0d1220' }}
+        sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: 'graph.surface.canvas' }}
       >
         {containerReady && (
           <ForceGraph2D
