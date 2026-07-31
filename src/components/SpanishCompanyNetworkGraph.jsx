@@ -40,6 +40,7 @@ import {
   Checkbox,
   useTheme,
 } from '@mui/material';
+import { alpha, darken } from '@mui/material/styles';
 import TuneIcon from '@mui/icons-material/Tune';
 import {
   Close as CloseIcon,
@@ -141,7 +142,7 @@ import {
   hasNodeNote,
   mergeNodeNotes,
   nodeMatchesFilterTerms,
-  NODE_NOTE_FLAGS,
+  NODE_NOTE_FLAG_KEYS,
   NODE_NOTE_MAX_LENGTH,
   removeNodeNote,
   setNodeNote,
@@ -4948,7 +4949,7 @@ const SpanishCompanyNetworkGraph = ({
     setNodeNoteTargetId(normalizeNodeId(contextNode.id));
     setNodeNoteText(contextNode.userNote?.text || '');
     setNodeNoteFlag(
-      Object.prototype.hasOwnProperty.call(NODE_NOTE_FLAGS, contextNode.userNote?.flag)
+      NODE_NOTE_FLAG_KEYS.includes(contextNode.userNote?.flag)
         ? contextNode.userNote.flag
         : 'none'
     );
@@ -6282,9 +6283,11 @@ const SpanishCompanyNetworkGraph = ({
 
   const getClusterColor = useCallback((nodeId) => {
     const clusterId = clustersData.nodeClusters.get(normalizeNodeId(nodeId));
-    if (!clusterId) return '#607d8b';
-    return clusterColorById.get(clusterId) || '#607d8b';
-  }, [clustersData, clusterColorById]);
+    // No-cluster fallback reuses the "unclassified relationship" canvas
+    // token so a clusterless node still reads against either canvas colour.
+    if (!clusterId) return graphPalette.link.unknown;
+    return clusterColorById.get(clusterId) || graphPalette.link.unknown;
+  }, [clustersData, clusterColorById, graphPalette]);
 
   const parallelLinkMeta = React.useMemo(() => {
     const perPair = new Map();
@@ -7805,8 +7808,8 @@ const SpanishCompanyNetworkGraph = ({
               textTransform: 'none',
               fontWeight: 700,
               whiteSpace: 'nowrap',
-              color: '#04231f',
-              boxShadow: '0 2px 10px rgba(20,184,166,0.35)',
+              color: 'primary.contrastText',
+              boxShadow: (t) => `0 2px 10px ${alpha(t.palette.primary.main, 0.35)}`,
             }}
             onClick={() => {
               trackGraphToolbarAction('due_diligence');
@@ -7837,7 +7840,7 @@ const SpanishCompanyNetworkGraph = ({
                   variant="contained" color="primary" size="small"
                   startIcon={relResolving ? <CircularProgress size={14} /> : <AccountTreeIcon />}
                   disabled={relResolving}
-                  sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(20,184,166,0.35)' }}
+                  sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap', boxShadow: (t) => `0 2px 10px ${alpha(t.palette.primary.main, 0.35)}` }}
                   onClick={() => {
                     trackGraphToolbarAction('relationship_report');
                     openRelationshipReport();
@@ -8279,10 +8282,16 @@ const SpanishCompanyNetworkGraph = ({
               label={text.soleShareholder}
               size="small"
               variant={showShareholders ? 'filled' : 'outlined'}
+              // Toggle for the same "sole shareholder" relationship the ownership
+              // edge draws in amber, so the chip and the canvas agree.
               sx={
                 showShareholders
-                  ? { bgcolor: '#fbc02d', color: '#212121', '&:hover': { bgcolor: '#f9a825' } }
-                  : { borderColor: '#fbc02d', color: '#9e7b10' }
+                  ? {
+                      bgcolor: 'graph.link.ownership',
+                      color: (t) => t.palette.getContrastText(t.palette.graph.link.ownership),
+                      '&:hover': { bgcolor: (t) => darken(t.palette.graph.link.ownership, 0.1) },
+                    }
+                  : { borderColor: 'graph.link.ownership', color: 'graph.link.ownership' }
               }
               onClick={() => setShowShareholders(prev => !prev)}
             />
@@ -8290,10 +8299,15 @@ const SpanishCompanyNetworkGraph = ({
               label={text.previousSoleShareholder}
               size="small"
               variant={showPreviousShareholders ? 'filled' : 'outlined'}
+              // Matches the superseded-shareholder ("socio_anterior") edge colour.
               sx={
                 showPreviousShareholders
-                  ? { bgcolor: '#9e9e9e', color: '#212121', '&:hover': { bgcolor: '#8d8d8d' } }
-                  : { borderColor: '#9e9e9e', color: '#616161' }
+                  ? {
+                      bgcolor: 'graph.link.ownershipPrevious',
+                      color: (t) => t.palette.getContrastText(t.palette.graph.link.ownershipPrevious),
+                      '&:hover': { bgcolor: (t) => darken(t.palette.graph.link.ownershipPrevious, 0.1) },
+                    }
+                  : { borderColor: 'graph.link.ownershipPrevious', color: 'graph.link.ownershipPrevious' }
               }
               onClick={() => setShowPreviousShareholders(prev => !prev)}
             />
@@ -8329,10 +8343,21 @@ const SpanishCompanyNetworkGraph = ({
                       ? undoCargoUnifyForNode(cargoToggleNode.id)
                       : unifyCargosForNode(cargoToggleNode.id, cargoToggleNode.name)
                   }
+                  // Mirrors the on-node badge: teal "unified" vs amber "has cargo".
                   sx={
                     cargoToggleNode.unified
-                      ? { bgcolor: '#0d9488', color: '#ecfeff', fontWeight: 600, '& .MuiChip-icon': { color: '#5eead4' }, '&:hover': { bgcolor: '#0f766e' } }
-                      : { borderColor: '#5eead4', color: '#5eead4', '& .MuiChip-icon': { color: '#5eead4' } }
+                      ? {
+                          bgcolor: 'graph.badge.unified',
+                          color: 'graph.badge.unifiedText',
+                          fontWeight: 600,
+                          '& .MuiChip-icon': { color: 'graph.badge.unifiedText' },
+                          '&:hover': { bgcolor: (t) => darken(t.palette.graph.badge.unified, 0.1) },
+                        }
+                      : {
+                          borderColor: 'graph.badge.cargo',
+                          color: 'graph.badge.cargo',
+                          '& .MuiChip-icon': { color: 'graph.badge.cargo' },
+                        }
                   }
                 />
               </Tooltip>
@@ -8675,13 +8700,13 @@ const SpanishCompanyNetworkGraph = ({
             // linkCanvasObject color rules: amber ownership, red ceased, teal active.
             linkDirectionalParticleColor={link => {
               const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
-              if (link.type === 'ownership' || cat.startsWith('socio')) return '#fbbf24';
+              if (link.type === 'ownership' || cat.startsWith('socio')) return graphPalette.link.ownership;
               if (
                 link.companyDissolved ||
                 cat.includes('cese') || cat.includes('dimision') || cat.includes('dimisión') ||
                 cat.includes('revocacion') || cat.includes('revocación')
-              ) return '#f87171';
-              return '#5eead4';
+              ) return graphPalette.link.dissolved;
+              return graphPalette.link.appointment;
             }}
             d3AlphaDecay={0.08}
             d3VelocityDecay={0.8}
@@ -8714,13 +8739,13 @@ const SpanishCompanyNetworkGraph = ({
               alignItems: 'center',
               justifyContent: 'center',
               gap: 1.5,
-              bgcolor: 'rgba(13, 18, 32, 0.82)',
+              bgcolor: (t) => alpha(t.palette.graph.surface.canvas, 0.82),
               backdropFilter: 'blur(1px)',
               pointerEvents: 'none',
             }}
           >
-            <CircularProgress size={40} thickness={4} sx={{ color: '#2dd4bf' }} />
-            <Typography variant="body2" sx={{ color: 'rgba(224, 224, 224, 0.75)', letterSpacing: 0.3 }}>
+            <CircularProgress size={40} thickness={4} sx={{ color: 'primary.light' }} />
+            <Typography variant="body2" sx={{ color: (t) => alpha(t.palette.graph.surface.label, 0.75), letterSpacing: 0.3 }}>
               {searchQuery ? text.searching(searchQuery) : text.loadingData}
             </Typography>
           </Box>
@@ -8736,20 +8761,22 @@ const SpanishCompanyNetworkGraph = ({
             ? `${text.investigateSelection} (${count})`
             : entitlementChipLabel(stored, nowSec, uiLanguage);
           return (
-            <Paper sx={{ position: 'absolute', top: 12, left: 12, zIndex: 20, p: 0.5, display: 'flex', gap: 1, alignItems: 'center', bgcolor: 'rgba(18,24,40,0.9)' }}>
+            <Paper sx={{ position: 'absolute', top: 12, left: 12, zIndex: 20, p: 0.5, display: 'flex', gap: 1, alignItems: 'center', bgcolor: (t) => alpha(t.palette.background.paper, 0.9) }}>
               <Button
                 size="small"
                 variant={count > 0 ? 'contained' : 'outlined'}
                 startIcon={<PsychologyIcon />}
                 disabled={!launch.canLaunch}
                 // Empty-state launcher is an enabled CTA (focuses the primary
-                // company), but the default outlined primary blue (#14b8a6) is
-                // near-invisible on the dark rgba(18,24,40,.9) Paper. Brighten
-                // to blue[200] with a visible border so it reads on dark.
+                // company) sitting on the translucent Paper above — brighten it
+                // to primary.light with a visible border so it reads on both themes.
                 sx={count > 0 ? undefined : {
-                  color: '#90caf9',
-                  borderColor: 'rgba(144,202,249,0.7)',
-                  '&:hover': { borderColor: '#90caf9', backgroundColor: 'rgba(144,202,249,0.12)' },
+                  color: 'primary.light',
+                  borderColor: (t) => alpha(t.palette.primary.light, 0.7),
+                  '&:hover': {
+                    borderColor: 'primary.light',
+                    backgroundColor: (t) => alpha(t.palette.primary.light, 0.12),
+                  },
                 }}
                 onClick={() => {
                   const primary = graphData.nodes.find((n) => isSameNodeId(n.id, activeNodeId))
@@ -8767,7 +8794,14 @@ const SpanishCompanyNetworkGraph = ({
           );
         })()}
 
-        {/* Floating Data Table */}
+        {/* Floating Data Table. This card is a deliberately theme-INDEPENDENT
+            light surface (dense data reads best on a light card regardless of
+            app theme, like a spreadsheet embed) — it was white-on-dark before
+            light mode existed and stays white-on-either after. Its internal
+            literal colours (this bgcolor, the pale-yellow filter row, the
+            table header/body text and badge colours further down) are left
+            unchanged on purpose; only the teal drag-header (theme-branded)
+            and the outer border (already `divider`) are theme-aware. */}
         <Paper
           data-floating-table
           elevation={6}
@@ -8802,9 +8836,11 @@ const SpanishCompanyNetworkGraph = ({
               py: 0.75,
               cursor: 'move',
               userSelect: 'none',
-              background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
+              background: (t) => `linear-gradient(135deg, ${t.palette.primary.main} 0%, ${t.palette.primary.dark} 100%)`,
               color: 'white',
-              '&:hover': { background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%)' },
+              '&:hover': {
+                background: (t) => `linear-gradient(135deg, ${t.palette.primary.light} 0%, ${t.palette.primary.main} 100%)`,
+              },
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -8830,6 +8866,9 @@ const SpanishCompanyNetworkGraph = ({
                         setDdCheckoutCompany(name);
                         setDdCheckoutOpen(true);
                       }}
+                      // Hover overlay sits on the always-teal drag header (theme-aware
+                      // gradient above), never on a neutral surface, so a fixed white
+                      // tint stays visible in both themes — same for the two below.
                       sx={{ color: '#ffeb3b', '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
                     >
                       <DescriptionIcon sx={{ fontSize: 16 }} />
@@ -8874,7 +8913,7 @@ const SpanishCompanyNetworkGraph = ({
                 gap: 0.5,
                 px: 1,
                 py: 0.5,
-                bgcolor: '#fff8e1',
+                bgcolor: '#fff8e1', // Part of the always-light floating table card (see comment above the Paper)
                 borderBottom: '1px solid',
                 borderColor: 'divider',
               }}
@@ -8903,6 +8942,8 @@ const SpanishCompanyNetworkGraph = ({
               <Table
                 size="small"
                 stickyHeader
+                // Always-light floating table card (see comment above the Paper) —
+                // body text stays dark-on-white regardless of app theme.
                 sx={{
                   '& .MuiTableBody-root .MuiTableCell-root': {
                     color: '#1f2937',
@@ -8911,6 +8952,8 @@ const SpanishCompanyNetworkGraph = ({
               >
                 <TableHead>
                   <TableRow>
+                    {/* All 6 header cells below: always-light card (see comment above
+                        the Paper) — bgcolor/color stay fixed regardless of app theme. */}
                     <TableCell
                       sx={{
                         fontWeight: 'bold',
@@ -8982,6 +9025,7 @@ const SpanishCompanyNetworkGraph = ({
                 <TableBody>
                   {visibleTableRows.length === 0 ? (
                     <TableRow>
+                      {/* Always-light card (see comment above the Paper) */}
                       <TableCell colSpan={6} align="center" sx={{ py: 3, color: '#4b5563' }}>
                         <Typography variant="caption" sx={{ color: '#4b5563' }}>
                           {text.emptyTable}
@@ -8993,6 +9037,8 @@ const SpanishCompanyNetworkGraph = ({
                       <TableRow
                         key={`${row.company}-${row.officer}-${row.position}-${idx}`}
                         hover
+                        // Always-light card (see comment above the Paper) — teal tint
+                        // reads fine on the fixed white row background either way.
                         sx={{
                           '&:nth-of-type(odd)': { bgcolor: 'rgba(20,184,166, 0.03)' },
                           '&:hover': { bgcolor: 'rgba(20,184,166, 0.08)' },
@@ -9069,6 +9115,7 @@ const SpanishCompanyNetworkGraph = ({
                         >
                           {row.officer}
                           {officerDeputyMatches[row.officer]?.deputy && (
+                            // Always-light card (see comment above the Paper)
                             <Box
                               component="span"
                               sx={{
@@ -9105,6 +9152,7 @@ const SpanishCompanyNetworkGraph = ({
                           {row.position}
                         </TableCell>
                         <TableCell sx={{ fontSize: '0.7rem', py: 0.25 }}>
+                          {/* Always-light card (see comment above the Paper) */}
                           <Box
                             component="span"
                             sx={{
@@ -9213,11 +9261,11 @@ const SpanishCompanyNetworkGraph = ({
           </Box>
         ))}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
-          <Box sx={{ width: 14, height: 2, bgcolor: '#2e7d32' }} />
+          <Box sx={{ width: 14, height: 2, bgcolor: 'graph.link.appointment' }} />
           <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.legendAppointments}</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
-          <Box sx={{ width: 14, height: 2, bgcolor: '#d32f2f' }} />
+          <Box sx={{ width: 14, height: 2, bgcolor: 'graph.link.cessation' }} />
           <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.legendCessations}</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
@@ -9225,7 +9273,10 @@ const SpanishCompanyNetworkGraph = ({
             sx={{
               width: 14,
               height: 2,
-              backgroundImage: 'repeating-linear-gradient(to right, #fbc02d 0 4px, transparent 4px 7px)',
+              // Dashed pattern needs the raw colour string (backgroundImage
+              // can't take an sx palette path) — pulled straight from the
+              // same token the canvas draws the ownership edge with.
+              backgroundImage: `repeating-linear-gradient(to right, ${graphPalette.link.ownership} 0 4px, transparent 4px 7px)`,
             }}
           />
           <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.soleShareholder}</Typography>
@@ -9344,7 +9395,7 @@ const SpanishCompanyNetworkGraph = ({
                   <NoteIcon
                     sx={{
                       fontSize: 15,
-                      color: NODE_NOTE_FLAGS[contextNode.userNote.flag] || NODE_NOTE_FLAGS.none,
+                      color: graphPalette.noteFlag[contextNode.userNote.flag] || graphPalette.noteFlag.none,
                       flexShrink: 0,
                       mt: '2px',
                     }}
@@ -9410,7 +9461,8 @@ const SpanishCompanyNetworkGraph = ({
               }}
             >
               <ListItemIcon>
-                <HubIcon fontSize="small" sx={{ color: '#38bdf8' }} />
+                {/* Matches the un-unified "+N cargos" badge drawn on the node */}
+                <HubIcon fontSize="small" sx={{ color: 'graph.badge.cargo' }} />
               </ListItemIcon>
               <ListItemText>{text.cargoBadge(contextNode.cargoCount)}</ListItemText>
             </MenuItem>
@@ -9425,7 +9477,8 @@ const SpanishCompanyNetworkGraph = ({
               }}
             >
               <ListItemIcon>
-                <HubIcon fontSize="small" sx={{ color: '#5eead4' }} />
+                {/* Matches the unified "⚭ N" badge drawn on the node */}
+                <HubIcon fontSize="small" sx={{ color: 'graph.badge.unified' }} />
               </ListItemIcon>
               <ListItemText>{text.cargoUndo}</ListItemText>
             </MenuItem>
@@ -9449,7 +9502,7 @@ const SpanishCompanyNetworkGraph = ({
                 fontSize="small"
                 sx={{
                   color: hasNodeNote(contextNode)
-                    ? (NODE_NOTE_FLAGS[contextNode.userNote.flag] || NODE_NOTE_FLAGS.none)
+                    ? (graphPalette.noteFlag[contextNode.userNote.flag] || graphPalette.noteFlag.none)
                     : 'text.secondary',
                 }}
               />
@@ -9742,8 +9795,8 @@ const SpanishCompanyNetworkGraph = ({
             <NoteIcon
               sx={{
                 color: nodeNotePreview
-                  ? (NODE_NOTE_FLAGS[nodeNotePreview.userNote.flag] || NODE_NOTE_FLAGS.none)
-                  : NODE_NOTE_FLAGS.none,
+                  ? (graphPalette.noteFlag[nodeNotePreview.userNote.flag] || graphPalette.noteFlag.none)
+                  : graphPalette.noteFlag.none,
               }}
             />
             {text.privateNoteTitle}
@@ -9760,7 +9813,7 @@ const SpanishCompanyNetworkGraph = ({
                     p: 2.25,
                     whiteSpace: 'pre-wrap',
                     overflowWrap: 'anywhere',
-                    bgcolor: 'rgba(148, 163, 184, 0.06)',
+                    bgcolor: 'action.hover',
                   }}
                 >
                   <Typography variant="body1" sx={{ lineHeight: 1.65 }}>
@@ -9836,8 +9889,12 @@ const SpanishCompanyNetworkGraph = ({
                         width: 12,
                         height: 12,
                         borderRadius: '50%',
-                        bgcolor: NODE_NOTE_FLAGS[value],
-                        border: '1px solid rgba(255,255,255,0.65)',
+                        bgcolor: graphPalette.noteFlag[value],
+                        // Same ring the canvas draws around the note marker
+                        // (graph.marker.noteOutline), so the picker and the
+                        // drawn dot read as the same object.
+                        border: '1px solid',
+                        borderColor: alpha(graphPalette.marker.noteOutline, 0.65),
                         mr: 1.25,
                         flexShrink: 0,
                       }}
@@ -10307,11 +10364,11 @@ const SpanishCompanyNetworkGraph = ({
                         alignItems: 'center',
                         gap: 0.5,
                         mb: 3,
-                        color: '#90caf9',
+                        color: 'primary.light',
                         fontWeight: 600,
                         textDecoration: 'underline',
-                        textDecorationColor: 'rgba(144,202,249,0.5)',
-                        '&:hover': { color: '#bbdefb', textDecorationColor: '#bbdefb' },
+                        textDecorationColor: (t) => alpha(t.palette.primary.light, 0.5),
+                        '&:hover': { color: 'primary.main', textDecorationColor: 'primary.main' },
                       }}
                     >
                       {uiLanguage === 'en' ? 'View full profile' : 'Ver ficha completa'}
@@ -10322,7 +10379,7 @@ const SpanishCompanyNetworkGraph = ({
                   {/* Current officers — grouped by person, sorted by position importance */}
                   {e?.currentOfficers?.length > 0 && (
                     <>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: '#14b8a6' }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: 'primary.main' }}>
                         {text.currentOfficers(e.currentOfficers.length)}
                       </Typography>
                       <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
@@ -10364,15 +10421,15 @@ const SpanishCompanyNetworkGraph = ({
                                 officer.positions.map((pos, j) => (
                                   <TableRow key={`${i}-${j}`}>
                                     {j === 0 ? (
-                                      <TableCell rowSpan={officer.positions.length} sx={{ verticalAlign: 'top', borderBottom: '2px solid rgba(255,255,255,0.12)' }}>
+                                      <TableCell rowSpan={officer.positions.length} sx={{ verticalAlign: 'top', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'divider' }}>
                                         {officer.name || '-'}
                                         {deputyChip}
                                       </TableCell>
                                     ) : null}
-                                    <TableCell sx={j === officer.positions.length - 1 ? { borderBottom: '2px solid rgba(255,255,255,0.12)' } : undefined}>
+                                    <TableCell sx={j === officer.positions.length - 1 ? { borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'divider' } : undefined}>
                                       {pos.position || '-'}
                                     </TableCell>
-                                    <TableCell sx={j === officer.positions.length - 1 ? { borderBottom: '2px solid rgba(255,255,255,0.12)' } : undefined}>
+                                    <TableCell sx={j === officer.positions.length - 1 ? { borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'divider' } : undefined}>
                                       {pos.date ? formatDate(pos.date, uiLanguage) : '-'}
                                     </TableCell>
                                   </TableRow>
@@ -10388,10 +10445,10 @@ const SpanishCompanyNetworkGraph = ({
                   {/* Officers by category (historical) */}
                   {e?.officers && (
                     <>
-                      {officerTable(e.officers.nombramientos, '#43a047', text.appointments)}
-                      {officerTable(e.officers.reelecciones, '#43a047', text.reelections)}
-                      {officerTable(e.officers.ceses_dimisiones, '#e53935', text.cessations)}
-                      {officerTable(e.officers.revocaciones, '#e53935', text.revocations)}
+                      {officerTable(e.officers.nombramientos, 'graph.link.appointment', text.appointments)}
+                      {officerTable(e.officers.reelecciones, 'graph.link.appointment', text.reelections)}
+                      {officerTable(e.officers.ceses_dimisiones, 'graph.link.cessation', text.cessations)}
+                      {officerTable(e.officers.revocaciones, 'graph.link.cessation', text.revocations)}
                     </>
                   )}
 
@@ -10669,8 +10726,8 @@ const SpanishCompanyNetworkGraph = ({
                   p: 1.25,
                   mb: 1.5,
                   borderRadius: 1.5,
-                  bgcolor: 'rgba(102,187,106,0.08)',
-                  border: '1px solid rgba(102,187,106,0.25)',
+                  bgcolor: (t) => alpha(t.palette.success.main, 0.08),
+                  border: (t) => `1px solid ${alpha(t.palette.success.main, 0.25)}`,
                 }}
               >
                 <VerifiedUserIcon sx={{ fontSize: 18, color: 'success.light', mt: '1px', flexShrink: 0 }} />
@@ -10688,7 +10745,7 @@ const SpanishCompanyNetworkGraph = ({
                     setDdCheckoutCompany(previewNodeName);
                     setDdCheckoutOpen(true);
                   }}
-                  sx={{ textTransform: 'none', fontWeight: 700, color: '#000' }}
+                  sx={{ textTransform: 'none', fontWeight: 700, color: 'warning.contrastText' }}
                 >
                   {text.buyDueDiligencePriced}
                 </Button>
