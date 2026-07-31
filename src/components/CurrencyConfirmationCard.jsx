@@ -1,13 +1,29 @@
 import React from 'react';
 import { Box, Chip, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { confirmationViewModel } from '../../functions/empresa/_confirmation.js';
 
-// Decay-level → dark-theme accent (tuned for the #0a0e1a app background).
-const LEVEL_STYLE = {
-  fresh: { border: '#2e7d32', bg: 'rgba(46,125,50,0.12)', dot: '#4caf50' },
-  aging: { border: '#b88300', bg: 'rgba(184,131,0,0.14)', dot: '#ffb300' },
-  stale: { border: '#5b6472', bg: 'rgba(91,100,114,0.14)', dot: '#90a4ae' },
+// Decay-level → MUI semantic palette key. Mode-aware: flips automatically
+// between light and dark so the status dot always clears the 3:1 contrast
+// floor against the surface it renders on (fresh/aging/stale ≈ success/
+// warning/error by meaning — see confirmationStatus() in _confirmation.js).
+const LEVEL_TOKEN = {
+  fresh: 'success',
+  aging: 'warning',
+  stale: 'error',
+};
+
+// The dot (VerifiedIcon) renders on top of this card's own translucent tint,
+// not directly on the outer Paper, so its real contrast is icon-vs-tint, not
+// icon-vs-paper. MUI's warning.main only clears ~2.7:1 against that tint in
+// light mode (still under the 3:1 floor); warning.dark clears 3.3:1 there.
+// success.main and error.main both already clear 3:1 against their own tint,
+// so only the warning dot needs the darker shade.
+const DOT_VARIANT = {
+  success: 'main',
+  warning: 'dark',
+  error: 'main',
 };
 
 /**
@@ -19,20 +35,20 @@ const LEVEL_STYLE = {
 export default function CurrencyConfirmationCard({ rec, lang = 'es' }) {
   const vm = confirmationViewModel(rec, lang);
   if (!vm) return null;
-  const s = LEVEL_STYLE[vm.level] || LEVEL_STYLE.fresh;
+  const token = LEVEL_TOKEN[vm.level] || LEVEL_TOKEN.fresh;
 
   return (
     <Box
-      sx={{
-        border: `1px solid ${s.border}`,
-        bgcolor: s.bg,
+      sx={(theme) => ({
+        border: `1px solid ${theme.palette[token].main}`,
+        bgcolor: alpha(theme.palette[token].main, 0.12),
         borderRadius: 2,
         p: 1.5,
         mb: 2,
-      }}
+      })}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
-        <VerifiedIcon sx={{ fontSize: 18, color: s.dot }} />
+        <VerifiedIcon sx={{ fontSize: 18, color: `${token}.${DOT_VARIANT[token]}` }} />
         <Typography
           variant="caption"
           sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary' }}

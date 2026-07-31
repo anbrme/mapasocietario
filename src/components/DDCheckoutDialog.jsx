@@ -1196,10 +1196,8 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           }}
         >
           {copy.questions}{' '}
-          {/* color intentionally left as the literal MUI-default blue rather
-              than primary.light (which would shift hue in dark mode) — see
-              task-10-report.md for the flagged light-mode legibility follow-up. */}
-          <a href="mailto:mapasocietario@ncdata.eu" style={{ color: '#8bc5ff', textDecoration: 'none' }}>mapasocietario@ncdata.eu</a>
+          {/* Informational contact link — info.main (fix round 1, task-10). */}
+          <Box component="a" href="mailto:mapasocietario@ncdata.eu" sx={{ color: 'info.main', textDecoration: 'none' }}>mapasocietario@ncdata.eu</Box>
           {' '}— {copy.reply}
         </Typography>
       </DialogContent>
@@ -1273,13 +1271,10 @@ function FallbackRadioOption({ value, label, description }) {
         bgcolor: 'action.hover',
         alignItems: 'flex-start',
         '&:has(.Mui-checked)': {
-          // borderColor intentionally left as the pre-existing literal blue
-          // (rgba(144,202,249,0.5), MUI's default primary.light) rather than
-          // mapped onto this app's teal primary.light (#2dd4bf dark) — that
-          // substitution would shift the dark-mode hue, which is out of scope
-          // here. See task-10-report.md for the flagged light-mode legibility
-          // follow-up.
-          borderColor: 'rgba(144,202,249,0.5)',
+          // Mirrors the Radio's own '&.Mui-checked' color (primary.light,
+          // above) so the ring and the dot it surrounds always match — fix
+          // round 1, task-10.
+          borderColor: (theme) => alpha(theme.palette.primary.light, 0.5),
           bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
         },
       }}

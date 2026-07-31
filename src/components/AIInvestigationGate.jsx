@@ -173,10 +173,10 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
                     border: '1px solid',
                     borderColor: (theme) => alpha(theme.palette.primary.main, 0.3),
                   }}>
-                    {/* color intentionally left as the literal MUI-default blue
-                        rather than primary.light (would shift hue in dark mode)
-                        — see task-10-report.md for the flagged follow-up. */}
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#90caf9' }}>
+                    {/* Matches this box's own primary-tinted bg/border above —
+                        mirrors the 'Web/Press' section's warning.light label
+                        pattern below (fix round 1, task-10). */}
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.light' }}>
                       {language === 'en' ? 'From the registry (BORME)' : 'Del registro (BORME)'}
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 0.5 }}>{answer.answer.registry}</Typography>
@@ -210,12 +210,11 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
                         const label = c.title || c.url || '';
                         return (
                           <li key={c.url || c.n || i}>
-                            {/* Both literal colors below (link blue, muted grey) have
-                                no exact-match theme token — converting either would
-                                shift the dark-mode hue. Flagged in task-10-report.md. */}
+                            {/* Citation link: informational accent. Non-linkable
+                                citation: muted/disabled text. Fix round 1, task-10. */}
                             {safeUrl
-                              ? <a href={safeUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#90caf9' }}>{label}</a>
-                              : <span style={{ color: '#9aa4b2' }}>{label}</span>}
+                              ? <Box component="a" href={safeUrl} target="_blank" rel="noopener noreferrer" sx={{ color: 'info.main' }}>{label}</Box>
+                              : <Box component="span" sx={{ color: 'text.disabled' }}>{label}</Box>}
                           </li>
                         );
                       })}
