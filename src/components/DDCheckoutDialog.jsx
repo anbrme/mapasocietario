@@ -20,6 +20,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import EmailIcon from '@mui/icons-material/Email';
@@ -669,8 +670,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       fullScreen={fullScreen}
       PaperProps={{
         sx: {
-          bgcolor: '#121828',
-          border: fullScreen ? 'none' : '1px solid rgba(255,255,255,0.1)',
+          bgcolor: 'background.paper',
+          border: fullScreen ? 'none' : '1px solid',
+          borderColor: 'divider',
           borderRadius: fullScreen ? 0 : 5,
         },
       }}
@@ -719,11 +721,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                   fontSize: '0.78rem',
                   textTransform: 'none',
                   fontWeight: 600,
-                  borderColor: 'rgba(255,255,255,0.15)',
+                  borderColor: 'divider',
                   color: 'text.secondary',
                   '&.Mui-selected': {
                     bgcolor: 'warning.main',
-                    color: '#000',
+                    color: 'warning.contrastText',
                     '&:hover': { bgcolor: 'warning.dark' },
                   },
                 },
@@ -753,7 +755,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             mt: 1,
             '& .MuiOutlinedInput-root': {
               fontSize: '0.85rem',
-              bgcolor: 'rgba(255,255,255,0.03)',
+              bgcolor: 'action.hover',
             },
           }}
         />
@@ -769,8 +771,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               p: 1.5,
               mb: 2,
               borderRadius: 1.5,
-              bgcolor: 'rgba(102,187,106,0.06)',
-              border: '1px solid rgba(102,187,106,0.2)',
+              bgcolor: (theme) => alpha(theme.palette.success.main, 0.06),
+              border: '1px solid',
+              borderColor: (theme) => alpha(theme.palette.success.main, 0.2),
             }}
           >
             <Typography
@@ -799,11 +802,11 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                   textTransform: 'none',
                   fontWeight: 600,
                   fontSize: '0.78rem',
-                  borderColor: 'rgba(255,255,255,0.15)',
+                  borderColor: 'divider',
                   color: 'text.secondary',
                   '&.Mui-selected': {
                     bgcolor: 'success.main',
-                    color: '#000',
+                    color: 'success.contrastText',
                     '&:hover': { bgcolor: 'success.dark' },
                   },
                 },
@@ -826,8 +829,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               p: 1.75,
               mb: 2,
               borderRadius: 1.5,
-              bgcolor: 'rgba(255,167,38,0.08)',
-              border: '1px solid rgba(255,167,38,0.3)',
+              bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
+              border: '1px solid',
+              borderColor: (theme) => alpha(theme.palette.warning.main, 0.3),
             }}
           >
             <FormControlLabel
@@ -857,7 +861,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                   label={copy.freeReportRoleLabel}
                   value={buyerRole}
                   onChange={(e) => setBuyerRole(e.target.value)}
-                  sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { fontSize: '0.85rem', bgcolor: 'rgba(255,255,255,0.03)' } }}
+                  sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { fontSize: '0.85rem', bgcolor: 'action.hover' } }}
                 >
                   {Object.entries(copy.roles).map(([value, label]) => (
                     <MenuItem key={value} value={value} sx={{ fontSize: '0.85rem' }}>{label}</MenuItem>
@@ -870,7 +874,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                   placeholder={copy.freeReportNeedPlaceholder}
                   value={needContext}
                   onChange={(e) => setNeedContext(e.target.value)}
-                  sx={{ mb: 1, '& .MuiOutlinedInput-root': { fontSize: '0.85rem', bgcolor: 'rgba(255,255,255,0.03)' } }}
+                  sx={{ mb: 1, '& .MuiOutlinedInput-root': { fontSize: '0.85rem', bgcolor: 'action.hover' } }}
                 />
                 <FormControlLabel
                   control={
@@ -891,7 +895,12 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 {/* Confirm the report will be free once the intake is filled. The
                     discount is auto-applied by the worker — no code to type. */}
                 {buyerRole && needContext.trim() && (
-                  <Box sx={{ mt: 1.5, p: 1, borderRadius: 1, bgcolor: 'rgba(255,167,38,0.12)', border: '1px dashed rgba(255,167,38,0.5)' }}>
+                  <Box sx={{
+                    mt: 1.5, p: 1, borderRadius: 1,
+                    bgcolor: (theme) => alpha(theme.palette.warning.main, 0.12),
+                    border: '1px dashed',
+                    borderColor: (theme) => alpha(theme.palette.warning.main, 0.5),
+                  }}>
                     <Typography variant="caption" sx={{ display: 'block', color: 'warning.light', fontSize: '0.72rem', fontWeight: 700 }}>
                       {copy.freeReportConfirm}
                     </Typography>
@@ -922,8 +931,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               p: 1.5,
               mb: 2,
               borderRadius: 1.5,
-              bgcolor: 'rgba(255,167,38,0.12)',
-              border: '1px solid rgba(255,167,38,0.35)',
+              bgcolor: (theme) => alpha(theme.palette.warning.main, 0.12),
+              border: '1px solid',
+              borderColor: (theme) => alpha(theme.palette.warning.main, 0.35),
               display: 'flex',
               alignItems: 'center',
               gap: 1,
@@ -946,8 +956,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             p: 2,
             mb: 2,
             borderRadius: 1.5,
-            bgcolor: 'rgba(255,167,38,0.06)',
-            border: '1px solid rgba(255,167,38,0.15)',
+            bgcolor: (theme) => alpha(theme.palette.warning.main, 0.06),
+            border: '1px solid',
+            borderColor: (theme) => alpha(theme.palette.warning.main, 0.15),
           }}
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -999,9 +1010,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           sx={{
             p: 2,
             borderRadius: 1.5,
-            bgcolor: includeFS ? 'rgba(20,184,166,0.06)' : 'rgba(255,255,255,0.02)',
+            bgcolor: includeFS ? (theme) => alpha(theme.palette.primary.main, 0.06) : 'action.hover',
             border: '1px solid',
-            borderColor: includeFS ? 'rgba(20,184,166,0.2)' : 'rgba(255,255,255,0.06)',
+            borderColor: includeFS ? (theme) => alpha(theme.palette.primary.main, 0.2) : 'divider',
             transition: 'all 0.2s',
           }}
         >
@@ -1040,8 +1051,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               mt: 1.5,
               p: 1.5,
               borderRadius: 1.5,
-              bgcolor: 'rgba(20,184,166,0.04)',
-              border: '1px solid rgba(20,184,166,0.16)',
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04),
+              border: '1px solid',
+              borderColor: (theme) => alpha(theme.palette.primary.main, 0.16),
             }}
           >
             <TextField
@@ -1056,7 +1068,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
                 mb: 1.5,
                 '& .MuiOutlinedInput-root': {
                   fontSize: '0.85rem',
-                  bgcolor: 'rgba(255,255,255,0.03)',
+                  bgcolor: 'action.hover',
                 },
               }}
             >
@@ -1121,7 +1133,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
               {isAndroidApp ? copy.includedGooglePlay : copy.calculatedStripe}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1, mt: 0.5, pt: 0.5, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1, mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'divider' }}>
             <Typography variant="body2" sx={{ fontWeight: 700 }}>{copy.total}</Typography>
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>
               {isAndroidApp ? androidDisplayPrice : copy.shownAtStripe}
@@ -1141,8 +1153,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             gap: 1,
             p: 1.25,
             borderRadius: 1.5,
-            bgcolor: 'rgba(102,187,106,0.08)',
-            border: '1px solid rgba(102,187,106,0.25)',
+            bgcolor: (theme) => alpha(theme.palette.success.main, 0.08),
+            border: '1px solid',
+            borderColor: (theme) => alpha(theme.palette.success.main, 0.25),
           }}
         >
           <VerifiedUserIcon sx={{ fontSize: 18, color: 'success.light', mt: '1px', flexShrink: 0 }} />
@@ -1183,6 +1196,9 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           }}
         >
           {copy.questions}{' '}
+          {/* color intentionally left as the literal MUI-default blue rather
+              than primary.light (which would shift hue in dark mode) — see
+              task-10-report.md for the flagged light-mode legibility follow-up. */}
           <a href="mailto:mapasocietario@ncdata.eu" style={{ color: '#8bc5ff', textDecoration: 'none' }}>mapasocietario@ncdata.eu</a>
           {' '}— {copy.reply}
         </Typography>
@@ -1201,7 +1217,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             py: 1.25,
             borderRadius: 2,
             bgcolor: 'warning.main',
-            color: '#000',
+            color: 'warning.contrastText',
             fontSize: '0.9rem',
             '&:hover': { bgcolor: 'warning.dark' },
           }}
@@ -1252,12 +1268,19 @@ function FallbackRadioOption({ value, label, description }) {
       sx={{
         px: 1,
         borderRadius: 1,
-        border: '1px solid rgba(255,255,255,0.12)',
-        bgcolor: 'rgba(255,255,255,0.03)',
+        border: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'action.hover',
         alignItems: 'flex-start',
         '&:has(.Mui-checked)': {
+          // borderColor intentionally left as the pre-existing literal blue
+          // (rgba(144,202,249,0.5), MUI's default primary.light) rather than
+          // mapped onto this app's teal primary.light (#2dd4bf dark) — that
+          // substitution would shift the dark-mode hue, which is out of scope
+          // here. See task-10-report.md for the flagged light-mode legibility
+          // follow-up.
           borderColor: 'rgba(144,202,249,0.5)',
-          bgcolor: 'rgba(20,184,166,0.12)',
+          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
         },
       }}
     />

@@ -3,6 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Box, Typography, Alert, CircularProgress,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { AI_INVESTIGATION_API } from '../config';
 import {
   buildRedeemBody, buildInvestigateHeaders, isTokenValid,
@@ -130,7 +131,7 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
-      PaperProps={{ sx: { bgcolor: '#121828', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 } }}>
+      PaperProps={{ sx: { bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 2 } }}>
       <DialogTitle>{t.title}</DialogTitle>
       <DialogContent sx={{ pt: 2 }}>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -144,7 +145,7 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
               {busy ? <CircularProgress size={20} /> : t.unlock}
             </Button>
             {onBuy && focusCompany && (
-              <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.12)', display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>{t.buyTitle}</Typography>
                 <Typography variant="body2" color="text.secondary">{t.buyBody}</Typography>
                 <Button variant="contained" color="warning" onClick={() => { onClose?.(); onBuy(focusCompany); }}>
@@ -166,7 +167,15 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
                   <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>{answer.answer.summary}</Typography>
                 )}
                 {answer.answer.registry && (
-                  <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.3)' }}>
+                  <Box sx={{
+                    p: 1.5, borderRadius: 1,
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                    border: '1px solid',
+                    borderColor: (theme) => alpha(theme.palette.primary.main, 0.3),
+                  }}>
+                    {/* color intentionally left as the literal MUI-default blue
+                        rather than primary.light (would shift hue in dark mode)
+                        — see task-10-report.md for the flagged follow-up. */}
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#90caf9' }}>
                       {language === 'en' ? 'From the registry (BORME)' : 'Del registro (BORME)'}
                     </Typography>
@@ -174,8 +183,13 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
                   </Box>
                 )}
                 {answer.answer.web && (
-                  <Box sx={{ p: 1.5, borderRadius: 1, bgcolor: 'rgba(255,167,38,0.08)', border: '1px solid rgba(255,167,38,0.3)' }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#ffb74d' }}>
+                  <Box sx={{
+                    p: 1.5, borderRadius: 1,
+                    bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
+                    border: '1px solid',
+                    borderColor: (theme) => alpha(theme.palette.warning.main, 0.3),
+                  }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'warning.light' }}>
                       {language === 'en' ? 'Web / Press' : 'Web / Prensa'}
                     </Typography>
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 0.5 }}>{answer.answer.web}</Typography>
@@ -196,6 +210,9 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
                         const label = c.title || c.url || '';
                         return (
                           <li key={c.url || c.n || i}>
+                            {/* Both literal colors below (link blue, muted grey) have
+                                no exact-match theme token — converting either would
+                                shift the dark-mode hue. Flagged in task-10-report.md. */}
                             {safeUrl
                               ? <a href={safeUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#90caf9' }}>{label}</a>
                               : <span style={{ color: '#9aa4b2' }}>{label}</span>}

@@ -19,6 +19,14 @@ import {
 } from '@mui/icons-material';
 
 // ─── Position category colors (pattern-based) ────────────────────────────────
+// Left as fixed literals rather than theme tokens: this is an 11-way role
+// legend local to the Gantt timeline (admin/consejero/presidente/…) with no
+// counterpart in graph.node or graph.link (the canvas only distinguishes
+// company vs officer, not specific role), so there is no existing token to
+// map onto without inventing one. All 11 are mid-to-dark saturated colors —
+// none read as white-on-white — and were spot-checked as legible on both the
+// dark canvas and a white dialog paper, so left unchanged pending a design
+// call on whether this legend deserves its own theme.graph.role.* branch.
 const CATEGORY_COLORS = {
   admin: '#7c3aed',
   consejero: '#2563eb',
@@ -245,7 +253,12 @@ const OfficerGanttTimeline = ({ companies, language = 'es' }) => {
                     const pos = toPercent(span.endDate) ?? 0;
                     return (
                       <Tooltip key={sIdx} title={`${span.role}: ? → ${span.end} (${copy.cessation})`} arrow>
-                        <Box sx={{ position: 'absolute', left: `${pos}%`, top: 10, width: 12, height: 12, borderRadius: '50%', bgcolor: row.color, opacity: 0.65, transform: 'translateX(-6px)', border: '2px solid white', boxShadow: 1 }} />
+                        {/* border punches the dot out from whatever surface it
+                            sits on (this dialog's Paper), so it must match
+                            background.paper rather than a fixed white — a
+                            literal white ring is invisible on a white paper
+                            in light mode. */}
+                        <Box sx={{ position: 'absolute', left: `${pos}%`, top: 10, width: 12, height: 12, borderRadius: '50%', bgcolor: row.color, opacity: 0.65, transform: 'translateX(-6px)', border: '2px solid', borderColor: 'background.paper', boxShadow: 1 }} />
                       </Tooltip>
                     );
                   }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert, Link, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 
 const BOE_URL = 'https://www.boe.es';
 const BORME_URL = 'https://www.boe.es/diario_borme/';
@@ -14,8 +15,8 @@ export default function LegalDisclaimer({ dense = false, language = 'en', sx = {
       variant="outlined"
       sx={{
         textAlign: 'left',
-        bgcolor: 'rgba(20,184,166,0.04)',
-        borderColor: 'rgba(20,184,166,0.24)',
+        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04),
+        borderColor: (theme) => alpha(theme.palette.primary.main, 0.24),
         '& .MuiAlert-message': { width: '100%' },
         ...sx,
       }}
