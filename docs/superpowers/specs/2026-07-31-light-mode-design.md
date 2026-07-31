@@ -49,7 +49,9 @@ A new `src/theme/` module:
 |---|---|
 | `palette.js` | `DARK_TOKENS` / `LIGHT_TOKENS` — plain objects, single source of colour truth |
 | `createAppTheme.js` | `createAppTheme(mode)` → MUI theme with standard palette plus a custom `palette.graph` branch |
-| `ThemeModeProvider.jsx` | Context, localStorage persistence, `useThemeMode()`, `isAppRoute()`, and the `APP_ROUTE` / `STORAGE_KEY` constants |
+| `themeMode.js` | Pure mode logic — `APP_ROUTE`, `STORAGE_KEY`, `isAppRoute()`, `resolveThemeMode()`, `readStoredMode()`, `writeStoredMode()` |
+| `contrast.js` | `contrastRatio()` — used by the palette test to enforce the 3:1 floor |
+| `ThemeModeProvider.jsx` | Thin React wrapper over `themeMode.js`: context, `useThemeMode()`, `data-theme` and `theme-color` side effects |
 | `ThemeModeToggle.jsx` | Sun/moon `IconButton` |
 
 Plain JS objects rather than CSS custom properties: the canvas needs real values at
@@ -109,7 +111,7 @@ change so mobile browser chrome matches.
 
 ```
 graph: {
-  surface: { canvas, nodeFill, label, labelHalo, badgeHalo, arrowOutline },
+  surface: { canvas, nodeFill, label, labelSubtle, labelHalo, badgeHalo, arrowOutline },
   node:    { company, officerIndividual, officerCompany, expanded, selected, searchOrigin },
   link:    { appointment, cessation, ownership, ownershipPrevious,
              ownershipLost, unknown, dissolved, pathHighlight },
@@ -134,8 +136,14 @@ invalidate a saved note.
 
 ## Light palette
 
-Contrast ratios are computed against each mode's own canvas (`#0a0e1a` dark,
-`#f8fafc` light) and all clear the WCAG 1.4.11 3:1 non-text contrast floor.
+Contrast ratios are computed against each mode's own **graph canvas** (`#0d1220`
+dark, `#f8fafc` light) and all clear the WCAG 1.4.11 3:1 non-text contrast floor.
+
+Note the two distinct backgrounds: `#0a0e1a` is the *document* background
+(`index.css`, non-app pages), while the graph canvas is `#0d1220` — the container
+`Box` at `SpanishCompanyNetworkGraph.jsx:8631`, which shows through because
+`ForceGraph2D` sets no `backgroundColor`. Graph contrast is measured against the
+latter.
 
 | Token | Dark | Light | Light ratio |
 |---|---|---|---|
@@ -174,9 +182,10 @@ not on the canvas, so the 3:1-vs-canvas rule does not apply to them):
 
 | Token | Dark | Light |
 |---|---|---|
-| `surface.canvas` | `#0a0e1a` | `#f8fafc` |
+| `surface.canvas` | `#0d1220` | `#f8fafc` |
 | `surface.nodeFill` | `#0d1220` | `#ffffff` |
 | `surface.label` | `#e0e0e0` | `#1e293b` |
+| `surface.labelSubtle` | `rgba(180,180,180,0.85)` | `rgba(51,65,85,0.85)` |
 | `surface.labelHalo` | `rgba(0,0,0,0.7)` | `rgba(255,255,255,0.85)` |
 | `surface.badgeHalo` | `rgba(4,18,31,0.9)` | `rgba(255,255,255,0.9)` |
 | `surface.arrowOutline` | `#0d1220` | `#ffffff` |
@@ -206,9 +215,12 @@ distinguishable.
 `nodeColors` memo (`:1681`) is replaced by `graph.node`, and `PATH_HIGHLIGHT_COLOR`
 (`:1700`) by `graph.link.pathHighlight`. The ~40 canvas literals in
 `nodeCanvasObject` (`:6391`) and `linkCanvasObject` (`:6653`) become token reads —
-including the label halo (`:6572`, `:6590`), badge halo (`:6539`), chip outline
-(`:6496`), investigation ring (`:6603`), merged ring (`:6617`), note marker
-(`:6637`, `:6643`) and arrow outline (`:6778`).
+including the label halo (`:6572`, `:6590`), subtle subtitle (`:6593`), badge halo
+(`:6539`), chip outline (`:6496`), investigation ring (`:6603`), merged ring
+(`:6617`), note marker (`:6637`, `:6643`) and arrow outline (`:6778`).
+
+The graph container `Box` (`:8631`, `bgcolor: '#0d1220'`) becomes
+`graph.surface.canvas`.
 
 The seven `NODE_NOTE_FLAGS` reads (`:143`, `:4945`, `:6629`, `:9339`, `:9444`,
 `:9737`, `:9831`) move to `graph.noteFlag`, with the import narrowed to
@@ -248,11 +260,22 @@ Vitest, `*.test.js` beside source, following repo convention. Tests written firs
   coloured shape rather than on the canvas, so canvas contrast is the wrong measure
   for them.
 
-`ThemeModeProvider.test.jsx`:
+`themeMode.test.js`:
 - Defaults to dark when storage is empty.
 - Persists a selected mode and restores it.
 - Ignores a corrupt or unrecognised stored value, falling back to dark.
 - Forces dark on non-`/app` routes regardless of stored mode.
+
+`vitest.config.js` is explicitly scoped to pure-logic tests — `environment: 'node'`,
+`include: ['src/**/*.test.js']`, and a comment stating no jsdom and no component
+tests. The mode logic is therefore extracted into a **pure** `themeMode.js`
+(`resolveThemeMode({ stored, pathname })`, `readStoredMode(storage)`,
+`writeStoredMode(storage, mode)` — storage injected, never a global reference), and
+`ThemeModeProvider.jsx` is a thin wrapper with no branching logic of its own.
+
+This keeps the decision logic under test without adding jsdom or
+`@testing-library/react`, and matches how every other util in the repo is tested.
+The provider and toggle are verified by running the app, per the same convention.
 
 `indexHtmlThemeScript.test.js`:
 - `index.html` contains the inline script, and that script references the current
