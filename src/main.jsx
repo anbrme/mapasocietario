@@ -1,9 +1,10 @@
 import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
-import { ThemeProvider, createTheme, CssBaseline, Box, Button } from '@mui/material';
+import { CssBaseline, Box, Button } from '@mui/material';
 import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { TermsProvider } from './contexts/TermsProvider';
+import { ThemeModeProvider } from './theme/ThemeModeProvider';
 import App from './App';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
@@ -166,31 +167,17 @@ window.addEventListener('vite:preloadError', () => {
   window.location.reload();
 });
 
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: { main: '#14b8a6', light: '#2dd4bf', dark: '#0d9488' },
-    background: {
-      default: '#0a0e1a',
-      paper: '#121828',
-    },
-  },
-  typography: {
-    fontFamily: '"IBM Plex Sans", "Roboto", "Helvetica", "Arial", sans-serif',
-  },
-});
-
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HelmetProvider>
-      <ThemeProvider theme={darkTheme}>
-        <CssBaseline />
-        <BrowserRouter>
+      <BrowserRouter>
+        <ThemeModeProvider>
+          <CssBaseline />
           <TermsProvider>
             <AppRoutes />
           </TermsProvider>
-        </BrowserRouter>
-      </ThemeProvider>
+        </ThemeModeProvider>
+      </BrowserRouter>
     </HelmetProvider>
   </React.StrictMode>
 );

@@ -4,11 +4,29 @@
   box-sizing: border-box;
 }
 
+/* Document chrome is the one place colour lives in CSS rather than in the theme
+   objects: it has to be correct before React mounts. The inline script in
+   index.html stamps [data-theme], and these variables follow it. Every other
+   colour in the app comes from src/theme/palette.js. */
+:root {
+  --ms-app-bg: #0a0e1a;
+  --ms-app-fg: #e0e0e0;
+  --ms-scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --ms-scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+}
+
+:root[data-theme='light'] {
+  --ms-app-bg: #f8fafc;
+  --ms-app-fg: #1e293b;
+  --ms-scrollbar-thumb: rgba(15, 23, 42, 0.18);
+  --ms-scrollbar-thumb-hover: rgba(15, 23, 42, 0.3);
+}
+
 html, body, #root {
   height: 100%;
   width: 100%;
-  background: #0a0e1a;
-  color: #e0e0e0;
+  background: var(--ms-app-bg);
+  color: var(--ms-app-fg);
   font-family: 'IBM Plex Sans', 'Roboto', 'Helvetica', 'Arial', sans-serif;
 }
 
@@ -30,7 +48,7 @@ html, body, #root {
   display: none;
 }
 
-/* Dark-themed scrollbar */
+/* Scrollbar, themed via the variables above */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -40,12 +58,12 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--ms-scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--ms-scrollbar-thumb-hover);
 }
 
 /* Branded header/footer shown only in the printed (Save-as-PDF) relationship report. */
