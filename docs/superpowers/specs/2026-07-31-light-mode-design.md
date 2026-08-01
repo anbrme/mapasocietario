@@ -49,7 +49,7 @@ A new `src/theme/` module:
 |---|---|
 | `palette.js` | `DARK_TOKENS` / `LIGHT_TOKENS` — plain objects, single source of colour truth |
 | `createAppTheme.js` | `createAppTheme(mode)` → MUI theme with standard palette plus a custom `palette.graph` branch |
-| `themeMode.js` | Pure mode logic — `APP_ROUTE`, `STORAGE_KEY`, `isAppRoute()`, `resolveThemeMode()`, `readStoredMode()`, `writeStoredMode()` |
+| `themeMode.js` | Pure mode logic — `APP_ROUTE`, `STORAGE_KEY`, `THEME_MODES`, `DEFAULT_MODE`, `isAppRoute()`, `normalizeMode()`, `resolveThemeMode()`, `readStoredMode()`, `writeStoredMode()` |
 | `contrast.js` | `contrastRatio()` — used by the palette test to enforce the 3:1 floor |
 | `ThemeModeProvider.jsx` | Thin React wrapper over `themeMode.js`: context, `useThemeMode()`, `data-theme` and `theme-color` side effects |
 | `ThemeModeToggle.jsx` | Sun/moon `IconButton` |
@@ -95,11 +95,12 @@ pretend otherwise, the duplication is pinned by a test: `index.html` is read and
 asserted to contain both the current app route and the current storage key, so
 changing either in `src/theme/` without updating the inline script fails the suite.
 
-`index.css` drives `html, body, #root` and the scrollbar from three CSS variables —
-`--ms-app-bg`, `--ms-app-fg`, `--ms-scrollbar-thumb` — instead of literals.
+`index.css` drives `html, body, #root` and the scrollbar from four CSS variables —
+`--ms-app-bg`, `--ms-app-fg`, `--ms-scrollbar-thumb`, `--ms-scrollbar-thumb-hover` —
+instead of literals.
 
 This is a deliberate, bounded exception to the JS-token design: pre-paint HTML has no
-access to the React theme. It covers three variables for raw document chrome only.
+access to the React theme. It covers four variables for raw document chrome only.
 Everything else reads from the theme object.
 
 `<meta name="theme-color">` (`index.html:15`, currently `#0a0e1a`) is updated on mode
@@ -111,7 +112,8 @@ change so mobile browser chrome matches.
 
 ```
 graph: {
-  surface: { canvas, nodeFill, label, labelSubtle, labelHalo, badgeHalo, arrowOutline },
+  surface: { canvas, nodeFill, label, labelSubtle, labelHalo, badgeHalo, arrowOutline,
+             edgeLabelBg, edgeLabelText },
   node:    { company, officerIndividual, officerCompany, expanded, selected, searchOrigin },
   link:    { appointment, cessation, ownership, ownershipPrevious,
              ownershipLost, unknown, dissolved, pathHighlight },
@@ -123,12 +125,46 @@ graph: {
 }
 ```
 
+`graph.surface.edgeLabelBg` / `edgeLabelText` were added mid-implementation to theme
+the edge-label pill drawn on hover, which had been overlooked in the initial token
+shape. Dark: `rgba(18, 24, 40, 0.75)` / `rgba(200, 200, 200, 0.9)`. Light:
+`rgba(255, 255, 255, 0.85)` / `rgba(51, 65, 85, 0.9)`.
+
+A second, top-level `accent` group sits alongside `graph` (not inside it) —
+`{ primary, success, warning, info }`, mode-aware. Dark: `#2dd4bf` / `#81c784` /
+`#ffb74d` / `#64b5f6`. Light: `#0f766e` / `#2e7d32` / `#b45309` / `#1d4ed8`.
+
+It was added in final review, not in the original plan: components had been reading
+MUI's own `theme.palette.{primary,success,warning,info}.light` for text/icon accents,
+and those shades are tuned to sit on dark surfaces. Measured against white paper they
+score 1.73–2.49:1 (warning.light lowest, `primary.light` highest) — nowhere near
+readable, a Critical defect caught in the final whole-branch review gate. `accent.*`
+replaces those reads across the `/app`-reachable components. It is checked in
+`palette.test.js` against a **4.5:1 text-contrast floor** (WCAG 1.4.3) — stricter than
+the 3:1 non-text floor the graph canvas colours are held to, because this group renders
+as text and thin icon strokes, not as filled shapes on a canvas. Dark-mode `accent`
+values are unchanged (same hex as the old `.light` shades); only light mode needed new,
+darker values to clear 4.5:1 against `background.paper`.
+
+Note that `success`/`warning`/`error`/`info` themselves are still MUI's stock palette
+— nothing in `palette.js` or `createAppTheme.js` overrides them. `accent.*` is a
+parallel, separately-named group; components that still reach for `color="success"` /
+`color="warning"` etc. are relying on MUI's own light/dark defaults, unaudited by
+`palette.test.js`.
+
 ### Note flags
 
-`NODE_NOTE_FLAGS` in `src/utils/nodeNotes.js:5` is a frozen module constant mapping
-flag name → hex, read in seven places in the graph component. Its colours move to
-`palette.graph.noteFlag`; `nodeNotes.js` keeps the flag **names** (as
-`NODE_NOTE_FLAG_KEYS`) for validation.
+`NODE_NOTE_FLAGS` in `src/utils/nodeNotes.js` remains a frozen module constant mapping
+flag name → hex, and it still holds all five colour values — they did not move out of
+the file. What changed is that the graph component no longer *reads* those hex values:
+its canvas and JSX colour reads were repointed to `palette.graph.noteFlag[flag]`
+instead. `nodeNotes.js` is now imported only for `NODE_NOTE_FLAG_KEYS` (`Object.keys`
+of the same frozen object), used purely for flag-name validation — e.g. the context-menu
+handler at `SpanishCompanyNetworkGraph.jsx:4952` checks
+`NODE_NOTE_FLAG_KEYS.includes(...)` rather than the old
+`Object.prototype.hasOwnProperty.call(NODE_NOTE_FLAGS, ...)`. The five hex values left
+in `NODE_NOTE_FLAGS` are dead weight for rendering purposes but harmless: nothing
+reads `NODE_NOTE_FLAGS`'s values anymore, only its keys.
 
 This is safe for existing user data: `normalizeNodeNote` (`nodeNotes.js:52`)
 persists the flag *name*, never the hex, so remapping colours per mode cannot
@@ -189,6 +225,8 @@ not on the canvas, so the 3:1-vs-canvas rule does not apply to them):
 | `surface.labelHalo` | `rgba(0,0,0,0.7)` | `rgba(255,255,255,0.85)` |
 | `surface.badgeHalo` | `rgba(4,18,31,0.9)` | `rgba(255,255,255,0.9)` |
 | `surface.arrowOutline` | `#0d1220` | `#ffffff` |
+| `surface.edgeLabelBg` | `rgba(18,24,40,0.75)` | `rgba(255,255,255,0.85)` |
+| `surface.edgeLabelText` | `rgba(200,200,200,0.9)` | `rgba(51,65,85,0.9)` |
 | `badge.unifiedText` | `#04121f` | `#ffffff` |
 | `badge.cargoText` | `#1a1206` | `#ffffff` |
 | `chip.outline` | `#ffffff` | `#ffffff` |
@@ -212,31 +250,38 @@ distinguishable.
 ## Graph integration
 
 `SpanishCompanyNetworkGraph.jsx` reads `palette.graph` from `useTheme()`. The
-`nodeColors` memo (`:1681`) is replaced by `graph.node`, and `PATH_HIGHLIGHT_COLOR`
-(`:1700`) by `graph.link.pathHighlight`. The ~40 canvas literals in
-`nodeCanvasObject` (`:6391`) and `linkCanvasObject` (`:6653`) become token reads —
-including the label halo (`:6572`, `:6590`), subtle subtitle (`:6593`), badge halo
-(`:6539`), chip outline (`:6496`), investigation ring (`:6603`), merged ring
-(`:6617`), note marker (`:6637`, `:6643`) and arrow outline (`:6778`).
+`nodeColors` memo (`:1688`) is **kept, not replaced** — it still supplies the
+snake_case keys (`officer_individual`, `officer_company`, …) that are matched
+against node `type`/`subtype` strings elsewhere in the file, so re-keying it away
+would have meant touching every match site. Only its colour *source* changes: each
+value now reads from `graphPalette.node.*` instead of a hex literal. Likewise
+`PATH_HIGHLIGHT_COLOR` (`:1707`) is now `graphPalette.link.pathHighlight` rather than
+a literal. The ~40 canvas literals in `nodeCanvasObject` and `linkCanvasObject`
+become token reads — including the label halo, subtle subtitle, badge halo, chip
+outline, investigation ring, merged ring, note marker and arrow outline.
 
-The graph container `Box` (`:8631`, `bgcolor: '#0d1220'`) becomes
-`graph.surface.canvas`.
+The graph container `Box` (`bgcolor: '#0d1220'`) becomes `graph.surface.canvas`.
 
-The seven `NODE_NOTE_FLAGS` reads (`:143`, `:4945`, `:6629`, `:9339`, `:9444`,
-`:9737`, `:9831`) move to `graph.noteFlag`, with the import narrowed to
-`NODE_NOTE_FLAG_KEYS` for the validation call at `:4945`.
+The `NODE_NOTE_FLAGS` hex reads throughout the graph component become
+`graphPalette.noteFlag[flag]` reads (canvas marker fill, context-menu swatches, the
+note-colour picker, the preview panel) and `graphPalette.marker.noteOutline` /
+`noteGlyph` for the marker's outline and glyph. The one place that read
+`NODE_NOTE_FLAGS` for its *keys* rather than its colours — the note-flag validation
+in the context-menu handler (`:4952`) — now imports `NODE_NOTE_FLAG_KEYS` instead.
 
 Adding `graph` to both callbacks' dependency arrays changes the callback identity on
 mode change, which is what triggers react-force-graph to repaint. No imperative
 redraw is required.
 
-The remaining ~90 literals in that file are JSX chrome (toolbar, legend, panels) and
-become MUI tokens or `graph.*` reads.
+The remaining ~90 literals in that file are JSX chrome (toolbar, legend, panels).
+All but 30 of them become MUI tokens or `graph.*` reads; the 30 that don't are the
+floating "Datos" table card, left as intentionally theme-independent literals (see
+Decisions, below).
 
 ## Toggle
 
 A sun/moon `IconButton` in the `/app` breadcrumb bar, next to the existing menu
-button (`App.jsx:219`). That bar is already fully token-based
+button (`App.jsx:229`). That bar is already fully token-based
 (`background.paper`, `divider`, `text.secondary`, `primary.light`) and needs no
 other change. Label and tooltip are bilingual, following the existing `copy` pattern
 in that file.
@@ -267,9 +312,9 @@ Vitest, `*.test.js` beside source, following repo convention. Tests written firs
 - Forces dark on non-`/app` routes regardless of stored mode.
 
 `vitest.config.js` is explicitly scoped to pure-logic tests — `environment: 'node'`,
-`include: ['src/**/*.test.js']`, and a comment stating no jsdom and no component
-tests. The mode logic is therefore extracted into a **pure** `themeMode.js`
-(`resolveThemeMode({ stored, pathname })`, `readStoredMode(storage)`,
+`include: ['src/**/*.test.js', 'functions/**/*.test.js']`, and a comment stating no
+jsdom and no component tests. The mode logic is therefore extracted into a **pure**
+`themeMode.js` (`resolveThemeMode({ stored, pathname })`, `readStoredMode(storage)`,
 `writeStoredMode(storage, mode)` — storage injected, never a global reference), and
 `ThemeModeProvider.jsx` is a thin wrapper with no branching logic of its own.
 
@@ -277,10 +322,57 @@ This keeps the decision logic under test without adding jsdom or
 `@testing-library/react`, and matches how every other util in the repo is tested.
 The provider and toggle are verified by running the app, per the same convention.
 
-`indexHtmlThemeScript.test.js`:
+`indexHtml.test.js`:
 - `index.html` contains the inline script, and that script references the current
-  `APP_ROUTE` and `STORAGE_KEY` values exported from `ThemeModeProvider.jsx`,
-  pinning the unavoidable duplication described above.
+  `APP_ROUTE` and `STORAGE_KEY` values exported from `themeMode.js`, pinning the
+  unavoidable duplication described above.
+- `src/index.css`'s `--ms-app-bg` and `--ms-app-fg` values, for both `:root` and
+  `:root[data-theme='light']`, are asserted against `DARK_TOKENS`/`LIGHT_TOKENS`
+  directly (`background.default` and `graph.surface.label`) rather than against a
+  second hardcoded copy of the hex — so a palette change that isn't mirrored into
+  `index.css` fails this suite instead of leaving the pre-paint background or
+  scrollbar silently stale.
+
+## Decisions made during implementation
+
+- **The floating "Datos" table card stays theme-independent.** It was a white-on-dark
+  card before light mode existed and remains white-on-either after — dense tabular
+  data reads best on a light card regardless of app theme, like a spreadsheet embed.
+  It retains 30 hardcoded colour literals (bgcolor, filter row, header/body text,
+  in-table badges); only its teal drag-header and outer `divider` border are
+  theme-aware. In light mode its separation from the canvas relies on `elevation={6}`
+  plus the divider border rather than a colour contrast against the page.
+- **`OfficerTimelineDialog`'s `CATEGORY_COLORS` legend (11 role colours) stays fixed.**
+  It has no counterpart in `graph.node`/`graph.link` — the canvas only distinguishes
+  company vs. officer, not specific role — so there was no existing token to map onto
+  without inventing one. All 11 were spot-checked as legible on both a dark canvas and
+  a white dialog paper and left as literals, pending a possible future
+  `graph.role.*` token group.
+- **Two dark-mode chip colours were deliberately realigned to mirror the canvas
+  colours they represent**, in the toolbar/legend tokenization pass: the cargo-unify
+  chip's fill/text moved off a hand-picked `#0d9488`/`#ecfeff` pair onto
+  `graph.badge.unified`/`unifiedText` (`#14b8a6` / `#04121f`), which happens to
+  improve text contrast from ≈3.6:1 to ≈7.6:1 against the fill; and the sole-shareholder
+  outlined chips moved off ad hoc `#5eead4` (active) / `#9e9e9e`–`#616161` (previous)
+  onto `graph.link.ownership` (amber) and `graph.link.ownershipPrevious` (slate) so the
+  toggle chips match the ownership edges they control. User-approved, not a regression.
+- **`success`/`warning`/`error`/`info` still come from MUI's own defaults**, not from
+  `palette.js` — nothing in `createAppTheme.js` overrides them. This is the root cause
+  of the `.light`-shade contrast defect that `accent.*` was added to fix (see Token
+  shape), and is worth knowing before reaching for `color="success"` etc. in new
+  `/app` UI: it inherits MUI's stock light/dark values, unaudited by `palette.test.js`.
+- **The currency-confirmation "stale" state stays neutral (`text.secondary`), not
+  red.** Old is not the same as wrong, so a stale confirmation is not styled as an
+  error. `CurrencyConfirmationCard.jsx` and its server-rendered twin,
+  `functions/empresa/_lib.js`'s `.cc-stale` rule, both render it neutral. User-decided
+  (final review, finding 4); `text.secondary` was chosen there over `text.disabled`
+  because brute-force compositing showed `text.disabled`'s alpha cannot reach 3:1
+  against any neutral surface in light mode (max ≈2.68:1).
+- **`graph.chip.outline` is `#ffffff` in dark but `#1e293b` in light.** It is the
+  punch-out ring around the deputy chip badge, which sits partly over `nodeFill` and
+  partly over bare canvas — a fixed white ring, correct against the `#0d1220` dark
+  canvas, is effectively invisible against the `#f8fafc` light canvas, so light mode
+  reuses `graph.marker.noteOutline`'s already-solved dark-ink-outline value instead.
 
 ## Known limitations
 
