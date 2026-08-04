@@ -330,7 +330,9 @@ Decides *what gets screened*. This is the module that structurally enforces the 
   - `build_subjects(data, alias_names=None, is_legal_entity=None) -> list[dict]`
     where each dict is `{'name': str, 'role': str}` and role ∈
     `{'subject', 'former_name', 'sole_shareholder', 'parent', 'participada'}`
-  - `MAX_SUBJECTS: int` (8), `MAX_FORMER_NAMES: int` (2), `MAX_PARTICIPADAS: int` (3)
+  - `MAX_SUBJECTS: int` (10), `MAX_FORMER_NAMES: int` (2), `MAX_SOLE_SHAREHOLDERS: int` (2), `MAX_PARENTS: int` (2), `MAX_PARTICIPADAS: int` (3)
+
+**Every role has its own cap, and the caps sum to `MAX_SUBJECTS`.** Without a per-role cap on sole shareholders and parents, a company with many historical `sole_shareholders` entries consumes every slot and participadas are silently starved to zero even though their own cap was never reached. Summing the caps to the total removes that by construction. At 10 subjects the query set is 11 (the registry subject gets news+web, the rest news only), still under `MAX_QUERIES = 12`.
 
 `is_legal_entity` is an injected predicate. Production passes `borme_dd_report._is_legal_entity`; tests pass a stub. This keeps the single source of truth for entity classification in one place (DRY) while leaving this module pure.
 
@@ -420,15 +422,60 @@ def test_parent_duplicating_sole_shareholder_is_deduped():
     assert [x['name'] for x in out].count('HOLDING ACME BV') == 1
 
 
-def test_caps_are_enforced():
+def test_every_role_has_its_own_cap():
     out = s.build_subjects(
-        _data(companies_owned=[{'name': f'ACME {i} SL'} for i in range(10)]),
+        _data(
+            company={
+                'company_name': 'ACME SOLUCIONES SL',
+                'sole_shareholders': [f'SOCIO {i} SL' for i in range(10)],
+            },
+            companies_owned=[{'name': f'PARTICIPADA {i} SL'} for i in range(10)],
+            ownership_chain=[{'name': f'MATRIZ {i} BV'} for i in range(10)],
+        ),
         alias_names={f'VIEJA {i} SL' for i in range(6)} | {'ACME SOLUCIONES SL'},
         is_legal_entity=_is_legal_entity,
     )
+    roles = [x['role'] for x in out]
     assert len(out) <= s.MAX_SUBJECTS
-    assert sum(1 for x in out if x['role'] == 'participada') <= s.MAX_PARTICIPADAS
-    assert sum(1 for x in out if x['role'] == 'former_name') <= s.MAX_FORMER_NAMES
+    assert roles.count('former_name') <= s.MAX_FORMER_NAMES
+    assert roles.count('sole_shareholder') <= s.MAX_SOLE_SHAREHOLDERS
+    assert roles.count('parent') <= s.MAX_PARENTS
+    assert roles.count('participada') <= s.MAX_PARTICIPADAS
+
+
+def test_a_crowded_role_cannot_starve_a_lower_priority_one():
+    # Regression: 10 corporate sole shareholders used to consume every slot,
+    # leaving zero participadas even though the participada cap was never hit.
+    out = s.build_subjects(
+        _data(
+            company={
+                'company_name': 'ACME SOLUCIONES SL',
+                'sole_shareholders': [f'SOCIO {i} SL' for i in range(10)],
+            },
+            companies_owned=[{'name': f'PARTICIPADA {i} SL'} for i in range(5)],
+        ),
+        is_legal_entity=_is_legal_entity,
+    )
+    roles = [x['role'] for x in out]
+    assert roles.count('participada') == s.MAX_PARTICIPADAS
+    assert roles.count('sole_shareholder') == s.MAX_SOLE_SHAREHOLDERS
+
+
+def test_total_cap_truncates_by_role_priority():
+    out = s.build_subjects(
+        _data(
+            company={
+                'company_name': 'ACME SOLUCIONES SL',
+                'sole_shareholders': [f'SOCIO {i} SL' for i in range(5)],
+            },
+            companies_owned=[{'name': f'PARTICIPADA {i} SL'} for i in range(5)],
+            ownership_chain=[{'name': f'MATRIZ {i} BV'} for i in range(5)],
+        ),
+        alias_names={f'VIEJA {i} SL' for i in range(5)} | {'ACME SOLUCIONES SL'},
+        is_legal_entity=_is_legal_entity,
+    )
+    assert len(out) == s.MAX_SUBJECTS
+    assert out[0]['role'] == 'subject'
 
 
 def test_degrades_on_empty_or_broken_data():
@@ -474,8 +521,11 @@ Pure module — no I/O, no LLM.
 """
 from dd_ext_names import normalize_entity_name
 
-MAX_SUBJECTS = 8
+# Per-role caps sum to MAX_SUBJECTS so no role can starve another.
+MAX_SUBJECTS = 10
 MAX_FORMER_NAMES = 2
+MAX_SOLE_SHAREHOLDERS = 2
+MAX_PARENTS = 2
 MAX_PARTICIPADAS = 3
 
 ROLE_ORDER = ('subject', 'former_name', 'sole_shareholder', 'parent', 'participada')
@@ -531,13 +581,21 @@ def build_subjects(data, alias_names=None, is_legal_entity=None):
             if _add(acc, seen, alias, 'former_name', is_legal_entity):
                 added += 1
 
+        added = 0
         for sh in (company.get('sole_shareholders') or []):
-            _add(acc, seen, sh, 'sole_shareholder', is_legal_entity)
+            if added >= MAX_SOLE_SHAREHOLDERS:
+                break
+            if _add(acc, seen, sh, 'sole_shareholder', is_legal_entity):
+                added += 1
 
+        added = 0
         for link in ((data or {}).get('ownership_chain') or []):
+            if added >= MAX_PARENTS:
+                break
             if not isinstance(link, dict) or link.get('is_individual'):
                 continue
-            _add(acc, seen, link.get('name'), 'parent', is_legal_entity)
+            if _add(acc, seen, link.get('name'), 'parent', is_legal_entity):
+                added += 1
 
         added = 0
         for owned in ((data or {}).get('companies_owned') or []):
@@ -558,7 +616,7 @@ def build_subjects(data, alias_names=None, is_legal_entity=None):
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_subjects.py -v`
-Expected: PASS (8 tests)
+Expected: PASS (10 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -715,6 +773,41 @@ def test_fetch_drops_items_without_a_url():
     assert [i['url'] for i in out['items']] == ['https://e.example/1']
 
 
+def test_fetch_never_raises_on_malformed_queries():
+    # fetch must never raise -- including on the no-token short-circuit, which
+    # previously read q['q'] before the guard.
+    bad = [{'subject': 'X', 'role': 'subject', 'kind': 'news'},  # no 'q'
+           'not-a-dict',
+           {'q': ''},
+           None]
+    out = ds.fetch(bad, token=None, fetched_at='2026-08-04T00:00:00Z')
+    assert out['status'] == 'not_run'
+    assert out['items'] == []
+    assert out['queries'] == []
+
+
+def test_fetch_skips_malformed_queries_but_runs_the_good_ones():
+    payload = {'results': [{'title': 'ok', 'url': 'https://e.example/1'}]}
+    out = ds.fetch(
+        ['not-a-dict',
+         {'subject': 'X', 'role': 'subject'},                       # no 'q'
+         {'q': 'good', 'subject': 'G', 'role': 'subject', 'kind': 'news'}],
+        token='t', fetched_at='2026-08-04T00:00:00Z',
+        _get=lambda *a, **k: _Resp(payload))
+    assert out['status'] == 'ran'
+    assert out['queries'] == ['good']
+    assert len(out['items']) == 1
+
+
+def test_fetch_tolerates_a_query_missing_its_kind():
+    payload = {'web': {'results': [{'title': 'ok', 'url': 'https://e.example/2'}]}}
+    out = ds.fetch([{'q': 'x', 'subject': 'X', 'role': 'subject'}],
+                   token='t', fetched_at='2026-08-04T00:00:00Z',
+                   _get=lambda *a, **k: _Resp(payload))
+    assert out['status'] == 'ran'
+    assert out['items'][0]['url'] == 'https://e.example/2'
+
+
 def test_fetch_deduplicates_by_url():
     payload = {'results': [
         {'title': 'a', 'url': 'https://e.example/1'},
@@ -795,14 +888,14 @@ def build_queries(subjects):
 
 def _params(query):
     params = {
-        'q': query['q'],
+        'q': query.get('q', ''),
         'count': RESULTS_PER_QUERY,
         'country': 'es',
         'search_lang': 'es',
         'safesearch': 'off',
         'spellcheck': 'false',
     }
-    if query['kind'] == 'news':
+    if query.get('kind') == 'news':
         params['extra_snippets'] = '1'
     return params
 
@@ -826,10 +919,10 @@ def _normalize(raw, query, fetched_at):
         'source': (meta.get('hostname') or raw.get('source') or '').strip(),
         'published': (raw.get('page_age') or raw.get('age') or '').strip(),
         'snippet': snippet,
-        'subject': query['subject'],
-        'role': query['role'],
-        'query': query['q'],
-        'kind': query['kind'],
+        'subject': query.get('subject', ''),
+        'role': query.get('role', ''),
+        'query': query.get('q', ''),
+        'kind': query.get('kind', ''),
         'fetched_at': fetched_at,
     }
 
@@ -841,7 +934,10 @@ def fetch(queries, token, fetched_at, _get=None):
             'failed' when every query errored,
             'ran' when at least one query returned.
     """
-    queries = list(queries or [])
+    # Drop malformed entries BEFORE reading any key: fetch must never raise,
+    # including on the no-token short-circuit path.
+    queries = [q for q in (queries or [])
+               if isinstance(q, dict) and isinstance(q.get('q'), str) and q['q']]
     query_strings = [q['q'] for q in queries]
     if not token or not queries:
         return {'status': 'not_run', 'items': [], 'queries': query_strings}
@@ -851,8 +947,11 @@ def fetch(queries, token, fetched_at, _get=None):
     items, seen_urls, ok, errors = [], set(), 0, 0
 
     for query in queries:
-        endpoint = NEWS_ENDPOINT if query['kind'] == 'news' else WEB_ENDPOINT
         try:
+            # Inside the try: a missing/odd 'kind' must degrade this one query,
+            # never abort the sweep.
+            endpoint = (NEWS_ENDPOINT if query.get('kind') == 'news'
+                        else WEB_ENDPOINT)
             response = get(endpoint, headers=headers, params=_params(query),
                            timeout=TIMEOUT_SECONDS)
             if getattr(response, 'status_code', 500) != 200:
@@ -928,9 +1027,15 @@ Three structural facts that shape the parser:
    this screen?".
 
 **Caching.** Cache the *parsed, enterprise-filtered* result as a small JSON
-(~1,769 names) keyed by `generationDate`, not the 25 MB raw XML. The first
-report after a list update pays the download and parse; every other report
-loads a tiny file. If the Commission is unreachable, fall back to the most
+(~1,769 names), not the 25 MB raw XML, and stamp it with the date it was
+written. **The freshness check happens BEFORE any network call**: if a cache
+written today exists, `load_list` returns it and touches the network zero
+times. Only the first report of the day pays the download and parse.
+
+This ordering is the whole point. Fetching first and only then comparing
+versions still downloads ~31 MB (25.8 EU + 5.6 OFAC) and costs ~21s on every
+single report — roughly a quarter of this layer's 90-second budget, spent to
+learn nothing changed. If the Commission is unreachable, fall back to the most
 recent cached JSON and surface its `generationDate` so the reader sees the
 screen's real age — degrading to "stale but disclosed" rather than "failed".
 No systemd timer: the on-demand cache already gives the resilience a weekly
@@ -947,9 +1052,10 @@ timer would, without a second thing that can silently stop.
     `{'status': 'ran'|'not_run'|'failed', 'lists': [ {...} ]}`
   - per-list shape: `{'list_id','label_es','label_en','status','names_checked','matches','generation_date','checked_at'}` where status ∈ `{'ran','stale','failed','unavailable','not_run'}`
   - match shape: `{'subject','listed_name','list_id','programme','reference','strength'}` where strength is `'exact'` or `'base'`
-  - `load_list(list_id, cache_dir, _get=None) -> dict` —
+  - `load_list(list_id, cache_dir, today, _get=None) -> dict` —
     `{'status','entries','generation_date'}` with entry shape
-    `{'name','programme','reference'}`
+    `{'name','programme','reference'}`. **Makes NO network call when a cache
+    written today already exists.**
   - `LISTS: dict` keyed by `list_id`
 
 - [ ] **Step 1: Both sources are verified — no action, read and proceed**
@@ -1000,7 +1106,7 @@ import dd_ext_watchlists as w
 
 
 def _loader(entries_by_list, failing=()):
-    def _load(list_id, cache_dir, _get=None):
+    def _load(list_id, cache_dir, today, _get=None):
         if list_id in failing:
             return {'status': 'failed', 'entries': [], 'generation_date': ''}
         return {'status': 'ran',
@@ -1142,6 +1248,63 @@ def test_all_lists_failing_makes_the_check_failed():
 def test_no_subjects_is_not_run():
     out = w.screen([], cache_dir='/tmp', today='2026-08-04', _load=_loader({}))
     assert out['status'] == 'not_run'
+
+
+def test_a_cache_written_today_short_circuits_without_any_network_call():
+    # The contract: only the FIRST report of the day pays the download.
+    # Fetching first and comparing versions afterwards still pulls ~31 MB
+    # across both lists on every single report.
+    import json
+    import os
+    import tempfile
+
+    calls = []
+
+    def _get(url, timeout=None):
+        calls.append(url)
+        raise AssertionError('network must not be touched on a same-day cache hit')
+
+    cache_dir = tempfile.mkdtemp()
+    path = w._cache_path(cache_dir, 'ofac_sdn')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as handle:
+        json.dump({'cached_on': '2026-08-04', 'generation_date': '',
+                   'entries': [{'name': 'ACME SL', 'programme': 'X',
+                                'reference': '1'}]}, handle)
+
+    out = w.load_list('ofac_sdn', cache_dir, '2026-08-04', _get=_get)
+    assert out['status'] == 'ran'
+    assert len(out['entries']) == 1
+    assert calls == []
+
+
+def test_a_cache_from_a_previous_day_triggers_a_refetch():
+    import json
+    import os
+    import tempfile
+
+    calls = []
+
+    class _Resp:
+        status_code = 200
+        content = (b'36,"AEROCARIBBEAN AIRLINES",-0- ,"CUBA",-0- ,-0- ,-0- ,'
+                   b'-0- ,-0- ,-0- ,-0- ,-0- \n')
+
+    def _get(url, timeout=None):
+        calls.append(url)
+        return _Resp()
+
+    cache_dir = tempfile.mkdtemp()
+    path = w._cache_path(cache_dir, 'ofac_sdn')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as handle:
+        json.dump({'cached_on': '2026-08-01', 'generation_date': '',
+                   'entries': []}, handle)
+
+    out = w.load_list('ofac_sdn', cache_dir, '2026-08-04', _get=_get)
+    assert len(calls) == 1
+    assert out['status'] == 'ran'
+    assert out['entries'][0]['name'] == 'AEROCARIBBEAN AIRLINES'
 
 
 def test_screen_never_raises_on_a_broken_loader():
@@ -1338,7 +1501,7 @@ _PARSERS = {'ofac_csv': _parse_ofac_csv, 'eu_xml': _parse_eu_xml}
 _GENERATION_DATE = {'eu_xml': _eu_generation_date}
 
 
-def load_list(list_id, cache_dir, _get=None):
+def load_list(list_id, cache_dir, today, _get=None):
     """Fetch, parse and cache one list. Never raises.
 
     Caches the PARSED, filtered entries (small) rather than the raw feed
@@ -1352,6 +1515,14 @@ def load_list(list_id, cache_dir, _get=None):
 
     path = _cache_path(cache_dir, list_id)
     cached = _read_cache(path)
+
+    # FRESHNESS CHECK FIRST — a cache written today short-circuits with NO
+    # network call at all. Fetching first and comparing versions afterwards
+    # still downloads ~31 MB across both lists on every report.
+    if cached and cached.get('cached_on') == today:
+        return {'status': 'ran', 'entries': cached['entries'],
+                'generation_date': cached.get('generation_date', '')}
+
     try:
         get = _get or requests.get
         response = get(spec['url'], timeout=TIMEOUT_SECONDS)
@@ -1359,15 +1530,20 @@ def load_list(list_id, cache_dir, _get=None):
             raise RuntimeError(f'HTTP {getattr(response, "status_code", "?")}')
         blob = response.content
         generation_date = _GENERATION_DATE.get(spec['format'], lambda _b: '')(blob)
-        # Unchanged feed ⇒ reuse the parsed cache instead of re-parsing 25 MB.
-        if cached and cached.get('generation_date') and \
-                cached['generation_date'] == generation_date:
+        # Same published version ⇒ keep the parsed entries, just re-stamp the
+        # cache date so tomorrow's first report short-circuits too.
+        if cached and generation_date and \
+                cached.get('generation_date') == generation_date:
+            _write_cache(path, {'cached_on': today,
+                                'generation_date': generation_date,
+                                'entries': cached['entries']})
             return {'status': 'ran', 'entries': cached['entries'],
                     'generation_date': generation_date}
         entries = _PARSERS[spec['format']](blob)
         if not entries:
             raise RuntimeError('parsed to zero entries')
-        _write_cache(path, {'generation_date': generation_date,
+        _write_cache(path, {'cached_on': today,
+                            'generation_date': generation_date,
                             'entries': entries})
         return {'status': 'ran', 'entries': entries,
                 'generation_date': generation_date}
@@ -1396,7 +1572,7 @@ def screen(subject_names, cache_dir, today, _load=None):
             })
             continue
         try:
-            loaded = load(list_id, cache_dir) or {}
+            loaded = load(list_id, cache_dir, today) or {}
         except Exception as exc:
             logger.warning("watchlist loader raised for %s: %s", list_id, exc)
             loaded = {'status': 'failed', 'entries': [], 'generation_date': ''}
@@ -1597,6 +1773,23 @@ def test_unparseable_response_is_treated_as_failure_not_as_clean():
     assert out[0]['category'] == 'sin_clasificar'
 
 
+def test_triage_never_raises_on_malformed_items():
+    # A single non-dict entry must not abort classification of the good ones.
+    out = t.triage([_item(), 'garbage', None, 42],
+                   _caller=lambda _p: [{'index': 1, 'is_relevant': True,
+                                        'is_adverse': False,
+                                        'category': 'ninguna',
+                                        'credibility': 'alta'}])
+    assert len(out) == 1
+    assert out[0]['url'] == 'https://diario.example/acme'
+
+
+def test_triage_never_raises_on_malformed_items_without_a_caller():
+    out = t.triage([_item(), 'garbage'], _caller=None)
+    assert len(out) == 1
+    assert out[0]['category'] == 'sin_clasificar'
+
+
 def test_empty_input_short_circuits_without_calling_the_model():
     calls = []
     t.triage([], _caller=lambda p: calls.append(p) or [])
@@ -1766,7 +1959,10 @@ def parse_response(payload, batch, start_index):
 
 def triage(items, _caller=None):
     """Classify items. Never raises. Returns only relevant items."""
-    items = list(items or [])[:MAX_ITEMS]
+    # Filter to dicts BEFORE anything reads a key: build_batches and
+    # _unclassified both index into items, and neither is inside the
+    # per-batch try, so a single malformed entry would abort the whole pass.
+    items = [i for i in (items or []) if isinstance(i, dict)][:MAX_ITEMS]
     if not items or _caller is None:
         return [_unclassified(i) for i in items]
 
@@ -1890,6 +2086,28 @@ def test_llm_failure_defaults_to_refuted():
     assert out[0]['verdict']['status'] == 'failed'
 
 
+def test_falsy_refuted_values_do_not_flip_the_asymmetry():
+    # bool() coercion would silently print an unrefuted accusation. Only a
+    # real boolean may mean "not refuted".
+    for payload in ({'refuted': 0}, {'refuted': None}, {'refuted': ''},
+                    {'refuted': 'false'}, {'refuted': []}):
+        out = r.refute([_adverse()], _caller=lambda _p, _pl=payload: _pl)
+        assert out[0]['verdict']['refuted'] is True, payload
+        assert out[0]['verdict']['status'] == 'failed', payload
+
+
+def test_an_explicit_boolean_false_is_the_only_way_to_survive():
+    out = r.refute([_adverse()], _caller=lambda _p: {'refuted': False})
+    assert out[0]['verdict']['refuted'] is False
+    assert out[0]['verdict']['status'] == 'ran'
+
+
+def test_refute_never_raises_on_malformed_items():
+    for bad in ('abc', [1, 2, 3], [None], [{'is_adverse': True}, 'junk']):
+        out = r.refute(bad, _caller=lambda _p: {'refuted': False})
+        assert isinstance(out, list)
+
+
 def test_unparseable_verdict_defaults_to_refuted():
     out = r.refute([_adverse()], _caller=lambda _p: 'maybe?')
     assert out[0]['verdict']['refuted'] is True
@@ -1971,13 +2189,22 @@ def build_prompt(item):
 
 
 def parse_verdict(payload):
-    """Coerce a model payload to a verdict. Anything unclear ⇒ refuted."""
+    """Coerce a model payload to a verdict. Anything unclear ⇒ refuted.
+
+    ONLY a real boolean is accepted. bool() coercion would be a silent trap
+    here: a payload of {'refuted': 0} or {'refuted': None} or {'refuted': ''}
+    — all plausible outcomes of a sloppy model response — would coerce to
+    False and print an UNREFUTED, unverified accusation against a real
+    company. The asymmetry this module exists to enforce must not depend on
+    Python truthiness.
+    """
     if not isinstance(payload, dict):
         raise ValueError('verdict payload is not an object')
-    if 'refuted' not in payload:
-        raise ValueError('verdict payload has no "refuted" key')
+    value = payload.get('refuted')
+    if not isinstance(value, bool):
+        raise ValueError('"refuted" is not a boolean')
     return {
-        'refuted': bool(payload.get('refuted')),
+        'refuted': value,
         'reason': str(payload.get('reason') or '')[:300],
         'status': 'ran',
     }
@@ -1986,7 +2213,11 @@ def parse_verdict(payload):
 def refute(items, _caller=None):
     """Return a NEW list; adverse items gain a 'verdict'. Never raises."""
     out = []
+    # Filter to dicts BEFORE reading a key: the loop indexes into each item
+    # outside any try, so one malformed entry would abort the whole pass.
     for item in (items or []):
+        if not isinstance(item, dict):
+            continue
         if not item.get('is_adverse'):
             out.append(item)
             continue
@@ -2005,7 +2236,7 @@ def refute(items, _caller=None):
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_refute.py -v`
-Expected: PASS (8 tests)
+Expected: PASS (11 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -2884,6 +3115,43 @@ def test_evidence_entries_exclude_refuted_items():
     assert all('d.example' not in text for _kind, text in entries)
 
 
+def _unclassified_item():
+    return {
+        'title': 'ACME en los medios', 'url': 'https://d.example/9',
+        'source': 'd.example', 'published': '2026-05-01', 'snippet': 's',
+        'subject': 'ACME SOLUCIONES SL', 'is_relevant': True,
+        'is_adverse': False, 'category': 'sin_clasificar', 'credibility': 'media',
+    }
+
+
+def test_an_llm_outage_is_never_rendered_as_a_clean_result():
+    # The critical one. Unclassified items carry is_adverse=False, so every
+    # is_adverse-based consumer sees them as clean. The renderer must not.
+    pdf = FakePdf()
+    rr.render(pdf, _result(media={'status': 'ran', 'queries': [],
+                                  'items': [_unclassified_item()]}),
+              boe_sanctions=None, web_context=None, lang='es')
+    blob = pdf.text_blob().lower()
+    assert 'no se ha encontrado' not in blob and 'sin cobertura' not in blob
+    assert 'sin clasificar' in blob or 'incompleto' in blob
+
+
+def test_unclassified_items_are_reported_even_alongside_confirmed_ones():
+    result = _result(media={'status': 'ran', 'queries': [],
+                            'items': [_adverse_item(refuted=False),
+                                      _unclassified_item()]})
+    assert len(rr.unclassified(result)) == 1
+    assert len(rr.confirmed_adverse(result)) == 1
+
+
+def test_summary_line_says_incomplete_when_items_are_unclassified():
+    line = rr.summary_line(
+        _result(media={'status': 'ran', 'queries': [],
+                       'items': [_unclassified_item()]}), 'es')
+    assert 'incompleto' in line.lower() or 'sin clasificar' in line.lower()
+    assert 'sin cobertura adversa' not in line.lower()
+
+
 def test_summary_line_is_neutral_when_clean():
     assert 'sin' in rr.summary_line(_result(), 'es').lower()
 
@@ -2948,6 +3216,21 @@ def refuted_adverse(result):
     items = (((result or {}).get('media') or {}).get('items')) or []
     return [i for i in items
             if i.get('is_adverse') and (i.get('verdict') or {}).get('refuted')]
+
+
+def unclassified(result):
+    """Retrieved items the triage pass could NOT classify (LLM outage or an
+    unparseable response). Their presence means the screen is INCOMPLETE.
+
+    This is load-bearing. The triage fallback marks these is_adverse=False so
+    they are never asserted as findings, which means every is_adverse-based
+    consumer treats them exactly like a genuinely clean item. If the renderer
+    did the same, a model outage would print as "no adverse coverage found" --
+    the buyer would read an outage as a clean bill of health. Section 6.2 must
+    branch on this BEFORE it decides whether the result is clean.
+    """
+    items = (((result or {}).get('media') or {}).get('items')) or []
+    return [i for i in items if i.get('category') == 'sin_clasificar']
 ```
 
 Then implement, in this order inside `render`:
@@ -2964,7 +3247,11 @@ Status renders as *ejecutada / desactualizada / no ejecutada / no disponible / e
 
 If any list has matches of either tier, follow the tables with `add_text` carrying the non-adjudication sentence: a list match is not an adjudicated finding and requires manual review.
 
-**6.2 `add_subsection`** — if `media['status'] != 'ran'` → `add_callout(kind='info')` whose body contains *"no se pudo"* / *"could not be completed"*. If `ran` and `confirmed_adverse(result)` is empty → `add_callout(kind='success')` whose body contains *"No se ha encontrado cobertura mediática adversa"* / *"No adverse media coverage was found"* for the entity and its former names, then `add_text` listing `media['queries']` verbatim (or, when the query list is empty, the subject names) plus the note that this is the expected result for most Spanish SMEs. If confirmed items exist → `add_data_table` with headers `["Fecha", "Fuente", "Categoría", "Titular / enlace"]` / `["Date", "Source", "Category", "Headline / link"]`, one row per confirmed item whose last cell includes the URL, then `add_text` stating how many items `refuted_adverse` discarded during verification.
+**6.2 `add_subsection`** — if `media['status'] != 'ran'` → `add_callout(kind='info')` whose body contains *"no se pudo"* / *"could not be completed"*.
+
+**Then, before any clean/adverse decision, check `unclassified(result)`.** If it is non-empty the screen is INCOMPLETE and must be rendered as such: `add_callout(kind='warning')` stating that N of M retrieved items could not be classified and that the absence of findings therefore cannot be read as their absence. In this branch the clean-result success callout MUST NOT be rendered, however few confirmed items there are. An LLM outage marks items `is_adverse=False`, so every `is_adverse`-based consumer treats them as clean — if the renderer does too, an outage prints as "no adverse coverage found" and the buyer reads a failure as a clean bill of health. This branch is the only thing standing between those two outcomes.
+
+If `ran`, `unclassified(result)` is empty and `confirmed_adverse(result)` is empty → `add_callout(kind='success')` whose body contains *"No se ha encontrado cobertura mediática adversa"* / *"No adverse media coverage was found"* for the entity and its former names, then `add_text` listing `media['queries']` verbatim (or, when the query list is empty, the subject names) plus the note that this is the expected result for most Spanish SMEs. If confirmed items exist → `add_data_table` with headers `["Fecha", "Fuente", "Categoría", "Titular / enlace"]` / `["Date", "Source", "Category", "Headline / link"]`, one row per confirmed item whose last cell includes the URL, then `add_text` stating how many items `refuted_adverse` discarded during verification.
 
 **6.3 `add_subsection`** — website, `presents_as`, consistency. When `website` is `None` and `media['status'] == 'ran'`, state the "registry-active, no traceable public presence" finding explicitly.
 
@@ -2974,7 +3261,7 @@ If any list has matches of either tier, follow the tables with `add_text` carryi
 
 **`facts_note(result, lang)`** — a short block for the synthesis facts input, prefixed `"CRIBADO EXTERNO (fuente NO registral):"` / `"EXTERNAL SCREENING (NON-registry source):"`. Returns `''` when status is `not_run` or the result is `None`.
 
-**`summary_line(result, lang)`** — clean: *"Cribado externo: sin coincidencias en listas · sin cobertura adversa verificada"*; with hits: *"Cribado externo: N elemento(s) requieren revisión (§6)"*. Returns `''` for `None`.
+**`summary_line(result, lang)`** — clean: *"Cribado externo: sin coincidencias en listas · sin cobertura adversa verificada"*; with hits: *"Cribado externo: N elemento(s) requieren revisión (§6)"*. When `unclassified(result)` is non-empty the line must instead say the screening was incomplete — e.g. *"Cribado externo: incompleto, N elemento(s) sin clasificar (§6)"* — and must never claim the clean result. Returns `''` for `None`.
 
 **`methodology_note(lang)`** — the Annex D long form: what was searched, the query policy (verbatim entity names, no adverse-keyword injection), the two-tier watchlist matching policy (exact vs legal-form-only, why both are reported, and that no fuzzy or substring matching is used), the fact that both lists are screened against sanctioned **entities only** (persons, vessels and aircraft are excluded), the opposite error asymmetries deliberately applied to list screening (recall-first) and media screening (precision-first), the subject caps from `dd_ext_subjects` stated numerically (8 total, 2 former names, 3 participadas), the refutation rule, and the officer exclusion with both reasons.
 
@@ -2983,7 +3270,7 @@ It must **also** state that §6.4 (corporate group context) is the one part of t
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_render.py -v`
-Expected: PASS (15 tests)
+Expected: PASS (18 tests)
 
 - [ ] **Step 5: Commit**
 
