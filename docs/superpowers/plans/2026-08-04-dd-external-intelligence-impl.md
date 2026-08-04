@@ -196,7 +196,7 @@ def names_match(a, b):
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_names.py -v`
-Expected: PASS (10 tests)
+Expected: PASS (13 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -778,7 +778,7 @@ def fetch(queries, token, fetched_at, _get=None):
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_search.py -v`
-Expected: PASS (10 tests)
+Expected: PASS (13 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -846,27 +846,39 @@ timer would, without a second thing that can silently stop.
     `{'name','programme','reference'}`
   - `LISTS: dict` keyed by `list_id`
 
-- [ ] **Step 1: Confirm the OFAC endpoint (EU is already verified above)**
+- [ ] **Step 1: Both sources are verified — no action, read and proceed**
 
-```bash
-curl -sSL -o /tmp/sdn.csv -w '%{http_code} %{content_type} %{size_download}\n' \
-  'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.CSV'
-head -c 400 /tmp/sdn.csv; echo
+OFAC was fetched live on 2026-08-04:
+
+```
+https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.CSV
+HTTP 200 · text/csv · 5,626,755 bytes · 19,181 data rows · 12 columns · NO header row
+
+36,"AEROCARIBBEAN AIRLINES",-0- ,"CUBA",-0- ,-0- ,…
 ```
 
-Record the confirmed URL, status, content type and first data row in the module
-docstring. Note which CSV column holds the name, which holds the programme and
-which holds the reference — the plan's `_parse_csv` assumes columns 1, 3 and 0
-respectively and **must be corrected to whatever the live export actually
-uses**. OFAC's SDN CSV also marks individuals vs entities in a type column;
-filter to entities only, mirroring the EU `subjectType` filter.
+Confirmed column layout (standard SDN schema):
 
-**Decision rule.** If OFAC returns 200 with parseable data, implement its
-parser. If it requires registration or returns non-200, do **not** invent a
-workaround: leave its `url` empty in `LISTS`, which `load_list` reports as
-`'unavailable'`, and the report honestly shows that list as not run. Shipping
-EU + BOE with OFAC marked unavailable is correct; shipping a fabricated URL is
-not.
+| Index | Field | Use |
+|---|---|---|
+| 0 | `ent_num` | → `reference` |
+| 1 | `SDN_Name` | → `name` |
+| 2 | `SDN_Type` | filter — see below |
+| 3 | `Program` | → `programme` |
+
+`SDN_Type` distribution: **`-0-` 9,840 (organisations)**, `individual` 7,473,
+`vessel` 1,524, `aircraft` 344. Keep **only `-0-`**, mirroring the EU
+`subjectType="enterprise"` filter: we screen companies, so persons, ships and
+planes are all noise, and not caching a person's name keeps this consistent
+with the officer-exclusion decision.
+
+Two parsing gotchas confirmed in the live data:
+- The type field carries a **trailing space** (`'-0- '`) — strip before comparing.
+- One row has a single column (trailing newline artifact) — the `len(row) < 4`
+  guard already handles it.
+
+OFAC publishes no generation date in the CSV, so `generation_date` is `''` for
+this list and 6.1 renders "—" in its version cell.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -925,6 +937,34 @@ def test_eu_parser_reads_programme_from_the_regulation_element():
 
 def test_eu_generation_date_is_extracted():
     assert w._eu_generation_date(EU_XML) == '2026-07-31T18:40:51.758+02:00'
+
+
+# Real OFAC SDN rows: no header, 12 columns, type field carries a trailing
+# space, and the final line is a one-column newline artifact.
+OFAC_CSV = (
+    b'36,"AEROCARIBBEAN AIRLINES",-0- ,"CUBA",-0- ,-0- ,-0- ,-0- ,-0- ,-0- ,-0- ,-0- \n'
+    b'99,"PEREZ GARCIA, Juan",individual ,"CUBA",-0- ,-0- ,-0- ,-0- ,-0- ,-0- ,-0- ,-0- \n'
+    b'settings\n'
+)
+
+
+def test_ofac_parser_keeps_organisations_and_drops_individuals():
+    entries = w._parse_ofac_csv(OFAC_CSV)
+    names = {e['name'] for e in entries}
+    assert 'AEROCARIBBEAN AIRLINES' in names
+    assert 'PEREZ GARCIA, Juan' not in names
+
+
+def test_ofac_parser_maps_programme_and_reference():
+    entry = next(e for e in w._parse_ofac_csv(OFAC_CSV)
+                 if e['name'] == 'AEROCARIBBEAN AIRLINES')
+    assert entry['programme'] == 'CUBA'
+    assert entry['reference'] == '36'
+
+
+def test_ofac_parser_ignores_short_artifact_rows():
+    # The trailing one-column row must not raise or produce an entry.
+    assert len(w._parse_ofac_csv(OFAC_CSV)) == 1
 
 
 def test_exact_match_is_reported_with_provenance():
@@ -1041,8 +1081,9 @@ LISTS = {
     'ofac_sdn': {
         'label_es': 'OFAC SDN (EE. UU.)',
         'label_en': 'OFAC SDN (US)',
-        'url': '',      # <- fill from Step 1 (leave empty ⇒ 'unavailable')
-        'format': 'csv',
+        'url': ('https://sanctionslistservice.ofac.treas.gov/api/'
+                'PublicationPreview/exports/SDN.CSV'),
+        'format': 'ofac_csv',
     },
     'eu_consolidated': {
         'label_es': 'Lista consolidada de sanciones (UE)',
@@ -1084,13 +1125,24 @@ def _write_cache(path, payload):
         logger.info("watchlist cache write skipped (%s): %s", path, exc)
 
 
-def _parse_csv(blob):
-    """OFAC SDN CSV → entries. Column indices per the confirmed export."""
+def _parse_ofac_csv(blob):
+    """OFAC SDN CSV → entries, ORGANISATIONS ONLY.
+
+    No header row. Confirmed columns: 0 ent_num, 1 SDN_Name, 2 SDN_Type,
+    3 Program. SDN_Type is '-0-' for organisations, and 'individual' /
+    'vessel' / 'aircraft' otherwise — we keep organisations only, mirroring
+    the EU subjectType filter. The type field carries a trailing space in the
+    live export, hence the strip.
+
+    OFAC publishes no generation date in the CSV, so callers get ''.
+    """
     entries = []
     text = blob.decode('utf-8', errors='replace')
     for row in csv.reader(io.StringIO(text)):
         if len(row) < 4:
-            continue
+            continue  # trailing-newline artifact row
+        if (row[2] or '').strip() != '-0-':
+            continue  # individual / vessel / aircraft
         name = (row[1] or '').strip()
         if not name or name == '-0-':
             continue
@@ -1163,7 +1215,7 @@ def _parse_eu_xml(blob):
     return entries
 
 
-_PARSERS = {'csv': _parse_csv, 'eu_xml': _parse_eu_xml}
+_PARSERS = {'ofac_csv': _parse_ofac_csv, 'eu_xml': _parse_eu_xml}
 _GENERATION_DATE = {'eu_xml': _eu_generation_date}
 
 
@@ -1274,7 +1326,7 @@ Then add `'defusedxml'` and `'defusedxml.ElementTree'` to the `_OPTIONAL` list i
 - [ ] **Step 6: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_watchlists.py -v`
-Expected: PASS (10 tests)
+Expected: PASS (13 tests)
 
 - [ ] **Step 7: Contract-check the real loaders manually (not in CI)**
 
@@ -1291,7 +1343,8 @@ PY
 
 Expected: `eu_consolidated` reports `ran` with roughly 1,769 enterprise entities
 (several thousand alias rows) and a `generation_date` near `2026-07-31`;
-`ofac_sdn` reports `ran` if Step 1 confirmed its source, else `unavailable`.
+`ofac_sdn` reports `ran` with roughly 9,840 organisation rows and an empty
+`generation_date` (OFAC publishes none in the CSV).
 Run it twice — the second run must reuse the parsed cache rather than
 re-parsing. Record the counts in the commit message.
 
@@ -1606,7 +1659,7 @@ def triage(items, _caller=None):
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_triage.py -v`
-Expected: PASS (10 tests)
+Expected: PASS (13 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -2510,7 +2563,7 @@ def screen(data, *, brave_token=None, api_key=None, lang='es',
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_external.py -v`
-Expected: PASS (10 tests)
+Expected: PASS (13 tests)
 
 - [ ] **Step 5: Commit**
 
