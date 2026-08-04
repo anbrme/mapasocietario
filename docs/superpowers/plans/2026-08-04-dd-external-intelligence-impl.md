@@ -196,7 +196,7 @@ def names_match(a, b):
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_names.py -v`
-Expected: PASS (7 tests)
+Expected: PASS (10 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -795,7 +795,40 @@ decided by triage over unbiased results."
 
 ### Task 4: Official watchlist screening (`dd_ext_watchlists.py`)
 
-**This task begins with a verification step.** The OFAC SDN export and the EU consolidated list are both published, but their current URLs and formats must be confirmed against the live services — do not implement against a guessed URL.
+**The EU source is verified (2026-08-04); OFAC still needs confirming in Step 1.**
+
+The EU consolidated list is indexed by a public RSS feed at
+`https://webgate.ec.europa.eu/fsd/fsf/public/rss`, which carries the download
+URLs **including** their access token (`token-2017`, static and public). The
+XML v1.1 endpoint was fetched live and returns:
+
+```
+HTTP 200 · application/xml · 25,778,005 bytes
+<export generationDate="2026-07-31T18:40:51.758+02:00" globalFileId="184862">
+6,239 sanctionEntity   →  subjectType: person 4,470 | enterprise 1,769
+62,136 nameAlias
+```
+
+Three structural facts that shape the parser:
+
+1. **`subjectType code="enterprise"` vs `"person"`.** We screen companies only,
+   so the parser keeps **enterprises only**. This is a precision win and it
+   means the local sanctions cache never contains a natural person's name —
+   consistent with the officer-exclusion decision rather than in tension with it.
+2. **`programme` lives on the nested `<regulation>` element**, not on
+   `sanctionEntity`. Reading it off the entity yields empty strings.
+3. **`<export generationDate>` is the list's own publication date.** The report
+   cites that, not our fetch date — it is the honest answer to "how current is
+   this screen?".
+
+**Caching.** Cache the *parsed, enterprise-filtered* result as a small JSON
+(~1,769 names) keyed by `generationDate`, not the 25 MB raw XML. The first
+report after a list update pays the download and parse; every other report
+loads a tiny file. If the Commission is unreachable, fall back to the most
+recent cached JSON and surface its `generationDate` so the reader sees the
+screen's real age — degrading to "stale but disclosed" rather than "failed".
+No systemd timer: the on-demand cache already gives the resilience a weekly
+timer would, without a second thing that can silently stop.
 
 **Files:**
 - Create: `dd_ext_watchlists.py`
@@ -806,30 +839,34 @@ decided by triage over unbiased results."
 - Produces:
   - `screen(subject_names, cache_dir, today, _load=None) -> dict` —
     `{'status': 'ran'|'not_run'|'failed', 'lists': [ {...} ]}`
-  - per-list shape: `{'list_id','label_es','label_en','status','names_checked','matches','fetched_at'}`
+  - per-list shape: `{'list_id','label_es','label_en','status','names_checked','matches','generation_date','checked_at'}` where status ∈ `{'ran','stale','failed','unavailable','not_run'}`
   - match shape: `{'subject','listed_name','list_id','programme','reference'}`
-  - `load_list(list_id, cache_dir, today, _get=None) -> dict` —
-    `{'status','entries','fetched_at'}` with entry shape `{'name','programme','reference'}`
+  - `load_list(list_id, cache_dir, _get=None) -> dict` —
+    `{'status','entries','generation_date'}` with entry shape
+    `{'name','programme','reference'}`
   - `LISTS: dict` keyed by `list_id`
 
-- [ ] **Step 1: Verify the live endpoints before writing any parser**
-
-Run these and record what actually comes back. Write the confirmed URL, HTTP status, content type and first data row into the module docstring in Step 4.
+- [ ] **Step 1: Confirm the OFAC endpoint (EU is already verified above)**
 
 ```bash
-# OFAC SDN — expected: a CSV export, no auth
-curl -sSL -o /tmp/sdn.csv -w '%{http_code} %{content_type}\n' \
+curl -sSL -o /tmp/sdn.csv -w '%{http_code} %{content_type} %{size_download}\n' \
   'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.CSV'
 head -c 400 /tmp/sdn.csv; echo
-
-# EU consolidated financial sanctions list (FSF). The CSV endpoint is
-# token-gated; the public XML is the fallback. Try both.
-curl -sSL -o /tmp/eu.xml -w '%{http_code} %{content_type}\n' \
-  'https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw'
-head -c 400 /tmp/eu.xml; echo
 ```
 
-**Decision rule.** If an endpoint returns 200 with parseable data, implement its parser. If an endpoint requires registration or returns non-200, do **not** invent a workaround: register that list in `LISTS` with an empty `url`, which `load_list` reports as `'unavailable'`, and the report then honestly shows that list as not run. Shipping three lists where one says "unavailable" is correct; shipping a fabricated URL is not. Report which endpoints worked when this task is reviewed.
+Record the confirmed URL, status, content type and first data row in the module
+docstring. Note which CSV column holds the name, which holds the programme and
+which holds the reference — the plan's `_parse_csv` assumes columns 1, 3 and 0
+respectively and **must be corrected to whatever the live export actually
+uses**. OFAC's SDN CSV also marks individuals vs entities in a type column;
+filter to entities only, mirroring the EU `subjectType` filter.
+
+**Decision rule.** If OFAC returns 200 with parseable data, implement its
+parser. If it requires registration or returns non-200, do **not** invent a
+workaround: leave its `url` empty in `LISTS`, which `load_list` reports as
+`'unavailable'`, and the report honestly shows that list as not run. Shipping
+EU + BOE with OFAC marked unavailable is correct; shipping a fabricated URL is
+not.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -845,13 +882,49 @@ import dd_ext_watchlists as w
 
 
 def _loader(entries_by_list, failing=()):
-    def _load(list_id, cache_dir, today, _get=None):
+    def _load(list_id, cache_dir, _get=None):
         if list_id in failing:
-            return {'status': 'failed', 'entries': [], 'fetched_at': today}
+            return {'status': 'failed', 'entries': [], 'generation_date': ''}
         return {'status': 'ran',
                 'entries': entries_by_list.get(list_id, []),
-                'fetched_at': today}
+                'generation_date': '2026-07-31T18:40:51+02:00'}
     return _load
+
+
+EU_XML = b"""<?xml version="1.0" encoding="UTF-8"?>
+<export xmlns="http://eu.europa.ec/fpi/fsd/export"
+        generationDate="2026-07-31T18:40:51.758+02:00">
+  <sanctionEntity euReferenceNumber="EU.3502.46" logicalId="201">
+    <regulation regulationType="amendment" programme="TERR" logicalId="207667"/>
+    <subjectType code="enterprise" classificationCode="E"/>
+    <nameAlias wholeName="ACME SOLUCIONES SL" strong="true"/>
+    <nameAlias wholeName="ACME SOL" strong="false"/>
+  </sanctionEntity>
+  <sanctionEntity euReferenceNumber="EU.1.1" logicalId="9">
+    <regulation regulationType="regulation" programme="IRQ" logicalId="1"/>
+    <subjectType code="person" classificationCode="P"/>
+    <nameAlias wholeName="JUAN PEREZ GARCIA" strong="true"/>
+  </sanctionEntity>
+</export>"""
+
+
+def test_eu_parser_keeps_enterprises_and_drops_persons():
+    entries = w._parse_eu_xml(EU_XML)
+    names = {e['name'] for e in entries}
+    assert 'ACME SOLUCIONES SL' in names
+    assert 'ACME SOL' in names          # aliases of an enterprise are kept
+    assert 'JUAN PEREZ GARCIA' not in names   # persons are never cached
+
+
+def test_eu_parser_reads_programme_from_the_regulation_element():
+    entries = w._parse_eu_xml(EU_XML)
+    acme = next(e for e in entries if e['name'] == 'ACME SOLUCIONES SL')
+    assert acme['programme'] == 'TERR'
+    assert acme['reference'] == 'EU.3502.46'
+
+
+def test_eu_generation_date_is_extracted():
+    assert w._eu_generation_date(EU_XML) == '2026-07-31T18:40:51.758+02:00'
 
 
 def test_exact_match_is_reported_with_provenance():
@@ -950,12 +1023,15 @@ as not run rather than silently omitting it.
 """
 import csv
 import io
+import json
 import logging
 import os
 
 import requests
 
 from dd_ext_names import names_match
+
+USABLE_STATUSES = ('ran', 'stale')
 
 logger = logging.getLogger(__name__)
 
@@ -965,35 +1041,45 @@ LISTS = {
     'ofac_sdn': {
         'label_es': 'OFAC SDN (EE. UU.)',
         'label_en': 'OFAC SDN (US)',
-        'url': '',      # <- fill from Step 1
+        'url': '',      # <- fill from Step 1 (leave empty ⇒ 'unavailable')
         'format': 'csv',
     },
     'eu_consolidated': {
         'label_es': 'Lista consolidada de sanciones (UE)',
         'label_en': 'EU consolidated sanctions list',
-        'url': '',      # <- fill from Step 1
-        'format': 'xml',
+        # Token is public and static (base64 'token-2017'); indexed by the
+        # public RSS feed at https://webgate.ec.europa.eu/fsd/fsf/public/rss
+        'url': ('https://webgate.ec.europa.eu/fsd/fsf/public/files/'
+                'xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw'),
+        'format': 'eu_xml',
     },
 }
 
+# Cached parsed output, NOT the 25 MB raw feed.
+_CACHE_VERSION = 1
 
-def _cache_path(cache_dir, list_id, today):
-    return os.path.join(cache_dir, f'watchlist-{list_id}-{today}.raw')
+
+def _cache_path(cache_dir, list_id):
+    return os.path.join(cache_dir, f'watchlist-{list_id}-v{_CACHE_VERSION}.json')
 
 
 def _read_cache(path):
+    """Return the cached {'generation_date','entries'} payload, or None."""
     try:
-        with open(path, 'rb') as handle:
-            return handle.read()
+        with open(path, 'r', encoding='utf-8') as handle:
+            payload = json.load(handle)
+        if isinstance(payload, dict) and isinstance(payload.get('entries'), list):
+            return payload
     except Exception:
-        return None
+        pass
+    return None
 
 
-def _write_cache(path, blob):
+def _write_cache(path, payload):
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'wb') as handle:
-            handle.write(blob)
+        with open(path, 'w', encoding='utf-8') as handle:
+            json.dump(payload, handle)
     except Exception as exc:
         logger.info("watchlist cache write skipped (%s): %s", path, exc)
 
@@ -1016,31 +1102,58 @@ def _parse_csv(blob):
     return entries
 
 
-def _parse_xml(blob):
-    """EU consolidated list XML → entries.
+def _local(tag):
+    """Local tag name, ignoring the XML namespace, so a schema-version bump
+    cannot silently empty the list."""
+    return tag.rsplit('}', 1)[-1]
 
-    defusedxml, NOT stdlib ElementTree: this parses multi-megabyte XML fetched
-    over the network, and stdlib expat expands internal entities, so a
-    compromised or malformed feed could exhaust memory (billion laughs /
-    quadratic blowup) inside the report generator.
 
-    Namespace-agnostic: matches on the local tag name so a schema-version bump
-    does not silently empty the list.
-    """
+def _eu_root(blob):
+    """Parse with defusedxml, NOT stdlib ElementTree: this is a ~25 MB feed
+    fetched over the network, and stdlib expat expands internal entities, so a
+    malformed or compromised feed could exhaust memory (billion laughs /
+    quadratic blowup) inside the report generator."""
     from defusedxml import ElementTree as ET
+    return ET.fromstring(blob)
 
-    def _local(tag):
-        return tag.rsplit('}', 1)[-1]
 
+def _eu_generation_date(blob):
+    """The list's OWN publication date. The report cites this, not our fetch
+    date — it is the honest answer to 'how current is this screen?'."""
+    try:
+        return (_eu_root(blob).get('generationDate') or '').strip()
+    except Exception:
+        return ''
+
+
+def _parse_eu_xml(blob):
+    """EU consolidated list XML → entries, ENTERPRISES ONLY.
+
+    Persons are dropped: we screen companies, so a person's name has no use
+    here, and not caching one keeps this consistent with the officer-exclusion
+    decision. Of ~6,239 sanctioned entities, ~1,769 are enterprises.
+
+    `programme` lives on the nested <regulation> element, NOT on
+    <sanctionEntity> — reading it off the entity yields empty strings.
+    """
     entries = []
-    root = ET.fromstring(blob)
-    for entity in root.iter():
+    for entity in _eu_root(blob).iter():
         if _local(entity.tag) != 'sanctionEntity':
             continue
-        programme = (entity.get('programme') or '').strip()
+        children = list(entity)
+        is_enterprise = any(
+            _local(c.tag) == 'subjectType' and c.get('code') == 'enterprise'
+            for c in children)
+        if not is_enterprise:
+            continue
+        programme = ''
+        for child in children:
+            if _local(child.tag) == 'regulation' and child.get('programme'):
+                programme = child.get('programme').strip()
+                break
         reference = (entity.get('euReferenceNumber')
                      or entity.get('logicalId') or '').strip()
-        for child in entity.iter():
+        for child in children:
             if _local(child.tag) != 'nameAlias':
                 continue
             name = (child.get('wholeName') or '').strip()
@@ -1050,34 +1163,51 @@ def _parse_xml(blob):
     return entries
 
 
-_PARSERS = {'csv': _parse_csv, 'xml': _parse_xml}
+_PARSERS = {'csv': _parse_csv, 'eu_xml': _parse_eu_xml}
+_GENERATION_DATE = {'eu_xml': _eu_generation_date}
 
 
-def load_list(list_id, cache_dir, today, _get=None):
-    """Download-or-cache one list and parse it. Never raises."""
+def load_list(list_id, cache_dir, _get=None):
+    """Fetch, parse and cache one list. Never raises.
+
+    Caches the PARSED, filtered entries (small) rather than the raw feed
+    (~25 MB for the EU list). On a fetch or parse failure, falls back to the
+    last good cache and reports 'stale' — a screen against a slightly older
+    list, with its date disclosed, beats no screen at all.
+    """
     spec = LISTS.get(list_id) or {}
     if not spec.get('url'):
-        return {'status': 'unavailable', 'entries': [], 'fetched_at': today}
-    path = _cache_path(cache_dir, list_id, today)
-    blob = _read_cache(path)
+        return {'status': 'unavailable', 'entries': [], 'generation_date': ''}
+
+    path = _cache_path(cache_dir, list_id)
+    cached = _read_cache(path)
     try:
-        if blob is None:
-            get = _get or requests.get
-            response = get(spec['url'], timeout=TIMEOUT_SECONDS)
-            if getattr(response, 'status_code', 500) != 200:
-                logger.warning("watchlist %s HTTP %s", list_id,
-                               getattr(response, 'status_code', '?'))
-                return {'status': 'failed', 'entries': [], 'fetched_at': today}
-            blob = response.content
-            _write_cache(path, blob)
+        get = _get or requests.get
+        response = get(spec['url'], timeout=TIMEOUT_SECONDS)
+        if getattr(response, 'status_code', 500) != 200:
+            raise RuntimeError(f'HTTP {getattr(response, "status_code", "?")}')
+        blob = response.content
+        generation_date = _GENERATION_DATE.get(spec['format'], lambda _b: '')(blob)
+        # Unchanged feed ⇒ reuse the parsed cache instead of re-parsing 25 MB.
+        if cached and cached.get('generation_date') and \
+                cached['generation_date'] == generation_date:
+            return {'status': 'ran', 'entries': cached['entries'],
+                    'generation_date': generation_date}
         entries = _PARSERS[spec['format']](blob)
         if not entries:
-            logger.warning("watchlist %s parsed to zero entries", list_id)
-            return {'status': 'failed', 'entries': [], 'fetched_at': today}
-        return {'status': 'ran', 'entries': entries, 'fetched_at': today}
+            raise RuntimeError('parsed to zero entries')
+        _write_cache(path, {'generation_date': generation_date,
+                            'entries': entries})
+        return {'status': 'ran', 'entries': entries,
+                'generation_date': generation_date}
     except Exception as exc:
         logger.warning("watchlist %s load failed: %s", list_id, exc)
-        return {'status': 'failed', 'entries': [], 'fetched_at': today}
+        if cached:
+            logger.info("watchlist %s falling back to cache dated %s",
+                        list_id, cached.get('generation_date'))
+            return {'status': 'stale', 'entries': cached['entries'],
+                    'generation_date': cached.get('generation_date', '')}
+        return {'status': 'failed', 'entries': [], 'generation_date': ''}
 
 
 def screen(subject_names, cache_dir, today, _load=None):
@@ -1090,16 +1220,17 @@ def screen(subject_names, cache_dir, today, _load=None):
             results.append({
                 'list_id': list_id, 'label_es': spec['label_es'],
                 'label_en': spec['label_en'], 'status': 'not_run',
-                'names_checked': 0, 'matches': [], 'fetched_at': today,
+                'names_checked': 0, 'matches': [], 'generation_date': '',
+                'checked_at': today,
             })
             continue
         try:
-            loaded = load(list_id, cache_dir, today) or {}
+            loaded = load(list_id, cache_dir) or {}
         except Exception as exc:
             logger.warning("watchlist loader raised for %s: %s", list_id, exc)
-            loaded = {'status': 'failed', 'entries': [], 'fetched_at': today}
+            loaded = {'status': 'failed', 'entries': [], 'generation_date': ''}
         matches = []
-        if loaded.get('status') == 'ran':
+        if loaded.get('status') in USABLE_STATUSES:
             for subject in names:
                 for entry in loaded.get('entries') or []:
                     if names_match(subject, entry.get('name')):
@@ -1115,14 +1246,16 @@ def screen(subject_names, cache_dir, today, _load=None):
             'label_es': spec['label_es'],
             'label_en': spec['label_en'],
             'status': loaded.get('status', 'failed'),
-            'names_checked': len(names) if loaded.get('status') == 'ran' else 0,
+            'names_checked': (len(names)
+                              if loaded.get('status') in USABLE_STATUSES else 0),
             'matches': matches,
-            'fetched_at': loaded.get('fetched_at', today),
+            'generation_date': loaded.get('generation_date', ''),
+            'checked_at': today,
         })
 
     if not names:
         status = 'not_run'
-    elif any(r['status'] == 'ran' for r in results):
+    elif any(r['status'] in USABLE_STATUSES for r in results):
         status = 'ran'
     else:
         status = 'failed'
@@ -1141,7 +1274,7 @@ Then add `'defusedxml'` and `'defusedxml.ElementTree'` to the `_OPTIONAL` list i
 - [ ] **Step 6: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_watchlists.py -v`
-Expected: PASS (7 tests)
+Expected: PASS (10 tests)
 
 - [ ] **Step 7: Contract-check the real loaders manually (not in CI)**
 
@@ -1149,14 +1282,18 @@ Expected: PASS (7 tests)
 venv/bin/python - <<'PY'
 import dd_ext_watchlists as w
 for lid in w.LISTS:
-    out = w.load_list(lid, '/tmp/wl-cache', '2026-08-04')
-    print(lid, out['status'], len(out['entries']))
+    out = w.load_list(lid, '/tmp/wl-cache')
+    print(lid, out['status'], len(out['entries']), out['generation_date'])
     if out['entries']:
         print('  sample:', out['entries'][0])
 PY
 ```
 
-Expected: each configured list reports `ran` with a non-trivial entry count, or `unavailable` if Step 1 could not confirm its source. Record the counts in the commit message.
+Expected: `eu_consolidated` reports `ran` with roughly 1,769 enterprise entities
+(several thousand alias rows) and a `generation_date` near `2026-07-31`;
+`ofac_sdn` reports `ran` if Step 1 confirmed its source, else `unavailable`.
+Run it twice — the second run must reuse the parsed cache rather than
+re-parsing. Record the counts in the commit message.
 
 - [ ] **Step 8: Commit**
 
@@ -2108,7 +2245,8 @@ def _watchlists_ok(names, cache_dir, today, _load=None):
     return {'status': 'ran', 'lists': [
         {'list_id': 'ofac_sdn', 'label_es': 'OFAC SDN (EE. UU.)',
          'label_en': 'OFAC SDN (US)', 'status': 'ran',
-         'names_checked': len(names), 'matches': [], 'fetched_at': today},
+         'names_checked': len(names), 'matches': [],
+         'generation_date': '2026-07-31T18:40:51+02:00', 'checked_at': today},
     ]}
 
 
@@ -2372,7 +2510,7 @@ def screen(data, *, brave_token=None, api_key=None, lang='es',
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_external.py -v`
-Expected: PASS (7 tests)
+Expected: PASS (10 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -2446,7 +2584,7 @@ def _result(**over):
         'watchlists': {'status': 'ran', 'lists': [
             {'list_id': 'ofac_sdn', 'label_es': 'OFAC SDN (EE. UU.)',
              'label_en': 'OFAC SDN (US)', 'status': 'ran', 'names_checked': 1,
-             'matches': [], 'fetched_at': '2026-08-04'},
+             'matches': [], 'generation_date': '2026-07-31T18:40:51+02:00', 'checked_at': '2026-08-04'},
         ]},
         'media': {'status': 'ran', 'queries': ['"ACME SOLUCIONES SL"'], 'items': []},
         'footprint': {'status': 'ran', 'website': None, 'presents_as': '',
@@ -2501,14 +2639,32 @@ def test_watchlist_table_includes_every_configured_list():
     rr.render(pdf, _result(watchlists={'status': 'ran', 'lists': [
         {'list_id': 'ofac_sdn', 'label_es': 'OFAC SDN (EE. UU.)',
          'label_en': 'OFAC SDN (US)', 'status': 'ran', 'names_checked': 1,
-         'matches': [], 'fetched_at': '2026-08-04'},
+         'matches': [], 'generation_date': '2026-07-31T18:40:51+02:00', 'checked_at': '2026-08-04'},
         {'list_id': 'eu_consolidated', 'label_es': 'Lista UE',
          'label_en': 'EU list', 'status': 'failed', 'names_checked': 0,
-         'matches': [], 'fetched_at': '2026-08-04'},
+         'matches': [], 'generation_date': '2026-07-31T18:40:51+02:00', 'checked_at': '2026-08-04'},
     ]}), boe_sanctions=None, web_context=None, lang='es')
     blob = pdf.text_blob()
     assert 'OFAC SDN (EE. UU.)' in blob
     assert 'Lista UE' in blob
+
+
+def test_stale_list_is_disclosed_as_stale_with_its_date():
+    pdf = FakePdf()
+    rr.render(pdf, _result(watchlists={'status': 'ran', 'lists': [
+        {'list_id': 'eu_consolidated', 'label_es': 'Lista UE',
+         'label_en': 'EU list', 'status': 'stale', 'names_checked': 1,
+         'matches': [], 'generation_date': '2026-06-01T00:00:00+02:00',
+         'checked_at': '2026-08-04'},
+    ]}), boe_sanctions=None, web_context=None, lang='es')
+    blob = pdf.text_blob().lower()
+    assert 'desactualizada' in blob
+    assert '2026-06-01' in pdf.text_blob()
+
+
+def test_methodology_note_discloses_the_weaker_group_context_sourcing():
+    note = rr.methodology_note('es')
+    assert '6.4' in note
 
 
 def test_boe_result_is_folded_into_the_watchlist_table():
@@ -2620,7 +2776,11 @@ Then implement, in this order inside `render`:
 
 **Early exit** — `result` is `None` or `result['status'] == 'not_run'` → emit the scope note, then `add_callout` titled *"Verificaciones externas: no ejecutadas"* / *"External checks: not run"*, then return.
 
-**6.1 `add_subsection` + `add_data_table`** — headers `["Lista", "Estado", "Nombres comprobados", "Coincidencias"]` / `["List", "Status", "Names checked", "Matches"]`. One row per `result['watchlists']['lists']` using `label_es`/`label_en`, plus a BOE row built from `boe_sanctions` (`None` → status "no ejecutada" / "not run"; otherwise `total_checked` and `total_matches`). Status values render as *ejecutada / no ejecutada / no disponible / error*. If any list has matches, follow the table with `add_text` carrying the non-adjudication sentence: a list match is not an adjudicated finding and requires manual review.
+**6.1 `add_subsection` + `add_data_table`** — headers `["Lista", "Versión de la lista", "Estado", "Nombres comprobados", "Coincidencias"]` / `["List", "List version", "Status", "Names checked", "Matches"]`. One row per `result['watchlists']['lists']` using `label_es`/`label_en`, with the version cell showing the date part of `generation_date` (or "—" when the source publishes none, as BOE does). Plus a BOE row built from `boe_sanctions` (`None` → status "no ejecutada" / "not run"; otherwise `total_checked` and `total_matches`).
+
+Status renders as *ejecutada / desactualizada / no ejecutada / no disponible / error* (`ran` / `stale` / `not_run` / `unavailable` / `failed`). A `stale` row must additionally get an `add_text` line naming the list's `generation_date` and stating that the current list could not be retrieved, so a reader is never shown an old screen without being told it is old.
+
+If any list has matches, follow the table with `add_text` carrying the non-adjudication sentence: a list match is not an adjudicated finding and requires manual review.
 
 **6.2 `add_subsection`** — if `media['status'] != 'ran'` → `add_callout(kind='info')` whose body contains *"no se pudo"* / *"could not be completed"*. If `ran` and `confirmed_adverse(result)` is empty → `add_callout(kind='success')` whose body contains *"No se ha encontrado cobertura mediática adversa"* / *"No adverse media coverage was found"* for the entity and its former names, then `add_text` listing `media['queries']` verbatim (or, when the query list is empty, the subject names) plus the note that this is the expected result for most Spanish SMEs. If confirmed items exist → `add_data_table` with headers `["Fecha", "Fuente", "Categoría", "Titular / enlace"]` / `["Date", "Source", "Category", "Headline / link"]`, one row per confirmed item whose last cell includes the URL, then `add_text` stating how many items `refuted_adverse` discarded during verification.
 
@@ -2634,12 +2794,14 @@ Then implement, in this order inside `render`:
 
 **`summary_line(result, lang)`** — clean: *"Cribado externo: sin coincidencias en listas · sin cobertura adversa verificada"*; with hits: *"Cribado externo: N elemento(s) requieren revisión (§6)"*. Returns `''` for `None`.
 
-**`methodology_note(lang)`** — the Annex D long form: what was searched, the query policy (verbatim entity names, no adverse-keyword injection), the exact-match-only watchlist policy, the subject caps from `dd_ext_subjects` stated numerically (8 total, 2 former names, 3 participadas), the refutation rule, and the officer exclusion with both reasons.
+**`methodology_note(lang)`** — the Annex D long form: what was searched, the query policy (verbatim entity names, no adverse-keyword injection), the exact-match-only watchlist policy and the fact that the EU list is screened against sanctioned **entities only**, the subject caps from `dd_ext_subjects` stated numerically (8 total, 2 former names, 3 participadas), the refutation rule, and the officer exclusion with both reasons.
+
+It must **also** state that §6.4 (corporate group context) is the one part of this section not backed by a directly retrieved source: it is a model-asserted summary, unlike §6.1–6.3 where every statement traces to a fetched URL. Section 6 otherwise implies a uniform evidentiary standard it does not yet meet, and the reader is entitled to know which claim is weaker.
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `venv/bin/python -m pytest test_dd_ext_render.py -v`
-Expected: PASS (13 tests)
+Expected: PASS (15 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -2688,7 +2850,7 @@ def test_evidence_entries_build_a_valid_registry():
         'watchlists': {'status': 'ran', 'lists': [
             {'list_id': 'ofac_sdn', 'label_es': 'OFAC', 'label_en': 'OFAC',
              'status': 'ran', 'names_checked': 1, 'matches': [],
-             'fetched_at': '2026-08-04'}]},
+             'generation_date': '2026-07-31T18:40:51+02:00', 'checked_at': '2026-08-04'}]},
         'media': {'status': 'ran', 'queries': [], 'items': []},
         'footprint': {'status': 'ran', 'website': None, 'presents_as': '',
                       'consistent_with_registry': None, 'sources': []},
