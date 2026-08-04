@@ -50,7 +50,23 @@ Expected: all tests pass. If the runner is broken, stop and fix that before cont
 
 ### Task 1: Entity name normalisation (`dd_ext_names.py`)
 
-Shared name handling used by both subject de-duplication and watchlist matching. Matching is **exact on the normalised form only** — no fuzzy matching, no token subsets. This is deliberate: a fuzzy watchlist match is a false accusation, and the whole feature is sold on not making those.
+Shared name handling used by both subject de-duplication and watchlist matching.
+
+**Matching is two-tier, and never fuzzy.** The error asymmetry differs by check, so the module reports match *strength* and lets each caller decide:
+
+| Tier | Meaning |
+|---|---|
+| `'exact'` | Normalised names are equal, legal form included |
+| `'base'` | Base names are equal but the legal form differs or is absent |
+| `None` | No match |
+
+For the **watchlist screen** a false negative is the expensive error: telling a buyer "no sanctions matches" about a company that is on the OFAC SDN list exposes them to a sanctions violation, whereas a false positive costs them two minutes — a list hit is already framed as non-adjudicated and requiring manual review. So watchlists report **both tiers**, visibly labelled, never suppressing `base`.
+
+For **adverse media** the asymmetry is the opposite (a false positive accuses a real company of wrongdoing), which is why that path has a refutation pass instead.
+
+What is still forbidden everywhere: substring matching, token-subset matching, and edit-distance fuzz. `'base'` is a structured relaxation of exactly one component, not a similarity score.
+
+**Legal-form canonicalisation, not deletion.** Deleting the form loses the discriminator between two real entities — `ESTUDIOS SL` and `ESTUDIOS SA` are different companies. Forms are instead collapsed to one canonical token that stays on the name: `S.L.` / `S L` / `SL` / `SOCIEDAD LIMITADA` → `SL`. Unipersonal variants collapse into their base form (`SLU`→`SL`, `SAU`→`SA`) because a company entering or leaving *unipersonal* status is the same legal entity — treating those as different would be a false negative.
 
 **Files:**
 - Create: `dd_ext_names.py`
@@ -59,9 +75,11 @@ Shared name handling used by both subject de-duplication and watchlist matching.
 **Interfaces:**
 - Consumes: nothing (leaf module, pure, stdlib only).
 - Produces:
-  - `normalize_entity_name(name: str) -> str`
-  - `names_match(a: str, b: str) -> bool`
-  - `LEGAL_FORM_TOKENS: frozenset[str]`
+  - `normalize_entity_name(name: str) -> str` — accent/punctuation/case normalised, trailing legal form **canonicalised and kept**
+  - `base_name(name: str) -> str` — `normalize_entity_name` minus the trailing canonical form token
+  - `match_strength(a: str, b: str) -> str | None` — `'exact'`, `'base'`, or `None`
+  - `names_match(a: str, b: str) -> bool` — `match_strength(a, b) == 'exact'`
+  - `CANONICAL_FORMS: dict[str, str]` — variant token → canonical token
 
 - [ ] **Step 1: Write the failing test**
 
@@ -70,29 +88,46 @@ Create `test_dd_ext_names.py`:
 ```python
 """Tests for dd_ext_names — entity-name normalisation for external screening.
 
-Matching is exact-on-normalised-form by design: fuzzy matching against a
-sanctions list produces false accusations, which is the one failure mode this
-feature cannot have.
+Two-tier matching, never fuzzy. The legal form is CANONICALISED and KEPT, not
+deleted: deleting it makes ESTUDIOS SL and ESTUDIOS SA the same string, which
+is a false positive between two real companies. A form-only difference is
+reported as 'base' so the watchlist screen can surface it as a possible match
+rather than silently dropping it — for sanctions, the false negative is the
+expensive error.
 """
 import dd_ext_names as n
 
 
 def test_normalize_strips_accents_case_and_punctuation():
-    assert n.normalize_entity_name('Añejo Distribución, S.L.') == 'ANEJO DISTRIBUCION'
-    assert n.normalize_entity_name('  ACME   SOLUCIONES  S.L.  ') == 'ACME SOLUCIONES'
+    assert n.normalize_entity_name('Añejo Distribución, S.L.') == 'ANEJO DISTRIBUCION SL'
+    assert n.normalize_entity_name('  ACME   SOLUCIONES  S.L.  ') == 'ACME SOLUCIONES SL'
 
 
-def test_normalize_strips_trailing_legal_form_only():
-    assert n.normalize_entity_name('ACME SL') == 'ACME'
-    assert n.normalize_entity_name('ACME SOCIEDAD LIMITADA') == 'ACME'
-    assert n.normalize_entity_name('HOLDING ACME B.V.') == 'HOLDING ACME'
-    # A legal-form token in the MIDDLE is part of the name, not a suffix.
-    assert n.normalize_entity_name('SA NOSTRA CAIXA SA') == 'SA NOSTRA CAIXA'
+def test_normalize_canonicalises_the_trailing_legal_form_and_keeps_it():
+    assert n.normalize_entity_name('ACME SL') == 'ACME SL'
+    assert n.normalize_entity_name('ACME S.L.') == 'ACME SL'
+    assert n.normalize_entity_name('ACME SOCIEDAD LIMITADA') == 'ACME SL'
+    assert n.normalize_entity_name('HOLDING ACME B.V.') == 'HOLDING ACME BV'
 
 
-def test_normalize_handles_unipersonal_suffix():
-    assert n.normalize_entity_name('ACME SLU') == 'ACME'
-    assert n.normalize_entity_name('ACME S.L.U.') == 'ACME'
+def test_unipersonal_variants_collapse_into_their_base_form():
+    # A company entering or leaving 'unipersonal' status is the SAME entity;
+    # treating SLU and SL as different would be a false negative.
+    assert n.normalize_entity_name('ACME SLU') == 'ACME SL'
+    assert n.normalize_entity_name('ACME S.L.U.') == 'ACME SL'
+    assert n.normalize_entity_name('ACME SAU') == 'ACME SA'
+
+
+def test_mid_name_legal_form_token_is_preserved():
+    assert n.normalize_entity_name('SA NOSTRA CAIXA SA') == 'SA NOSTRA CAIXA SA'
+
+
+def test_name_without_a_legal_form_is_unchanged():
+    assert n.normalize_entity_name('ACME SOLUCIONES') == 'ACME SOLUCIONES'
+
+
+def test_normalize_never_strips_the_whole_name_away():
+    assert n.normalize_entity_name('S.L.') == 'SL'
 
 
 def test_normalize_degrades_on_bad_input():
@@ -101,16 +136,39 @@ def test_normalize_degrades_on_bad_input():
     assert n.normalize_entity_name(123) == ''
 
 
-def test_names_match_is_exact_on_normalised_form():
-    assert n.names_match('ACME Soluciones, S.L.', 'acme soluciones sl') is True
-    assert n.names_match('ACME SL', 'ACME LOGISTICA SL') is False
-    # substring must NOT match — this is the false-positive guard
-    assert n.names_match('ACME', 'ACME SOLUCIONES') is False
+def test_base_name_drops_the_canonical_form():
+    assert n.base_name('ACME Soluciones, S.L.') == 'ACME SOLUCIONES'
+    assert n.base_name('ACME SLU') == 'ACME'
+    assert n.base_name('ACME SOLUCIONES') == 'ACME SOLUCIONES'
+    assert n.base_name(None) == ''
 
 
-def test_names_match_empty_never_matches():
+def test_match_strength_exact_ignores_formatting_only_differences():
+    assert n.match_strength('ACME Soluciones, S.L.', 'acme soluciones sl') == 'exact'
+    assert n.match_strength('ACME SLU', 'ACME SL') == 'exact'
+
+
+def test_form_only_difference_is_base_not_exact():
+    # The defect this design fixes: these are two different companies.
+    assert n.match_strength('ESTUDIOS SL', 'ESTUDIOS SA') == 'base'
+    assert n.match_strength('ESTUDIOS A.G.', 'ESTUDIOS, S.L.') == 'base'
+    assert n.names_match('ESTUDIOS SL', 'ESTUDIOS SA') is False
+
+
+def test_a_bare_base_name_matches_a_formed_one_as_base():
+    # Sanctions lists sometimes record an entity without its legal form.
+    assert n.match_strength('ACME SOLUCIONES', 'ACME SOLUCIONES SL') == 'base'
+
+
+def test_substring_and_token_subset_never_match():
+    assert n.match_strength('ACME', 'ACME SOLUCIONES') is None
+    assert n.match_strength('ACME SL', 'ACME LOGISTICA SL') is None
+
+
+def test_empty_never_matches():
+    assert n.match_strength('', '') is None
+    assert n.match_strength(None, 'ACME SL') is None
     assert n.names_match('', '') is False
-    assert n.names_match(None, 'ACME SL') is False
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -128,31 +186,53 @@ Create `dd_ext_names.py`:
 Shared by dd_ext_subjects (de-duplicating the subject list) and
 dd_ext_watchlists (matching against official sanctions lists).
 
-Matching policy: EXACT equality on the normalised form. No fuzzy matching, no
-token-subset matching, no substring matching. A fuzzy sanctions-list hit is a
-false accusation in a paid report; a missed hit is a documented limitation.
-We take the miss.
+MATCHING POLICY — two tiers, never fuzzy:
+  'exact'  normalised names equal, legal form included
+  'base'   base names equal, legal form differs or is absent
+  None     no match
 
-Pure module — stdlib only, no I/O.
+Substring, token-subset and edit-distance matching are all forbidden. 'base'
+is a structured relaxation of exactly ONE component, not a similarity score.
+
+The legal form is CANONICALISED and KEPT, never deleted. Deleting it collapses
+ESTUDIOS SL and ESTUDIOS SA — two different companies — into one string.
+Unipersonal variants fold into their base form (SLU->SL, SAU->SA) because a
+company entering or leaving unipersonal status is the same legal entity.
+
+Callers choose how to treat 'base' according to their own error asymmetry: the
+watchlist screen surfaces base hits as possible matches (for sanctions, the
+false negative is the expensive error), while media triage does not use this
+module for relevance at all.
+
+Pure module - stdlib only, no I/O.
 """
 import re
 import unicodedata
 
-# Legal-form tokens stripped ONLY when they trail the name. A token like "SA"
-# mid-name ("SA NOSTRA CAIXA SA") belongs to the name itself.
-LEGAL_FORM_TOKENS = frozenset({
-    'SL', 'SLU', 'SA', 'SAU', 'SLL', 'SAL', 'SCP', 'SC', 'SLNE', 'SICAV',
-    'SOCIEDAD LIMITADA', 'SOCIEDAD ANONIMA', 'SOCIEDAD LIMITADA UNIPERSONAL',
-    'SOCIEDAD ANONIMA UNIPERSONAL',
-    'BV', 'NV', 'GMBH', 'AG', 'LTD', 'LIMITED', 'LLC', 'INC', 'PLC', 'SARL',
-    'SAS', 'SPA', 'SRL', 'OY', 'AB', 'AS', 'PTY', 'KFT', 'ZRT', 'DOO',
-})
+# Variant token -> canonical token. Keys are what a name looks like AFTER
+# accent/punctuation normalisation, so 'S.L.' arrives here as 'S L'.
+CANONICAL_FORMS = {
+    'SL': 'SL', 'S L': 'SL', 'SLU': 'SL', 'S L U': 'SL',
+    'SOCIEDAD LIMITADA': 'SL', 'SOCIEDAD LIMITADA UNIPERSONAL': 'SL',
+    'SA': 'SA', 'S A': 'SA', 'SAU': 'SA', 'S A U': 'SA',
+    'SOCIEDAD ANONIMA': 'SA', 'SOCIEDAD ANONIMA UNIPERSONAL': 'SA',
+    'SLL': 'SLL', 'S L L': 'SLL', 'SAL': 'SAL', 'S A L': 'SAL',
+    'SLNE': 'SLNE', 'SCP': 'SCP', 'S C P': 'SCP', 'SC': 'SC', 'S C': 'SC',
+    'SICAV': 'SICAV',
+    'BV': 'BV', 'B V': 'BV', 'NV': 'NV', 'N V': 'NV',
+    'GMBH': 'GMBH', 'AG': 'AG', 'A G': 'AG',
+    'LTD': 'LTD', 'LIMITED': 'LTD', 'LLC': 'LLC', 'INC': 'INC',
+    'PLC': 'PLC', 'SARL': 'SARL', 'S A R L': 'SARL', 'SAS': 'SAS',
+    'SPA': 'SPA', 'S P A': 'SPA', 'SRL': 'SRL', 'S R L': 'SRL',
+    'OY': 'OY', 'AB': 'AB', 'AS': 'AS', 'PTY': 'PTY', 'KFT': 'KFT',
+    'ZRT': 'ZRT', 'DOO': 'DOO',
+}
 
 _PUNCT_RE = re.compile(r'[^\w\s]', re.UNICODE)
 _WS_RE = re.compile(r'\s+')
-# Longest multi-word forms first so "SOCIEDAD LIMITADA UNIPERSONAL" wins over
-# "SOCIEDAD LIMITADA".
-_SORTED_FORMS = tuple(sorted(LEGAL_FORM_TOKENS, key=lambda t: -len(t)))
+# Longest variants first so 'SOCIEDAD LIMITADA UNIPERSONAL' wins over
+# 'SOCIEDAD LIMITADA', and 'S L U' over 'S L'.
+_SORTED_VARIANTS = tuple(sorted(CANONICAL_FORMS, key=lambda t: -len(t)))
 
 
 def _strip_accents(text):
@@ -160,37 +240,63 @@ def _strip_accents(text):
                    if unicodedata.category(c) != 'Mn')
 
 
-def normalize_entity_name(name):
-    """Upper-case, accent-stripped, punctuation-free, trailing-legal-form-free.
-
-    Returns '' for any non-string or empty input — callers treat '' as
-    'unusable', and '' never matches anything (see names_match).
-    """
+def _flatten(name):
+    """Accent-stripped, punctuation-free, upper-cased, whitespace-collapsed."""
     if not isinstance(name, str):
         return ''
-    text = _strip_accents(name)
-    text = _PUNCT_RE.sub(' ', text)
-    text = _WS_RE.sub(' ', text).strip().upper()
-    if not text:
-        return ''
-    # Strip ONE trailing legal form (repeat-stripping would eat real names).
-    for form in _SORTED_FORMS:
-        suffix = ' ' + form
-        if text.endswith(suffix):
-            candidate = text[: -len(suffix)].strip()
-            if candidate:  # never strip the whole name away
-                return candidate
+    text = _PUNCT_RE.sub(' ', _strip_accents(name))
+    return _WS_RE.sub(' ', text).strip().upper()
+
+
+def _split_form(flat):
+    """Return (base, canonical_form). canonical_form is '' when the name has
+    no trailing legal form, or when the form IS the whole name."""
+    for variant in _SORTED_VARIANTS:
+        suffix = ' ' + variant
+        if flat.endswith(suffix):
+            base = flat[: -len(suffix)].strip()
+            if base:  # never strip the whole name away
+                return base, CANONICAL_FORMS[variant]
             break
-    return text
+    # A name that is nothing but a legal form keeps it as the base.
+    if flat in CANONICAL_FORMS:
+        return CANONICAL_FORMS[flat], ''
+    return flat, ''
+
+
+def normalize_entity_name(name):
+    """Normalised name with its trailing legal form CANONICALISED and kept."""
+    flat = _flatten(name)
+    if not flat:
+        return ''
+    base, form = _split_form(flat)
+    return f'{base} {form}' if form else base
+
+
+def base_name(name):
+    """Normalised name with the trailing canonical legal form removed."""
+    flat = _flatten(name)
+    if not flat:
+        return ''
+    return _split_form(flat)[0]
+
+
+def match_strength(a, b):
+    """'exact' | 'base' | None. Empty never matches."""
+    na, nb = normalize_entity_name(a), normalize_entity_name(b)
+    if not na or not nb:
+        return None
+    if na == nb:
+        return 'exact'
+    ba, bb = base_name(a), base_name(b)
+    if ba and bb and ba == bb:
+        return 'base'
+    return None
 
 
 def names_match(a, b):
-    """Exact equality on the normalised form. Empty never matches."""
-    na = normalize_entity_name(a)
-    nb = normalize_entity_name(b)
-    if not na or not nb:
-        return False
-    return na == nb
+    """True only for an exact match (legal form included)."""
+    return match_strength(a, b) == 'exact'
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -835,12 +941,12 @@ timer would, without a second thing that can silently stop.
 - Test: `test_dd_ext_watchlists.py`
 
 **Interfaces:**
-- Consumes: `dd_ext_names.names_match`
+- Consumes: `dd_ext_names.match_strength`
 - Produces:
   - `screen(subject_names, cache_dir, today, _load=None) -> dict` —
     `{'status': 'ran'|'not_run'|'failed', 'lists': [ {...} ]}`
   - per-list shape: `{'list_id','label_es','label_en','status','names_checked','matches','generation_date','checked_at'}` where status ∈ `{'ran','stale','failed','unavailable','not_run'}`
-  - match shape: `{'subject','listed_name','list_id','programme','reference'}`
+  - match shape: `{'subject','listed_name','list_id','programme','reference','strength'}` where strength is `'exact'` or `'base'`
   - `load_list(list_id, cache_dir, _get=None) -> dict` —
     `{'status','entries','generation_date'}` with entry shape
     `{'name','programme','reference'}`
@@ -983,7 +1089,20 @@ def test_exact_match_is_reported_with_provenance():
         'list_id': 'ofac_sdn',
         'programme': 'UKRAINE-EO13662',
         'reference': '12345',
+        'strength': 'exact',
     }]
+
+
+def test_legal_form_only_difference_is_reported_as_a_possible_match():
+    # A sanctions list recording the entity with a different (or no) legal
+    # form must NOT be missed -- it surfaces as strength 'base'.
+    load = _loader({'ofac_sdn': [
+        {'name': 'ACME SOLUCIONES SA', 'programme': 'X', 'reference': '1'},
+    ]})
+    out = w.screen(['ACME SOLUCIONES SL'], cache_dir='/tmp',
+                   today='2026-08-04', _load=load)
+    ofac = next(l for l in out['lists'] if l['list_id'] == 'ofac_sdn')
+    assert [m['strength'] for m in ofac['matches']] == ['base']
 
 
 def test_near_miss_does_not_match():
@@ -1069,7 +1188,7 @@ import os
 
 import requests
 
-from dd_ext_names import names_match
+from dd_ext_names import match_strength
 
 USABLE_STATUSES = ('ran', 'stale')
 
@@ -1285,14 +1404,22 @@ def screen(subject_names, cache_dir, today, _load=None):
         if loaded.get('status') in USABLE_STATUSES:
             for subject in names:
                 for entry in loaded.get('entries') or []:
-                    if names_match(subject, entry.get('name')):
-                        matches.append({
-                            'subject': subject,
-                            'listed_name': entry.get('name'),
-                            'list_id': list_id,
-                            'programme': entry.get('programme') or '',
-                            'reference': entry.get('reference') or '',
-                        })
+                    strength = match_strength(subject, entry.get('name'))
+                    if not strength:
+                        continue
+                    # Both tiers are reported. For sanctions the false
+                    # negative is the expensive error, and a list hit is
+                    # already framed as non-adjudicated, so a legal-form-only
+                    # difference must surface as a possible match rather than
+                    # be silently dropped.
+                    matches.append({
+                        'subject': subject,
+                        'listed_name': entry.get('name'),
+                        'list_id': list_id,
+                        'programme': entry.get('programme') or '',
+                        'reference': entry.get('reference') or '',
+                        'strength': strength,
+                    })
         results.append({
             'list_id': list_id,
             'label_es': spec['label_es'],
@@ -2833,7 +2960,9 @@ Then implement, in this order inside `render`:
 
 Status renders as *ejecutada / desactualizada / no ejecutada / no disponible / error* (`ran` / `stale` / `not_run` / `unavailable` / `failed`). A `stale` row must additionally get an `add_text` line naming the list's `generation_date` and stating that the current list could not be retrieved, so a reader is never shown an old screen without being told it is old.
 
-If any list has matches, follow the table with `add_text` carrying the non-adjudication sentence: a list match is not an adjudicated finding and requires manual review.
+**Match tiers.** The `Coincidencias` cell counts `strength == 'exact'` matches. Any `strength == 'base'` matches are counted separately in the same cell as *"+N posible(s)"* / *"+N possible"*, and listed below the table in their own `add_data_table` with headers `["Sujeto", "Nombre en la lista", "Lista", "Programa"]` under a heading that says the legal form differs and the match requires verification. A `base` match is never presented with the same weight as an `exact` one, and is never omitted — for sanctions the false negative is the expensive error, which is why the tier exists.
+
+If any list has matches of either tier, follow the tables with `add_text` carrying the non-adjudication sentence: a list match is not an adjudicated finding and requires manual review.
 
 **6.2 `add_subsection`** — if `media['status'] != 'ran'` → `add_callout(kind='info')` whose body contains *"no se pudo"* / *"could not be completed"*. If `ran` and `confirmed_adverse(result)` is empty → `add_callout(kind='success')` whose body contains *"No se ha encontrado cobertura mediática adversa"* / *"No adverse media coverage was found"* for the entity and its former names, then `add_text` listing `media['queries']` verbatim (or, when the query list is empty, the subject names) plus the note that this is the expected result for most Spanish SMEs. If confirmed items exist → `add_data_table` with headers `["Fecha", "Fuente", "Categoría", "Titular / enlace"]` / `["Date", "Source", "Category", "Headline / link"]`, one row per confirmed item whose last cell includes the URL, then `add_text` stating how many items `refuted_adverse` discarded during verification.
 
@@ -2847,7 +2976,7 @@ If any list has matches, follow the table with `add_text` carrying the non-adjud
 
 **`summary_line(result, lang)`** — clean: *"Cribado externo: sin coincidencias en listas · sin cobertura adversa verificada"*; with hits: *"Cribado externo: N elemento(s) requieren revisión (§6)"*. Returns `''` for `None`.
 
-**`methodology_note(lang)`** — the Annex D long form: what was searched, the query policy (verbatim entity names, no adverse-keyword injection), the exact-match-only watchlist policy and the fact that the EU list is screened against sanctioned **entities only**, the subject caps from `dd_ext_subjects` stated numerically (8 total, 2 former names, 3 participadas), the refutation rule, and the officer exclusion with both reasons.
+**`methodology_note(lang)`** — the Annex D long form: what was searched, the query policy (verbatim entity names, no adverse-keyword injection), the two-tier watchlist matching policy (exact vs legal-form-only, why both are reported, and that no fuzzy or substring matching is used), the fact that both lists are screened against sanctioned **entities only** (persons, vessels and aircraft are excluded), the opposite error asymmetries deliberately applied to list screening (recall-first) and media screening (precision-first), the subject caps from `dd_ext_subjects` stated numerically (8 total, 2 former names, 3 participadas), the refutation rule, and the officer exclusion with both reasons.
 
 It must **also** state that §6.4 (corporate group context) is the one part of this section not backed by a directly retrieved source: it is a model-asserted summary, unlike §6.1–6.3 where every statement traces to a fetched URL. Section 6 otherwise implies a uniform evidentiary standard it does not yet meet, and the reader is entitled to know which claim is weaker.
 
