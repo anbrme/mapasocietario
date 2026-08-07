@@ -79,12 +79,13 @@ export const LANDING_COPY = {
       dd: {
         title: 'Due Diligence report',
         badge: 'Paid · EUR 22.50 · one company',
-        desc: 'A comprehensive PDF on a single company, with AI-powered analysis and official-source cross-checks.',
+        desc: 'A comprehensive PDF on a single company: registry history, official sanctions-list screening and adverse-media checks, with every finding traced to the source it came from.',
         bullets: [
           'AI analysis & risk score',
-          'Sanctions & PEP screening',
-          'Full officer history',
-          'Traceability of address and registry changes',
+          'Sanctions screening against the OFAC SDN and EU consolidated lists, each dated in the report',
+          'Adverse media screening — findings grouped by event, every one traced to its source',
+          'Officer names checked against the BOE and against Congreso deputies, flagged for verification',
+          'Full officer history and traceability of address and registry changes',
           'Capital events & red flags',
           'Optional financial statements (Cuentas Anuales)',
           'Free BORME monitoring included',
@@ -147,7 +148,7 @@ export const LANDING_COPY = {
         },
         {
           q: 'What does the due diligence report include?',
-          a: 'Due diligence reports include comprehensive information on the company’s corporate structure, officer history, and relationship graph. They also feature BOE sanctions checks, risk analysis, and a downloadable PDF format. You can view a sample report before purchasing to see the level of detail provided.',
+          a: 'Due diligence reports include comprehensive information on the company’s corporate structure, officer history, and relationship graph. They also screen the company against the OFAC SDN and EU consolidated sanctions lists, run an adverse-media screen whose findings are grouped by event with the source URL for each one, and check officer names against the BOE and against Congreso deputies. Anything that could not be verified is disclosed in the report rather than dropped from it. The report is a downloadable PDF, and you can view a sample before purchasing to see the level of detail provided.',
         },
         {
           q: 'I purchased a report but did not receive it. What should I do?',
@@ -274,12 +275,13 @@ export const LANDING_COPY = {
       dd: {
         title: 'Informe due diligence',
         badge: 'De pago · 22,50 € · una empresa',
-        desc: 'Un PDF completo sobre una sola empresa, con análisis por IA y cruces con fuentes oficiales.',
+        desc: 'Un PDF completo sobre una sola empresa: historial registral, cribado contra listas oficiales de sanciones y comprobación de prensa adversa, con cada hallazgo trazado hasta su fuente.',
         bullets: [
           'Análisis por IA y puntuación de riesgo',
-          'Comprobación de sanciones y PEP',
-          'Historial completo de administradores',
-          'Trazabilidad de cambios de domicilio y registro',
+          'Cribado de sanciones contra la lista OFAC SDN y la lista consolidada de la UE, cada una fechada en el informe',
+          'Cribado de prensa adversa: hallazgos agrupados por hecho, cada uno con su fuente',
+          'Nombres de administradores contrastados con el BOE y con los diputados del Congreso, señalados para verificación',
+          'Historial completo de administradores y trazabilidad de cambios de domicilio y registro',
           'Eventos de capital y señales de alerta',
           'Cuentas anuales opcionales',
           'Monitorización empresa gratuita incluida',
@@ -342,7 +344,7 @@ export const LANDING_COPY = {
         },
         {
           q: '¿Qué incluye el informe due diligence?',
-          a: 'Los informes due diligence incluyen información completa sobre la estructura societaria de la empresa, el historial de administradores y el grafo de relaciones. También incluyen comprobación de sanciones BOE, análisis de riesgo y formato PDF descargable. Puedes ver un informe de ejemplo antes de comprarlo para conocer el nivel de detalle que ofrece.',
+          a: 'Los informes due diligence incluyen información completa sobre la estructura societaria de la empresa, el historial de administradores y el grafo de relaciones. Además cruzan la empresa con la lista OFAC SDN y la lista consolidada de sanciones de la UE, realizan un cribado de prensa adversa con los hallazgos agrupados por hecho y la URL de cada fuente, y contrastan los nombres de los administradores con el BOE y con los diputados del Congreso. Lo que no se ha podido verificar se indica en el informe en lugar de omitirse. El informe es un PDF descargable y puedes ver un ejemplo antes de comprarlo para conocer el nivel de detalle que ofrece.',
         },
         {
           q: 'Compré un informe pero no lo recibí. ¿Qué debo hacer?',

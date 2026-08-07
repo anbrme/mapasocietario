@@ -450,9 +450,17 @@ export default function LandingPage({ lang = 'en' }) {
                 >
                   {copy.reports.dd.buyCta}
                 </Button>
-                <Link href="/sample-dd-report.pdf" target="_blank" rel="noopener" variant="caption" sx={{ color: 'primary.light', fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                <Button
+                  component="a"
+                  href="/sample-dd-report.pdf"
+                  target="_blank"
+                  rel="noopener"
+                  variant="outlined"
+                  size="small"
+                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, color: 'primary.light', borderColor: 'rgba(255,255,255,0.28)', '&:hover': { borderColor: 'primary.light', bgcolor: 'rgba(255,255,255,0.06)' } }}
+                >
                   {copy.reports.dd.sampleCta}
-                </Link>
+                </Button>
               </Box>
             </Paper>
 

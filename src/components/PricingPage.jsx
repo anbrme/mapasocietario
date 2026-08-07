@@ -39,7 +39,7 @@ const COPY = {
     lineItems: [
       {
         label: 'Company due diligence report',
-        sub: 'AI analysis, corporate structure, full officer history, capital events, traceability of address and registry changes, BOE sanctions checks, red flags. Delivered as a PDF. Includes 2 days of AI investigation (ask about a company\'s network, cited answers).',
+        sub: 'AI analysis, corporate structure, full officer history, capital events, traceability of address and registry changes, sanctions screening (OFAC SDN and EU consolidated lists), adverse-media screening with sourced findings, BOE checks, red flags. Delivered as a PDF. Includes 2 days of AI investigation (ask about a company\'s network, cited answers).',
         price: '€22.50',
       },
       {
@@ -84,7 +84,7 @@ const COPY = {
     lineItems: [
       {
         label: 'Informe due diligence de empresa',
-        sub: 'Análisis por IA, estructura societaria, historial completo de administradores, trazabilidad de cambios de domicilio y registro, eventos de capital, comprobación de sanciones del BOE y señales de alerta. Entregado en PDF. Incluye 2 días de investigación por IA (preguntas sobre la red de una empresa, respuestas citadas).',
+        sub: 'Análisis por IA, estructura societaria, historial completo de administradores, trazabilidad de cambios de domicilio y registro, eventos de capital, cribado de sanciones (lista OFAC SDN y lista consolidada de la UE), cribado de prensa adversa con las fuentes de cada hallazgo, comprobaciones en el BOE y señales de alerta. Entregado en PDF. Incluye 2 días de investigación por IA (preguntas sobre la red de una empresa, respuestas citadas).',
         price: '22,50 €',
       },
       {

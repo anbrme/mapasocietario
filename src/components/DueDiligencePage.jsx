@@ -73,7 +73,7 @@ const COPY = {
     features: [
       { title: 'Corporate Structure', desc: 'Relationship mapping of officers, shareholders, and subsidiaries extracted from official BORME filings.' },
       { title: 'Officer History', desc: 'Complete timeline of appointments, resignations, and role changes for every director and administrator.' },
-      { title: 'Sanctions Screening', desc: 'Automated cross-check against international sanctions lists and PEP databases.' },
+      { title: 'Sanctions & Adverse Media Screening', desc: 'Screening against the OFAC SDN and EU consolidated sanctions lists, each dated in the report, plus an adverse-media screen with every finding traced to its source. Officer names are checked against the BOE and against Congreso deputies, flagged for verification.' },
       { title: 'Red Flags & Risk Score', desc: 'AI-powered analysis highlighting unusual patterns, frequent changes, and potential compliance risks.' },
       { title: 'Capital Events', desc: 'Track capital increases, reductions, mergers, and other corporate actions over time.' },
       { title: 'PDF Report', desc: 'Professional, downloadable PDF ready for compliance files, investor reviews, or internal records.' },
@@ -171,7 +171,7 @@ const COPY = {
     features: [
       { title: 'Estructura societaria', desc: 'Mapeo de relaciones entre administradores, socios y filiales extraído de publicaciones oficiales del BORME.' },
       { title: 'Historial de administradores', desc: 'Cronología completa de nombramientos, ceses y cambios de cargo de cada administrador.' },
-      { title: 'Comprobación de sanciones', desc: 'Cruce automático con listas internacionales de sanciones y bases de datos de PEP.' },
+      { title: 'Cribado de sanciones y prensa adversa', desc: 'Cribado contra la lista OFAC SDN y la lista consolidada de sanciones de la UE, cada una fechada en el informe, más un cribado de prensa adversa con cada hallazgo trazado hasta su fuente. Los nombres de los administradores se contrastan con el BOE y con los diputados del Congreso, señalados para verificación.' },
       { title: 'Señales de alerta y riesgo', desc: 'Análisis por IA que destaca patrones inusuales, cambios frecuentes y posibles riesgos de compliance.' },
       { title: 'Eventos de capital', desc: 'Sigue ampliaciones y reducciones de capital, fusiones y otros actos societarios a lo largo del tiempo.' },
       { title: 'Informe en PDF', desc: 'PDF profesional y descargable, listo para expedientes de compliance, revisiones de inversores o archivo interno.' },

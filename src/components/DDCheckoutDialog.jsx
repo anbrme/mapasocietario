@@ -83,7 +83,7 @@ const DD_COPY = {
       `Applies your ${count} correction${count === 1 ? '' : 's'} to the report. It is marked as "Custom - not authoritative".`,
     faithfulMode:
       'Registry report: the data as published in the Registro Mercantil, with quality notes.',
-    baseDescription: 'Corporate structure, officer history, sanctions screening, risk analysis',
+    baseDescription: 'Corporate structure, officer history, sanctions and adverse-media screening, risk analysis',
     sampleReport: 'See a sample report before you buy',
     financialStatements: 'Financial Statements (Cuentas Anuales)',
     financialStatementsDescription:
@@ -182,7 +182,7 @@ const DD_COPY = {
     faithfulMode:
       'Informe registral: los datos tal como constan en el Registro Mercantil, con notas de calidad.',
     baseDescription:
-      'Estructura societaria, historial de administradores, cruce de sanciones y análisis de riesgo',
+      'Estructura societaria, historial de administradores, cribado de sanciones y prensa adversa, análisis de riesgo',
     sampleReport: 'Ver un informe de ejemplo antes de comprar',
     financialStatements: 'Cuentas anuales',
     financialStatementsDescription:
