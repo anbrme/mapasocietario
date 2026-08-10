@@ -32,6 +32,7 @@ const APP_COPY = {
       registerGuide: 'Spanish company register & BORME guide',
       listed: 'IBEX 35 companies',
       dashboard: 'Stats dashboard',
+      monitoring: 'Your monitoring',
       reports: 'Due Diligence reports',
       connectClaude: 'Use in Claude',
       pricing: 'Pricing',
@@ -63,6 +64,7 @@ const APP_COPY = {
       about: 'Acerca de',
       listed: 'Empresas del IBEX 35',
       dashboard: 'Panel estadístico',
+      monitoring: 'Tu monitorización',
       faq: 'Preguntas frecuentes',
       facebook: 'Facebook',
       terms: 'Términos',
@@ -113,6 +115,9 @@ export default function App() {
     { label: copy.menu.registerGuide, url: nav.registerGuide },
     { label: copy.menu.listed, url: nav.listed },
     { label: copy.menu.dashboard, url: nav.dashboard },
+    // The only in-app door to the manage page. Every other way in starts with
+    // an email, which the people most likely to need it have never received.
+    { label: copy.menu.monitoring, url: nav.monitoring },
     null,
     { label: copy.menu.reports, url: nav.reports },
     { label: copy.menu.connectClaude, url: nav.connectClaude },

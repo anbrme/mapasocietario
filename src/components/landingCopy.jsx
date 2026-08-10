@@ -41,7 +41,7 @@ export const LANDING_COPY = {
     },
     howItWorks: {
       heading: 'How it works',
-      sub: 'Three steps from a name to a connected corporate picture.',
+      sub: 'Four steps from a name to a connected corporate picture you keep watching.',
       demoCaption: 'How the graph maps companies, officers, and their connections from BORME. Search any company to explore the live data.',
       demoCta: 'Explore the live graph →',
       demoAlt: 'Interactive BORME corporate relationship graph of a Spanish company: directors, officers and connected companies',
@@ -58,6 +58,10 @@ export const LANDING_COPY = {
         {
           title: '3 · Document what matters',
           desc: 'Open a company’s data preview to read its current officers, address, share capital and corporate events, then order a report only when you need a PDF record.',
+        },
+        {
+          title: '4 · Keep watching it',
+          desc: 'Right-click any Spanish company and choose “Monitor this company” to be emailed when BORME publishes a change to it — new officers, capital movements, insolvency filings, address or name changes. It is free, needs no account, and runs until you stop it: confirm your address once and that is the whole setup. “Your monitoring” in the menu lists everything you watch and turns any of it off.',
         },
       ],
       snapshot: {
@@ -88,7 +92,7 @@ export const LANDING_COPY = {
           'Full officer history and traceability of address and registry changes',
           'Capital events & red flags',
           'Optional financial statements (Cuentas Anuales)',
-          'Free BORME monitoring included',
+          'Free BORME monitoring — included here, and available on its own without a report',
         ],
         sampleCta: 'See a sample report (PDF)',
         buyCta: 'Get a due diligence report',
@@ -237,7 +241,7 @@ export const LANDING_COPY = {
     },
     howItWorks: {
       heading: 'Cómo funciona',
-      sub: 'Tres pasos para pasar de un nombre a una visión societaria conectada.',
+      sub: 'Cuatro pasos para pasar de un nombre a una visión societaria conectada y vigilada.',
       demoCaption: 'Cómo el grafo conecta empresas, administradores y sus relaciones societarias del BORME. Busca cualquier empresa para explorar los datos en vivo.',
       demoCta: 'Explorar el grafo en vivo →',
       demoAlt: 'Grafo interactivo de relaciones societarias BORME de una empresa española: administradores, cargos y empresas conectadas',
@@ -254,6 +258,10 @@ export const LANDING_COPY = {
         {
           title: '3 · Documenta lo importante',
           desc: 'Abre la vista previa de una empresa para ver administradores, domicilio, capital social y eventos societarios, y pide un informe solo cuando necesites un PDF documental.',
+        },
+        {
+          title: '4 · Mantenla vigilada',
+          desc: 'Haz clic derecho en cualquier empresa española y elige «Monitorizar esta empresa» para recibir un correo cuando el BORME publique un cambio: nuevos administradores, movimientos de capital, concurso de acreedores, cambios de domicilio o de denominación. Es gratis, no requiere cuenta y sigue activa hasta que la detengas: confirmas tu dirección una vez y eso es toda la configuración. «Tu monitorización», en el menú, lista todo lo que vigilas y permite desactivar lo que quieras.',
         },
       ],
       snapshot: {
@@ -284,7 +292,7 @@ export const LANDING_COPY = {
           'Historial completo de administradores y trazabilidad de cambios de domicilio y registro',
           'Eventos de capital y señales de alerta',
           'Cuentas anuales opcionales',
-          'Monitorización empresa gratuita incluida',
+          'Monitorización BORME gratuita — incluida aquí y disponible por separado sin informe',
         ],
         sampleCta: 'Ver un informe de ejemplo (PDF)',
         buyCta: 'Pedir un informe due diligence',
