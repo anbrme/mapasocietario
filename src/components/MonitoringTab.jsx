@@ -209,6 +209,7 @@ export default function MonitoringTab({ adminKey }) {
                     <TableCell>Source</TableCell>
                     <TableCell>Country</TableCell>
                     <TableCell>Subscriber</TableCell>
+                    <TableCell>Email</TableCell>
                     <TableCell align="right">Filings</TableCell>
                     <TableCell>Last filing</TableCell>
                     <TableCell>Since</TableCell>
@@ -222,6 +223,19 @@ export default function MonitoringTab({ adminKey }) {
                       <TableCell>{m.country || '—'}</TableCell>
                       <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
                         {m.email || '—'}
+                      </TableCell>
+                      <TableCell>
+                        {/* An alert can be active, matched and stored and
+                            still mail nobody: the dispatcher requires this
+                            flag. Off is not a fault — NC Data accounts read
+                            alerts in the app — but it must be visible, or
+                            "why no email?" has no answer on this page. */}
+                        <Chip
+                          size="small"
+                          variant={m.email_enabled ? 'filled' : 'outlined'}
+                          color={m.email_enabled ? 'success' : 'default'}
+                          label={m.email_enabled ? 'On' : 'In-app only'}
+                        />
                       </TableCell>
                       <TableCell align="right">
                         {m.filings ? m.filings : <span style={{ opacity: 0.5 }}>0</span>}
