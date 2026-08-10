@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { requestMonitoring, isMonitorableNode } from './monitoringService';
+import { requestMonitoring, activateMonitoring, isMonitorableNode } from './monitoringService';
 
 describe('isMonitorableNode', () => {
   // BORME is the event source, so only Spanish company nodes can be watched.
@@ -57,5 +57,28 @@ describe('requestMonitoring', () => {
     global.fetch.mockRejectedValue(new Error('offline'));
     await expect(requestMonitoring({ email: 'a@b.com', entityName: 'ACERINOX SA' }))
       .rejects.toThrow();
+  });
+});
+
+describe('activateMonitoring', () => {
+  beforeEach(() => { global.fetch = vi.fn(); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  test('refuses an empty token without calling the API', async () => {
+    await expect(activateMonitoring('')).rejects.toThrow();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('sends the token as the t query parameter, url-encoded', async () => {
+    global.fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true }) });
+    await activateMonitoring('tok/en+1');
+    const [url, opts] = global.fetch.mock.calls[0];
+    expect(url).toContain('/bormes/v3/alerts/activate?t=tok%2Fen%2B1');
+    expect(opts.method).toBe('POST');
+  });
+
+  test('a spent or expired link rejects with its status', async () => {
+    global.fetch.mockResolvedValue({ ok: false, status: 410, json: async () => ({}) });
+    await expect(activateMonitoring('abc')).rejects.toMatchObject({ status: 410 });
   });
 });

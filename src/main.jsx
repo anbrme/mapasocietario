@@ -16,6 +16,7 @@ const EnglishRegisterSearchPage = lazy(() => import('./components/EnglishRegiste
 const ConnectClaudePage = lazy(() => import('./components/ConnectClaudePage'));
 const OrderStatusPage = lazy(() => import('./components/OrderStatusPage'));
 const AdminPage = lazy(() => import('./components/AdminPage'));
+const AlertActivatePage = lazy(() => import('./components/AlertActivatePage'));
 import { FilterProvider } from './contexts/FilterProvider';
 import usePageTracking from './hooks/usePageTracking';
 import useAndroidBackButton from './hooks/useAndroidBackButton';
@@ -104,6 +105,10 @@ function AppRoutes() {
       <Route path="/pricing" element={<Suspense fallback={null}><PricingPage /></Suspense>} />
       <Route path="/order/:sessionId" element={<Suspense fallback={null}><OrderStatusPage /></Suspense>} />
       <Route path="/admin" element={<Suspense fallback={null}><AdminPage /></Suspense>} />
+      {/* Landing for the monitoring confirmation email. Not prerendered and
+          noindex — it is only ever reached from a single-use link. */}
+      <Route path="/alerts/activate" element={<Suspense fallback={null}><AlertActivatePage /></Suspense>} />
+      <Route path="/es/alerts/activate" element={<Suspense fallback={null}><AlertActivatePage lang="es" /></Suspense>} />
       <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
       </Routes>
     </>
