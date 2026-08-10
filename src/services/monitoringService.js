@@ -91,3 +91,32 @@ export async function activateMonitoring(token) {
   }
   return response.json().catch(() => ({ success: true }));
 }
+
+const UNSUBSCRIBE_PATH = '/bormes/v3/alerts/unsubscribe';
+const UNSUBSCRIBE_ALL_PATH = '/bormes/v3/alerts/unsubscribe-all';
+const RESUBSCRIBE_PATH = '/bormes/v3/alerts/resubscribe';
+
+async function magicLinkPost(path, token) {
+  const clean = (token || '').trim();
+  if (!clean) throw new MonitoringRequestError('missing_token', 0);
+
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}?t=${encodeURIComponent(clean)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch {
+    throw new MonitoringRequestError('network_error', 0);
+  }
+  if (!response.ok) {
+    throw new MonitoringRequestError('magic_link_failed', response.status);
+  }
+  return response.json().catch(() => ({ success: true }));
+}
+
+// Unsubscribe tokens are multi-use with a 1-year TTL (RFC 8058), so an old
+// digest still works months later and clicking twice is harmless.
+export const unsubscribeWithToken = (token) => magicLinkPost(UNSUBSCRIBE_PATH, token);
+export const unsubscribeAllWithToken = (token) => magicLinkPost(UNSUBSCRIBE_ALL_PATH, token);
+export const resubscribeWithToken = (token) => magicLinkPost(RESUBSCRIBE_PATH, token);

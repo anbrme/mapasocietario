@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { requestMonitoring, activateMonitoring, isMonitorableNode } from './monitoringService';
+import { requestMonitoring, activateMonitoring, unsubscribeWithToken, resubscribeWithToken, isMonitorableNode } from './monitoringService';
 
 describe('isMonitorableNode', () => {
   // BORME is the event source, so only Spanish company nodes can be watched.
@@ -80,5 +80,27 @@ describe('activateMonitoring', () => {
   test('a spent or expired link rejects with its status', async () => {
     global.fetch.mockResolvedValue({ ok: false, status: 410, json: async () => ({}) });
     await expect(activateMonitoring('abc')).rejects.toMatchObject({ status: 410 });
+  });
+});
+
+describe('unsubscribe magic links', () => {
+  beforeEach(() => { global.fetch = vi.fn(); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  test('unsubscribe posts the token to the unsubscribe endpoint', async () => {
+    global.fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true }) });
+    await unsubscribeWithToken('abc');
+    expect(global.fetch.mock.calls[0][0]).toContain('/bormes/v3/alerts/unsubscribe?t=abc');
+  });
+
+  test('resubscribe posts to its own endpoint, not unsubscribe', async () => {
+    global.fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true }) });
+    await resubscribeWithToken('abc');
+    expect(global.fetch.mock.calls[0][0]).toContain('/bormes/v3/alerts/resubscribe?t=abc');
+  });
+
+  test('an empty token never reaches the network', async () => {
+    await expect(unsubscribeWithToken('')).rejects.toThrow();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

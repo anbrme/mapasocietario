@@ -17,6 +17,7 @@ const ConnectClaudePage = lazy(() => import('./components/ConnectClaudePage'));
 const OrderStatusPage = lazy(() => import('./components/OrderStatusPage'));
 const AdminPage = lazy(() => import('./components/AdminPage'));
 const AlertActivatePage = lazy(() => import('./components/AlertActivatePage'));
+const AlertLinkActionPage = lazy(() => import('./components/AlertLinkActionPage'));
 import { FilterProvider } from './contexts/FilterProvider';
 import usePageTracking from './hooks/usePageTracking';
 import useAndroidBackButton from './hooks/useAndroidBackButton';
@@ -109,6 +110,13 @@ function AppRoutes() {
           noindex — it is only ever reached from a single-use link. */}
       <Route path="/alerts/activate" element={<Suspense fallback={null}><AlertActivatePage /></Suspense>} />
       <Route path="/es/alerts/activate" element={<Suspense fallback={null}><AlertActivatePage lang="es" /></Suspense>} />
+      {/* Unsubscribe and resubscribe links carried in every alert digest.
+          One path serves both the per-alert and unsubscribe-all tokens —
+          the backend dispatches on whichever purpose it matched. */}
+      <Route path="/alerts/unsubscribe" element={<Suspense fallback={null}><AlertLinkActionPage action="unsubscribe" /></Suspense>} />
+      <Route path="/es/alerts/unsubscribe" element={<Suspense fallback={null}><AlertLinkActionPage action="unsubscribe" lang="es" /></Suspense>} />
+      <Route path="/alerts/resubscribe" element={<Suspense fallback={null}><AlertLinkActionPage action="resubscribe" /></Suspense>} />
+      <Route path="/es/alerts/resubscribe" element={<Suspense fallback={null}><AlertLinkActionPage action="resubscribe" lang="es" /></Suspense>} />
       <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
       </Routes>
     </>
