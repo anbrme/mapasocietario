@@ -16,12 +16,16 @@ export const FREE_FIRST_REPORT_COPY = {
     body: 'First time here? Your first due diligence report is free — everything except financial statements. No account, no card: tick "Use my free first report" when you order.',
     cta: 'Get your free report',
     sample: 'See a sample report (PDF)',
+    // Short enough to sit inside the graph toolbar button, where space is tight
+    // and the user is already looking at the company they care about.
+    badge: '1st free',
   },
   es: {
     headline: 'Tu primer informe corre de nuestra cuenta',
     body: '¿Es tu primera vez? Tu primer informe de due diligence es gratis — todo excepto las cuentas anuales. Sin cuenta ni tarjeta: marca «Usar mi primer informe gratis» al hacer el pedido.',
     cta: 'Consigue tu informe gratis',
     sample: 'Ver un informe de ejemplo (PDF)',
+    badge: '1º gratis',
   },
 };
 
