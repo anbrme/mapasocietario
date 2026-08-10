@@ -86,6 +86,9 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import HubIcon from '@mui/icons-material/Hub';
 import DDCheckoutDialog from './DDCheckoutDialog';
 import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE } from '../copy/freeFirstReport';
+import MonitorRequestDialog from './MonitorRequestDialog';
+import { isMonitorableNode } from '../services/monitoringService';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { normalizeCompanyName } from '../utils/companyName';
@@ -247,6 +250,7 @@ const SEARCH_COPY = {
     searchUnifiedPlaceholder: 'Search a company or person…',
     search: 'Search',
     dueDiligence: 'Due Diligence',
+    monitorCompany: 'Monitor this company (free)',
     relationshipReportTooltip: 'Relationship report for visible companies (free)',
     relationshipReport: 'Relationship report',
     hideShared: 'Hide shared connections',
@@ -557,6 +561,7 @@ const SEARCH_COPY = {
     searchUnifiedPlaceholder: 'Busca una empresa o persona…',
     search: 'Buscar',
     dueDiligence: 'Due Diligence',
+    monitorCompany: 'Monitorizar esta empresa (gratis)',
     relationshipReportTooltip: 'Informe de relaciones sobre las empresas visibles (gratis)',
     relationshipReport: 'Informe de relaciones',
     hideShared: 'Ocultar conexiones compartidas',
@@ -1406,6 +1411,9 @@ const SpanishCompanyNetworkGraph = ({
   // separate affordance state is needed.
   const [isUnifying, setIsUnifying] = useState(false);
   const [nodeContextMenu, setNodeContextMenu] = useState(null); // { mouseX, mouseY, nodeId }
+  // Company whose monitoring dialog is open, or null. Held separately from
+  // contextNode because the menu closes the moment the dialog opens.
+  const [monitorCompany, setMonitorCompany] = useState(null);
   const [investigationSet, setInvestigationSet] = useState(() => new Set());
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [aiPanelContext, setAiPanelContext] = useState(null);
@@ -9389,6 +9397,13 @@ const SpanishCompanyNetworkGraph = ({
           )}
         </Menu>
 
+        <MonitorRequestDialog
+          open={!!monitorCompany}
+          companyName={monitorCompany || ''}
+          language={uiLanguage}
+          onClose={() => setMonitorCompany(null)}
+        />
+
         <Menu
           open={!!nodeContextMenu}
           onClose={closeNodeContextMenu}
@@ -9436,6 +9451,21 @@ const SpanishCompanyNetworkGraph = ({
             </Box>
           )}
           <Divider />
+          {/* First action by design: a bell drawn on the node itself competes
+              with its label, status ring and every incident edge, and on a
+              dense node it simply is not findable. */}
+          {isMonitorableNode(contextNode) && (
+            <MenuItem
+              onClick={() => {
+                trackGraphToolbarAction('monitor_request');
+                setMonitorCompany(contextNode.name);
+                closeNodeContextMenu();
+              }}
+            >
+              <ListItemIcon><NotificationsActiveIcon fontSize="small" color="warning" /></ListItemIcon>
+              <ListItemText>{text.monitorCompany}</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem
             onClick={() =>
               runContextAction(
