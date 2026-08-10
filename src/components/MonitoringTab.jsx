@@ -34,6 +34,20 @@ const fmtLag = (seconds) => {
   return `${Math.round(seconds / 86400)}d`;
 };
 
+// The health card shows UTC, deliberately. The watermark file, the matcher
+// logs and journalctl are all UTC, and this card exists to be cross-referenced
+// with them at 2am. Local time here would mean translating in your head at the
+// exact moment you least want to.
+const fmtUtc = (s) => {
+  if (!s) return '—';
+  try {
+    return `${new Date(s).toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
+    })} UTC`;
+  } catch { return s; }
+};
+
 const HEALTH = {
   ok:      { color: 'success', label: 'Matcher keeping up' },
   stale:   { color: 'error',   label: 'Matcher is behind' },
@@ -76,10 +90,10 @@ function HealthCard({ health }) {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
         <Typography variant="caption" color="text.secondary">
-          Matcher watermark: <strong>{fmtDate(health?.watermark)}</strong>
+          Matcher watermark: <strong>{fmtUtc(health?.watermark)}</strong>
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          Newest indexed event: <strong>{fmtDate(health?.newest_indexed)}</strong>
+          Newest indexed event: <strong>{fmtUtc(health?.newest_indexed)}</strong>
         </Typography>
         <Typography variant="caption" color="text.secondary">
           Index: <strong>{health?.index || '—'}</strong>
@@ -206,8 +220,8 @@ export default function MonitoringTab({ adminKey }) {
                       <TableCell sx={{ fontWeight: 600 }}>{m.entity_name}</TableCell>
                       <TableCell>{sourceLabel(m)}</TableCell>
                       <TableCell>{m.country || '—'}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>
-                        {m.email_domain || '—'}
+                      <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+                        {m.email || '—'}
                       </TableCell>
                       <TableCell align="right">
                         {m.filings ? m.filings : <span style={{ opacity: 0.5 }}>0</span>}
@@ -226,8 +240,8 @@ export default function MonitoringTab({ adminKey }) {
           )}
 
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-            Subscribers are shown by email domain only — a full address list
-            behind one shared admin key is a mailing list waiting to leak.
+            Subscriber addresses are personal data behind a single shared admin
+            key. Treat this page accordingly.
           </Typography>
         </>
       )}
