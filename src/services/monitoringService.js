@@ -63,3 +63,31 @@ export async function requestMonitoring({ email, entityName, jurisdiction = 'ES'
   }
   return response.json().catch(() => ({ success: true }));
 }
+
+const ACTIVATE_PATH = '/bormes/v3/alerts/activate';
+
+// Redeems the single-use token from the confirmation email. This is the step
+// that actually creates the subscription — everything before it is a request.
+export async function activateMonitoring(token) {
+  const clean = (token || '').trim();
+  if (!clean) {
+    throw new MonitoringRequestError('missing_token', 0);
+  }
+
+  let response;
+  try {
+    response = await fetch(
+      `${API_URL}${ACTIVATE_PATH}?t=${encodeURIComponent(clean)}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (e) {
+    throw new MonitoringRequestError('network_error', 0);
+  }
+
+  if (!response.ok) {
+    // 401/404/410 all mean the same thing to the reader — the link is spent or
+    // stale — so the page distinguishes them only from a genuine outage.
+    throw new MonitoringRequestError('activation_failed', response.status);
+  }
+  return response.json().catch(() => ({ success: true }));
+}
