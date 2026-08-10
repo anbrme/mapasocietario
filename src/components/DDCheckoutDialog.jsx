@@ -48,10 +48,13 @@ const FS_PRICE = 17.50;
 // the admin) are live. Set to the coupon code to activate the offer + gate.
 // Spec: docs/superpowers/specs/2026-06-27-free-dd-insight-design.md
 // Free-first-report program switch. Truthy = the intake gate + offer are shown
-// and a free order is fulfilled via the waiver path (capped). Set to null to
-// turn the whole program off (offer, gate and the /due-diligence + /pricing
-// callouts that import this all disappear together).
-export const FREE_FIRST_REPORT_CODE = 'FIRSTFREE';
+// and a free order is fulfilled via the waiver path (capped). Set it to null in
+// src/copy/freeFirstReport.js to turn the whole program off — offer, gate and
+// every callout that imports this disappear together. Defined there rather than
+// here so surfaces that only announce the offer (landing page, prerenderer)
+// don't pull this dialog into their bundle; re-exported for existing importers.
+import { FREE_FIRST_REPORT_CODE } from '../copy/freeFirstReport';
+export { FREE_FIRST_REPORT_CODE };
 const ANDROID_PLAY_BILLING_ENABLED = true;
 const FS_FALLBACK_KEEP_DD = 'keep_dd_refund_fs';
 const FS_FALLBACK_FULL_REFUND = 'full_refund';

@@ -85,6 +85,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import HubIcon from '@mui/icons-material/Hub';
 import DDCheckoutDialog from './DDCheckoutDialog';
+import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE } from '../copy/freeFirstReport';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { normalizeCompanyName } from '../utils/companyName';
@@ -7800,6 +7801,11 @@ const SpanishCompanyNetworkGraph = ({
           {text.search}
         </Button>
         {graphData.nodes.some(n => n.type === 'company' || n.type === 'spanish-company-group') && (
+          <Tooltip
+            title={FREE_FIRST_REPORT_CODE
+              ? (FREE_FIRST_REPORT_COPY[uiLanguage] || FREE_FIRST_REPORT_COPY.en).body
+              : text.buyDdTooltip}
+          >
           <Button
             variant="contained"
             color="primary"
@@ -7829,8 +7835,13 @@ const SpanishCompanyNetworkGraph = ({
               setDdCheckoutOpen(true);
             }}
           >
-            {text.dueDiligence}
+            {/* The graph is where intent is highest — say the first one is free
+                here, not only in the checkout dialog the user has to open. */}
+            {FREE_FIRST_REPORT_CODE
+              ? `${text.dueDiligence} · ${(FREE_FIRST_REPORT_COPY[uiLanguage] || FREE_FIRST_REPORT_COPY.en).badge}`
+              : text.dueDiligence}
           </Button>
+          </Tooltip>
         )}
         {visibleCompanyCount >= 2 && (
           <Tooltip title={text.relationshipReportTooltip}>

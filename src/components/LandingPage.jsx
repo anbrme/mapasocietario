@@ -17,6 +17,7 @@ import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
 import HeroNetwork from './HeroNetwork';
 import { LANDING_COPY } from './landingCopy';
+import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE, SAMPLE_REPORT_URL } from '../copy/freeFirstReport';
 import { siteNav } from '../utils/siteNav';
 import { statsService } from '../services/statsService';
 import { openListedCompanies } from '../services/listedCompaniesNav';
@@ -94,6 +95,7 @@ function shouldRedirectReturning() {
 
 export default function LandingPage({ lang = 'en' }) {
   const copy = LANDING_COPY[lang];
+  const offer = FREE_FIRST_REPORT_COPY[lang] || FREE_FIRST_REPORT_COPY.en;
   const navigate = useNavigate();
 
   // Returning visitors skip the first-run guide and land straight in /app.
@@ -440,6 +442,25 @@ export default function LandingPage({ lang = 'en' }) {
                   </Box>
                 ))}
               </Box>
+              {/* The offer converts, but until now it was only announced on
+                  /due-diligence, /pricing and inside the checkout dialog —
+                  never on the page organic search actually lands on. */}
+              {FREE_FIRST_REPORT_CODE && (
+                <Box
+                  sx={{
+                    p: 1.5, mb: 2, borderRadius: 2,
+                    bgcolor: 'rgba(250,204,21,0.09)',
+                    border: '1px solid rgba(250,204,21,0.4)',
+                  }}
+                >
+                  <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, color: 'warning.light', mb: 0.5 }}>
+                    🎁 {offer.headline}
+                  </Typography>
+                  <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.5 }}>
+                    {offer.body}
+                  </Typography>
+                </Box>
+              )}
               <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Button
                   variant="contained"
@@ -448,11 +469,11 @@ export default function LandingPage({ lang = 'en' }) {
                   onClick={() => navigate(nav.reports)}
                   sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, bgcolor: 'primary.main', color: '#04231f', '&:hover': { bgcolor: 'primary.dark' } }}
                 >
-                  {copy.reports.dd.buyCta}
+                  {FREE_FIRST_REPORT_CODE ? offer.cta : copy.reports.dd.buyCta}
                 </Button>
                 <Button
                   component="a"
-                  href="/sample-dd-report.pdf"
+                  href={SAMPLE_REPORT_URL}
                   target="_blank"
                   rel="noopener"
                   variant="outlined"

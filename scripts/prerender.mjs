@@ -12,6 +12,11 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FACEBOOK_URL } from '../src/utils/socialLinks.js';
+import {
+  FREE_FIRST_REPORT_COPY,
+  FREE_FIRST_REPORT_CODE,
+  SAMPLE_REPORT_URL,
+} from '../src/copy/freeFirstReport.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
@@ -160,6 +165,20 @@ const baseHtml = readFileSync(path.join(distDir, 'index.html'), 'utf8');
 // content into <div id="root"> so crawlers see meaningful HTML.
 // ---------------------------------------------------------------------------
 
+// The free-first-report offer and the sample PDF exist in the React app but
+// never reached the prerendered #root — which is what search crawlers and AI
+// answer engines read. Same source of truth as the React surfaces, so the
+// wording can never drift between what a crawler sees and what a user sees.
+const freeReportHtml = (lang) => {
+  const offer = FREE_FIRST_REPORT_COPY[lang] || FREE_FIRST_REPORT_COPY.en;
+  const sampleLink = `<p><a href="${SAMPLE_REPORT_URL}">${offer.sample}</a></p>`;
+  if (!FREE_FIRST_REPORT_CODE) return sampleLink;
+  return `
+        <h2>${offer.headline}</h2>
+        <p>${offer.body}</p>
+        ${sampleLink}`;
+};
+
 const routes = [
   {
     // Homepage: the SPA shell ships an empty #root, so crawlers (and the rare
@@ -197,12 +216,13 @@ const routes = [
             <tr><td>Officer history timeline</td><td align="center">Yes</td><td align="center">Yes</td></tr>
             <tr><td>Private node notes &amp; note search</td><td align="center">Yes</td><td align="center">&mdash;</td></tr>
             <tr><td>Export &amp; import saved investigations</td><td align="center">Yes</td><td align="center">&mdash;</td></tr>
-            <tr><td>Sanctions &amp; PEP screening</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
+            <tr><td>Sanctions &amp; adverse-media screening</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
             <tr><td>AI risk analysis &amp; red flags</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
             <tr><td>Capital-events summary</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
             <tr><td>Downloadable PDF report</td><td align="center">&mdash;</td><td align="center">Yes</td></tr>
           </tbody>
         </table>
+        ${freeReportHtml('en')}
         <h2>Explore</h2>
         <ul>
           <li><a href="/app">Open the Spanish company relationship graph</a></li>
@@ -262,11 +282,12 @@ const routes = [
         <ul>
           <li><strong>Corporate Structure</strong> &mdash; Full mapping of officers, shareholders, and subsidiaries from official BORME filings.</li>
           <li><strong>Officer History</strong> &mdash; Complete timeline of appointments, resignations, and role changes.</li>
-          <li><strong>Sanctions Screening</strong> &mdash; Automated cross-check against international sanctions lists and PEP databases.</li>
+          <li><strong>Sanctions &amp; Adverse Media Screening</strong> &mdash; Screening against the OFAC SDN and EU consolidated sanctions lists, each dated in the report, plus an adverse-media screen with every finding traced to its source. Officer names are checked against the BOE and against Congreso deputies, flagged for verification.</li>
           <li><strong>Red Flags &amp; Risk Score</strong> &mdash; AI-powered analysis highlighting unusual patterns and compliance risks.</li>
           <li><strong>Capital Events</strong> &mdash; Track capital increases, reductions, mergers, and other corporate actions.</li>
           <li><strong>PDF Report</strong> &mdash; Professional, downloadable PDF for compliance files, investor reviews, or internal records.</li>
         </ul>
+        ${freeReportHtml('en')}
         <p><a href="/app">Search for a company to get started</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence guide</a></p>
       </main>`,
   },
@@ -288,6 +309,7 @@ const routes = [
           <li>BOE sanctions checks and Spanish Congress deputy matches where available.</li>
           <li>Downloadable PDF reports for compliance, KYB, supplier review, investment screening, and internal files.</li>
         </ul>
+        ${freeReportHtml('en')}
         <h2>Why registry context matters</h2>
         <p>Spanish due diligence often requires more than a company lookup. Understanding administrators, appointments, resignations, connected companies, political exposure signals, and changes over time gives better context for counterparty and investment review.</p>
         <h2>API access and higher-touch investigations</h2>
@@ -411,6 +433,7 @@ const routes = [
           <li><strong>Full report with financial statements</strong> &mdash; <strong>EUR&nbsp;40.00</strong>.</li>
         </ul>
         <p>Prices exclude VAT, calculated at checkout. On Android, Google Play is the merchant of record and adds VAT per country.</p>
+        ${freeReportHtml('en')}
         <h2>Volume pricing</h2>
         <p>Law firms, consultancies, and compliance teams running repeat checks can get volume pricing. See the <a href="/pricing">pricing page</a> to get in touch.</p>
         <p><a href="/app">Search a company</a> | <a href="/spanish-company-due-diligence">What is in a report</a></p>
@@ -450,6 +473,7 @@ const routes = [
         ${disclaimerHtmlEs}
         <h2>Anota y guarda tu investigación</h2>
         <p>Añade notas privadas a los nodos importantes, filtra el grafo por el texto de las notas y exporta la investigación completa &mdash; incluidas las notas, datos, enlaces, filtros, nodos ocultos y disposición. Impórtala después exactamente como la dejaste, sin volver a consultar los mismos datos.</p>
+        ${freeReportHtml('es')}
         <h2>Explorar</h2>
         <ul>
           <li><a href="/app">Buscar relaciones societarias</a></li>
@@ -484,6 +508,7 @@ const routes = [
         </ul>
         <h2>Cuándo pedir una revisión de estructura societaria</h2>
         <p>Antes de firmar con una contraparte, incorporar un proveedor, invertir o adquirir una sociedad, una revisión de la estructura societaria muestra quién controla la empresa, qué administradores figuran, cómo ha evolucionado su capital y qué sociedades están vinculadas. Es el contexto que una simple consulta registral no ofrece.</p>
+        ${freeReportHtml('es')}
         <p><a href="/app">Buscar una empresa</a> | <a href="/empresas-cotizadas">Ver empresas del IBEX 35</a></p>
       </main>`,
   },
