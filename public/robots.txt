@@ -1,11 +1,4 @@
 User-agent: *
 Allow: /
 
-# Magic-link landing pages. Each sets noindex via Helmet, but that only applies
-# once JS has run — a crawler reading the SPA shell sees the default
-# index,follow. These pages carry a token in the query string and mean nothing
-# without one, so keep them out of the index here too.
-Disallow: /alerts/
-Disallow: /es/alerts/
-
 Sitemap: https://mapasocietario.es/sitemap.xml
