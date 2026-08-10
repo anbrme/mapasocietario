@@ -10,7 +10,7 @@
     "build": "vite build",
     "postbuild": "node scripts/generate-barometro.mjs && node scripts/generate-interlock-study.mjs && node scripts/prerender.mjs",
     "preview": "vite preview",
-    "test": "vitest run && node --test \"test/*.test.mjs\""
+    "test": "vitest run && node --test test/*.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
