@@ -43,6 +43,7 @@ const COPY = {
     failBody:
       'The link may be malformed or no longer valid. You can always manage monitoring from the company in the graph.',
     backToGraph: 'Back to the graph',
+    manageAll: 'See everything you monitor',
   },
   es: {
     unsubscribe: {
@@ -65,6 +66,7 @@ const COPY = {
     failBody:
       'Puede que el enlace esté mal formado o ya no sea válido. Siempre puedes gestionar la monitorización desde la empresa en el grafo.',
     backToGraph: 'Volver al grafo',
+    manageAll: 'Ver todo lo que monitorizas',
   },
 };
 
@@ -96,6 +98,9 @@ export default function AlertLinkActionPage({ action = 'unsubscribe', lang = 'en
   }, [token, action]);
 
   const appHref = lang === 'es' ? '/app?lang=es' : '/app';
+  // No token: the manage page will offer to mail a fresh one. The unsubscribe
+  // token in this URL is bound to a single alert and is not a view token.
+  const manageHref = lang === 'es' ? '/es/alerts/view' : '/alerts/view';
   const OkIcon = action === 'resubscribe' ? NotificationsActiveIcon : UnsubscribeIcon;
 
   return (
@@ -125,7 +130,12 @@ export default function AlertLinkActionPage({ action = 'unsubscribe', lang = 'en
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 3, lineHeight: 1.5 }}>
                 {copy.okNote}
               </Typography>
-              <Button variant="contained" onClick={() => navigate(appHref)}>{root.backToGraph}</Button>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                <Button variant="contained" onClick={() => navigate(appHref)}>{root.backToGraph}</Button>
+                <Button variant="text" color="inherit" onClick={() => navigate(manageHref)}>
+                  {root.manageAll}
+                </Button>
+              </Box>
             </>
           )}
 
