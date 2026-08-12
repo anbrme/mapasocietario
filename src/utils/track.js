@@ -7,3 +7,16 @@ export function trackEvent(name, params = {}) {
     window.gtag('event', name, params);
   }
 }
+
+/**
+ * Track an attempt to open/download the bilingual user manual. Keeping this
+ * event in one helper prevents the landing page and graph menu from drifting
+ * onto different event names or parameter shapes.
+ */
+export function trackUserManualDownload(placement, language) {
+  trackEvent('user_manual_download', {
+    placement,
+    language,
+    file_name: 'mapa-societario-user-guide-en-es.pdf',
+  });
+}

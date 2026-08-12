@@ -10,7 +10,7 @@ import FeedbackWidget from './components/FeedbackWidget';
 import { ThemeModeToggle } from './theme/ThemeModeToggle';
 import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
 import { openListedCompanies } from './services/listedCompaniesNav';
-import { trackEvent } from './utils/track';
+import { trackEvent, trackUserManualDownload } from './utils/track';
 import {
   getBrowserLanguage,
   getStoredSearchLanguage,
@@ -111,7 +111,12 @@ export default function App() {
   };
   const navItems = [
     { label: copy.menu.guide, url: nav.guide },
-    { label: copy.menu.userGuidePdf, url: nav.userGuidePdf, newTab: true },
+    {
+      label: copy.menu.userGuidePdf,
+      url: nav.userGuidePdf,
+      newTab: true,
+      downloadPlacement: 'graph_view_menu',
+    },
     { label: copy.menu.registerGuide, url: nav.registerGuide },
     { label: copy.menu.listed, url: nav.listed },
     { label: copy.menu.dashboard, url: nav.dashboard },
@@ -255,7 +260,12 @@ export default function App() {
                         href: item.url,
                         target: '_blank',
                         rel: 'noopener noreferrer',
-                        onClick: () => setMenuAnchor(null),
+                        onClick: () => {
+                          if (item.downloadPlacement) {
+                            trackUserManualDownload(item.downloadPlacement, language);
+                          }
+                          setMenuAnchor(null);
+                        },
                       }
                     : { onClick: () => go(item.url) })}
                   sx={{ fontSize: '0.85rem' }}
