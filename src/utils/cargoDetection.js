@@ -31,6 +31,25 @@ export async function detectCargoPresence(service, companyName) {
     return { ...EMPTY_RESULT };
   }
 
+  // Prefer the v3 entity index: it's what "Unificar cargos" renders, so the
+  // badge count must match it (PG counts publication-spelling rows — 71 vs
+  // the 95 entities unify draws for BANCO SANTANDER, SA). PG stays as the
+  // fallback when v3 is unavailable.
+  if (typeof service.expandOfficerV3 === 'function') {
+    try {
+      const v3 = await service.expandOfficerV3(companyName, { size: 1 });
+      const total = v3 && typeof v3.total === 'number' ? v3.total : 0;
+      if (v3 && v3.success && total > 0) {
+        return { hasCargo: true, count: total, officers: [], currentCompanies: [] };
+      }
+      if (v3 && v3.success) {
+        return { ...EMPTY_RESULT };
+      }
+    } catch {
+      // fall through to the PG reverse lookup
+    }
+  }
+
   try {
     const result = await service.pgExpandOfficer(companyName);
     const officers = (result && Array.isArray(result.officers)) ? result.officers : [];

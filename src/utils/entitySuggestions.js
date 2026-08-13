@@ -54,7 +54,12 @@ export const mergeEntitySuggestions = (companyItems, officerItems) => {
     }
     const twin = companies[index];
     if (twin.company_count == null && item && item.company_count != null) {
-      companies[index] = { ...twin, company_count: item.company_count };
+      companies[index] = {
+        ...twin,
+        company_count: item.company_count,
+        // Carry the vigente/cesado split along with the count it qualifies.
+        company_count_active: item.company_count_active ?? null,
+      };
     }
   }
 

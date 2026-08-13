@@ -96,4 +96,42 @@ describe('detectCargoPresence', () => {
       await detectCargoPresence(fakeService(async () => ({ officers: [] })), '')
     ).toEqual({ hasCargo: false, count: 0, officers: [], currentCompanies: [] });
   });
+
+  it('prefers the v3 entity count so the badge matches what unify renders', async () => {
+    const service = {
+      pgExpandOfficer: vi.fn(async () => realisticResponse),
+      // PG would say 3 distinct spellings; v3 entity index says 95 entities.
+      expandOfficerV3: vi.fn(async () => ({ success: true, total: 95, officers: [] })),
+    };
+
+    const result = await detectCargoPresence(service, 'BANCO SANTANDER, SA');
+
+    expect(result.hasCargo).toBe(true);
+    expect(result.count).toBe(95);
+    expect(service.pgExpandOfficer).not.toHaveBeenCalled();
+  });
+
+  it('trusts a successful v3 zero (no phantom badge from stale PG rows)', async () => {
+    const service = {
+      pgExpandOfficer: vi.fn(async () => realisticResponse),
+      expandOfficerV3: vi.fn(async () => ({ success: true, total: 0, officers: [] })),
+    };
+
+    const result = await detectCargoPresence(service, 'SIN CARGOS SL');
+
+    expect(result.hasCargo).toBe(false);
+    expect(service.pgExpandOfficer).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the PG reverse lookup when v3 throws', async () => {
+    const service = {
+      pgExpandOfficer: vi.fn(async () => realisticResponse),
+      expandOfficerV3: vi.fn(async () => { throw new Error('boom'); }),
+    };
+
+    const result = await detectCargoPresence(service, 'CAJAMAR GESTION SGIIC SA');
+
+    expect(result.hasCargo).toBe(true);
+    expect(result.count).toBe(3);
+  });
 });

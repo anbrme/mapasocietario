@@ -3606,22 +3606,31 @@ const SpanishCompanyNetworkGraph = ({
             .filter(Boolean)
         );
         const officerAliasMap = new Map(); // oldNameUpper → newNameUpper
-        for (const name of uniqueNames) {
-          try {
-            const acResult = await spanishCompaniesService.autocompleteCompanies(name, { limit: 3 });
-            const match = (acResult.suggestions || []).find(
-              s => (s.name || '').trim().toUpperCase() === name
-            );
-            if (match) {
-              if (match.has_new_name && match.new_company_name) {
-                officerAliasMap.set(name, match.new_company_name.trim().toUpperCase());
-              } else if (match.is_alias && match.original_name) {
-                officerAliasMap.set(match.original_name.trim().toUpperCase(), name);
+        // Parallel chunks, not one awaited call per company: a bank-sized
+        // fan-out (95 distinct companies) ran ~95 SEQUENTIAL autocomplete
+        // round-trips here, freezing "Unificar cargos" for ~30s.
+        const ALIAS_LOOKUP_CHUNK = 10;
+        const aliasNames = [...uniqueNames];
+        for (let i = 0; i < aliasNames.length; i += ALIAS_LOOKUP_CHUNK) {
+          await Promise.allSettled(
+            aliasNames.slice(i, i + ALIAS_LOOKUP_CHUNK).map(async name => {
+              try {
+                const acResult = await spanishCompaniesService.autocompleteCompanies(name, { limit: 3 });
+                const match = (acResult.suggestions || []).find(
+                  s => (s.name || '').trim().toUpperCase() === name
+                );
+                if (match) {
+                  if (match.has_new_name && match.new_company_name) {
+                    officerAliasMap.set(name, match.new_company_name.trim().toUpperCase());
+                  } else if (match.is_alias && match.original_name) {
+                    officerAliasMap.set(match.original_name.trim().toUpperCase(), name);
+                  }
+                }
+              } catch {
+                // Non-fatal
               }
-            }
-          } catch {
-            // Non-fatal
-          }
+            })
+          );
         }
 
         // Group officer results by (company, position), merging name-changed
@@ -7754,6 +7763,28 @@ const SpanishCompanyNetworkGraph = ({
                         {uiLanguage === 'en'
                           ? `${option.company_count} compan${option.company_count === 1 ? 'y' : 'ies'} (${text.role.toLowerCase()})`
                           : `${option.company_count} empresa${option.company_count !== 1 ? 's' : ''} (cargo)`}
+                        {/* Vigente/cesado split, same semantics (and colors) as the
+                            graph legend. Only when the backend supplied the split
+                            AND some seat is ceased — all-active adds no signal. */}
+                        {option.company_count_active != null &&
+                          option.company_count_active < option.company_count && (
+                            <>
+                              {' · '}
+                              {option.company_count_active > 0 && (
+                                <Box component="span" sx={{ color: 'success.main' }}>
+                                  {option.company_count_active}{' '}
+                                  {uiLanguage === 'en' ? 'active' : `vigente${option.company_count_active !== 1 ? 's' : ''}`}
+                                </Box>
+                              )}
+                              {option.company_count_active > 0 && ' · '}
+                              <Box component="span" sx={{ color: 'error.main' }}>
+                                {option.company_count - option.company_count_active}{' '}
+                                {uiLanguage === 'en'
+                                  ? 'ceased'
+                                  : `cesado${option.company_count - option.company_count_active !== 1 ? 's' : ''}`}
+                              </Box>
+                            </>
+                          )}
                       </Typography>
                     )}
                   {option.is_sole_shareholder &&

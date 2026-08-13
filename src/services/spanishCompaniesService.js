@@ -326,6 +326,8 @@ class SpanishCompaniesService {
         value: suggestion.name,
         type: suggestion.type === 'sole_shareholder' ? 'officer_sole_shareholder' : 'officer',
         company_count: suggestion.company_count || 0,
+        // Vigente/cesado split (v3-sourced); null when the backend had no v3 match.
+        company_count_active: suggestion.company_count_active ?? null,
         is_sole_shareholder: !!suggestion.is_sole_shareholder,
         owns: suggestion.owns || null,
         owns_total: suggestion.owns_total || 0,
