@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeCompanyName, looksLikeGroupKey, selectGroupKeyId } from './companyName';
+import {
+  canonLegalForm,
+  normalizeCompanyName,
+  looksLikeGroupKey,
+  selectGroupKeyId,
+} from './companyName';
 
 describe('normalizeCompanyName', () => {
   it('strips a trailing period so registry variants compare equal', () => {
@@ -93,5 +98,38 @@ describe('selectGroupKeyId', () => {
       { id: '2b3200b6b59d301eeaaa72f7bb9f7d07', name: null },
     ];
     expect(selectGroupKeyId('COCUNAT S.L', suggestions)).toBe('H:B-441672');
+  });
+});
+
+describe('canonLegalForm', () => {
+  it('collapses a trailing long-form legal suffix to the dotless code', () => {
+    // v3 stores "DROMO GESTION 2026 SL"; autocomplete hands the UI the raw
+    // BORME long form — both must canonicalize to the same string.
+    expect(canonLegalForm('DROMO GESTION 2026 SOCIEDAD LIMITADA')).toBe(
+      'DROMO GESTION 2026 SL'
+    );
+    expect(canonLegalForm('DROMO GESTION 2026 SL')).toBe('DROMO GESTION 2026 SL');
+  });
+
+  it('collapses dotted and spaced spellings', () => {
+    expect(canonLegalForm('DELOITTE S.L.')).toBe('DELOITTE SL');
+    expect(canonLegalForm('DELOITTE S. L.')).toBe('DELOITTE SL');
+  });
+
+  it('keeps different legal forms distinct', () => {
+    expect(canonLegalForm('ACME SOCIEDAD ANONIMA')).toBe('ACME SA');
+    expect(canonLegalForm('ACME SOCIEDAD LIMITADA UNIPERSONAL')).toBe('ACME SLU');
+  });
+
+  it('leaves personal names untouched', () => {
+    expect(canonLegalForm('GARCIA LOPEZ MARIA')).toBe('GARCIA LOPEZ MARIA');
+  });
+
+  it('is case-insensitive on the suffix and null-safe', () => {
+    expect(canonLegalForm('Dromo Gestion 2026 Sociedad Limitada')).toBe(
+      'Dromo Gestion 2026 SL'
+    );
+    expect(canonLegalForm('')).toBe('');
+    expect(canonLegalForm(null)).toBe('');
   });
 });
