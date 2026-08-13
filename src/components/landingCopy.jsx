@@ -40,6 +40,56 @@ export const LANDING_COPY = {
       dashboard: 'Stats dashboard',
       study: 'IBEX 35 interlocking boards',
     },
+    professional: {
+      heading: 'Built for decisions where relationships matter',
+      sub: 'Start with public-source research, understand the network, and escalate to documented due diligence only when the decision requires it.',
+      items: [
+        {
+          key: 'compliance',
+          audience: 'Compliance · legal · procurement',
+          title: 'Know the company behind the name',
+          desc: 'Review management history, related companies, capital events and published changes before onboarding a supplier, client or counterparty.',
+          cta: 'Check a company',
+        },
+        {
+          key: 'investigation',
+          audience: 'Investigators · journalists',
+          title: 'Follow people across companies',
+          desc: 'Move from one officer or company to shared roles, prior appointments and wider corporate networks without reviewing isolated records one by one.',
+          cta: 'Trace a relationship',
+        },
+        {
+          key: 'advisory',
+          audience: 'Advisers · analysts · researchers',
+          title: 'Preserve the path behind a finding',
+          desc: 'Annotate and save an investigation, return to it later, and generate a sourced report when a client or internal file needs documentation.',
+          cta: 'Start an investigation',
+        },
+      ],
+    },
+    quality: {
+      eyebrow: 'Research-grade foundations',
+      heading: 'Data quality you can understand, not a black box',
+      sub: 'Mapa Societario turns daily official publications into a connected history while keeping the source, the date and the limits visible. That makes the data useful for investigation without pretending it replaces certified registry information.',
+      items: [
+        {
+          title: 'One corporate history',
+          desc: 'Companies are reconciled across name changes, mergers, spin-offs and registry transfers instead of being left as disconnected records.',
+        },
+        {
+          title: 'Roles with time and status',
+          desc: 'Appointments and resignations are preserved so current and historical relationships are not silently mixed together.',
+        },
+        {
+          title: 'Daily official-source updates',
+          desc: 'Coverage is rebuilt from BOE/BORME publications on business days and material findings retain their documentary context.',
+        },
+        {
+          title: 'Limitations stated plainly',
+          desc: 'Name matching, automated extraction and incomplete shareholder publication are disclosed so professionals know what still needs verification.',
+        },
+      ],
+    },
     howItWorks: {
       heading: 'How it works',
       sub: 'Four steps from a name to a connected corporate picture you keep watching.',
@@ -239,6 +289,56 @@ export const LANDING_COPY = {
       listed: 'Ver empresas del IBEX 35',
       dashboard: 'Panel estadístico',
       study: 'Consejos cruzados del IBEX 35',
+    },
+    professional: {
+      heading: 'Para decisiones donde las relaciones importan',
+      sub: 'Empieza con investigación sobre fuentes públicas, entiende la red y pasa a una due diligence documentada solo cuando la decisión lo requiera.',
+      items: [
+        {
+          key: 'compliance',
+          audience: 'Compliance · legal · compras',
+          title: 'Conoce la empresa que hay detrás del nombre',
+          desc: 'Revisa el historial de administración, empresas relacionadas, eventos de capital y cambios publicados antes de incorporar un proveedor, cliente o contraparte.',
+          cta: 'Comprobar una empresa',
+        },
+        {
+          key: 'investigation',
+          audience: 'Investigación · periodismo',
+          title: 'Sigue a las personas entre empresas',
+          desc: 'Pasa de un administrador o empresa a cargos compartidos, nombramientos anteriores y redes societarias más amplias sin revisar fichas aisladas una a una.',
+          cta: 'Seguir una relación',
+        },
+        {
+          key: 'advisory',
+          audience: 'Asesoría · análisis · investigación',
+          title: 'Conserva el recorrido de cada hallazgo',
+          desc: 'Anota y guarda una investigación, retómala después y genera un informe con fuentes cuando un cliente o expediente interno necesite documentación.',
+          cta: 'Iniciar una investigación',
+        },
+      ],
+    },
+    quality: {
+      eyebrow: 'Base sólida para investigar',
+      heading: 'Calidad de datos comprensible, no una caja negra',
+      sub: 'Mapa Societario convierte publicaciones oficiales diarias en una historia conectada manteniendo visibles la fuente, la fecha y los límites. Así los datos sirven para investigar sin fingir que sustituyen a la información registral certificada.',
+      items: [
+        {
+          title: 'Una sola historia societaria',
+          desc: 'Las empresas se reconcilian entre cambios de denominación, fusiones, escisiones y traslados registrales en lugar de quedar como registros desconectados.',
+        },
+        {
+          title: 'Cargos con fecha y estado',
+          desc: 'Se conservan nombramientos y ceses para no mezclar silenciosamente relaciones actuales e históricas.',
+        },
+        {
+          title: 'Actualización diaria desde fuentes oficiales',
+          desc: 'La cobertura se reconstruye desde publicaciones BOE/BORME en días laborables y los hallazgos relevantes conservan su contexto documental.',
+        },
+        {
+          title: 'Límites explicados con claridad',
+          desc: 'La coincidencia por nombre, la extracción automática y la publicación incompleta de accionistas se explican para que el profesional sepa qué debe verificar.',
+        },
+      ],
     },
     howItWorks: {
       heading: 'Cómo funciona',

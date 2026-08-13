@@ -1378,6 +1378,7 @@ const SpanishCompanyNetworkGraph = ({
   const searchFocusTrackedRef = useRef(false);
   const searchTypingTrackedRef = useRef(false);
   const suggestionsTrackedRef = useRef(false);
+  const activationTrackedRef = useRef(false);
 
   const graphInteractionParams = useCallback(
     node => {
@@ -2407,6 +2408,16 @@ const SpanishCompanyNetworkGraph = ({
       if (analyticsOrigin === 'settings_refetch') return;
       if (resultState === 'success') {
         lastSuccessfulSearchAtRef.current = Date.now();
+        if (!activationTrackedRef.current) {
+          activationTrackedRef.current = true;
+          trackEvent('graph_activation', {
+            entry_source: entrySource,
+            entity_type: effectiveSearchType,
+            search_origin: analyticsOrigin,
+            result_count: resultCount,
+            time_to_activation_ms: Date.now() - graphEnteredAtRef.current,
+          });
+        }
       }
       trackEvent('graph_search_result', {
         entry_source: entrySource,

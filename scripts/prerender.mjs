@@ -195,6 +195,17 @@ const routes = [
         <h1>Mapa Societario &mdash; Spanish Company Search</h1>
         <p>Search Spanish company and officer histories compiled from daily BORME (Boletín Oficial del Registro Mercantil) publications and see who is connected to whom. This is not a direct search of the live Registro Mercantil.</p>
         ${disclaimerHtmlEn}
+        <h2>Built for decisions where relationships matter</h2>
+        <p>Start with public-source research, understand the network, and escalate to documented due diligence only when the decision requires it.</p>
+        <ul>
+          <li><strong>Compliance, legal and procurement:</strong> review management history, related companies, capital events and published changes before onboarding a supplier, client or counterparty.</li>
+          <li><strong>Investigators and journalists:</strong> follow people across companies through shared roles, prior appointments and wider corporate networks.</li>
+          <li><strong>Advisers, analysts and researchers:</strong> annotate and save an investigation, then generate a sourced report when a client or internal file needs documentation.</li>
+        </ul>
+        <p><a href="/app?source=home_search">Search a Spanish company or officer</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/spanish-company-due-diligence/">Document a due diligence review</a></p>
+        <h2>Data quality you can understand, not a black box</h2>
+        <p>Mapa Societario reconciles companies across name changes, mergers, spin-offs and registry transfers; preserves appointments and resignations so historical and current roles are not silently mixed; and updates from official BOE/BORME publications on business days.</p>
+        <p>Name matching, automated extraction and incomplete shareholder publication are disclosed so professionals know which findings still require verification against the original notice or current Registro Mercantil documents.</p>
         <h2>Coverage by the numbers</h2>
         <ul>
           <li><strong>3.2 million</strong> Spanish companies indexed</li>
@@ -494,6 +505,17 @@ const routes = [
         <h1>Mapa Societario &mdash; Mapa de Relaciones Societarias en España</h1>
         <p>Busca una empresa o administrador y entiende quién está conectado con quién mediante un grafo interactivo basado en publicaciones oficiales del BORME (Boletín Oficial del Registro Mercantil). Genera informes due diligence cuando necesites documentación.</p>
         ${disclaimerHtmlEs}
+        <h2>Para decisiones donde las relaciones importan</h2>
+        <p>Empieza con investigación sobre fuentes públicas, entiende la red y pasa a una due diligence documentada solo cuando la decisión lo requiera.</p>
+        <ul>
+          <li><strong>Compliance, legal y compras:</strong> revisa el historial de administración, empresas relacionadas, eventos de capital y cambios publicados antes de incorporar un proveedor, cliente o contraparte.</li>
+          <li><strong>Investigación y periodismo:</strong> sigue a las personas entre empresas mediante cargos compartidos, nombramientos anteriores y redes societarias más amplias.</li>
+          <li><strong>Asesoría, análisis e investigación:</strong> anota y guarda una investigación y genera un informe con fuentes cuando un cliente o expediente interno necesite documentación.</li>
+        </ul>
+        <p><a href="/app?lang=es&amp;source=home_search">Buscar una empresa o administrador</a> | <a href="/es/buscar-administradores-empresas/">Buscar administradores</a> | <a href="/es/informes-due-diligence-empresas/">Documentar una due diligence</a></p>
+        <h2>Calidad de datos comprensible, no una caja negra</h2>
+        <p>Mapa Societario reconcilia empresas entre cambios de denominación, fusiones, escisiones y traslados registrales; conserva nombramientos y ceses para no mezclar relaciones históricas y actuales; y se actualiza desde publicaciones oficiales BOE/BORME en días laborables.</p>
+        <p>La coincidencia por nombre, la extracción automática y la publicación incompleta de accionistas se explican para que el profesional sepa qué hallazgos debe verificar en el anuncio original o con documentación actual del Registro Mercantil.</p>
         <h2>Anota y guarda tu investigación</h2>
         <p>Añade notas privadas a los nodos importantes, filtra el grafo por el texto de las notas y exporta la investigación completa &mdash; incluidas las notas, datos, enlaces, filtros, nodos ocultos y disposición. Impórtala después exactamente como la dejaste, sin volver a consultar los mismos datos.</p>
         ${freeReportHtml('es')}

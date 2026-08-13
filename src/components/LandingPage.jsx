@@ -12,10 +12,14 @@ import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import StickyNote2Icon from '@mui/icons-material/StickyNote2';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
+import ManageSearchIcon from '@mui/icons-material/ManageSearch';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
 import HeroNetwork from './HeroNetwork';
+import LandingEntitySearch from './LandingEntitySearch';
 import { LANDING_COPY } from './landingCopy';
 import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE, SAMPLE_REPORT_URL } from '../copy/freeFirstReport';
 import { siteNav } from '../utils/siteNav';
@@ -52,6 +56,7 @@ const fmtMillions = (n) => `${(Math.floor(n / 1e5) / 10).toFixed(1)}M`;
 const DEMO_COMPANY = 'ACERINOX SA';
 
 const STEP_ICONS = [<SearchIcon />, <TouchAppIcon />, <PreviewIcon />];
+const PROFESSIONAL_ICONS = [<FactCheckIcon />, <ManageSearchIcon />, <AccountBalanceIcon />];
 
 const Section = ({ children, sx = {}, ...props }) => (
   <Box
@@ -227,13 +232,14 @@ export default function LandingPage({ lang = 'en' }) {
               >
                 {copy.hero.intro}
               </Typography>
+              <LandingEntitySearch lang={lang} navigate={navigate} />
               <Box sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, flexWrap: 'wrap', gap: 1.25 }}>
                 <Button
-                  variant="contained"
-                  size="large"
+                  variant="text"
+                  size="small"
                   startIcon={<SearchIcon />}
                   onClick={() => openGraph('hero')}
-                  sx={{ textTransform: 'none', fontWeight: 600, px: 4.5, py: 1.5, fontSize: '1.05rem', borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#0d9488' } }}
+                  sx={{ textTransform: 'none', fontWeight: 650, color: 'primary.light' }}
                 >
                   {copy.hero.openCta}
                 </Button>
@@ -243,9 +249,9 @@ export default function LandingPage({ lang = 'en' }) {
                   download="mapa-societario-user-guide-en-es.pdf"
                   onClick={() => trackUserManualDownload('landing_page', lang)}
                   variant="outlined"
-                  size="large"
+                  size="small"
                   startIcon={<SaveAltIcon />}
-                  sx={{ textTransform: 'none', fontWeight: 600, px: 2.5, py: 1.5, borderRadius: 2 }}
+                  sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
                 >
                   {copy.hero.userGuidePdfCta}
                 </Button>
@@ -330,6 +336,71 @@ export default function LandingPage({ lang = 'en' }) {
               {copy.stats.sinceLabel}{' '}
               <Box component="span" className="registry-ref" sx={{ color: 'text.secondary', fontWeight: 700 }}>{copy.stats.sinceValue}</Box>
             </Typography>
+          </Section>
+        </Box>
+
+        {/* ---- PROFESSIONAL USE CASES ---- */}
+        <Section>
+          <SectionHeading heading={copy.professional.heading} sub={copy.professional.sub} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+            {copy.professional.items.map((item, index) => (
+              <Paper
+                key={item.key}
+                elevation={0}
+                sx={{ p: 2.75, bgcolor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 2, height: '100%' }}
+              >
+                <Box sx={{ color: 'primary.light', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 25 } }}>
+                  {PROFESSIONAL_ICONS[index]}
+                </Box>
+                <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 700, letterSpacing: '0.09em', fontSize: '0.62rem' }}>
+                  {item.audience}
+                </Typography>
+                <Typography component="h3" variant="h6" sx={{ fontWeight: 700, mt: 0.25, mb: 1 }}>
+                  {item.title}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65, mb: 2 }}>
+                  {item.desc}
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => openGraph(`professional_${item.key}`)}
+                  sx={{ textTransform: 'none', fontWeight: 700 }}
+                >
+                  {item.cta}
+                </Button>
+              </Paper>
+            ))}
+          </Box>
+        </Section>
+
+        {/* ---- DATA QUALITY ---- */}
+        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(20,184,166,0.035)' }}>
+          <Section>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '0.8fr 1.2fr' }, gap: { xs: 3, md: 6 }, alignItems: 'start' }}>
+              <Box>
+                <Typography variant="overline" sx={{ color: 'primary.light', fontWeight: 700, letterSpacing: '0.1em' }}>
+                  {copy.quality.eyebrow}
+                </Typography>
+                <Typography component="h2" variant="h5" sx={{ fontWeight: 700, mt: 0.5, mb: 1.25 }}>
+                  {copy.quality.heading}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
+                  {copy.quality.sub}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                {copy.quality.items.map(item => (
+                  <Box key={item.title} sx={{ display: 'flex', gap: 1.25 }}>
+                    <CheckCircleOutlineIcon sx={{ color: 'primary.light', fontSize: 19, mt: 0.25, flexShrink: 0 }} />
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.35 }}>{item.title}</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.55 }}>{item.desc}</Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
           </Section>
         </Box>
 
