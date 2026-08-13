@@ -108,6 +108,7 @@ import AIInvestigationGate from './AIInvestigationGate';
 import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
 import { isLegalEntityName } from '../utils/legalEntity';
 import { detectCargoPresence } from '../utils/cargoDetection';
+import { officerNodeKey, officerIdFor } from '../utils/officerNodeKey';
 import { mergeCargoIntoCompanyNode, undoCargoUnify } from '../utils/graphUnify';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import {
@@ -1140,8 +1141,9 @@ const normalizeNameForMerge = value =>
 // node ids collapse whitespace to hyphens — so the existing-node check must be
 // exactly as tolerant as the id, or two node objects end up sharing one id and
 // ForceGraph attaches every link to a single one (the other renders orphaned).
-const officerNodeKey = name => (name || '').trim().toLowerCase().replace(/[\s-]+/g, '-');
-const officerIdFor = name => `officer-${officerNodeKey(name)}`;
+// officerNodeKey/officerIdFor moved to ../utils/officerNodeKey (imported above):
+// the key is now legal-form canonical, so "X SOCIEDAD LIMITADA" and "X SL"
+// resolve to ONE officer node instead of two disconnected entities.
 
 // BORME_SECTION_NAMES and isDirectionalLink now live in
 // ../utils/linkDirectionality (imported above).
