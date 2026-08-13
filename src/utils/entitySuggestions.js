@@ -6,7 +6,18 @@
 // disconnected graph nodes.
 import { canonLegalForm } from './companyName';
 
-const entityKey = name => canonLegalForm((name || '').trim()).toUpperCase();
+// Same fold as the backend's name_fold_key: canonicalize the trailing legal
+// form FIRST ("S.A" → "SA" — token-splitting alone would leave "S A"), then
+// compare in analyzer token space (accents folded, punctuation/whitespace
+// runs collapsed). The canonical company name may keep BORME punctuation
+// ("BANCO SANTANDER, SA") that officer spellings lack.
+const entityKey = name =>
+  canonLegalForm((name || '').trim())
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .trim();
 
 /**
  * Fold officer suggestions into their company twins.

@@ -55,6 +55,29 @@ describe('mergeEntitySuggestions', () => {
     expect(companies.map(c => c.name)).toEqual(['Primera SL', 'SEGUNDA SA']);
   });
 
+  it('folds across punctuation: comma-carrying canonical company name', () => {
+    // Regression: the bank's canonical name keeps the BORME comma
+    // ("BANCO SANTANDER, SA") while officers-autocomplete serves the
+    // comma-less printed spelling — the twin was never found.
+    const { companies, officers } = mergeEntitySuggestions(
+      [company('BANCO SANTANDER, SA')],
+      [officer('BANCO SANTANDER SA', 27)]
+    );
+
+    expect(officers).toEqual([]);
+    expect(companies[0].company_count).toBe(27);
+  });
+
+  it('never folds a suffix-less name into a suffixed company', () => {
+    // "GARCIA LOPEZ JUAN" the person is NOT "GARCIA LOPEZ JUAN SL".
+    const { officers } = mergeEntitySuggestions(
+      [company('GARCIA LOPEZ JUAN SL')],
+      [officer('GARCIA LOPEZ JUAN', 4)]
+    );
+
+    expect(officers).toHaveLength(1);
+  });
+
   it('is null-safe on both sides', () => {
     expect(mergeEntitySuggestions(null, null)).toEqual({ companies: [], officers: [] });
   });
