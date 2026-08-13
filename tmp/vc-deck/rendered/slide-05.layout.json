@@ -1,0 +1,1161 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/wpyfxl",
+    "id": "wpyfxl",
+    "slide": 5,
+    "layoutId": "8aec2281-ddf4-4910-b900-4c9420c71521",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "d0ccd025-cce0-445c-8df5-c8d8e7d46f16",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "8aec2281-ddf4-4910-b900-4c9420c71521",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "d0ccd025-cce0-445c-8df5-c8d8e7d46f16",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "d0ccd025-cce0-445c-8df5-c8d8e7d46f16",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e1c76xov",
+      "id": "1",
+      "name": "kicker",
+      "bbox": [
+        48,
+        38,
+        780,
+        26
+      ],
+      "geometry": "rect",
+      "text": "THE DATA ASSET",
+      "textPreview": "THE DATA ASSET",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#0F766E",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "THE DATA ASSET"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "THE DATA ASSET",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#0F766E",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "THE DATA ASSET",
+              "fontSize": 16,
+              "color": "#0F766E",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/143qhcnm",
+      "id": "2",
+      "name": "slide-title",
+      "bbox": [
+        48,
+        70,
+        1184,
+        78
+      ],
+      "geometry": "rect",
+      "text": "The hard foundation is already substantial",
+      "textPreview": "The hard foundation is already substantial",
+      "resolvedFontSize": 48,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 48,
+        "typeface": "+mn-lt",
+        "color": "#0B1220",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The hard foundation is already substantial"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The hard foundation is already substantial",
+          "resolvedTextStyle": {
+            "fontSize": 48,
+            "color": "#0B1220",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "The hard foundation is already substantial",
+              "fontSize": 48,
+              "color": "#0B1220",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/03up8761",
+      "id": "3",
+      "name": "text",
+      "bbox": [
+        48,
+        144,
+        1120,
+        58
+      ],
+      "geometry": "rect",
+      "text": "Daily ingestion, parsing, normalization and graph construction turn public documents into a proprietary research layer.",
+      "textPreview": "Daily ingestion, parsing, normalization and graph construction turn public documents into a proprietary research layer.",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#5E6878",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Daily ingestion, parsing, normalization and graph construction turn public documents into a proprietary research"
+          },
+          {
+            "index": 2,
+            "text": "layer."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Daily ingestion, parsing, normalization and graph construction turn public documents into a proprietary research layer.",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#5E6878",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Daily ingestion, parsing, normalization and graph construction turn public documents into a proprietary research layer.",
+              "fontSize": 22,
+              "color": "#5E6878",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/n6l8jm5c",
+      "id": "4",
+      "name": "metric-panel",
+      "bbox": [
+        48,
+        248,
+        360,
+        278
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#F1F3F5",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/m5crahor",
+      "id": "5",
+      "name": "metric-accent",
+      "bbox": [
+        48,
+        248,
+        8,
+        278
+      ],
+      "geometry": "rect",
+      "fillColor": "#14B8A6",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/983qlcni",
+      "id": "6",
+      "name": "metric-value",
+      "bbox": [
+        78,
+        288,
+        308,
+        76
+      ],
+      "geometry": "rect",
+      "text": "3.15m",
+      "textPreview": "3.15m",
+      "resolvedFontSize": 52,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 52,
+        "typeface": "+mn-lt",
+        "color": "#0B1220",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "3.15m"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "3.15m",
+          "resolvedTextStyle": {
+            "fontSize": 52,
+            "color": "#0B1220",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "3.15m",
+              "fontSize": 52,
+              "color": "#0B1220",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/o7u9cr6x",
+      "id": "7",
+      "name": "metric-label",
+      "bbox": [
+        78,
+        376,
+        308,
+        58
+      ],
+      "geometry": "rect",
+      "text": "companies",
+      "textPreview": "companies",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#0B1220",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "companies"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "companies",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#0B1220",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "companies",
+              "fontSize": 24,
+              "color": "#0B1220",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vu587m5o",
+      "id": "8",
+      "name": "metric-detail",
+      "bbox": [
+        78,
+        452,
+        308,
+        52
+      ],
+      "geometry": "rect",
+      "text": "Tracked across names, mergers, spin-offs and registry transfers.",
+      "textPreview": "Tracked across names, mergers, spin-offs and registry transfers.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#5E6878",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Tracked across names, mergers,"
+          },
+          {
+            "index": 2,
+            "text": "spin-offs and registry transfers."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Tracked across names, mergers, spin-offs and registry transfers.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#5E6878",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Tracked across names, mergers, spin-offs and registry transfers.",
+              "fontSize": 17,
+              "color": "#5E6878",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/atwreho3",
+      "id": "9",
+      "name": "metric-panel",
+      "bbox": [
+        460,
+        248,
+        360,
+        278
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#F1F3F5",
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wrid87eh",
+      "id": "10",
+      "name": "metric-accent",
+      "bbox": [
+        460,
+        248,
+        8,
+        278
+      ],
+      "geometry": "rect",
+      "fillColor": "#3D8DFF",
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hsrehcf2",
+      "id": "11",
+      "name": "metric-value",
+      "bbox": [
+        490,
+        288,
+        308,
+        76
+      ],
+      "geometry": "rect",
+      "text": "9.56m",
+      "textPreview": "9.56m",
+      "resolvedFontSize": 52,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 52,
+        "typeface": "+mn-lt",
+        "color": "#0B1220",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "9.56m"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "9.56m",
+          "resolvedTextStyle": {
+            "fontSize": 52,
+            "color": "#0B1220",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "9.56m",
+              "fontSize": 52,
+              "color": "#0B1220",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/up0v6xwb",
+      "id": "12",
+      "name": "metric-label",
+      "bbox": [
+        490,
+        376,
+        308,
+        58
+      ],
+      "geometry": "rect",
+      "text": "corporate events",
+      "textPreview": "corporate events",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#0B1220",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "corporate events"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "corporate events",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#0B1220",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "corporate events",
+              "fontSize": 24,
+              "color": "#0B1220",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vq9wf2xw",
+      "id": "13",
+      "name": "metric-detail",
+      "bbox": [
+        490,
+        452,
+        308,
+        52
+      ],
+      "geometry": "rect",
+      "text": "Structured from official BORME publication records.",
+      "textPreview": "Structured from official BORME publication records.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#5E6878",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Structured from official BORME"
+          },
+          {
+            "index": 2,
+            "text": "publication records."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Structured from official BORME publication records.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#5E6878",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Structured from official BORME publication records.",
+              "fontSize": 17,
+              "color": "#5E6878",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4v2dc7ed",
+      "id": "14",
+      "name": "metric-panel",
+      "bbox": [
+        872,
+        248,
+        360,
+        278
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#F1F3F5",
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5wbelcfy",
+      "id": "15",
+      "name": "metric-accent",
+      "bbox": [
+        872,
+        248,
+        8,
+        278
+      ],
+      "geometry": "rect",
+      "fillColor": "#F59E0B",
+      "lineWidth": 0
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/it0vaxw7",
+      "id": "16",
+      "name": "metric-value",
+      "bbox": [
+        902,
+        288,
+        308,
+        76
+      ],
+      "geometry": "rect",
+      "text": "6.48m",
+      "textPreview": "6.48m",
+      "resolvedFontSize": 52,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 52,
+        "typeface": "+mn-lt",
+        "color": "#0B1220",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "6.48m"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "6.48m",
+          "resolvedTextStyle": {
+            "fontSize": 52,
+            "color": "#0B1220",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "6.48m",
+              "fontSize": 52,
+              "color": "#0B1220",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ju9wj2xs",
+      "id": "17",
+      "name": "metric-label",
+      "bbox": [
+        902,
+        376,
+        308,
+        58
+      ],
+      "geometry": "rect",
+      "text": "officer changes",
+      "textPreview": "officer changes",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#0B1220",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "officer changes"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "officer changes",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#0B1220",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "officer changes",
+              "fontSize": 24,
+              "color": "#0B1220",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sj2dgrep",
+      "id": "18",
+      "name": "metric-detail",
+      "bbox": [
+        902,
+        452,
+        308,
+        52
+      ],
+      "geometry": "rect",
+      "text": "Appointments and resignations preserved with time and status.",
+      "textPreview": "Appointments and resignations preserved with time and status.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#5E6878",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Appointments and resignations"
+          },
+          {
+            "index": 2,
+            "text": "preserved with time and status."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Appointments and resignations preserved with time and status.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#5E6878",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Appointments and resignations preserved with time and status.",
+              "fontSize": 17,
+              "color": "#5E6878",
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tkbepwfu",
+      "id": "19",
+      "name": "text",
+      "bbox": [
+        48,
+        612,
+        1120,
+        36
+      ],
+      "geometry": "rect",
+      "text": "Coverage since 2009 · 1.73m company formations · refreshed on business days",
+      "textPreview": "Coverage since 2009 · 1.73m company formations · refreshed on business days",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#0B1220",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Coverage since 2009 · 1.73m company formations · refreshed on business days"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Coverage since 2009 · 1.73m company formations · refreshed on business days",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#0B1220",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Coverage since 2009 · 1.73m company formations · refreshed on business days",
+              "fontSize": 18,
+              "color": "#0B1220",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1g7e9c7e",
+      "id": "20",
+      "name": "footer-brand",
+      "bbox": [
+        48,
+        680,
+        400,
+        18
+      ],
+      "geometry": "rect",
+      "text": "CONFIDENTIAL · MAPA SOCIETARIO",
+      "textPreview": "CONFIDENTIAL · MAPA SOCIETARIO",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 12,
+        "typeface": "+mn-lt",
+        "color": "#8B95A5",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "CONFIDENTIAL · MAPA SOCIETARIO"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "CONFIDENTIAL · MAPA SOCIETARIO",
+          "resolvedTextStyle": {
+            "fontSize": 12,
+            "color": "#8B95A5",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "CONFIDENTIAL · MAPA SOCIETARIO",
+              "fontSize": 12,
+              "color": "#8B95A5",
+              "bold": true,
+              "alignment": "left"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0fyd0r6t",
+      "id": "21",
+      "name": "footer-page",
+      "bbox": [
+        1178,
+        680,
+        54,
+        18
+      ],
+      "geometry": "rect",
+      "text": "05",
+      "textPreview": "05",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 12,
+        "typeface": "+mn-lt",
+        "color": "#8B95A5",
+        "bold": true,
+        "alignment": "right",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "05"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "05",
+          "resolvedTextStyle": {
+            "fontSize": 12,
+            "color": "#8B95A5",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "05",
+              "fontSize": 12,
+              "color": "#8B95A5",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

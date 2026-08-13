@@ -1,0 +1,308 @@
+{"kind":"deck","id":"pr/2rapdt","name":"Deck"}
+{"kind":"layout","layoutId":"d0ccd025-cce0-445c-8df5-c8d8e7d46f16","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"8aec2281-ddf4-4910-b900-4c9420c71521","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/rzetdf","slide":1,"title":"MAPA SOCIETARIO · PRE-SEED · AUGUST 2026","textShapes":4}
+{"kind":"textbox","id":"sh/7a1cfqtc","slide":1,"name":"text","text":"MAPA SOCIETARIO · PRE-SEED · AUGUST 2026","textPreview":"MAPA SOCIETARIO · PRE-SEED · AUGUST 2026","textChars":40,"textLines":1,"bbox":[42,42,760,32]}
+{"kind":"textbox","id":"sh/8badovah","slide":1,"name":"cover-title","text":"The relationship\nintelligence layer\nfor Spain","textPreview":"The relationship | intelligence layer | for Spain","textChars":45,"textLines":3,"bbox":[42,170,1030,292]}
+{"kind":"shape","id":"sh/tcjeh0r2","slide":1,"name":"rule","bbox":[42,486,118,6]}
+{"kind":"textbox","id":"sh/udcvq5sn","slide":1,"name":"cover-subtitle","text":"Turning fragmented public filings into searchable corporate networks, continuous monitoring and decision-ready due diligence.","textPreview":"Turning fragmented public filings into searchable corporate networks, continuous monitoring and decision-ready due diligence.","textChars":125,"textLines":1,"bbox":[42,520,760,92]}
+{"kind":"textbox","id":"sh/felwja98","slide":1,"name":"text","text":"mapasocietario.es","textPreview":"mapasocietario.es","textChars":17,"textLines":1,"bbox":[1028,650,210,26]}
+{"kind":"notes","id":"nt/rzetdf","slide":1,"text":"Open with the category, not the feature. Mapa Societario is a relationship-intelligence product built on Spain's corporate-publication stream.\n\n[Sources]\n- https://mapasocietario.es/?guide=1"}
+{"kind":"slide","id":"sl/tc5iut","slide":2,"title":"THE PROBLEM","textShapes":12}
+{"kind":"textbox","id":"sh/wvitsjy5","slide":2,"name":"kicker","text":"THE PROBLEM","textPreview":"THE PROBLEM","textChars":11,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/vupczexk","slide":2,"name":"slide-title","text":"Corporate facts are public. Relationships are hidden.","textPreview":"Corporate facts are public. Relationships are hidden.","textChars":53,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/a9gbq9gz","slide":2,"name":"text","text":"A company name is not a company history.","textPreview":"A company name is not a company history.","textChars":40,"textLines":1,"bbox":[48,188,490,134]}
+{"kind":"textbox","id":"sh/987uxofe","slide":2,"name":"text","text":"Professionals still reconstruct the network manually—across filings, dates, role changes and name variants—before they can make a decision.","textPreview":"Professionals still reconstruct the network manually—across filings, dates, role changes and name variants—before they can make a decision.","textChars":139,"textLines":1,"bbox":[48,350,492,144]}
+{"kind":"shape","id":"sh/87ytojy9","slide":2,"name":"rule","bbox":[616,180,616,5]}
+{"kind":"textbox","id":"sh/n6pcvexo","slide":2,"name":"text","text":"Records arrive as documents","textPreview":"Records arrive as documents","textChars":27,"textLines":1,"bbox":[616,198,270,58]}
+{"kind":"textbox","id":"sh/m5gbm9g3","slide":2,"name":"text","text":"The authoritative source is optimized for publication, not connected investigation.","textPreview":"The authoritative source is optimized for publication, not connected investigation.","textChars":83,"textLines":1,"bbox":[904,198,328,84]}
+{"kind":"shape","id":"sh/l47ut4fi","slide":2,"name":"rule","bbox":[616,326,616,2]}
+{"kind":"textbox","id":"sh/03ytkzyx","slide":2,"name":"text","text":"Time changes the answer","textPreview":"Time changes the answer","textChars":23,"textLines":1,"bbox":[616,344,270,58]}
+{"kind":"textbox","id":"sh/ahc7qp4f","slide":2,"name":"text","text":"Appointments, resignations, mergers and renamings turn a current snapshot into an incomplete story.","textPreview":"Appointments, resignations, mergers and renamings turn a current snapshot into an incomplete story.","textChars":99,"textLines":1,"bbox":[904,344,328,84]}
+{"kind":"shape","id":"sh/vil8zu50","slide":2,"name":"rule","bbox":[616,472,616,2]}
+{"kind":"textbox","id":"sh/wjupszm5","slide":2,"name":"text","text":"Risk lives in the network","textPreview":"Risk lives in the network","textChars":25,"textLines":1,"bbox":[616,490,270,58]}
+{"kind":"textbox","id":"sh/xk3q14nq","slide":2,"name":"text","text":"Shared officers and related entities matter, but ordinary company reports keep them peripheral.","textPreview":"Shared officers and related entities matter, but ordinary company reports keep them peripheral.","textChars":95,"textLines":1,"bbox":[904,490,328,84]}
+{"kind":"textbox","id":"sh/mds7m543","slide":2,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/ne18va5o","slide":2,"name":"footer-page","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/tc5iut","slide":2,"text":"The problem is not lack of data. It is the cost of reconstructing context: identity, time, status and relationships. This is why a graph-first workflow creates differentiated value.\n\n[Sources]\n- https://www.boe.es/diario_borme/ayuda.php?lang=en\n- https://mapasocietario.es/about.html"}
+{"kind":"slide","id":"sl/njg19w","slide":3,"title":"THE PRODUCT","textShapes":10}
+{"kind":"textbox","id":"sh/uxob2lon","slide":3,"name":"kicker","text":"THE PRODUCT","textPreview":"THE PRODUCT","textChars":11,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/h0zax0ny","slide":3,"name":"slide-title","text":"A corporate network you can explore in seconds","textPreview":"A corporate network you can explore in seconds","textChars":46,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/gzqt4v6d","slide":3,"name":"text","text":"Search","textPreview":"Search","textChars":6,"textLines":1,"bbox":[48,196,220,34]}
+{"kind":"textbox","id":"sh/32hszq54","slide":3,"name":"text","text":"Find a company or officer through normalized, fuzzy entity search.","textPreview":"Find a company or officer through normalized, fuzzy entity search.","textChars":66,"textLines":1,"bbox":[48,238,470,72]}
+{"kind":"textbox","id":"sh/218b65oj","slide":3,"name":"text","text":"Explore","textPreview":"Explore","textChars":7,"textLines":1,"bbox":[48,332,220,34]}
+{"kind":"textbox","id":"sh/poza10na","slide":3,"name":"text","text":"Expand current and historic roles, shared officers, related companies and corporate events.","textPreview":"Expand current and historic roles, shared officers, related companies and corporate events.","textChars":91,"textLines":1,"bbox":[48,374,470,92]}
+{"kind":"textbox","id":"sh/43qt8v6p","slide":3,"name":"text","text":"Act","textPreview":"Act","textChars":3,"textLines":1,"bbox":[48,486,220,34]}
+{"kind":"textbox","id":"sh/j6dsn650","slide":3,"name":"text","text":"Save the investigation, monitor changes, or generate a sourced due diligence report.","textPreview":"Save the investigation, monitor changes, or generate a sourced due diligence report.","textChars":84,"textLines":1,"bbox":[48,528,470,88]}
+{"kind":"shape","id":"sh/i54ru1of","slide":3,"name":"product-frame","bbox":[572,174,660,422]}
+{"kind":"textbox","id":"sh/hg3ydkji","slide":3,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/udczi5kr","slide":3,"name":"footer-page","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"image","id":"im/ryhw3m54","slide":3,"name":"","geometry":"roundRect","alt":"Live Mapa Societario relationship graph for Banco Santander with market context","bbox":[584,186,636,398]}
+{"kind":"notes","id":"nt/njg19w","slide":3,"text":"Demonstrate the workflow in one sentence: search a name, expand the network, then preserve or monetize the result. The screenshot is a live capture of Banco Santander on 14 August 2026.\n\n[Sources]\n- https://mapasocietario.es/app\n- Live product screenshot captured 14 August 2026; stored in the deck build assets."}
+{"kind":"slide","id":"sl/a027tl","slide":4,"title":"WHY NOW","textShapes":16}
+{"kind":"textbox","id":"sh/o3md8vyt","slide":4,"name":"kicker","text":"WHY NOW","textPreview":"WHY NOW","textChars":7,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/32dczqx8","slide":4,"name":"slide-title","text":"Three forces make the timing right","textPreview":"Three forces make the timing right","textChars":34,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/214b6lgn","slide":4,"name":"text","text":"3.31m","textPreview":"3.31m","textChars":5,"textLines":1,"bbox":[48,190,430,100]}
+{"kind":"textbox","id":"sh/10vuxgf2","slide":4,"name":"text","text":"economically active enterprises in Spain","textPreview":"economically active enterprises in Spain","textChars":40,"textLines":1,"bbox":[48,302,430,76]}
+{"kind":"textbox","id":"sh/gzmt4byx","slide":4,"name":"text","text":"Each onboarding, supplier review, investment and investigation begins with an identity question.","textPreview":"Each onboarding, supplier review, investment and investigation begins with an identity question.","textChars":96,"textLines":1,"bbox":[48,404,430,110]}
+{"kind":"shape","id":"sh/fydcv6xc","slide":4,"name":"rule","bbox":[532,178,2,442]}
+{"kind":"textbox","id":"sh/ex4b2lgr","slide":4,"name":"text","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[584,176,52,34]}
+{"kind":"textbox","id":"sh/twbutgf6","slide":4,"name":"text","text":"The source is machine-readable","textPreview":"The source is machine-readable","textChars":30,"textLines":1,"bbox":[650,174,570,42]}
+{"kind":"textbox","id":"sh/sv2t0byl","slide":4,"name":"text","text":"Spain's electronic BORME has been official and authentic since 2009, creating a long public history to structure.","textPreview":"Spain's electronic BORME has been official and authentic since 2009, creating a long public history to structure.","textChars":113,"textLines":1,"bbox":[650,226,570,76]}
+{"kind":"textbox","id":"sh/a1o3ahgr","slide":4,"name":"text","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[584,326,52,34]}
+{"kind":"textbox","id":"sh/b2x43mhc","slide":4,"name":"text","text":"The compliance bar is rising","textPreview":"The compliance bar is rising","textChars":28,"textLines":1,"bbox":[650,324,570,42]}
+{"kind":"textbox","id":"sh/c36lc7yh","slide":4,"name":"text","text":"The EU's AML package tightens due diligence and beneficial-ownership requirements across a harmonized rulebook.","textPreview":"The EU's AML package tightens due diligence and beneficial-ownership requirements across a harmonized rulebook.","textChars":111,"textLines":1,"bbox":[650,376,570,76]}
+{"kind":"textbox","id":"sh/x4fm5cz2","slide":4,"name":"text","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[584,476,52,34]}
+{"kind":"textbox","id":"sh/2x436xgf","slide":4,"name":"text","text":"AI makes evidence usable","textPreview":"AI makes evidence usable","textChars":24,"textLines":1,"bbox":[650,474,570,42]}
+{"kind":"textbox","id":"sh/nydkz2h0","slide":4,"name":"text","text":"Entity resolution, graph traversal and cited report generation can now become one professional workflow.","textPreview":"Entity resolution, graph traversal and cited report generation can now become one professional workflow.","textChars":104,"textLines":1,"bbox":[650,526,570,76]}
+{"kind":"textbox","id":"sh/ozml87yl","slide":4,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/p0f21cz6","slide":4,"name":"footer-page","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/a027tl","slide":4,"text":"Use the market count as the object base, not as revenue TAM. The core timing argument is the convergence of official digital history, stricter diligence expectations and usable AI workflows.\n\n[Sources]\n- https://www.ine.es/dyngs/Prensa/en/DIRCE2025.htm\n- https://www.boe.es/diario_borme/ayuda.php?lang=en\n- https://www.consilium.europa.eu/en/press/press-releases/2024/05/30/anti-money-laundering-council-adopts-package-of-rules/"}
+{"kind":"slide","id":"sl/wpyfxl","slide":5,"title":"THE DATA ASSET","textShapes":15}
+{"kind":"textbox","id":"sh/e1c76xov","slide":5,"name":"kicker","text":"THE DATA ASSET","textPreview":"THE DATA ASSET","textChars":14,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/143qhcnm","slide":5,"name":"slide-title","text":"The hard foundation is already substantial","textPreview":"The hard foundation is already substantial","textChars":42,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/03up8761","slide":5,"name":"text","text":"Daily ingestion, parsing, normalization and graph construction turn public documents into a proprietary research layer.","textPreview":"Daily ingestion, parsing, normalization and graph construction turn public documents into a proprietary research layer.","textChars":119,"textLines":1,"bbox":[48,144,1120,58]}
+{"kind":"shape","id":"sh/n6l8jm5c","slide":5,"name":"metric-panel","bbox":[48,248,360,278]}
+{"kind":"shape","id":"sh/m5crahor","slide":5,"name":"metric-accent","bbox":[48,248,8,278]}
+{"kind":"textbox","id":"sh/983qlcni","slide":5,"name":"metric-value","text":"3.15m","textPreview":"3.15m","textChars":5,"textLines":1,"bbox":[78,288,308,76]}
+{"kind":"textbox","id":"sh/o7u9cr6x","slide":5,"name":"metric-label","text":"companies","textPreview":"companies","textChars":9,"textLines":1,"bbox":[78,376,308,58]}
+{"kind":"textbox","id":"sh/vu587m5o","slide":5,"name":"metric-detail","text":"Tracked across names, mergers, spin-offs and registry transfers.","textPreview":"Tracked across names, mergers, spin-offs and registry transfers.","textChars":64,"textLines":1,"bbox":[78,452,308,52]}
+{"kind":"shape","id":"sh/atwreho3","slide":5,"name":"metric-panel","bbox":[460,248,360,278]}
+{"kind":"shape","id":"sh/wrid87eh","slide":5,"name":"metric-accent","bbox":[460,248,8,278]}
+{"kind":"textbox","id":"sh/hsrehcf2","slide":5,"name":"metric-value","text":"9.56m","textPreview":"9.56m","textChars":5,"textLines":1,"bbox":[490,288,308,76]}
+{"kind":"textbox","id":"sh/up0v6xwb","slide":5,"name":"metric-label","text":"corporate events","textPreview":"corporate events","textChars":16,"textLines":1,"bbox":[490,376,308,58]}
+{"kind":"textbox","id":"sh/vq9wf2xw","slide":5,"name":"metric-detail","text":"Structured from official BORME publication records.","textPreview":"Structured from official BORME publication records.","textChars":51,"textLines":1,"bbox":[490,452,308,52]}
+{"kind":"shape","id":"sh/4v2dc7ed","slide":5,"name":"metric-panel","bbox":[872,248,360,278]}
+{"kind":"shape","id":"sh/5wbelcfy","slide":5,"name":"metric-accent","bbox":[872,248,8,278]}
+{"kind":"textbox","id":"sh/it0vaxw7","slide":5,"name":"metric-value","text":"6.48m","textPreview":"6.48m","textChars":5,"textLines":1,"bbox":[902,288,308,76]}
+{"kind":"textbox","id":"sh/ju9wj2xs","slide":5,"name":"metric-label","text":"officer changes","textPreview":"officer changes","textChars":15,"textLines":1,"bbox":[902,376,308,58]}
+{"kind":"textbox","id":"sh/sj2dgrep","slide":5,"name":"metric-detail","text":"Appointments and resignations preserved with time and status.","textPreview":"Appointments and resignations preserved with time and status.","textChars":61,"textLines":1,"bbox":[902,452,308,52]}
+{"kind":"textbox","id":"sh/tkbepwfu","slide":5,"name":"text","text":"Coverage since 2009 · 1.73m company formations · refreshed on business days","textPreview":"Coverage since 2009 · 1.73m company formations · refreshed on business days","textChars":75,"textLines":1,"bbox":[48,612,1120,36]}
+{"kind":"textbox","id":"sh/1g7e9c7e","slide":5,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/0fyd0r6t","slide":5,"name":"footer-page","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/wpyfxl","slide":5,"text":"These are asset-scale metrics, not vanity metrics. The defensibility comes from continuously improving resolution and temporal context on top of the public source.\n\n[Sources]\n- Repository src/components/LandingPage.jsx; fallback refreshed from /bormes/stats/overview on 13 August 2026.\n- https://mapasocietario.es/?guide=1"}
+{"kind":"slide","id":"sl/fnya35","slide":6,"title":"THE GROWTH LOOP","textShapes":23}
+{"kind":"textbox","id":"sh/0vad0ri9","slide":6,"name":"kicker","text":"THE GROWTH LOOP","textPreview":"THE GROWTH LOOP","textChars":15,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/zu1c7mho","slide":6,"name":"slide-title","text":"Free discovery creates paid moments","textPreview":"Free discovery creates paid moments","textChars":35,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/etsvyh0j","slide":6,"name":"text","text":"The graph earns trust first. Monetization begins when a professional needs persistence, monitoring, documentation or integration.","textPreview":"The graph earns trust first. Monetization begins when a professional needs persistence, monitoring, documentation or integration.","textChars":129,"textLines":1,"bbox":[48,146,1110,56]}
+{"kind":"shape","id":"sh/dsju5wzy","slide":6,"name":"rule","bbox":[130,355,920,4]}
+{"kind":"shape","id":"sh/c7adwrid","slide":6,"name":"step-node","bbox":[140,334,44,44]}
+{"kind":"textbox","id":"sh/r61c3mhs","slide":6,"name":"text","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[140,343,44,24]}
+{"kind":"textbox","id":"sh/q58buh07","slide":6,"name":"text","text":"Discover","textPreview":"Discover","textChars":8,"textLines":1,"bbox":[48,226,240,42]}
+{"kind":"textbox","id":"sh/xo3uhgz2","slide":6,"name":"text","text":"Free search and graph","textPreview":"Free search and graph","textChars":21,"textLines":1,"bbox":[48,282,240,34]}
+{"kind":"textbox","id":"sh/w3ud8bih","slide":6,"name":"text","text":"SEO, direct links, Chrome and API entry points","textPreview":"SEO, direct links, Chrome and API entry points","textChars":46,"textLines":1,"bbox":[48,410,240,92]}
+{"kind":"shape","id":"sh/ahwj2xcn","slide":6,"name":"step-node","bbox":[440,334,44,44]}
+{"kind":"textbox","id":"sh/bipkbit8","slide":6,"name":"text","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[440,343,44,24]}
+{"kind":"textbox","id":"sh/cjy14nut","slide":6,"name":"text","text":"Investigate","textPreview":"Investigate","textChars":11,"textLines":1,"bbox":[348,226,240,42]}
+{"kind":"textbox","id":"sh/xk72dsby","slide":6,"name":"text","text":"Expand and annotate","textPreview":"Expand and annotate","textChars":19,"textLines":1,"bbox":[348,282,240,34]}
+{"kind":"textbox","id":"sh/2dwjydcb","slide":6,"name":"text","text":"Follow people, companies, roles and events","textPreview":"Follow people, companies, roles and events","textChars":42,"textLines":1,"bbox":[348,410,240,92]}
+{"kind":"shape","id":"sh/ne5k7itw","slide":6,"name":"step-node","bbox":[740,334,44,44]}
+{"kind":"textbox","id":"sh/ofe10nuh","slide":6,"name":"text","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[740,343,44,24]}
+{"kind":"textbox","id":"sh/pgn29sb2","slide":6,"name":"text","text":"Retain","textPreview":"Retain","textChars":6,"textLines":1,"bbox":[648,226,240,42]}
+{"kind":"textbox","id":"sh/m90jahcv","slide":6,"name":"text","text":"Monitor changes","textPreview":"Monitor changes","textChars":15,"textLines":1,"bbox":[648,282,240,34]}
+{"kind":"textbox","id":"sh/7a9kj2tg","slide":6,"name":"text","text":"Return when BORME or IOSCO produces a signal","textPreview":"Return when BORME or IOSCO produces a signal","textChars":44,"textLines":1,"bbox":[648,410,240,92]}
+{"kind":"shape","id":"sh/jih8fa5g","slide":6,"name":"step-node","bbox":[1040,334,44,44]}
+{"kind":"textbox","id":"sh/ih87m5ov","slide":6,"name":"text","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1040,343,44,24]}
+{"kind":"textbox","id":"sh/54zqhknm","slide":6,"name":"text","text":"Monetize","textPreview":"Monetize","textChars":8,"textLines":1,"bbox":[948,226,240,42]}
+{"kind":"textbox","id":"sh/kjqpof61","slide":6,"name":"text","text":"Report, Pro or API","textPreview":"Report, Pro or API","textChars":18,"textLines":1,"bbox":[948,282,240,34]}
+{"kind":"textbox","id":"sh/7618ja5s","slide":6,"name":"text","text":"Charge when evidence becomes a workflow or deliverable","textPreview":"Charge when evidence becomes a workflow or deliverable","textChars":54,"textLines":1,"bbox":[948,410,240,92]}
+{"kind":"shape","id":"sh/6587qpo7","slide":6,"name":"loop-callout","bbox":[48,548,1184,70]}
+{"kind":"textbox","id":"sh/t8jqlkni","slide":6,"name":"text","text":"Investment thesis","textPreview":"Investment thesis","textChars":17,"textLines":1,"bbox":[70,568,180,30]}
+{"kind":"textbox","id":"sh/s7apsf6x","slide":6,"name":"text","text":"Convert a proven free research surface into a recurring professional system of record.","textPreview":"Convert a proven free research surface into a recurring professional system of record.","textChars":86,"textLines":1,"bbox":[254,564,930,38]}
+{"kind":"textbox","id":"sh/fa18nu5o","slide":6,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/u9s7upo3","slide":6,"name":"footer-page","text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/fnya35","slide":6,"text":"This is the business architecture. Free access is the acquisition mechanism; retention and revenue come from monitoring, collaboration, reports and integration.\n\n[Sources]\n- Repository docs/market-adoption-playbook.md\n- Repository src/components/landingCopy.jsx and src/components/DueDiligencePage.jsx"}
+{"kind":"slide","id":"sl/s2qn2r","slide":7,"title":"EARLY PROOF","textShapes":10}
+{"kind":"textbox","id":"sh/gjqt4fax","slide":7,"name":"kicker","text":"EARLY PROOF","textPreview":"EARLY PROOF","textChars":11,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/fihsbatc","slide":7,"name":"slide-title","text":"Commercial signals are already emerging","textPreview":"Commercial signals are already emerging","textChars":39,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/uh8b25sr","slide":7,"name":"text","text":"Four-week property baseline, 16 July–12 August 2026. Raw user counts; not a strict funnel.","textPreview":"Four-week property baseline, 16 July–12 August 2026. Raw user counts; not a strict funnel.","textChars":90,"textLines":1,"bbox":[48,144,760,32]}
+{"kind":"shape","id":"sh/4nqt8fat","slide":7,"name":"paid-proof","bbox":[752,202,480,184]}
+{"kind":"textbox","id":"sh/3mhsfat8","slide":7,"name":"text","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[786,228,150,76]}
+{"kind":"textbox","id":"sh/2l8b6psn","slide":7,"name":"text","text":"due diligence reports sold","textPreview":"due diligence reports sold","textChars":26,"textLines":1,"bbox":[786,314,390,42]}
+{"kind":"textbox","id":"sh/5sfa50bu","slide":7,"name":"text","text":"Willingness to pay is real. Repeatability is the next proof point.","textPreview":"Willingness to pay is real. Repeatability is the next proof point.","textChars":66,"textLines":1,"bbox":[752,416,470,72]}
+{"kind":"shape","id":"sh/kr69wvap","slide":7,"name":"strategic-signal","bbox":[752,506,480,104]}
+{"kind":"textbox","id":"sh/ml0zy54j","slide":7,"name":"text","text":"Major Spanish news agency · active discussion","textPreview":"Major Spanish news agency · active discussion","textChars":45,"textLines":1,"bbox":[778,526,420,30]}
+{"kind":"textbox","id":"sh/7m907al4","slide":7,"name":"text","text":"Exploring potential applications with the team.","textPreview":"Exploring potential applications with the team.","textChars":47,"textLines":1,"bbox":[778,566,420,28]}
+{"kind":"textbox","id":"sh/8nih0fmp","slide":7,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/9ori9k3a","slide":7,"name":"footer-page","text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"chart","id":"ch/t0z61one","slide":7,"name":"","chartType":"bar","bbox":[48,206,650,390]}
+{"kind":"notes","id":"nt/s2qn2r","slide":7,"text":"Be explicit about the stage. The four-week analytics show genuine product exploration; the two sold reports show willingness to pay. A major Spanish news agency is in an active discussion about potential applications, not a partnership or committed pilot. The round is designed to make conversion repeatable.\n\n[Sources]\n- Repository docs/market-adoption-playbook.md (513 users; 69 graph-selection users; 41 node-click users).\n- Founder-reported on 14 August 2026: two due diligence reports sold.\n- Founder-reported on 14 August 2026: ongoing discussion with a major Spanish news agency about potential applications; no agreement claimed."}
+{"kind":"slide","id":"sl/9h469x","slide":8,"title":"BUSINESS MODEL","textShapes":26}
+{"kind":"textbox","id":"sh/sf2x8vet","slide":8,"name":"kicker","text":"BUSINESS MODEL","textPreview":"BUSINESS MODEL","textChars":14,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/retwfqd8","slide":8,"name":"slide-title","text":"One data asset, three revenue layers","textPreview":"One data asset, three revenue layers","textChars":36,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/6dkf6lwn","slide":8,"name":"text","text":"The live one-off product proves value today. Recurring workflow and data products expand contract size without changing the underlying asset.","textPreview":"The live one-off product proves value today. Recurring workflow and data products expand contract size without changing the underlying as...","textChars":141,"textLines":1,"bbox":[48,144,1120,58]}
+{"kind":"textbox","id":"sh/5credgvi","slide":8,"name":"text","text":"LIVE","textPreview":"LIVE","textChars":4,"textLines":1,"bbox":[48,230,120,26]}
+{"kind":"textbox","id":"sh/4bix4vex","slide":8,"name":"text","text":"Self-serve reports","textPreview":"Self-serve reports","textChars":18,"textLines":1,"bbox":[48,270,340,44]}
+{"kind":"textbox","id":"sh/ja9wbqdc","slide":8,"name":"text","text":"€22.50","textPreview":"€22.50","textChars":6,"textLines":1,"bbox":[48,342,340,64]}
+{"kind":"textbox","id":"sh/i90f2lwr","slide":8,"name":"text","text":"per due diligence report","textPreview":"per due diligence report","textChars":24,"textLines":1,"bbox":[48,410,340,36]}
+{"kind":"shape","id":"sh/h8re9gv6","slide":8,"name":"bullet","bbox":[48,482,10,10]}
+{"kind":"textbox","id":"sh/w7ix0bel","slide":8,"name":"text","text":"Free first report acquisition","textPreview":"Free first report acquisition","textChars":29,"textLines":1,"bbox":[72,474,320,30]}
+{"kind":"shape","id":"sh/ipgn2d0v","slide":8,"name":"bullet","bbox":[48,526,10,10]}
+{"kind":"textbox","id":"sh/jq9obi1g","slide":8,"name":"text","text":"+€17.50 annual accounts","textPreview":"+€17.50 annual accounts","textChars":23,"textLines":1,"bbox":[72,518,320,30]}
+{"kind":"shape","id":"sh/krip4ni1","slide":8,"name":"bullet","bbox":[48,570,10,10]}
+{"kind":"textbox","id":"sh/5sr6dsjm","slide":8,"name":"text","text":"Volume pricing already designed","textPreview":"Volume pricing already designed","textChars":31,"textLines":1,"bbox":[72,562,320,30]}
+{"kind":"shape","id":"sh/algnyt0z","slide":8,"name":"rule","bbox":[428,226,2,380]}
+{"kind":"textbox","id":"sh/vmpo7y1k","slide":8,"name":"text","text":"NEXT","textPreview":"NEXT","textChars":4,"textLines":1,"bbox":[450,230,120,26]}
+{"kind":"textbox","id":"sh/wny503i5","slide":8,"name":"text","text":"Pro workspace","textPreview":"Pro workspace","textChars":13,"textLines":1,"bbox":[450,270,340,44]}
+{"kind":"textbox","id":"sh/xo7698jq","slide":8,"name":"text","text":"€99–299","textPreview":"€99–299","textChars":7,"textLines":1,"bbox":[450,342,340,64]}
+{"kind":"textbox","id":"sh/mxwnut03","slide":8,"name":"text","text":"per team / month · planned","textPreview":"per team / month · planned","textChars":26,"textLines":1,"bbox":[450,410,340,36]}
+{"kind":"shape","id":"sh/nipo3y18","slide":8,"name":"bullet","bbox":[450,482,10,10]}
+{"kind":"textbox","id":"sh/b2lkbuh0","slide":8,"name":"text","text":"Shared investigations","textPreview":"Shared investigations","textChars":21,"textLines":1,"bbox":[474,474,320,30]}
+{"kind":"shape","id":"sh/q1c32pgv","slide":8,"name":"bullet","bbox":[450,526,10,10]}
+{"kind":"textbox","id":"sh/do3md4z6","slide":8,"name":"text","text":"Monitoring and audit trail","textPreview":"Monitoring and audit trail","textChars":26,"textLines":1,"bbox":[474,518,320,30]}
+{"kind":"shape","id":"sh/c3ul4zyl","slide":8,"name":"bullet","bbox":[450,570,10,10]}
+{"kind":"textbox","id":"sh/zq54fuhc","slide":8,"name":"text","text":"Exportable client deliverables","textPreview":"Exportable client deliverables","textChars":30,"textLines":1,"bbox":[474,562,320,30]}
+{"kind":"shape","id":"sh/ypc36pgr","slide":8,"name":"rule","bbox":[830,226,2,380]}
+{"kind":"textbox","id":"sh/lsnmh4zi","slide":8,"name":"text","text":"SCALE","textPreview":"SCALE","textChars":5,"textLines":1,"bbox":[852,230,120,26]}
+{"kind":"textbox","id":"sh/0rel8zyx","slide":8,"name":"text","text":"API & enterprise","textPreview":"API & enterprise","textChars":16,"textLines":1,"bbox":[852,270,340,44]}
+{"kind":"textbox","id":"sh/fu1k3ahs","slide":8,"name":"text","text":"Annual","textPreview":"Annual","textChars":6,"textLines":1,"bbox":[852,342,340,64]}
+{"kind":"textbox","id":"sh/uts3u5gn","slide":8,"name":"text","text":"usage or contract pricing · planned","textPreview":"usage or contract pricing · planned","textChars":35,"textLines":1,"bbox":[852,410,340,36]}
+{"kind":"shape","id":"sh/kz6h4be5","slide":8,"name":"bullet","bbox":[852,482,10,10]}
+{"kind":"textbox","id":"sh/50zixgfq","slide":8,"name":"text","text":"Embedded company intelligence","textPreview":"Embedded company intelligence","textChars":29,"textLines":1,"bbox":[876,474,320,30]}
+{"kind":"shape","id":"sh/idoz21wf","slide":8,"name":"bullet","bbox":[852,526,10,10]}
+{"kind":"textbox","id":"sh/jex0v6xk","slide":8,"name":"text","text":"Bulk monitoring and screening","textPreview":"Bulk monitoring and screening","textChars":29,"textLines":1,"bbox":[876,518,320,30]}
+{"kind":"shape","id":"sh/wb6h0re9","slide":8,"name":"bullet","bbox":[852,570,10,10]}
+{"kind":"textbox","id":"sh/xcfitwfu","slide":8,"name":"text","text":"Data partnerships and SLAs","textPreview":"Data partnerships and SLAs","textChars":26,"textLines":1,"bbox":[876,562,320,30]}
+{"kind":"textbox","id":"sh/a9ozy1w3","slide":8,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/vax0rmxo","slide":8,"name":"footer-page","text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/9h469x","slide":8,"text":"Separate current product from roadmap. Reports are live; Pro and enterprise layers are the monetization plan the round funds. The free graph remains the top-of-funnel advantage.\n\n[Sources]\n- https://mapasocietario.es/pricing\n- Repository docs/due-diligence-pricing-proposal.md\n- Repository src/components/PricingPage.jsx"}
+{"kind":"slide","id":"sl/y6ibtf","slide":9,"title":"COMPETITIVE POSITION","textShapes":22}
+{"kind":"textbox","id":"sh/cf25srix","slide":9,"name":"kicker","text":"COMPETITIVE POSITION","textPreview":"COMPETITIVE POSITION","textChars":20,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/betojm1c","slide":9,"name":"slide-title","text":"Connect the records before selling the report","textPreview":"Connect the records before selling the report","textChars":45,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/qdknq10r","slide":9,"name":"text","text":"Mapa Societario does not replace authoritative documents or credit bureaus. It owns the relationship-research step that comes before them.","textPreview":"Mapa Societario does not replace authoritative documents or credit bureaus. It owns the relationship-research step that comes before them.","textChars":138,"textLines":1,"bbox":[48,144,1120,58]}
+{"kind":"textbox","id":"sh/l4v6pgje","slide":9,"name":"text","text":"Route","textPreview":"Route","textChars":5,"textLines":1,"bbox":[60,230,246,34]}
+{"kind":"textbox","id":"sh/03m5wbit","slide":9,"name":"text","text":"Primary job","textPreview":"Primary job","textChars":11,"textLines":1,"bbox":[330,230,336,34]}
+{"kind":"textbox","id":"sh/z2don61o","slide":9,"name":"text","text":"What remains unresolved","textPreview":"What remains unresolved","textChars":23,"textLines":1,"bbox":[690,230,476,34]}
+{"kind":"shape","id":"sh/yh4nu103","slide":9,"name":"rule","bbox":[48,276,1130,3]}
+{"kind":"textbox","id":"sh/98f6tgjq","slide":9,"name":"text","text":"Commercial Registry","textPreview":"Commercial Registry","textChars":19,"textLines":1,"bbox":[60,292,246,52]}
+{"kind":"textbox","id":"sh/876p0bi5","slide":9,"name":"text","text":"Authoritative current documents","textPreview":"Authoritative current documents","textChars":31,"textLines":1,"bbox":[330,292,336,52]}
+{"kind":"textbox","id":"sh/ad87ylsf","slide":9,"name":"text","text":"Manual synthesis across documents and relationships","textPreview":"Manual synthesis across documents and relationships","textChars":51,"textLines":1,"bbox":[690,292,476,52]}
+{"kind":"shape","id":"sh/veh87qt0","slide":9,"name":"rule","bbox":[48,356,1130,1]}
+{"kind":"textbox","id":"sh/wfqp0val","slide":9,"name":"text","text":"Report aggregators","textPreview":"Report aggregators","textChars":18,"textLines":1,"bbox":[60,380,246,52]}
+{"kind":"textbox","id":"sh/xgzq90bq","slide":9,"name":"text","text":"Company, financial and credit reports","textPreview":"Company, financial and credit reports","textChars":37,"textLines":1,"bbox":[330,380,336,52]}
+{"kind":"textbox","id":"sh/ih8725sb","slide":9,"name":"text","text":"Company-centric output; network exploration is secondary","textPreview":"Company-centric output; network exploration is secondary","textChars":56,"textLines":1,"bbox":[690,380,476,52]}
+{"kind":"shape","id":"sh/ji18batw","slide":9,"name":"rule","bbox":[48,444,1130,1]}
+{"kind":"textbox","id":"sh/kjap4vah","slide":9,"name":"text","text":"Generic graph tools","textPreview":"Generic graph tools","textChars":19,"textLines":1,"bbox":[60,468,246,52]}
+{"kind":"textbox","id":"sh/5kjqd0b2","slide":9,"name":"text","text":"Visualize data already supplied","textPreview":"Visualize data already supplied","textChars":31,"textLines":1,"bbox":[330,468,336,52]}
+{"kind":"textbox","id":"sh/elo7q1s7","slide":9,"name":"text","text":"No Spanish corporate data asset or daily filing pipeline","textPreview":"No Spanish corporate data asset or daily filing pipeline","textChars":56,"textLines":1,"bbox":[690,468,476,52]}
+{"kind":"shape","id":"sh/zmxoz6ts","slide":9,"name":"rule","bbox":[48,532,1130,1]}
+{"kind":"shape","id":"sh/3qt4729k","slide":9,"name":"highlight-row","bbox":[48,544,1130,76]}
+{"kind":"textbox","id":"sh/2pknyx8z","slide":9,"name":"text","text":"Mapa Societario","textPreview":"Mapa Societario","textChars":15,"textLines":1,"bbox":[60,556,246,52]}
+{"kind":"textbox","id":"sh/psvm9crq","slide":9,"name":"text","text":"Search, connect, monitor and document","textPreview":"Search, connect, monitor and document","textChars":37,"textLines":1,"bbox":[330,556,336,52]}
+{"kind":"textbox","id":"sh/4rm507q5","slide":9,"name":"text","text":"Graph-first workflow; escalate to official evidence when needed","textPreview":"Graph-first workflow; escalate to official evidence when needed","textChars":63,"textLines":1,"bbox":[690,556,476,52]}
+{"kind":"textbox","id":"sh/fmt43298","slide":9,"name":"text","text":"Wedge","textPreview":"Wedge","textChars":5,"textLines":1,"bbox":[48,632,100,26]}
+{"kind":"textbox","id":"sh/u1knux83","slide":9,"name":"text","text":"Faster relationship discovery → better-qualified document purchases and professional workflows.","textPreview":"Faster relationship discovery → better-qualified document purchases and professional workflows.","textChars":95,"textLines":1,"bbox":[142,626,1010,38]}
+{"kind":"textbox","id":"sh/hobm5sre","slide":9,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/gn25wnqt","slide":9,"name":"footer-page","text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/y6ibtf","slide":9,"text":"Position against jobs, not feature checklists. The registry is authoritative; aggregators are strong at reports and credit data. Mapa's differentiated job is relationship discovery and continuity.\n\n[Sources]\n- https://sede.registradores.org/site/home?lang=es_ES\n- https://www.infoempresa.com/es-es/es/informe-de-empresa\n- https://www.einforma.com/informacion-empresas/informes-empresas"}
+{"kind":"slide","id":"sl/fc8pld","slide":10,"title":"MARKET EXPANSION","textShapes":19}
+{"kind":"textbox","id":"sh/zmh4b258","slide":10,"name":"kicker","text":"MARKET EXPANSION","textPreview":"MARKET EXPANSION","textChars":16,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/0nq547md","slide":10,"name":"slide-title","text":"Spain is the wedge into Europe","textPreview":"Spain is the wedge into Europe","textChars":30,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/1oj6dcny","slide":10,"name":"text","text":"34m","textPreview":"34m","textChars":3,"textLines":1,"bbox":[48,190,430,100]}
+{"kind":"textbox","id":"sh/qx8ned4b","slide":10,"name":"text","text":"SMEs in the EU in 2025","textPreview":"SMEs in the EU in 2025","textChars":22,"textLines":1,"bbox":[48,302,430,54]}
+{"kind":"textbox","id":"sh/ryh47i5w","slide":10,"name":"text","text":"Corporate identity and relationship diligence is a repeatable problem across fragmented national registries.","textPreview":"Corporate identity and relationship diligence is a repeatable problem across fragmented national registries.","textChars":108,"textLines":1,"bbox":[48,388,430,106]}
+{"kind":"shape","id":"sh/czq5gnmh","slide":10,"name":"rule","bbox":[552,200,2,400]}
+{"kind":"shape","id":"sh/d0zm9sn2","slide":10,"name":"rule","bbox":[624,244,4,292]}
+{"kind":"shape","id":"sh/2tonad4f","slide":10,"name":"timeline-node","bbox":[604,238,44,44]}
+{"kind":"textbox","id":"sh/3ux43i50","slide":10,"name":"text","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[604,248,44,22]}
+{"kind":"textbox","id":"sh/7mlsjutk","slide":10,"name":"text","text":"Spain","textPreview":"Spain","textChars":5,"textLines":1,"bbox":[686,208,480,40]}
+{"kind":"textbox","id":"sh/6lcrqpsz","slide":10,"name":"text","text":"Deepest public graph and professional workflow","textPreview":"Deepest public graph and professional workflow","textChars":46,"textLines":1,"bbox":[686,256,500,54]}
+{"kind":"textbox","id":"sh/to3al4ba","slide":10,"name":"text","text":"Mapa Societario","textPreview":"Mapa Societario","textChars":15,"textLines":1,"bbox":[686,314,500,28]}
+{"kind":"shape","id":"sh/8nu9sza5","slide":10,"name":"timeline-node","bbox":[604,388,44,44]}
+{"kind":"textbox","id":"sh/vq5snetg","slide":10,"name":"text","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[604,398,44,22]}
+{"kind":"textbox","id":"sh/upcru9sv","slide":10,"name":"text","text":"Five-country base","textPreview":"Five-country base","textChars":17,"textLines":1,"bbox":[686,358,480,40]}
+{"kind":"textbox","id":"sh/hsnap4bm","slide":10,"name":"text","text":"Reuse NC Data coverage in UK, France, Switzerland and Italy","textPreview":"Reuse NC Data coverage in UK, France, Switzerland and Italy","textChars":59,"textLines":1,"bbox":[686,406,500,54]}
+{"kind":"textbox","id":"sh/gre9wza1","slide":10,"name":"text","text":"Existing operating knowledge","textPreview":"Existing operating knowledge","textChars":28,"textLines":1,"bbox":[686,464,500,28]}
+{"kind":"shape","id":"sh/bu18batc","slide":10,"name":"timeline-node","bbox":[604,538,44,44]}
+{"kind":"textbox","id":"sh/atsri5cr","slide":10,"name":"text","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[604,548,44,22]}
+{"kind":"textbox","id":"sh/e90vqdcf","slide":10,"name":"text","text":"Cross-border layer","textPreview":"Cross-border layer","textChars":18,"textLines":1,"bbox":[686,508,480,40]}
+{"kind":"textbox","id":"sh/fa9cjid0","slide":10,"name":"text","text":"Resolve entities across jurisdictions and sell one graph/API","textPreview":"Resolve entities across jurisdictions and sell one graph/API","textChars":60,"textLines":1,"bbox":[686,556,500,54]}
+{"kind":"textbox","id":"sh/0bidsnul","slide":10,"name":"text","text":"Venture-scale expansion","textPreview":"Venture-scale expansion","textChars":23,"textLines":1,"bbox":[686,614,500,28]}
+{"kind":"textbox","id":"sh/1crulsvq","slide":10,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/qlgvmdc3","slide":10,"name":"footer-page","text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/fc8pld","slide":10,"text":"Spain is the focused wedge, not the ceiling. NC Data gives the team practical multi-country experience; the venture outcome is a cross-border relationship layer and API.\n\n[Sources]\n- https://single-market-economy.ec.europa.eu/smes/sme-strategy-and-sme-friendly-business-conditions/sme-performance-review_en\n- https://mapasocietario.es/about.html"}
+{"kind":"slide","id":"sl/qw2tj9","slide":11,"title":"EXECUTION","textShapes":22}
+{"kind":"textbox","id":"sh/r61czih8","slide":11,"name":"kicker","text":"EXECUTION","textPreview":"EXECUTION","textChars":9,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/s7at8nyt","slide":11,"name":"slide-title","text":"Founder velocity is already visible","textPreview":"Founder velocity is already visible","textChars":35,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/d8ju1sze","slide":11,"name":"text","text":"Built inside an operating corporate-intelligence firm—not as a prototype detached from the work.","textPreview":"Built inside an operating corporate-intelligence firm—not as a prototype detached from the work.","textChars":96,"textLines":1,"bbox":[48,144,1120,50]}
+{"kind":"shape","id":"sh/i18b2dgr","slide":11,"name":"operator-panel","bbox":[48,224,544,310]}
+{"kind":"textbox","id":"sh/32hcvihc","slide":11,"name":"text","text":"Nurnberg Consulting SL","textPreview":"Nurnberg Consulting SL","textChars":22,"textLines":1,"bbox":[80,258,470,46]}
+{"kind":"textbox","id":"sh/43qt4nyx","slide":11,"name":"text","text":"Madrid · operating since 2013","textPreview":"Madrid · operating since 2013","textChars":29,"textLines":1,"bbox":[80,320,470,34]}
+{"kind":"textbox","id":"sh/54zuxsz2","slide":11,"name":"text","text":"Corporate intelligence, business research and multi-jurisdiction investigation experience provide the domain context behind the product.","textPreview":"Corporate intelligence, business research and multi-jurisdiction investigation experience provide the domain context behind the product.","textChars":136,"textLines":1,"bbox":[80,382,450,110]}
+{"kind":"textbox","id":"sh/mxsbexgv","slide":11,"name":"text","text":"Round-funded focus","textPreview":"Round-funded focus","textChars":18,"textLines":1,"bbox":[652,224,500,40]}
+{"kind":"textbox","id":"sh/nylc72hg","slide":11,"name":"text","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[652,294,44,30]}
+{"kind":"textbox","id":"sh/ratwvmpo","slide":11,"name":"text","text":"Data / ML","textPreview":"Data / ML","textChars":9,"textLines":1,"bbox":[712,292,210,34]}
+{"kind":"textbox","id":"sh/q9kvmh83","slide":11,"name":"text","text":"Entity resolution, quality systems and cross-border graph","textPreview":"Entity resolution, quality systems and cross-border graph","textChars":57,"textLines":1,"bbox":[922,292,290,58]}
+{"kind":"textbox","id":"sh/dcvexc7u","slide":11,"name":"text","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[652,392,44,30]}
+{"kind":"textbox","id":"sh/cb2do7q9","slide":11,"name":"text","text":"Product engineering","textPreview":"Product engineering","textChars":19,"textLines":1,"bbox":[712,390,210,34]}
+{"kind":"textbox","id":"sh/zedwzmp0","slide":11,"name":"text","text":"Pro workspace, collaboration, reporting and scale","textPreview":"Pro workspace, collaboration, reporting and scale","textChars":49,"textLines":1,"bbox":[922,390,290,58]}
+{"kind":"textbox","id":"sh/ed4vqh8f","slide":11,"name":"text","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[652,490,44,30]}
+{"kind":"textbox","id":"sh/1gve1w7q","slide":11,"name":"text","text":"Professional GTM","textPreview":"Professional GTM","textChars":16,"textLines":1,"bbox":[712,488,210,34]}
+{"kind":"textbox","id":"sh/0fmdsrql","slide":11,"name":"text","text":"Design partners, conversion, channels and enterprise sales","textPreview":"Design partners, conversion, channels and enterprise sales","textChars":58,"textLines":1,"bbox":[922,488,290,58]}
+{"kind":"shape","id":"sh/n2dw36pw","slide":11,"name":"velocity-strip","bbox":[48,574,1184,66]}
+{"kind":"textbox","id":"sh/mh4vu1ob","slide":11,"name":"text","text":"738 commits","textPreview":"738 commits","textChars":11,"textLines":1,"bbox":[78,592,200,28]}
+{"kind":"textbox","id":"sh/yx8zm5sj","slide":11,"name":"text","text":"40k source lines","textPreview":"40k source lines","textChars":16,"textLines":1,"bbox":[354,592,220,28]}
+{"kind":"textbox","id":"sh/jyhgva94","slide":11,"name":"text","text":"45 test files","textPreview":"45 test files","textChars":13,"textLines":1,"bbox":[650,592,190,28]}
+{"kind":"textbox","id":"sh/kzqhovqp","slide":11,"name":"text","text":"Web · Android · Chrome · Public API","textPreview":"Web · Android · Chrome · Public API","textChars":35,"textLines":1,"bbox":[912,592,286,28]}
+{"kind":"textbox","id":"sh/l0zyx0ra","slide":11,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/a9ofilsn","slide":11,"name":"footer-page","text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/qw2tj9","slide":11,"text":"The team slide is intentionally honest: the product has been founder-led. The investable opportunity is converting proven velocity and domain expertise into a focused multidisciplinary team.\n\n[Sources]\n- https://mapasocietario.es/about.html\n- Repository snapshot on 14 August 2026: git history, source-line count and test-file count.\n- Repository chrome-extension/README.md and package structure."}
+{"kind":"slide","id":"sl/nqis09","slide":12,"title":"THE ROUND","textShapes":26}
+{"kind":"textbox","id":"sh/0vytwnq9","slide":12,"name":"text","text":"THE ROUND","textPreview":"THE ROUND","textChars":9,"textLines":1,"bbox":[48,42,300,28]}
+{"kind":"textbox","id":"sh/zu5c3i9o","slide":12,"name":"slide-title","text":"€750k to prove repeatable revenue","textPreview":"€750k to prove repeatable revenue","textChars":33,"textLines":1,"bbox":[48,78,1120,78]}
+{"kind":"textbox","id":"sh/ytwbud8j","slide":12,"name":"text","text":"18 months of focused execution","textPreview":"18 months of focused execution","textChars":30,"textLines":1,"bbox":[48,150,520,40]}
+{"kind":"textbox","id":"sh/9k7u9s76","slide":12,"name":"text","text":"€750k","textPreview":"€750k","textChars":5,"textLines":1,"bbox":[48,226,420,100]}
+{"kind":"textbox","id":"sh/8zyd0nql","slide":12,"name":"text","text":"recommended pre-seed raise","textPreview":"recommended pre-seed raise","textChars":26,"textLines":1,"bbox":[48,334,420,38]}
+{"kind":"textbox","id":"sh/nypc7ip0","slide":12,"name":"text","text":"Use of funds","textPreview":"Use of funds","textChars":12,"textLines":1,"bbox":[48,416,420,34]}
+{"kind":"shape","id":"sh/mxgvyx8f","slide":12,"name":"allocation-bar","bbox":[48,468,188,24]}
+{"kind":"shape","id":"sh/ponux8rm","slide":12,"name":"allocation-bar","bbox":[236,468,117.5,24]}
+{"kind":"shape","id":"sh/o3uto3q1","slide":12,"name":"allocation-bar","bbox":[353.5,468,94,24]}
+{"kind":"shape","id":"sh/m1k7e18r","slide":12,"name":"allocation-bar","bbox":[447.5,468,70.5,24]}
+{"kind":"shape","id":"sh/72t8769c","slide":12,"name":"allocation-key","bbox":[48,518,12,12]}
+{"kind":"textbox","id":"sh/832pgbqh","slide":12,"name":"text","text":"40%  Data & engineering","textPreview":"40%  Data & engineering","textChars":23,"textLines":1,"bbox":[72,514,360,24]}
+{"kind":"shape","id":"sh/94bq9gr2","slide":12,"name":"allocation-key","bbox":[48,548,12,12]}
+{"kind":"textbox","id":"sh/upk7il8n","slide":12,"name":"text","text":"25%  Product & AI","textPreview":"25%  Product & AI","textChars":17,"textLines":1,"bbox":[72,544,360,24]}
+{"kind":"shape","id":"sh/vqt8b698","slide":12,"name":"allocation-key","bbox":[48,578,12,12]}
+{"kind":"textbox","id":"sh/wr2pkbqt","slide":12,"name":"text","text":"20%  Go-to-market","textPreview":"20%  Go-to-market","textChars":17,"textLines":1,"bbox":[72,574,360,24]}
+{"kind":"shape","id":"sh/hsbqdg7e","slide":12,"name":"allocation-key","bbox":[48,608,12,12]}
+{"kind":"textbox","id":"sh/it47ml8z","slide":12,"name":"text","text":"15%  Infra, legal & security","textPreview":"15%  Infra, legal & security","textChars":28,"textLines":1,"bbox":[72,604,360,24]}
+{"kind":"shape","id":"sh/jud8fqp4","slide":12,"name":"rule","bbox":[574,220,2,420]}
+{"kind":"textbox","id":"sh/fydo3q5c","slide":12,"name":"text","text":"18-month proof points","textPreview":"18-month proof points","textChars":21,"textLines":1,"bbox":[628,220,540,40]}
+{"kind":"textbox","id":"sh/ex47ulor","slide":12,"name":"text","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[628,288,40,28]}
+{"kind":"textbox","id":"sh/10f650ni","slide":12,"name":"text","text":"Pro workspace live","textPreview":"Pro workspace live","textChars":18,"textLines":1,"bbox":[684,286,470,32]}
+{"kind":"textbox","id":"sh/0zmpwv6x","slide":12,"name":"text","text":"Collaboration, monitoring and export become a recurring product.","textPreview":"Collaboration, monitoring and export become a recurring product.","textChars":64,"textLines":1,"bbox":[684,320,480,44]}
+{"kind":"textbox","id":"sh/rudozq5g","slide":12,"name":"text","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[628,370,40,28]}
+{"kind":"textbox","id":"sh/6t4nqlov","slide":12,"name":"text","text":"100 paying organizations","textPreview":"100 paying organizations","textChars":24,"textLines":1,"bbox":[684,368,470,32]}
+{"kind":"textbox","id":"sh/twv61gn6","slide":12,"name":"text","text":"Professional design partners convert into repeatable accounts.","textPreview":"Professional design partners convert into repeatable accounts.","textChars":62,"textLines":1,"bbox":[684,402,480,44]}
+{"kind":"textbox","id":"sh/svmpsv61","slide":12,"name":"text","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[628,452,40,28]}
+{"kind":"textbox","id":"sh/jqtov654","slide":12,"name":"text","text":"€25k MRR","textPreview":"€25k MRR","textChars":8,"textLines":1,"bbox":[684,450,470,32]}
+{"kind":"textbox","id":"sh/i5knm1oj","slide":12,"name":"text","text":"A €300k run-rate validates the next institutional round.","textPreview":"A €300k run-rate validates the next institutional round.","textChars":56,"textLines":1,"bbox":[684,484,480,44]}
+{"kind":"textbox","id":"sh/8zydgni5","slide":12,"name":"text","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[628,534,40,28]}
+{"kind":"textbox","id":"sh/907u98zq","slide":12,"name":"text","text":"5 API / enterprise partners","textPreview":"5 API / enterprise partners","textChars":27,"textLines":1,"bbox":[684,532,470,32]}
+{"kind":"textbox","id":"sh/mxgved0f","slide":12,"name":"text","text":"Prove that the data asset embeds beyond the web app.","textPreview":"Prove that the data asset embeds beyond the web app.","textChars":52,"textLines":1,"bbox":[684,566,480,44]}
+{"kind":"textbox","id":"sh/nypc7ih0","slide":12,"name":"text","text":"mapasocietario.es  ·  mapasocietario@ncdata.eu","textPreview":"mapasocietario.es  ·  mapasocietario@ncdata.eu","textChars":46,"textLines":1,"bbox":[628,630,540,28]}
+{"kind":"textbox","id":"sh/wnidknih","slide":12,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/xorudsz2","slide":12,"name":"footer-page","text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/nqis09","slide":12,"text":"Close on a specific round and a falsifiable plan. The amount, allocation and milestones are recommendations for investor discussion, not historical commitments. Adjust once the founder confirms current burn, hiring geography and desired dilution.\n\n[Sources]\n- Funding plan is a recommended scenario prepared 14 August 2026; no external claim."}
+{"kind":"slide","id":"sl/hvcskh","slide":13,"title":"STRATEGIC INVESTOR APPENDIX","textShapes":16}
+{"kind":"textbox","id":"sh/7i9gf210","slide":13,"name":"kicker","text":"STRATEGIC INVESTOR APPENDIX","textPreview":"STRATEGIC INVESTOR APPENDIX","textChars":27,"textLines":1,"bbox":[48,38,780,26]}
+{"kind":"textbox","id":"sh/8jih87i5","slide":13,"name":"slide-title","text":"The graph can become a reporting advantage","textPreview":"The graph can become a reporting advantage","textChars":42,"textLines":1,"bbox":[48,70,1184,78]}
+{"kind":"textbox","id":"sh/9kryhcjq","slide":13,"name":"text","text":"For a media owner, the value is not only financial. Mapa Societario can become proprietary research infrastructure and a differentiated data product.","textPreview":"For a media owner, the value is not only financial. Mapa Societario can become proprietary research infrastructure and a differentiated d...","textChars":149,"textLines":1,"bbox":[48,144,1120,58]}
+{"kind":"textbox","id":"sh/ydgz2x03","slide":13,"name":"text","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[48,242,50,28]}
+{"kind":"textbox","id":"sh/zepgbi1o","slide":13,"name":"text","text":"Faster story development","textPreview":"Faster story development","textChars":24,"textLines":1,"bbox":[48,292,342,68]}
+{"kind":"shape","id":"sh/kfyh4ni9","slide":13,"name":"rule","bbox":[48,378,86,5]}
+{"kind":"textbox","id":"sh/lg7ydsju","slide":13,"name":"text","text":"Move from a company or person to connected entities, role histories and source documents before competitors assemble the same context.","textPreview":"Move from a company or person to connected entities, role histories and source documents before competitors assemble the same context.","textChars":134,"textLines":1,"bbox":[48,412,342,150]}
+{"kind":"textbox","id":"sh/i9kzeh0n","slide":13,"name":"text","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[450,242,50,28]}
+{"kind":"textbox","id":"sh/jat0nmh8","slide":13,"name":"text","text":"Evidence-led newsroom workflow","textPreview":"Evidence-led newsroom workflow","textChars":30,"textLines":1,"bbox":[450,292,342,68]}
+{"kind":"shape","id":"sh/76ho3i1g","slide":13,"name":"rule","bbox":[450,378,86,5]}
+{"kind":"textbox","id":"sh/6l87adkv","slide":13,"name":"text","text":"Give journalists a shared, reproducible investigation path with notes, saved graphs, monitoring and cited outputs.","textPreview":"Give journalists a shared, reproducible investigation path with notes, saved graphs, monitoring and cited outputs.","textChars":114,"textLines":1,"bbox":[450,412,342,150]}
+{"kind":"textbox","id":"sh/t8z65sj6","slide":13,"name":"text","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[852,242,50,28]}
+{"kind":"textbox","id":"sh/87qpcn2l","slide":13,"name":"text","text":"New commercial products","textPreview":"New commercial products","textChars":23,"textLines":1,"bbox":[852,292,342,68]}
+{"kind":"shape","id":"sh/va187i1c","slide":13,"name":"rule","bbox":[852,378,86,5]}
+{"kind":"textbox","id":"sh/u9s7edkr","slide":13,"name":"text","text":"Create corporate-network alerts, sector intelligence, data licensing or premium research products on top of the same asset.","textPreview":"Create corporate-network alerts, sector intelligence, data licensing or premium research products on top of the same asset.","textChars":123,"textLines":1,"bbox":[852,412,342,150]}
+{"kind":"shape","id":"sh/hcjq9sji","slide":13,"name":"strategic-callout","bbox":[48,590,1184,58]}
+{"kind":"textbox","id":"sh/gbapgn2x","slide":13,"name":"text","text":"Current signal","textPreview":"Current signal","textChars":14,"textLines":1,"bbox":[70,607,160,26]}
+{"kind":"textbox","id":"sh/3e18b218","slide":13,"name":"text","text":"A major Spanish news agency is discussing potential applications with the team.","textPreview":"A major Spanish news agency is discussing potential applications with the team.","textChars":79,"textLines":1,"bbox":[228,602,960,34]}
+{"kind":"textbox","id":"sh/ids7ixk3","slide":13,"name":"footer-brand","text":"CONFIDENTIAL · MAPA SOCIETARIO","textPreview":"CONFIDENTIAL · MAPA SOCIETARIO","textChars":30,"textLines":1,"bbox":[48,680,400,18]}
+{"kind":"textbox","id":"sh/e9wra14b","slide":13,"name":"footer-page","text":"13","textPreview":"13","textChars":2,"textLines":1,"bbox":[1178,680,54,18]}
+{"kind":"notes","id":"nt/hvcskh","slide":13,"text":"Use this appendix only with a news-agency owner or another strategic media investor. The purpose is to make the strategic upside concrete without implying exclusivity, partnership, pilot status or a commercial commitment.\n\n[Sources]\n- Founder-reported on 14 August 2026: ongoing discussion with a major Spanish news agency about potential applications; no agreement claimed.\n- Repository product capabilities: graph exploration, annotations, saved workspaces, monitoring and due diligence reports."}

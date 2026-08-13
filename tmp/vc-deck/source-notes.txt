@@ -1,0 +1,30 @@
+Mapa Societario VC deck — source ledger
+Prepared 14 August 2026
+
+Product and company sources
+- Repository README and product code in /Users/alessandronurnberg/mapasocietario
+- Live product: https://mapasocietario.es/?guide=1 and https://mapasocietario.es/app
+- About / operating company: https://mapasocietario.es/about.html
+- Pricing: https://mapasocietario.es/pricing
+- Internal coverage fallback refreshed from /bormes/stats/overview on 13 August 2026:
+  3,150,792 companies; 9,564,276 events; 6,480,122 officer changes; 1,730,447 formations.
+- Internal GA4 baseline in docs/market-adoption-playbook.md:
+  513 property users, 69 users with graph selections, 41 users clicking graph nodes, 16 July–12 August 2026.
+- Founder-reported commercial proof, 14 August 2026: 2 due diligence reports sold.
+- Founder-reported strategic signal, 14 August 2026: ongoing discussions with a major Spanish news agency about potential applications for the product. This is not described as a partnership, pilot, customer relationship or commercial agreement.
+- Repository execution snapshot, 14 August 2026: 738 commits; 40,072 JS/JSX/MJS source lines; 45 test files.
+
+External market and regulatory sources
+- INE DIRCE 2025: https://www.ine.es/dyngs/Prensa/en/DIRCE2025.htm
+- BOE BORME help: https://www.boe.es/diario_borme/ayuda.php?lang=en
+- Council of the EU AML package: https://www.consilium.europa.eu/en/press/press-releases/2024/05/30/anti-money-laundering-council-adopts-package-of-rules/
+- European Commission SME Performance Review 2025/2026: https://single-market-economy.ec.europa.eu/smes/sme-strategy-and-sme-friendly-business-conditions/sme-performance-review_en
+- Infoempresa company reports: https://www.infoempresa.com/es-es/es/informe-de-empresa
+- eInforma company reports: https://www.einforma.com/informacion-empresas/informes-empresas
+- Registradores commercial services: https://sede.registradores.org/site/home?lang=es_ES
+
+Funding assumptions (recommendation, not historical fact)
+- Proposed raise: EUR 750,000 pre-seed.
+- Proposed runway: 18 months.
+- Suggested allocation: 40% data/engineering, 25% product/AI, 20% go-to-market, 15% infrastructure/legal/security.
+- Suggested 18-month milestones: Pro workspace live; 100 paying organizations; EUR 25k MRR; 5 API/enterprise partners.
