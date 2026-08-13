@@ -4,20 +4,11 @@
 // the raw BORME spelling ("... SOCIEDAD LIMITADA"). Without this, one entity
 // shows up as two rows (a company and an "officer") that lead to two
 // disconnected graph nodes.
-import { canonLegalForm } from './companyName';
+import { entityNameKey } from './companyName';
 
-// Same fold as the backend's name_fold_key: canonicalize the trailing legal
-// form FIRST ("S.A" → "SA" — token-splitting alone would leave "S A"), then
-// compare in analyzer token space (accents folded, punctuation/whitespace
-// runs collapsed). The canonical company name may keep BORME punctuation
-// ("BANCO SANTANDER, SA") that officer spellings lack.
-const entityKey = name =>
-  canonLegalForm((name || '').trim())
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, ' ')
-    .trim();
+// Punctuation/legal-form-insensitive fold key shared with the v3 expand
+// exact-match filter — see entityNameKey for the rules.
+const entityKey = entityNameKey;
 
 /**
  * Fold officer suggestions into their company twins.

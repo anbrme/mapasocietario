@@ -53,6 +53,24 @@ export const canonLegalForm = name => {
 };
 
 /**
+ * Punctuation/legal-form-insensitive identity key. Mirrors the backend's
+ * name_fold_key: canonicalize the trailing legal form FIRST ("S.A" → "SA" —
+ * token-splitting alone would leave "S A"), then compare in analyzer token
+ * space (accents folded, punctuation/whitespace runs collapsed to one space).
+ * The canonical company name may keep BORME punctuation ("BANCO SANTANDER,
+ * SA") that officer spellings never print — one entity, one key.
+ * @param {string} name
+ * @returns {string}
+ */
+export const entityNameKey = name =>
+  canonLegalForm((name || '').trim())
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .trim();
+
+/**
  * Normalize a company display name for consistent matching / ID generation:
  * strips a trailing "(YYYY)" year suffix and a trailing period so that registry
  * variants like "COCUNAT S.L." and "COCUNAT S.L" compare equal.

@@ -97,17 +97,27 @@ describe('detectCargoPresence', () => {
     ).toEqual({ hasCargo: false, count: 0, officers: [], currentCompanies: [] });
   });
 
-  it('prefers the v3 entity count so the badge matches what unify renders', async () => {
+  it('prefers the v3 entity rows so the badge matches what unify renders', async () => {
     const service = {
       pgExpandOfficer: vi.fn(async () => realisticResponse),
-      // PG would say 3 distinct spellings; v3 entity index says 95 entities.
-      expandOfficerV3: vi.fn(async () => ({ success: true, total: 95, officers: [] })),
+      // v3 rows (one per company+status): 3 rows, 2 distinct companies.
+      expandOfficerV3: vi.fn(async () => ({
+        success: true,
+        total: 3,
+        officers: [
+          { company_name: 'EMPRESA UNO SA', status: 'active' },
+          { company_name: 'EMPRESA UNO SA', status: 'resigned' },
+          { company_name: 'EMPRESA DOS SL', status: 'active' },
+        ],
+      })),
     };
 
     const result = await detectCargoPresence(service, 'BANCO SANTANDER, SA');
 
     expect(result.hasCargo).toBe(true);
-    expect(result.count).toBe(95);
+    expect(result.count).toBe(2);
+    // Full page requested — the endpoint's `total` is page length, not hits.
+    expect(service.expandOfficerV3).toHaveBeenCalledWith('BANCO SANTANDER, SA', { size: 500 });
     expect(service.pgExpandOfficer).not.toHaveBeenCalled();
   });
 

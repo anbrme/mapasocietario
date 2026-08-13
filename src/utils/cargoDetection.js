@@ -33,16 +33,19 @@ export async function detectCargoPresence(service, companyName) {
 
   // Prefer the v3 entity index: it's what "Unificar cargos" renders, so the
   // badge count must match it (PG counts publication-spelling rows — 71 vs
-  // the 95 entities unify draws for BANCO SANTANDER, SA). PG stays as the
-  // fallback when v3 is unavailable.
+  // the ~95 entities unify draws for BANCO SANTANDER, SA). The endpoint's
+  // `total` is the PAGE length, not the full hit count, so fetch the full
+  // page (endpoint cap 500) and count distinct companies from the rows the
+  // service's exact-match filter kept. PG stays the fallback.
   if (typeof service.expandOfficerV3 === 'function') {
     try {
-      const v3 = await service.expandOfficerV3(companyName, { size: 1 });
-      const total = v3 && typeof v3.total === 'number' ? v3.total : 0;
-      if (v3 && v3.success && total > 0) {
-        return { hasCargo: true, count: total, officers: [], currentCompanies: [] };
-      }
+      const v3 = await service.expandOfficerV3(companyName, { size: 500 });
       if (v3 && v3.success) {
+        const rows = Array.isArray(v3.officers) ? v3.officers : [];
+        const count = new Set(rows.map((o) => o && o.company_name).filter(Boolean)).size;
+        if (count > 0) {
+          return { hasCargo: true, count, officers: [], currentCompanies: [] };
+        }
         return { ...EMPTY_RESULT };
       }
     } catch {

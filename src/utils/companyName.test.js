@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   canonLegalForm,
+  entityNameKey,
   normalizeCompanyName,
   looksLikeGroupKey,
   selectGroupKeyId,
@@ -143,5 +144,23 @@ describe('canonLegalForm SRL', () => {
 
   it('keeps SRL distinct from SL — foreign forms must not merge with Spanish SLs', () => {
     expect(canonLegalForm('ACME SRL')).not.toBe(canonLegalForm('ACME SL'));
+  });
+});
+
+describe('entityNameKey', () => {
+  it('folds the BORME comma the canonical company name keeps', () => {
+    // The v3 expand exact-match filter dropped all 95 of the bank's seats
+    // because "BANCO SANTANDER, SA" !== "BANCO SANTANDER SA" — unify no-opped.
+    expect(entityNameKey('BANCO SANTANDER, SA')).toBe(entityNameKey('BANCO SANTANDER SA'));
+    expect(entityNameKey('BANCO SANTANDER, S.A.')).toBe(entityNameKey('BANCO SANTANDER SA'));
+  });
+
+  it('still separates different entities and suffix-less names', () => {
+    expect(entityNameKey('BANCO SANTANDER SA')).not.toBe(entityNameKey('BANCO SANTANDER BRASIL SA'));
+    expect(entityNameKey('GARCIA LOPEZ JUAN')).not.toBe(entityNameKey('GARCIA LOPEZ JUAN SL'));
+  });
+
+  it('folds accents like the ES analyzer', () => {
+    expect(entityNameKey('PEÑASANTA SA')).toBe(entityNameKey('PENASANTA SA'));
   });
 });

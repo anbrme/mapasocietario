@@ -10,7 +10,7 @@
  */
 
 import { positionCategoryFor } from '../utils/positionCategories';
-import { canonLegalForm, looksLikeGroupKey, selectGroupKeyId } from '../utils/companyName';
+import { canonLegalForm, entityNameKey, looksLikeGroupKey, selectGroupKeyId } from '../utils/companyName';
 import { API_URL } from '../config';
 
 const createApiError = (label, response, responseBody = '') => {
@@ -584,14 +584,15 @@ class SpanishCompaniesService {
 
     // The API does substring matching — "PIÑEIRO GOMEZ JOSE" also returns
     // "PIÑEIRO GOMEZ JOSE MANUEL". Filter to exact name match client-side.
-    // Compare in canonical legal-form space: v3 stores corporate officers as
-    // "... SL" while autocomplete supplies the raw BORME spelling
-    // ("... SOCIEDAD LIMITADA") — both must count as the same entity.
+    // Compare via entityNameKey (legal-form canonical AND punctuation-fold):
+    // v3 stores corporate officers under the printed spelling ("BANCO
+    // SANTANDER SA") while the canonical company name keeps the BORME comma
+    // ("BANCO SANTANDER, SA") — the old canonLegalForm-only comparison
+    // silently dropped all 95 of the bank's seats and unify no-opped.
     if (exactMatch && data.officers) {
-      const normalized = canonLegalForm(officerName).toLowerCase();
+      const wanted = entityNameKey(officerName);
       data.officers = data.officers.filter(entry => {
-        const entryName = canonLegalForm(entry.officer_name || entry.name || '').toLowerCase();
-        return entryName === normalized;
+        return entityNameKey(entry.officer_name || entry.name || '') === wanted;
       });
     }
 
