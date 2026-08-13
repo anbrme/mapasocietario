@@ -28,6 +28,9 @@ const LEGAL_FORM_DOTLESS = [
   ['S\\.?\\s?A\\.?\\s?L', 'SAL'],
   ['A\\.?\\s?I\\.?\\s?E', 'AIE'],
   ['U\\.?\\s?T\\.?\\s?E', 'UTE'],
+  // Foreign S.R.L. (IT/AR/RO): spelling collapse only — deliberately NOT
+  // mapped to SL, or foreign entities would merge with Spanish SLs.
+  ['S\\.?\\s?R\\.?\\s?L', 'SRL'],
   ['S\\.?\\s?COOP', 'SCOOP'],
   ['S\\.?\\s?L', 'SL'],
   ['S\\.?\\s?A', 'SA'],

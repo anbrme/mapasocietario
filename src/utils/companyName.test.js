@@ -133,3 +133,15 @@ describe('canonLegalForm', () => {
     expect(canonLegalForm(null)).toBe('');
   });
 });
+
+describe('canonLegalForm SRL', () => {
+  it('collapses foreign S.R.L. spelling variants to one dotless token', () => {
+    expect(canonLegalForm('FIAT ARGENTINA S.R.L.')).toBe('FIAT ARGENTINA SRL');
+    expect(canonLegalForm('FIAT ARGENTINA S. R. L.')).toBe('FIAT ARGENTINA SRL');
+    expect(canonLegalForm('FIAT ARGENTINA SRL')).toBe('FIAT ARGENTINA SRL');
+  });
+
+  it('keeps SRL distinct from SL — foreign forms must not merge with Spanish SLs', () => {
+    expect(canonLegalForm('ACME SRL')).not.toBe(canonLegalForm('ACME SL'));
+  });
+});
