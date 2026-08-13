@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
 import FeedbackWidget from './components/FeedbackWidget';
 import { ThemeModeToggle } from './theme/ThemeModeToggle';
+import { DATA_MAINTENANCE } from './config/dataMaintenance';
 import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
 import { openListedCompanies } from './services/listedCompaniesNav';
 import { trackEvent, trackUserManualDownload } from './utils/track';
@@ -46,6 +47,7 @@ const APP_COPY = {
       toLight: 'Switch to light mode',
       toDark: 'Switch to dark mode',
     },
+    systemsOperational: 'All systems operational',
   },
   es: {
     title: 'Grafo de Relaciones | Mapa Societario',
@@ -74,6 +76,7 @@ const APP_COPY = {
       toLight: 'Cambiar a modo claro',
       toDark: 'Cambiar a modo oscuro',
     },
+    systemsOperational: 'Todos los sistemas operativos',
   },
 };
 
@@ -236,6 +239,14 @@ export default function App() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+          {!DATA_MAINTENANCE.enabled && (
+            <Typography
+              variant="caption"
+              sx={{ color: 'success.main', fontWeight: 600, whiteSpace: 'nowrap' }}
+            >
+              {copy.systemsOperational}
+            </Typography>
+          )}
           <ThemeModeToggle label={copy.themeToggle} />
           <Tooltip title={copy.menu.tooltip}>
             <IconButton
