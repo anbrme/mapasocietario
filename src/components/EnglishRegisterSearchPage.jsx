@@ -40,13 +40,13 @@ const COPY = {
     path: '/spanish-company-register-search/',
     alternatePath: '/es/busqueda-registro-mercantil/',
     alternateLabel: 'ES',
-    title: 'Spanish Company Register Guide & BORME Search | Mapa Societario',
-    description: "Compare the Spanish Commercial Registry, BORME and Mapa Societario, then explore daily BORME publication history by company or officer.",
+    title: 'Spanish Company Search & Register Guide | Mapa Societario',
+    description: 'Search Spanish companies and directors, explore BORME filing history, and learn when to use Spain’s Commercial Registry for official documents.',
     ogDescription: 'Compare the Spanish Commercial Registry, BORME and Mapa Societario for current documents, publication history, cost and relationship research.',
     twitterDescription: 'Compare the Registro Mercantil, BORME and Mapa Societario—then explore historical BORME publications in a relationship graph.',
     eyebrow: 'Spanish company publication research',
-    h1: 'Spanish company register guide and BORME publication search',
-    intro: 'Explore the daily BORME publications issued after Spanish Commercial Registry acts—not the live Registro Mercantil or certified current registry records.',
+    h1: 'Search Spanish companies and understand the company register',
+    intro: 'Search company and director histories published in BORME, explore their relationships, and understand when you still need an official document from Spain’s Commercial Registry.',
     graphCta: 'Open the relationship graph',
     reportsCta: 'Due diligence reports',
     comparisonTitle: 'Which source should you use?',
@@ -158,11 +158,13 @@ const COPY = {
     relatedTitle: 'Related tools and resources',
     related: {
       graph: 'Relationship graph',
+      directors: 'Company director search',
       reports: 'Due diligence reports',
       listed: 'IBEX 35 companies',
       borme: 'BORME graph in Spanish',
     },
-    graphHref: '/app?source=register_guide',
+    graphHref: '/app?lang=en&source=register_guide',
+    directorsHref: '/company-director-search/',
     reportsHref: '/spanish-company-due-diligence',
     listedHref: '/en/listed-companies',
   },
@@ -288,11 +290,13 @@ const COPY = {
     relatedTitle: 'Herramientas y recursos relacionados',
     related: {
       graph: 'Grafo de relaciones',
+      directors: 'Buscar administradores',
       reports: 'Informes due diligence',
       listed: 'Empresas del IBEX 35',
       borme: 'Grafo de empresas BORME',
     },
     graphHref: '/app?lang=es&source=register_guide',
+    directorsHref: '/es/buscar-administradores-empresas/',
     reportsHref: '/due-diligence?lang=es',
     listedHref: '/empresas-cotizadas',
   },
@@ -622,6 +626,9 @@ export default function EnglishRegisterSearchPage({ language = 'en' }) {
               </Button>
               <Button href={copy.reportsHref} variant="outlined" size="small" startIcon={<DescriptionIcon />} sx={{ color: COLORS.teal, borderColor: COLORS.tealBorder, textTransform: 'none', borderRadius: 2, fontWeight: 650 }}>
                 {copy.related.reports}
+              </Button>
+              <Button href={copy.directorsHref} variant="outlined" size="small" startIcon={<AccountTreeIcon />} sx={{ color: COLORS.teal, borderColor: COLORS.tealBorder, textTransform: 'none', borderRadius: 2, fontWeight: 650 }}>
+                {copy.related.directors}
               </Button>
               <Button href={copy.listedHref} variant="outlined" size="small" startIcon={<VerifiedIcon />} sx={{ color: COLORS.teal, borderColor: COLORS.tealBorder, textTransform: 'none', borderRadius: 2, fontWeight: 650 }}>
                 {copy.related.listed}

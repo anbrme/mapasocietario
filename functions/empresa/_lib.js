@@ -345,10 +345,10 @@ const T = {
   en: {
     htmlLang: 'en',
     ogLocale: 'en_GB',
-    title: (name) => `${name} — Spanish Company Registry Records: Directors, Shareholders & Filings | Mapa Societario`,
-    ogTitle: (name) => `${name} — Spanish company registry records`,
+    title: (name) => `${name}: Directors & Company Records | Mapa Societario`,
+    ogTitle: (name) => `${name}: directors and Spanish company records`,
     desc: (name, cap, prov) =>
-      `${name} in the Spanish company register: current and former directors, shareholders, share capital (${cap || 'n/a'})${prov ? `, registered in ${prov}` : ''} and the full official commercial-registry (BORME) filing history. Free registry check.`,
+      `Search ${name} in Spain: directors, officers, registered address${prov ? ` in ${prov}` : ''}, share capital${cap ? ` (${cap})` : ''} and BORME filing history. Free company profile.`,
     jsonLdDesc: (name) =>
       `Ownership structure of ${name}: directors, shareholders, share capital and official Spanish commercial-registry (BORME) history.`,
     home: 'Mapa Societario',
@@ -768,8 +768,13 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
   const canonicalSlug = slug;
   const canonicalUrl = renamedTo ? companyUrl(lang, nameToSlug(renamedTo)) : companyUrl(lang, canonicalSlug);
 
-  const title = t.title(name);
-  const desc = t.desc(name, fmtEur(company.current_capital, lang), company.province);
+  // Listed-company searches overwhelmingly use the familiar brand ("Inditex",
+  // "Puig", "Naturgy") rather than the full registral denomination. Use that
+  // concise label in search snippets while keeping the legal name and registry
+  // data visible in the page body and structured data.
+  const seoName = seed?.name || name;
+  const title = t.title(seoName);
+  const desc = t.desc(seoName, fmtEur(company.current_capital, lang), company.province);
 
   const badges = [
     company.company_type ? `<span class="badge">${esc(company.company_type)}</span>` : '',
@@ -1079,13 +1084,13 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
 <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow'}">
 ${hreflangTags(canonicalSlug)}
 <meta property="og:type" content="profile">
-<meta property="og:title" content="${esc(t.ogTitle(name))}">
+<meta property="og:title" content="${esc(t.ogTitle(seoName))}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${esc(canonicalUrl)}">
 <meta property="og:locale" content="${t.ogLocale}">
 <meta property="og:image" content="${SITE}/og-image.svg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${esc(t.ogTitle(name))}">
+<meta name="twitter:title" content="${esc(t.ogTitle(seoName))}">
 <meta name="twitter:description" content="${esc(desc)}">
 ${jsonLd(company, canonicalSlug, lang, t, seed)}
 ${STYLE}
