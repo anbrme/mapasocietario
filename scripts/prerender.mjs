@@ -230,7 +230,8 @@ const routes = [
           <li><a href="/es/">Mapa societario de empresas espa&ntilde;olas</a></li>
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
-          <li><a href="/spanish-company-register-search/">Spanish company register guide and BORME publication search</a></li>
+          <li><a href="/spanish-company-register-search/">Search Spanish companies and understand the company register</a></li>
+          <li><a href="/company-director-search/">Search Spanish company directors and officers</a></li>
           <li><a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></li>
           <li><a href="${FACEBOOK_URL}">Mapa Societario on Facebook</a></li>
         </ul>
@@ -320,15 +321,15 @@ const routes = [
   },
   {
     path: '/spanish-company-register-search',
-    title: 'Spanish Company Register Guide & BORME Search | Mapa Societario',
+    title: 'Spanish Company Search & Register Guide | Mapa Societario',
     description:
-      "Understand Spain's company register and search daily BORME publications by company or officer. This is not a live Registro Mercantil or certificate search.",
+      'Search Spanish companies and directors, explore BORME filing history, and learn when to use Spain’s Commercial Registry for official documents.',
     ogType: 'article',
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
-        <h1>Spanish company register guide and BORME publication search</h1>
-        <p>Explore the daily BORME publications issued after Spanish Commercial Registry acts. Mapa Societario does not search the live Registro Mercantil or provide certified current registry records.</p>
-        <p><a href="/app?source=register_guide">Open the relationship graph</a></p>
+        <h1>Search Spanish companies and understand the company register</h1>
+        <p>Search company and director histories published in BORME, explore their relationships, and understand when you still need an official document from Spain’s Commercial Registry.</p>
+        <p><a href="/app?lang=en&amp;source=register_guide">Open the relationship graph</a></p>
         <h2>Which source should you use?</h2>
         <p>The three services answer different questions. Registry history requires a paid offline request; Mapa Societario makes BORME publication history immediately explorable as a relationship graph.</p>
         <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
@@ -367,7 +368,29 @@ const routes = [
           <li>Expand the graph when a director, proxy, or related company needs more context.</li>
           <li>Order a due diligence report only when you need a PDF record.</li>
         </ol>
-        <p><a href="/app?source=register_guide">Open the relationship graph</a> | <a href="/en/listed-companies">Browse IBEX 35 listed companies</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence reports</a></p>
+        <p><a href="/app?lang=en&amp;source=register_guide">Open the relationship graph</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/en/listed-companies">Browse IBEX 35 listed companies</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence reports</a></p>
+      </main>`,
+  },
+  {
+    path: '/company-director-search',
+    title: 'Spanish Company Director Search | Mapa Societario',
+    description:
+      'Search Spanish company directors, administrators and officers. Find their companies, appointments, resignations and relationships from BORME records.',
+    ogType: 'article',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Search Spanish company directors and officers</h1>
+        <p>Find the Spanish companies linked to a director, administrator, board member or proxy, then explore appointments, resignations and shared corporate relationships published in BORME.</p>
+        ${disclaimerHtmlEn}
+        <p><a href="/app?lang=en&amp;type=officer&amp;source=director_search">Search a director in the relationship graph</a></p>
+        <h2>Search a director across Spanish companies</h2>
+        <p>Enter a director, administrator, board member or proxy and choose a person result. Mapa Societario brings together the Spanish companies where that name appears in published BORME records.</p>
+        <p>Expand the graph to follow appointments, resignations, shared directors and connected companies instead of reviewing each company separately.</p>
+        <h2>What the results can show</h2>
+        <p>Results can reveal current and former roles, the companies connected to the same officer, role changes over time and wider corporate networks. Company profiles also surface registered addresses, share capital and recent BORME filing history when available.</p>
+        <h2>Important identity limitation</h2>
+        <p>BORME publications do not consistently provide a unique personal identifier for every officer. Treat name matches as research leads and verify identity, current authority and material findings against the original notice and current Commercial Registry documents.</p>
+        <p><a href="/spanish-company-register-search/">Spanish company search and register guide</a> | <a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></p>
       </main>`,
   },
   {

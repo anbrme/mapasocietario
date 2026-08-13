@@ -13,6 +13,7 @@ const SpanishCompanyDueDiligencePage = lazy(() => import('./components/SpanishCo
 const PricingPage = lazy(() => import('./components/PricingPage'));
 const SpanishSeoPage = lazy(() => import('./components/SpanishSeoPage'));
 const EnglishRegisterSearchPage = lazy(() => import('./components/EnglishRegisterSearchPage'));
+const EnglishDirectorSearchPage = lazy(() => import('./components/EnglishDirectorSearchPage'));
 const ConnectClaudePage = lazy(() => import('./components/ConnectClaudePage'));
 const OrderStatusPage = lazy(() => import('./components/OrderStatusPage'));
 const AdminPage = lazy(() => import('./components/AdminPage'));
@@ -104,6 +105,7 @@ function AppRoutes() {
       <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
       <Route path="/spanish-company-due-diligence" element={<Suspense fallback={null}><SpanishCompanyDueDiligencePage /></Suspense>} />
       <Route path="/spanish-company-register-search" element={<Suspense fallback={null}><EnglishRegisterSearchPage /></Suspense>} />
+      <Route path="/company-director-search" element={<Suspense fallback={null}><EnglishDirectorSearchPage /></Suspense>} />
       <Route path="/pricing" element={<Suspense fallback={null}><PricingPage /></Suspense>} />
       <Route path="/order/:sessionId" element={<Suspense fallback={null}><OrderStatusPage /></Suspense>} />
       <Route path="/admin" element={<Suspense fallback={null}><AdminPage /></Suspense>} />

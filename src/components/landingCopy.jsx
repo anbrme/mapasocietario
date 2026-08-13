@@ -15,6 +15,7 @@ export const LANDING_COPY = {
       ogLocale: 'en_US',
     },
     topLinks: [
+      { label: 'Spanish company director search', href: '/company-director-search' },
       { label: 'Spanish company register & BORME guide', href: '/spanish-company-register-search' },
       { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence' },
       { label: 'Pricing', href: '/pricing' },

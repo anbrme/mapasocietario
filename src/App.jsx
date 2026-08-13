@@ -31,6 +31,7 @@ const APP_COPY = {
       guide: 'How it works',
       userGuidePdf: 'User guide (PDF)',
       registerGuide: 'Spanish company register & BORME guide',
+      directorSearch: 'Spanish company director search',
       listed: 'IBEX 35 companies',
       dashboard: 'Stats dashboard',
       monitoring: 'Your monitoring',
@@ -60,6 +61,7 @@ const APP_COPY = {
       guide: 'Cómo funciona',
       userGuidePdf: 'Guía de usuario (PDF)',
       registerGuide: 'Guía BORME',
+      directorSearch: 'Buscar administradores',
       reports: 'Informes due diligence',
       connectClaude: 'Usar en Claude',
       pricing: 'Precios',
@@ -121,6 +123,7 @@ export default function App() {
       downloadPlacement: 'graph_view_menu',
     },
     { label: copy.menu.registerGuide, url: nav.registerGuide },
+    { label: copy.menu.directorSearch, url: nav.directorSearch },
     { label: copy.menu.listed, url: nav.listed },
     { label: copy.menu.dashboard, url: nav.dashboard },
     // The only in-app door to the manage page. Every other way in starts with
@@ -144,6 +147,10 @@ export default function App() {
   const initialSearch = React.useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return (params.get('search') || '').trim() || undefined;
+  }, []);
+  const initialSearchType = React.useMemo(() => {
+    const value = new URLSearchParams(window.location.search).get('type');
+    return value === 'officer' ? 'officer' : 'company';
   }, []);
   const graphEntrySource = React.useMemo(() => {
     const value = new URLSearchParams(window.location.search).get('source') || '';
@@ -314,6 +321,7 @@ export default function App() {
         visible={true}
         embedded={true}
         initialCompanyName={initialSearch}
+        initialSearchType={initialSearchType}
         language={language}
         entrySource={graphEntrySource}
       />

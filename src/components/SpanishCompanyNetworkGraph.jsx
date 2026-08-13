@@ -1358,7 +1358,7 @@ const SpanishCompanyNetworkGraph = ({
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState('company'); // 'company' or 'officer'
+  const [searchType, setSearchType] = useState(initialSearchType === 'officer' ? 'officer' : 'company'); // 'company' or 'officer'
   const [labelFilterText, setLabelFilterText] = useState('');
   const [statusFilters, setStatusFilters] = useState(new Set()); // 'active' | 'ceased'
   const [positionFilters, setPositionFilters] = useState(new Set());
