@@ -14,6 +14,7 @@ import { Helmet } from 'react-helmet-async';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { activateMonitoring } from '../services/monitoringService';
+import { trackEvent } from '../utils/track';
 
 const COPY = {
   en: {
@@ -57,6 +58,12 @@ export default function AlertActivatePage({ lang = 'en' }) {
         if (cancelled) return;
         setCompanyName(result?.alert?.entity_name || result?.entity_name || '');
         setState('ok');
+        // The request event measures intent; this is the retained-user outcome.
+        // Do not send the company name or token to analytics.
+        trackEvent('monitor_activated', {
+          language: lang,
+          activation_source: 'email_confirmation',
+        });
       } catch {
         if (cancelled) return;
         // Expired, already used and missing all look identical to the reader,
@@ -65,7 +72,7 @@ export default function AlertActivatePage({ lang = 'en' }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, lang]);
 
   const appHref = lang === 'es' ? '/app?lang=es' : '/app';
 

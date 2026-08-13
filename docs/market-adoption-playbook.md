@@ -27,7 +27,7 @@ The intended journey is:
 1. **Qualified visit** - a visitor lands on a company, officer, guide, study or homepage.
 2. **Activation** - the visitor obtains the first successful graph result (`graph_activation`).
 3. **Investigation** - the visitor opens nodes, expands the graph, previews data, adds notes or saves the workspace.
-4. **Retention** - the visitor requests free company monitoring (`monitor_request_sent`) and confirms it.
+4. **Retention** - the visitor requests free company monitoring (`monitor_request_sent`) and confirms it (`monitor_activated`).
 5. **Commercial intent** - the visitor opens a due-diligence offer (`view_item`).
 6. **Checkout** - the visitor submits the order form (`begin_checkout`).
 7. **Value delivered** - the report is fulfilled (`purchase`, including zero-value first reports).
@@ -44,7 +44,7 @@ Review this once a week using users, not event count, unless the metric explicit
 | Do visitors reach value? | Users with `graph_activation` / users on eligible entry pages |
 | Does the homepage search help? | `home_search_selection` users and their downstream `graph_activation` rate |
 | Which content activates best? | `graph_activation` users by `entry_source` |
-| Does the product earn a return visit? | Returning activated users and active monitors |
+| Does the product earn a return visit? | Returning activated users and `monitor_activated` users |
 | Is professional interest growing? | `view_item` users / activated users |
 | Is the offer understandable? | `begin_checkout` users / `view_item` users |
 | Does commercial intent complete? | `purchase` users / `begin_checkout` users |
@@ -56,8 +56,7 @@ The July 16-August 12 GA export is a useful baseline, but it is not a homepage f
 Mark these as key events:
 
 - `graph_activation`
-- `monitor_request_sent`
-- `begin_checkout`
+- `monitor_activated`
 - `purchase`
 
 Register event-scoped custom dimensions only for parameters that answer recurring decisions:
