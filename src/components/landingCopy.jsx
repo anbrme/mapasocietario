@@ -429,7 +429,7 @@ export const LANDING_COPY = {
       items: [
         {
           q: '¿Qué es Mapa Societario?',
-          a: 'Mapa Societario es una herramienta de inteligencia de relaciones societarias para empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca 3,1 millones de empresas y 9,4 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales desde 22,50 EUR.',
+          a: 'Mapa Societario es una herramienta de inteligencia de relaciones societarias para empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca 3,1 millones de empresas y 9,5 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales desde 22,50 EUR.',
         },
         {
           q: '¿Necesito una cuenta para usarlo?',

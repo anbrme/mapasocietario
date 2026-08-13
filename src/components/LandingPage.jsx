@@ -41,10 +41,10 @@ const STAT_FIELD = {
 // with values consistent with the homepage structured data. Refined live on
 // mount. Sourced from /bormes/stats/overview.
 const STAT_FALLBACK = {
-  total_companies: 3130331,
-  total_events: 9478088,
-  officer_changes: 6363610,
-  constitutions: 1711862,
+  total_companies: 3150792,
+  total_events: 9564276,
+  officer_changes: 6480122,
+  constitutions: 1730447,
 };
 
 // Floor to one decimal in millions — matches the "3.2M / 9.5M" rounding used in
