@@ -17,6 +17,7 @@ import {
   CheckCircle as ActiveIcon,
   Cancel as InactiveIcon,
 } from '@mui/icons-material';
+import { isAppointmentMovement } from '../utils/officerMovements';
 
 // ─── Position category colors (pattern-based) ────────────────────────────────
 // Left as fixed literals rather than theme tokens: this is an 11-way role
@@ -131,7 +132,7 @@ const OfficerGanttTimeline = ({ companies, language = 'es' }) => {
       positions.forEach(pos => {
         const role = pos.specific_role || pos.position || copy.role;
         if (!byRole[role]) byRole[role] = { appointments: [], cessations: [] };
-        const isAppt = ['nombramientos', 'reelecciones', 'appointment', 'reelection'].includes(pos.event_type);
+        const isAppt = isAppointmentMovement(pos);
         const d = parseDate(pos.date);
         if (d) {
           if (isAppt) byRole[role].appointments.push({ date: d, raw: pos.date });
@@ -317,6 +318,7 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
         date: o.date || o.event_date,
         specific_role: o.specific_role || o.position_normalized || o.role || o.position,
         event_type: o.event_type,
+        movement: o.movement,
         status: o.status,
       });
     });
@@ -332,7 +334,7 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
         date: o.date || o.event_date,
         company: o.company_name || o.company || copy.unknownCompany,
         position: o.specific_role || o.position_normalized || o.role || o.position || '-',
-        isAppointment: ['nombramientos', 'reelecciones'].includes((o.event_type || '').toLowerCase()),
+        isAppointment: isAppointmentMovement(o),
       }))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [officerRecords, copy.unknownCompany]);

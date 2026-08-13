@@ -9663,20 +9663,42 @@ const SpanishCompanyNetworkGraph = ({
                   const seenKeys = new Set();
                   await Promise.all(
                     allNames.map(async (queryName) => {
+                      // The event log, NOT expand-officer: the latter reads the
+                      // entity-assembled companies index, which keeps current
+                      // STATE (one appointed_date per seat), so a
+                      // revoke-and-reappoint collapses to the latest
+                      // appointment. This dialog is a "Cronología BORME" — it
+                      // needs every published act. Falls back to the state
+                      // endpoint if the history one is unavailable, so the
+                      // timeline degrades to today's behaviour instead of
+                      // going blank.
+                      let records = [];
                       try {
-                        const data = await spanishCompaniesService.expandOfficerV3(queryName);
-                        if (data.success && data.officers?.length > 0) {
-                          data.officers.forEach(o => {
-                            const key = `${(o.company_name || '').toUpperCase()}|${(o.specific_role || o.position || '').toUpperCase()}|${o.date || o.event_date || ''}`;
-                            if (!seenKeys.has(key)) {
-                              seenKeys.add(key);
-                              allRecords.push(o);
-                            }
-                          });
-                        }
+                        const events = await spanishCompaniesService.getOfficerEventsV3(queryName);
+                        if (events.success) records = events.movements || [];
                       } catch (err) {
-                        console.warn(`[Timeline] Failed to expand variant "${queryName}":`, err.message);
+                        console.warn(`[Timeline] officer-events failed for "${queryName}":`, err.message);
                       }
+                      if (records.length === 0) {
+                        try {
+                          const data = await spanishCompaniesService.expandOfficerV3(queryName);
+                          if (data.success) records = data.officers || [];
+                        } catch (err) {
+                          console.warn(`[Timeline] Failed to expand variant "${queryName}":`, err.message);
+                        }
+                      }
+                      records.forEach(o => {
+                        const date = o.date || o.event_date || '';
+                        const role = (o.specific_role || o.position_normalized || o.position || '').toUpperCase();
+                        // event_type is part of the key: a revocation and a
+                        // re-appointment of the same role on the same day are
+                        // two distinct movements, not a duplicate.
+                        const key = `${(o.company_name || '').toUpperCase()}|${role}|${date}|${(o.event_type || '').toUpperCase()}`;
+                        if (!seenKeys.has(key)) {
+                          seenKeys.add(key);
+                          allRecords.push(o);
+                        }
+                      });
                     })
                   );
                   if (allRecords.length > 0) {

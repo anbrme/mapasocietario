@@ -560,6 +560,30 @@ class SpanishCompaniesService {
   }
 
   /**
+   * An officer's full registry movement HISTORY, from borme_events_v3.
+   *
+   * expandOfficerV3 reads the entity-assembled companies index, which stores
+   * current STATE — one entry per seat with a single appointed_date — so a
+   * revoke-and-reappoint collapses to the latest appointment. This returns one
+   * movement per published act, each already classified
+   * (appointment/cessation/other) by the registry vocabulary. Use it for any
+   * "what happened" view; use expandOfficerV3 for "what is held now".
+   */
+  async getOfficerEventsV3(officerName, options = {}) {
+    const { size = 200 } = options;
+    const params = new URLSearchParams({ name: officerName, size: size.toString() });
+    const response = await this.fetchWithRetry(
+      `${this.baseUrl}/bormes/v3/officer-events?${params}`,
+      { method: 'GET' }
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw createApiError('V3 officer events error', response, errorText);
+    }
+    return response.json();
+  }
+
+  /**
    * Expand an officer using borme_companies_v3 — returns companies where the
    * officer appears in officers_active or officers_resigned with explicit status.
    */
