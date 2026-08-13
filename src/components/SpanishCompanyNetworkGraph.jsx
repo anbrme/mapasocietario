@@ -7747,7 +7747,8 @@ const SpanishCompanyNetworkGraph = ({
                       {option.cif}
                     </Typography>
                   )}
-                  {(option.type === 'officer' || option.type === 'officer_sole_shareholder') &&
+                  {(option.type === 'officer' || option.type === 'officer_sole_shareholder' ||
+                    option.type === 'company') &&
                     option.company_count != null && option.company_count > 0 && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                         {uiLanguage === 'en'
