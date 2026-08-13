@@ -26,6 +26,11 @@ export function siteNav(lang = 'en') {
     // "Use in Claude" connector page — bilingual SPA route per language.
     connectClaude: es ? '/es/conectar-claude' : '/connect-claude',
     dashboard: '/dashboard',
+    // Manage everything an address monitors. Deliberately reachable with no
+    // token — the page offers to mail a fresh one — which is the whole point:
+    // view tokens are minted only when a digest goes out, so anyone watching a
+    // company that has filed nothing has never been sent a link.
+    monitoring: es ? '/es/alerts/view' : '/alerts/view',
     // IBEX 35 listed-companies hub — server-rendered (Cloudflare Pages Function),
     // NOT a SPA route, so callers must full-page load (web) or open a Custom Tab
     // (native) via openListedCompanies(); never client-route to it.

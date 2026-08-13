@@ -8,9 +8,10 @@ import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
 import FeedbackWidget from './components/FeedbackWidget';
 import { ThemeModeToggle } from './theme/ThemeModeToggle';
+import { DATA_MAINTENANCE } from './config/dataMaintenance';
 import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
 import { openListedCompanies } from './services/listedCompaniesNav';
-import { trackEvent } from './utils/track';
+import { trackEvent, trackUserManualDownload } from './utils/track';
 import {
   getBrowserLanguage,
   getStoredSearchLanguage,
@@ -33,6 +34,7 @@ const APP_COPY = {
       directorSearch: 'Spanish company director search',
       listed: 'IBEX 35 companies',
       dashboard: 'Stats dashboard',
+      monitoring: 'Your monitoring',
       reports: 'Due Diligence reports',
       connectClaude: 'Use in Claude',
       pricing: 'Pricing',
@@ -46,6 +48,7 @@ const APP_COPY = {
       toLight: 'Switch to light mode',
       toDark: 'Switch to dark mode',
     },
+    systemsOperational: 'All systems operational',
   },
   es: {
     title: 'Grafo de Relaciones | Mapa Societario',
@@ -65,6 +68,7 @@ const APP_COPY = {
       about: 'Acerca de',
       listed: 'Empresas del IBEX 35',
       dashboard: 'Panel estadístico',
+      monitoring: 'Tu monitorización',
       faq: 'Preguntas frecuentes',
       facebook: 'Facebook',
       terms: 'Términos',
@@ -74,6 +78,7 @@ const APP_COPY = {
       toLight: 'Cambiar a modo claro',
       toDark: 'Cambiar a modo oscuro',
     },
+    systemsOperational: 'Todos los sistemas operativos',
   },
 };
 
@@ -111,11 +116,19 @@ export default function App() {
   };
   const navItems = [
     { label: copy.menu.guide, url: nav.guide },
-    { label: copy.menu.userGuidePdf, url: nav.userGuidePdf, newTab: true },
+    {
+      label: copy.menu.userGuidePdf,
+      url: nav.userGuidePdf,
+      newTab: true,
+      downloadPlacement: 'graph_view_menu',
+    },
     { label: copy.menu.registerGuide, url: nav.registerGuide },
     { label: copy.menu.directorSearch, url: nav.directorSearch },
     { label: copy.menu.listed, url: nav.listed },
     { label: copy.menu.dashboard, url: nav.dashboard },
+    // The only in-app door to the manage page. Every other way in starts with
+    // an email, which the people most likely to need it have never received.
+    { label: copy.menu.monitoring, url: nav.monitoring },
     null,
     { label: copy.menu.reports, url: nav.reports },
     { label: copy.menu.connectClaude, url: nav.connectClaude },
@@ -233,6 +246,14 @@ export default function App() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+          {!DATA_MAINTENANCE.enabled && (
+            <Typography
+              variant="caption"
+              sx={{ color: 'success.main', fontWeight: 600, whiteSpace: 'nowrap' }}
+            >
+              {copy.systemsOperational}
+            </Typography>
+          )}
           <ThemeModeToggle label={copy.themeToggle} />
           <Tooltip title={copy.menu.tooltip}>
             <IconButton
@@ -257,7 +278,12 @@ export default function App() {
                         href: item.url,
                         target: '_blank',
                         rel: 'noopener noreferrer',
-                        onClick: () => setMenuAnchor(null),
+                        onClick: () => {
+                          if (item.downloadPlacement) {
+                            trackUserManualDownload(item.downloadPlacement, language);
+                          }
+                          setMenuAnchor(null);
+                        },
                       }
                     : { onClick: () => go(item.url) })}
                   sx={{ fontSize: '0.85rem' }}

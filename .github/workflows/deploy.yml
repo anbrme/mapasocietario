@@ -1,15 +1,27 @@
 name: Deploy to Cloudflare Pages
 
+# Runs on pull requests as well as pushes, and this is the point: with a
+# push-only trigger a PR got no checks at all, so it sat looking permanently
+# "stuck on checks" while the tests had in fact never run. The first time they
+# ran was after merge, inside the deploy job — which is how a broken test
+# reached main and then failed the production deploy 31 seconds later instead
+# of blocking the merge.
+#
+# Pull requests build and test but never deploy (see the deploy step's `if`).
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
 # Back-to-back commits previously launched overlapping builds, each running the
 # same live API validation suite. Keep only the newest production deployment so
-# an older commit cannot overload the API or deploy after a newer one.
+# an older commit cannot overload the API or deploy after a newer one. Keyed by
+# ref so a PR's builds cancel each other without ever cancelling production.
 concurrency:
-  group: mapasocietario-production
+  group: mapasocietario-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -23,7 +35,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Node 20 went end-of-life in April 2026. 24 is the active LTS, and
+          # local development already runs on 26, so the code is known to
+          # tolerate newer runtimes. Tests and build both run before the deploy
+          # step, so a regression fails the job rather than shipping.
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -38,6 +54,10 @@ jobs:
           SITE_URL: ${{ secrets.SITE_URL }}
 
       - name: Deploy to Cloudflare Pages
+        # Only a push to main publishes. A pull request stops after the build,
+        # which is all we want from it: proof the branch compiles and passes
+        # before anyone merges it.
+        if: github.event_name == 'push'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

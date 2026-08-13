@@ -91,3 +91,120 @@ export async function activateMonitoring(token) {
   }
   return response.json().catch(() => ({ success: true }));
 }
+
+const UNSUBSCRIBE_PATH = '/bormes/v3/alerts/unsubscribe';
+const UNSUBSCRIBE_ALL_PATH = '/bormes/v3/alerts/unsubscribe-all';
+const RESUBSCRIBE_PATH = '/bormes/v3/alerts/resubscribe';
+
+async function magicLinkPost(path, token) {
+  const clean = (token || '').trim();
+  if (!clean) throw new MonitoringRequestError('missing_token', 0);
+
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}?t=${encodeURIComponent(clean)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch {
+    throw new MonitoringRequestError('network_error', 0);
+  }
+  if (!response.ok) {
+    throw new MonitoringRequestError('magic_link_failed', response.status);
+  }
+  return response.json().catch(() => ({ success: true }));
+}
+
+// Unsubscribe tokens are multi-use with a 1-year TTL (RFC 8058), so an old
+// digest still works months later and clicking twice is harmless.
+export const unsubscribeWithToken = (token) => magicLinkPost(UNSUBSCRIBE_PATH, token);
+export const unsubscribeAllWithToken = (token) => magicLinkPost(UNSUBSCRIBE_ALL_PATH, token);
+export const resubscribeWithToken = (token) => magicLinkPost(RESUBSCRIBE_PATH, token);
+
+// --- the manage page -------------------------------------------------------
+
+const SEND_VIEW_LINK_PATH = '/bormes/v3/alerts/send-view-link';
+const VIEW_PATH = '/bormes/v3/alerts/view';
+const VIEW_UNSUBSCRIBE_PATH = '/bormes/v3/alerts/view/unsubscribe';
+
+// Asks for a link to the manage page. Like requestMonitoring, a resolved call
+// means "accepted" and nothing more: the backend answers identically whether
+// the address monitors ten companies or has never been seen, so a stranger
+// cannot use this form to discover who uses the service. The UI must not claim
+// an email is on its way to THIS address — only that it is if the address has
+// anything to manage.
+export async function requestManageLink(email) {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!EMAIL_RE.test(cleanEmail)) {
+    throw new MonitoringRequestError('invalid_email', 0);
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API_URL}${SEND_VIEW_LINK_PATH}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: cleanEmail }),
+    });
+  } catch {
+    throw new MonitoringRequestError('network_error', 0);
+  }
+
+  if (!response.ok) {
+    // 429 is the global brake and means "try later", which is a different
+    // sentence from "something broke". The page distinguishes them.
+    throw new MonitoringRequestError(
+      response.status === 429 ? 'rate_limited' : 'request_failed',
+      response.status
+    );
+  }
+  return response.json().catch(() => ({ success: true }));
+}
+
+// Everything the token's address monitors, with recent events per company.
+// Scoped by identity rather than by how the alert was paid for, so a DD buyer
+// and a self-serve subscriber see the same page.
+export async function fetchMonitoring(token) {
+  const clean = (token || '').trim();
+  if (!clean) throw new MonitoringRequestError('missing_token', 0);
+
+  let response;
+  try {
+    response = await fetch(`${API_URL}${VIEW_PATH}?t=${encodeURIComponent(clean)}`);
+  } catch {
+    throw new MonitoringRequestError('network_error', 0);
+  }
+  if (!response.ok) {
+    throw new MonitoringRequestError('view_failed', response.status);
+  }
+  const data = await response.json().catch(() => ({}));
+  return Array.isArray(data.alerts) ? data.alerts : [];
+}
+
+// Switches one company off. Deactivates, never deletes — the backend keeps the
+// row and its history so the user can be resubscribed.
+export async function stopMonitoring(token, alertId) {
+  const clean = (token || '').trim();
+  if (!clean) throw new MonitoringRequestError('missing_token', 0);
+  if (!Number.isInteger(alertId)) {
+    throw new MonitoringRequestError('invalid_alert_id', 0);
+  }
+
+  let response;
+  try {
+    response = await fetch(
+      `${API_URL}${VIEW_UNSUBSCRIBE_PATH}?t=${encodeURIComponent(clean)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alert_id: alertId }),
+      }
+    );
+  } catch {
+    throw new MonitoringRequestError('network_error', 0);
+  }
+  if (!response.ok) {
+    throw new MonitoringRequestError('stop_failed', response.status);
+  }
+  return response.json().catch(() => ({ success: true }));
+}

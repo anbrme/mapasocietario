@@ -21,7 +21,7 @@ import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE, SAMPLE_REPORT_URL } fro
 import { siteNav } from '../utils/siteNav';
 import { statsService } from '../services/statsService';
 import { openListedCompanies } from '../services/listedCompaniesNav';
-import { trackEvent } from '../utils/track';
+import { trackEvent, trackUserManualDownload } from '../utils/track';
 
 const SITE_URL = 'https://mapasocietario.es';
 
@@ -241,6 +241,7 @@ export default function LandingPage({ lang = 'en' }) {
                   component="a"
                   href={nav.userGuidePdf}
                   download="mapa-societario-user-guide-en-es.pdf"
+                  onClick={() => trackUserManualDownload('landing_page', lang)}
                   variant="outlined"
                   size="large"
                   startIcon={<SaveAltIcon />}
