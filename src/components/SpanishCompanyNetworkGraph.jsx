@@ -373,9 +373,9 @@ const SEARCH_COPY = {
     cargoUnified: 'Unified — cargos attached',
     cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
     cargoUndo: 'Undo unify',
-    cargoToggleLabel: count => `Unify cargos (${count})`,
+    cargoToggleLabel: count => `Unify positions (${count})`,
     cargoToggleTooltip: 'This entity also holds officer seats in other companies. Toggle to unify them onto this node (or undo).',
-    unifyCargosError: msg => `Could not unify cargos: ${msg}`,
+    unifyCargosError: msg => `Could not unify positions: ${msg}`,
     expandNode: 'Expand node',
     editNode: 'Edit node',
     addPrivateNote: 'Add private note',
@@ -3895,7 +3895,7 @@ const SpanishCompanyNetworkGraph = ({
         });
       }
     } catch (err) {
-      console.error('Unify cargos failed:', err);
+      console.error('Unify positions failed:', err);
       setError(text.unifyCargosError(err.message));
     } finally {
       setIsLoading(false);
@@ -8792,7 +8792,7 @@ const SpanishCompanyNetworkGraph = ({
           />
         )}
 
-        {/* Company⇄cargo unify is now a persistent toolbar toggle ("Unify cargos")
+        {/* Company⇄position unify is now a persistent toolbar toggle ("Unify positions")
             next to Simplify — see cargoToggleNode above. It replaces the old
             discovery banner + transient undo chip: one re-toggleable control that
             both unifies and undoes, paired with the on-node "+N cargos" / "⚭ N"
