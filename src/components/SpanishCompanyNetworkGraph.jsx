@@ -109,6 +109,7 @@ import { investigationLaunchState, entitlementChipLabel, buildInvestigationConte
 import { isLegalEntityName } from '../utils/legalEntity';
 import { detectCargoPresence } from '../utils/cargoDetection';
 import { officerNodeKey, officerIdFor } from '../utils/officerNodeKey';
+import { mergeEntitySuggestions } from '../utils/entitySuggestions';
 import { mergeCargoIntoCompanyNode, undoCargoUnify } from '../utils/graphUnify';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import {
@@ -2318,8 +2319,11 @@ const SpanishCompanyNetworkGraph = ({
 
         // Keep both modalities visible: cap each side so a flood of company
         // matches can't bury the people (and vice-versa). Companies lead since
-        // they're the more common intent.
-        const results = [...companyItems.slice(0, 14), ...officerItems.slice(0, 6)];
+        // they're the more common intent. Officer rows naming an entity already
+        // listed as a company fold into that row (legal-form canonical match) —
+        // its cargo count moves onto the company row's subtitle.
+        const merged = mergeEntitySuggestions(companyItems.slice(0, 14), officerItems);
+        const results = [...merged.companies, ...merged.officers.slice(0, 6)];
 
         setAutocompleteOptions(results);
         if (!suggestionsTrackedRef.current) {
