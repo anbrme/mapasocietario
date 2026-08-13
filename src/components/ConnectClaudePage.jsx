@@ -44,7 +44,7 @@ const COPY = {
     examples: [
       { tool: 'Search companies', prompt: 'Find the Spanish company “Acme Soluciones SL”.' },
       { tool: 'Company profile', prompt: 'Who are the current directors of CaixaBank, and is it dissolved?' },
-      { tool: 'Find an officer', prompt: 'Which Spanish companies is the director “María López García” linked to?' },
+      { tool: 'Find an officer', prompt: 'Which Spanish companies is the director “María López García” linked to, and which of those is she still a director of?' },
       { tool: 'Relationships', prompt: 'Is there any connection between Company A and Company B in Spain?' },
     ],
     scopeHeading: 'What it does — and doesn’t — cover',
@@ -53,6 +53,7 @@ const COPY = {
       'Company search by name (typo-tolerant) with status and registry links',
       'Company profiles: status, incorporation, current and former officers',
       'Sole-shareholder ownership and capital/address where on record',
+      'Where an officer sits across companies — and whether each seat is still held',
       'Corporate relationships: shared officers, owns / owned-by',
     ],
     cantHeading: 'Keep in mind',
@@ -91,7 +92,7 @@ const COPY = {
     examples: [
       { tool: 'Buscar empresas', prompt: 'Busca la empresa española «Acme Soluciones SL».' },
       { tool: 'Perfil de empresa', prompt: '¿Quiénes son los administradores actuales de CaixaBank? ¿Está disuelta?' },
-      { tool: 'Buscar administrador', prompt: '¿A qué empresas españolas está vinculada la administradora «María López García»?' },
+      { tool: 'Buscar administrador', prompt: '¿A qué empresas españolas está vinculada la administradora «María López García» y en cuáles sigue en el cargo?' },
       { tool: 'Relaciones', prompt: '¿Existe alguna relación entre la Empresa A y la Empresa B en España?' },
     ],
     scopeHeading: 'Qué cubre — y qué no',
@@ -100,6 +101,7 @@ const COPY = {
       'Búsqueda de empresas por nombre (tolera erratas) con estado y enlaces al registro',
       'Perfiles de empresa: estado, constitución, administradores actuales y anteriores',
       'Propiedad de socio único y capital/domicilio cuando constan',
+      'En qué empresas figura un administrador — y si cada cargo sigue vigente',
       'Relaciones societarias: administradores compartidos, participa / participada por',
     ],
     cantHeading: 'Ten en cuenta',
