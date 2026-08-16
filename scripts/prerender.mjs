@@ -686,6 +686,23 @@ function removeHreflangLinks(html) {
   return html.replace(/\s*<link\b(?=[^>]*\brel="alternate")(?=[^>]*\bhreflang=)[^>]*>/gi, '');
 }
 
+const HREFLANG_PAIRS = [
+  ['/', '/es'],
+  ['/spanish-company-register-search', '/es/busqueda-registro-mercantil'],
+  ['/connect-claude', '/es/conectar-claude'],
+  ['/due-diligence', '/es/informes-due-diligence-empresas'],
+  ['/company-director-search', '/es/buscar-administradores-empresas'],
+];
+
+function hreflangLinksFor(routePath) {
+  const pair = HREFLANG_PAIRS.find(([en, es]) => routePath === en || routePath === es);
+  if (!pair) return '';
+  const [en, es] = pair.map(canonicalPath);
+  return `    <link rel="alternate" hreflang="en" href="${siteUrl}${en}" />
+    <link rel="alternate" hreflang="es" href="${siteUrl}${es}" />
+    <link rel="alternate" hreflang="x-default" href="${siteUrl}${en}" />`;
+}
+
 // ---------------------------------------------------------------------------
 // Generate one HTML file per route
 // ---------------------------------------------------------------------------
@@ -711,22 +728,9 @@ for (const route of routes) {
     /(<link\s+rel="canonical"[^>]*href=")[^"]*(")/, `$1${pageUrl}$2`,
   );
 
-  // hreflang reciprocity for the true translation pairs.
-  if (route.path === '/' || route.path === '/es') {
-    html = injectHeadLinks(
-      html,
-      `    <link rel="alternate" hreflang="en" href="${siteUrl}/" />
-    <link rel="alternate" hreflang="es" href="${siteUrl}/es/" />
-    <link rel="alternate" hreflang="x-default" href="${siteUrl}/" />`,
-    );
-  } else if (route.path === '/spanish-company-register-search' || route.path === '/es/busqueda-registro-mercantil') {
-    html = injectHeadLinks(
-      html,
-      `    <link rel="alternate" hreflang="en" href="${siteUrl}/spanish-company-register-search/" />
-    <link rel="alternate" hreflang="es" href="${siteUrl}/es/busqueda-registro-mercantil/" />
-    <link rel="alternate" hreflang="x-default" href="${siteUrl}/spanish-company-register-search/" />`,
-    );
-  }
+  // Reciprocal hreflang for every true English/Spanish translation pair.
+  const hreflangLinks = hreflangLinksFor(route.path);
+  if (hreflangLinks) html = injectHeadLinks(html, hreflangLinks);
 
   // Open Graph
   if (route.lang === 'es') {

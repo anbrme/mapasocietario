@@ -93,6 +93,7 @@ import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { normalizeCompanyName } from '../utils/companyName';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
+import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
 import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
@@ -2559,12 +2560,21 @@ const SpanishCompanyNetworkGraph = ({
                 .filter(c => c.is_dissolved)
                 .map(c => companyNameToId(normalizeCompanyName(c.company_name || c.name || '')))
             );
-            if (dissolvedIds.size > 0 || groupKey) {
+            const groupKeysByNodeId = new Map();
+            v3Results.forEach(company => {
+              const key = companyGroupKey(company);
+              const nodeId = companyNameToId(normalizeCompanyName(company.company_name || company.name || ''));
+              if (key && nodeId) groupKeysByNodeId.set(nodeId, key);
+            });
+            if (groupKey && pinnedIds.length > 0) groupKeysByNodeId.set(pinnedIds[0], groupKey);
+
+            if (dissolvedIds.size > 0 || groupKeysByNodeId.size > 0) {
               setGraphData(prev => {
                 const nextNodes = prev.nodes.map(n => {
                   const updates = {};
                   if (dissolvedIds.has(n.id)) updates.isDissolved = true;
-                  if (groupKey && pinnedIds.includes(n.id) && !n.groupKey) updates.groupKey = groupKey;
+                  const stableKey = groupKeysByNodeId.get(n.id);
+                  if (stableKey && !n.groupKey) updates.groupKey = stableKey;
                   return Object.keys(updates).length > 0 ? { ...n, ...updates } : n;
                 });
                 return {
@@ -2573,19 +2583,17 @@ const SpanishCompanyNetworkGraph = ({
                   links: rebindLinksAfterNodeUpdate(prev.links, prev.nodes, nextNodes),
                 };
               });
-            } else if (groupKey && pinnedIds.length > 0) {
-              // Stamp the resolved group_key onto the searched company node so a
-              // later preview/expand reuses it (step 1 of resolveCompanyGroupKey)
-              // instead of re-resolving the name.
-              setGraphData(prev => {
-                const nextNodes = prev.nodes.map(n =>
-                  pinnedIds.includes(n.id) && !n.groupKey ? { ...n, groupKey } : n
-                );
-                return {
-                  ...prev,
-                  nodes: nextNodes,
-                  links: rebindLinksAfterNodeUpdate(prev.links, prev.nodes, nextNodes),
-                };
+            }
+
+            const firstDemandCompany = v3Results.find(company =>
+              companyNameToId(normalizeCompanyName(company.company_name || company.name || '')) === pinnedIds[0]
+            ) || v3Results[0];
+            const firstDemandKey = groupKey || companyGroupKey(firstDemandCompany);
+            if (firstDemandCompany && firstDemandKey) {
+              recordCompanyDemand({
+                eventType: 'search_rendered',
+                language: uiLanguage,
+                company: { ...firstDemandCompany, groupKey: firstDemandKey },
               });
             }
             setLastSearchContext({
@@ -8883,12 +8891,19 @@ const SpanishCompanyNetworkGraph = ({
                     size="small"
                     variant="outlined"
                     endIcon={<OpenInNewIcon />}
-                    onClick={() => trackFullCompanyProfileClick({
-                      href: profileHref,
-                      language: uiLanguage,
-                      entrySource,
-                      placement: 'graph_selected_node',
-                    })}
+                    onClick={() => {
+                      trackFullCompanyProfileClick({
+                        href: profileHref,
+                        language: uiLanguage,
+                        entrySource,
+                        placement: 'graph_selected_node',
+                      });
+                      recordCompanyDemand({
+                        eventType: 'full_profile_click',
+                        language: uiLanguage,
+                        company: contextNode,
+                      });
+                    }}
                     sx={{ textTransform: 'none' }}
                   >
                     {text.companyProfile}
@@ -9648,6 +9663,11 @@ const SpanishCompanyNetworkGraph = ({
                     language: uiLanguage,
                     entrySource,
                     placement: 'graph_context_menu',
+                  });
+                  recordCompanyDemand({
+                    eventType: 'full_profile_click',
+                    language: uiLanguage,
+                    company: contextNode,
                   });
                   closeNodeContextMenu();
                 })}
@@ -10626,11 +10646,18 @@ const SpanishCompanyNetworkGraph = ({
                       href={fullHref}
                       target="_blank"
                       rel="noopener"
-                      onClick={() => trackFullCompanyProfileClick({
-                        href: fullHref,
-                        language: uiLanguage,
-                        entrySource,
-                      })}
+                      onClick={() => {
+                        trackFullCompanyProfileClick({
+                          href: fullHref,
+                          language: uiLanguage,
+                          entrySource,
+                        });
+                        recordCompanyDemand({
+                          eventType: 'full_profile_click',
+                          language: uiLanguage,
+                          company: { ...(e || {}), name: previewData.name },
+                        });
+                      }}
                       variant="body2"
                       sx={{
                         display: 'inline-flex',
