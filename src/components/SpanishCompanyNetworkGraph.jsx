@@ -357,8 +357,9 @@ const SEARCH_COPY = {
     legendSearch: 'Search',
     legendAppointments: 'Appts.',
     legendCessations: 'Cessations',
-    legendHintEmbedded: 'Click: company options | Double click: expand',
-    legendHint: 'Click: company options | Double click: expand | Right click: more',
+    legendHintEmbedded: 'Click: company card | Double-click: expand | Right-click: more options',
+    legendHint: 'Click: company card | Double-click: expand | Right-click: more options',
+    legendHintTouch: 'Tap: company card | Double-tap: more options',
     hiddenNodes: 'Hidden nodes',
     nodeCount: count => `${count} node${count === 1 ? '' : 's'}`,
     showAll: 'Show all',
@@ -404,6 +405,8 @@ const SEARCH_COPY = {
     dataPreview: 'Data preview',
     selectedCompany: 'Selected company',
     companyProfile: 'Company profile',
+    moreOptionsHint: 'Right-click a node for more options.',
+    moreOptionsHintTouch: 'Double-tap a node for more options.',
     timeline: 'Timeline',
     markResigned: 'Mark as ceased',
     markActive: 'Mark as active',
@@ -670,8 +673,9 @@ const SEARCH_COPY = {
     legendSearch: 'Búsqueda',
     legendAppointments: 'Nombram.',
     legendCessations: 'Ceses',
-    legendHintEmbedded: 'Clic: opciones de empresa | Doble clic: expandir',
-    legendHint: 'Clic: opciones de empresa | Doble clic: expandir | Clic derecho: más',
+    legendHintEmbedded: 'Clic: ficha de empresa | Doble clic: expandir | Clic derecho: más opciones',
+    legendHint: 'Clic: ficha de empresa | Doble clic: expandir | Clic derecho: más opciones',
+    legendHintTouch: 'Toque: ficha de empresa | Doble toque: más opciones',
     hiddenNodes: 'Nodos ocultos',
     nodeCount: count => `${count} nodo${count === 1 ? '' : 's'}`,
     showAll: 'Mostrar todos',
@@ -717,6 +721,8 @@ const SEARCH_COPY = {
     dataPreview: 'Vista previa de datos',
     selectedCompany: 'Empresa seleccionada',
     companyProfile: 'Ficha societaria',
+    moreOptionsHint: 'Haz clic derecho en un nodo para ver más opciones.',
+    moreOptionsHintTouch: 'Toca dos veces un nodo para ver más opciones.',
     timeline: 'Línea temporal',
     markResigned: 'Marcar como cesado',
     markActive: 'Marcar como activo',
@@ -2533,6 +2539,16 @@ const SpanishCompanyNetworkGraph = ({
               pinnedIds.push(companyId);
               setPinnedNodeIds(prev => new Set([...prev, companyId]));
             });
+            // Make the searched company card visible as soon as the graph first
+            // renders. Subsequent node clicks still replace this selection, so
+            // every company remains directly inspectable without auto-opening a
+            // modal or navigating away.
+            const firstLoadedName = normalizeCompanyName(
+              merged[0].name || merged[0].company_name || ''
+            );
+            const resolvedFirstName =
+              aliasMap?.get(firstLoadedName.toUpperCase()) || firstLoadedName;
+            setActiveNodeId(companyNameToId(resolvedFirstName));
             // Build a map of nodeId→isDissolved from the raw v3 results so we can
             // stamp the dissolved flag on company graph nodes. This is the only
             // point in the search path where is_dissolved is available without an
@@ -6941,6 +6957,7 @@ const SpanishCompanyNetworkGraph = ({
     setLastSearchContext(null);
     lastSuccessfulSearchAtRef.current = null;
     setPrimarySubject(null);
+    setActiveNodeId(null);
     setSelectedSidebarCompany(null);
     setLoadingMore(false);
     setSimplifyGraph(false);
@@ -8878,6 +8895,12 @@ const SpanishCompanyNetworkGraph = ({
                   </Button>
                 )}
               </Box>
+              <Typography
+                variant="caption"
+                sx={{ display: 'block', mt: 1, color: 'text.secondary' }}
+              >
+                {isTouchDevice ? text.moreOptionsHintTouch : text.moreOptionsHint}
+              </Typography>
             </Paper>
           );
         })()}
@@ -9460,9 +9483,11 @@ const SpanishCompanyNetworkGraph = ({
           <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.soleShareholder}</Typography>
         </Box>
         <Typography sx={{ fontSize: 'inherit', lineHeight: 1, ml: 'auto' }}>
-          {embedded && !isFullscreen
-            ? text.legendHintEmbedded
-            : text.legendHint}
+          {isTouchDevice
+            ? text.legendHintTouch
+            : embedded && !isFullscreen
+              ? text.legendHintEmbedded
+              : text.legendHint}
         </Typography>
       </Box>
     </>
