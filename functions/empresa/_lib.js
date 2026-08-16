@@ -186,7 +186,7 @@ const T = {
     title: (name) => `${name} — Socios, administradores y estructura societaria (Registro Mercantil) | Mapa Societario`,
     ogTitle: (name) => `${name} — Estructura societaria`,
     desc: (name, cap, prov) =>
-      `Ficha del Registro Mercantil (BORME) de ${name}: socios, administradores actuales y cesados, capital social (${cap || 'n/d'})${prov ? `, domicilio en ${prov}` : ''} e historial mercantil completo. Consulta gratuita.`,
+      `Ficha del Registro Mercantil (BORME) de ${name}: socios, administradores actuales y cesados, capital social (${cap || 'n/d'})${prov ? `, domicilio en ${prov}` : ''} e historial mercantil reciente. Consulta gratuita.`,
     jsonLdDesc: (name) =>
       `Estructura societaria de ${name}: administradores, socios, capital social e historial mercantil oficial (BORME).`,
     home: 'Mapa Societario',
@@ -206,6 +206,14 @@ const T = {
     factBormeIds: 'Identificadores BORME',
     factFilings: 'Publicaciones',
     registryData: 'Datos registrales',
+    relationshipOverview: 'Relaciones societarias de un vistazo',
+    relationshipOverviewLead: 'Resumen de las personas, sociedades y actos registrales conectados con esta empresa en los datos disponibles.',
+    overviewCurrent: 'Cargos vigentes',
+    overviewFormer: 'Cargos cesados',
+    overviewOwners: 'Socios únicos conocidos',
+    overviewFilings: 'Publicaciones BORME',
+    topMapBtn: 'Explorar relaciones en el mapa →',
+    topRegistryBtn: 'Ver datos registrales',
     listedCompany: 'Sociedad cotizada',
     cSector: 'Sector',
     cNif: 'NIF / CIF',
@@ -222,8 +230,7 @@ const T = {
     thResigned: 'Cese',
     noBoard: (n) =>
       `No constan administradores ni consejeros vigentes en esta denominación (${n} apoderado(s) u otros cargos registrados).`,
-    hiddenOther: (n) => `${n} apoderado(s) y otros cargos no incluidos`,
-    hiddenMore: (n) => `${n} más`,
+    otherRecordedRoles: (n) => `Ver otros cargos registrados (${n})`,
     shareholders: 'Estructura de socios',
     soleCompanies: 'Socio único (sociedades)',
     soleIndividuals: 'Socio único (personas físicas)',
@@ -368,6 +375,14 @@ const T = {
     factBormeIds: 'BORME IDs',
     factFilings: 'Filings',
     registryData: 'Registry data',
+    relationshipOverview: 'Company relationships at a glance',
+    relationshipOverviewLead: 'A summary of the people, companies and registry filings connected to this company in the available data.',
+    overviewCurrent: 'Current officers',
+    overviewFormer: 'Former officers',
+    overviewOwners: 'Known sole shareholders',
+    overviewFilings: 'BORME filings',
+    topMapBtn: 'Explore relationships on the map →',
+    topRegistryBtn: 'View registry details',
     listedCompany: 'Listed company',
     cSector: 'Sector',
     cNif: 'Tax ID (NIF/CIF)',
@@ -384,8 +399,7 @@ const T = {
     thResigned: 'Resigned',
     noBoard: (n) =>
       `No current directors on record for this denomination (${n} power(s) of attorney or other roles registered).`,
-    hiddenOther: (n) => `${n} power(s) of attorney and other roles not shown`,
-    hiddenMore: (n) => `${n} more`,
+    otherRecordedRoles: (n) => `View other recorded roles (${n})`,
     shareholders: 'Shareholder structure',
     soleCompanies: 'Sole shareholder (companies)',
     soleIndividuals: 'Sole shareholder (individuals)',
@@ -539,16 +553,14 @@ function selectOfficers(list) {
   const all = list || [];
   const board = all.filter(isBoardRole);
   const shown = board.slice(0, MAX_OFFICERS);
-  return { shown, hiddenOther: all.length - board.length, hiddenOverflow: Math.max(0, board.length - MAX_OFFICERS) };
+  const omitted = [...board.slice(MAX_OFFICERS), ...all.filter((officer) => !isBoardRole(officer))];
+  return { shown, omitted };
 }
 
 function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = false } = {}) {
-  const { shown: list, hiddenOther, hiddenOverflow } = selectOfficers(rawList);
-  if (!list.length) {
-    if (noBoardNote && hiddenOther) return `<p class="more">${t.noBoard(hiddenOther)}</p>`;
-    return '';
-  }
-  const rows = list
+  const { shown: list, omitted } = selectOfficers(rawList);
+  if (!list.length && !omitted.length) return '';
+  const renderRows = (officers) => officers
     .map(
       (o) => `<tr>
         <td>${esc(o.name || o.name_normalized)}</td>
@@ -557,13 +569,18 @@ function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = fals
       </tr>`,
     )
     .join('');
-  const notes = [];
-  if (hiddenOther) notes.push(t.hiddenOther(hiddenOther));
-  if (hiddenOverflow) notes.push(t.hiddenMore(hiddenOverflow));
-  const more = notes.length ? `<p class="more">${notes.join('; ')}.</p>` : '';
-  return `<table class="t">
+  const table = (officers) => `<table class="t">
     <thead><tr><th>${t.thName}</th><th>${t.thRole}</th><th>${dateLabel}</th></tr></thead>
-    <tbody>${rows}</tbody></table>${more}`;
+    <tbody>${renderRows(officers)}</tbody></table>`;
+  const primary = list.length
+    ? table(list)
+    : noBoardNote
+    ? `<p class="more">${t.noBoard(omitted.length)}</p>`
+    : '';
+  const more = omitted.length
+    ? `<details class="officer-more"><summary>${t.otherRecordedRoles(omitted.length)}</summary>${table(omitted)}</details>`
+    : '';
+  return `${primary}${more}`;
 }
 
 function listBlock(title, arr) {
@@ -665,6 +682,10 @@ const STYLE = `<style>
   h2{font-size:20px;margin:34px 0 12px;padding-top:18px;border-top:1px solid var(--line)}
   h3{font-size:15px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px}
   .lead{color:var(--mut);margin:0 0 16px}
+  .hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 22px}
+  .hero-actions a,.overview-action{display:inline-block;border-radius:9px;padding:9px 15px;font-size:14px;font-weight:700;text-decoration:none}
+  .hero-primary,.overview-action{background:var(--brand);color:#fff}
+  .hero-secondary{background:#fff;color:var(--brand);border:1px solid #bfdbfe}
   .badges{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
   .badge{font-size:12px;font-weight:600;background:#e0e7ff;color:#3730a3;border-radius:999px;padding:3px 10px}
   .badge.danger{background:#fee2e2;color:#991b1b}
@@ -692,6 +713,13 @@ const STYLE = `<style>
   .subs-btn:hover{background:#eff6ff}
   .subs-btn:disabled{opacity:.6;cursor:default}
   details summary{cursor:pointer;color:var(--brand);font-size:13px}
+  .officer-more{margin-top:10px}
+  .officer-more summary{font-weight:600;margin-bottom:10px}
+  .overview{background:linear-gradient(135deg,#eff6ff,#fff)}
+  .overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
+  .overview-stat{background:#fff;border:1px solid #dbeafe;border-radius:10px;padding:12px}
+  .overview-value{display:block;font-size:24px;line-height:1.1;font-weight:800;color:#1e3a8a}
+  .overview-label{display:block;margin-top:5px;font-size:12px;color:var(--mut)}
   .ids{font-size:13px;color:var(--mut);margin-top:6px;word-break:break-word}
   .chart svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
   .cotizada h2{border-top-color:#bfdbfe}
@@ -732,6 +760,11 @@ const STYLE = `<style>
   .cc-aging .cc-dot{background:#d97706}
   .cc-stale{border-color:#e2e8f0;background:#f8fafc}
   .cc-stale .cc-dot{background:#94a3b8}
+  @media(max-width:640px){
+    .overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .hero-actions a{width:100%;text-align:center}
+    .facts th{width:135px}
+  }
 </style>`;
 
 function hreflangTags(slug) {
@@ -859,6 +892,23 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
 
   const active = officersRows(company.officers_active, 'appointed_date', t.thAppointed, t, lang, { noBoardNote: true });
   const resigned = officersRows(company.officers_resigned, 'resigned_date', t.thResigned, t, lang);
+  const activeCount = (company.officers_active || []).length;
+  const formerCount = (company.officers_resigned || []).length;
+  const ownerCount =
+    (company.sole_shareholders || []).length +
+    (company.sole_shareholder_individuals || []).length;
+  const filingCount = company.total_publications ?? events?.length ?? 0;
+  const relationshipOverviewBlock = `<section class="overview" id="relationships">
+    <h2>${t.relationshipOverview}</h2>
+    <p class="more">${t.relationshipOverviewLead}</p>
+    <div class="overview-grid">
+      <div class="overview-stat"><span class="overview-value">${esc(activeCount)}</span><span class="overview-label">${t.overviewCurrent}</span></div>
+      <div class="overview-stat"><span class="overview-value">${esc(formerCount)}</span><span class="overview-label">${t.overviewFormer}</span></div>
+      <div class="overview-stat"><span class="overview-value">${esc(ownerCount)}</span><span class="overview-label">${t.overviewOwners}</span></div>
+      <div class="overview-stat"><span class="overview-value">${esc(filingCount)}</span><span class="overview-label">${t.overviewFilings}</span></div>
+    </div>
+    <a class="overview-action" href="/app?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
+  </section>`;
 
   // Significant shareholders from CNMV (listed companies only). Reproduced
   // faithfully with CNMV attribution per their reuse terms.
@@ -1094,6 +1144,14 @@ ${hreflangTags(canonicalSlug)}
 <meta name="twitter:description" content="${esc(desc)}">
 ${jsonLd(company, canonicalSlug, lang, t, seed)}
 ${STYLE}
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
+<script>
+  window.dataLayer=window.dataLayer||[];
+  function gtag(){dataLayer.push(arguments)}
+  gtag('js',new Date());
+  gtag('config','G-HHWT6ZTKZD',{send_page_view:false});
+  gtag('event','page_view',{page_path:location.pathname+location.search,page_title:document.title});
+</script>
 </head>
 <body>
 <div class="wrap">
@@ -1102,13 +1160,19 @@ ${STYLE}
   <h1>${esc(name)}</h1>
   <div class="badges">${badges}</div>
   <p class="lead">${t.lead}</p>
+  <div class="hero-actions">
+    <a class="hero-primary" href="/app?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
+    <a class="hero-secondary" href="#registry-data">${t.topRegistryBtn}</a>
+  </div>
 
   ${renameNotice}
   ${cotizadaBlock}
 
   ${renderConfirmationBlock(CONFIRMATIONS[canonicalSlug], lang)}
 
-  <h2>${t.registryData}</h2>
+  ${relationshipOverviewBlock}
+
+  <h2 id="registry-data">${t.registryData}</h2>
   <table class="facts"><tbody>${facts}</tbody></table>
 
   ${cnmvBlock}

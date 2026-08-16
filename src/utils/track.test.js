@@ -42,7 +42,27 @@ describe('analytics tracking helpers', () => {
       language: 'en',
       entry_source: 'homepage',
       link_url: '/en/company/acme-sl',
-      link_text: 'View full profile',
+      link_text: 'Open company profile',
+    });
+  });
+
+  it('distinguishes the selected-node shortcut from the preview link', () => {
+    const gtag = vi.fn();
+    vi.stubGlobal('window', { gtag });
+
+    trackFullCompanyProfileClick({
+      href: '/empresa/acme-sl',
+      language: 'es',
+      entrySource: 'direct',
+      placement: 'graph_selected_node',
+    });
+
+    expect(gtag).toHaveBeenCalledWith('event', 'company_full_profile_click', {
+      placement: 'graph_selected_node',
+      language: 'es',
+      entry_source: 'direct',
+      link_url: '/empresa/acme-sl',
+      link_text: 'Abrir ficha societaria',
     });
   });
 });

@@ -27,8 +27,9 @@ test('active ADM. MANCOM. (joint administrator) renders in the current-board tab
 });
 
 // Guard: genuine committee roles (e.g. "COM. AUDITORIA") must STILL be excluded from
-// the board after the fix — the anchored regex must not over-broaden.
-test('genuine committee roles remain excluded from the current board', () => {
+// the primary board table after the fix. They remain discoverable in the collapsed
+// "other recorded roles" table so the public profile does not silently omit data.
+test('genuine committee roles stay out of the primary board table but remain discoverable', () => {
   const company = {
     company_name: 'X SA',
     company_type: 'SA',
@@ -38,7 +39,9 @@ test('genuine committee roles remain excluded from the current board', () => {
     officers_resigned: [],
   };
   const html = renderCompanyPage(company, [], 'x-sa', null, 'es');
-  assert.doesNotMatch(html, /<td>COMMITTEE PERSON<\/td>/, 'committee-only members are not board members');
+  const beforeOtherRoles = html.split('<details class="officer-more">')[0];
+  assert.doesNotMatch(beforeOtherRoles, /<td>COMMITTEE PERSON<\/td>/, 'committee-only members are not board members');
+  assert.match(html, /<details class="officer-more">[\s\S]*<td>COMMITTEE PERSON<\/td>/);
 });
 
 // The Art. 143 RRM organic permanent representative is administrator-level and

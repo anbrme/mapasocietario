@@ -347,7 +347,7 @@ const SEARCH_COPY = {
     tableType: 'Type',
     tableDate: 'Date',
     emptyTable: 'Search for a company or officer to see data',
-    rowCompanyActions: company => `Actions for ${company}`,
+    rowCompanyActions: company => `Preview data for ${company}`,
     rowOfficerActions: officer => `Actions for ${officer}`,
     filterByDate: company => `Filter by this date in ${company}`,
     legendCompanies: 'Companies',
@@ -357,8 +357,8 @@ const SEARCH_COPY = {
     legendSearch: 'Search',
     legendAppointments: 'Appts.',
     legendCessations: 'Cessations',
-    legendHintEmbedded: 'Double click: expand | Fullscreen to manage',
-    legendHint: 'Double click: expand | Right click: manage',
+    legendHintEmbedded: 'Click: company options | Double click: expand',
+    legendHint: 'Click: company options | Double click: expand | Right click: more',
     hiddenNodes: 'Hidden nodes',
     nodeCount: count => `${count} node${count === 1 ? '' : 's'}`,
     showAll: 'Show all',
@@ -402,6 +402,8 @@ const SEARCH_COPY = {
       'You grouped these records manually. The grouping is your working hypothesis — it is not confirmed by BORME data.',
     nodesMergedToast: (from, to) => `Merged: ${from} → ${to}`,
     dataPreview: 'Data preview',
+    selectedCompany: 'Selected company',
+    companyProfile: 'Company profile',
     timeline: 'Timeline',
     markResigned: 'Mark as ceased',
     markActive: 'Mark as active',
@@ -658,7 +660,7 @@ const SEARCH_COPY = {
     tableType: 'Tipo',
     tableDate: 'Fecha',
     emptyTable: 'Busca una empresa o directivo para ver datos',
-    rowCompanyActions: company => `Acciones sobre ${company}`,
+    rowCompanyActions: company => `Ver datos de ${company}`,
     rowOfficerActions: officer => `Acciones sobre ${officer}`,
     filterByDate: company => `Filtrar por esta fecha en ${company}`,
     legendCompanies: 'Empresas',
@@ -668,8 +670,8 @@ const SEARCH_COPY = {
     legendSearch: 'Búsqueda',
     legendAppointments: 'Nombram.',
     legendCessations: 'Ceses',
-    legendHintEmbedded: 'Doble clic: expandir | Pantalla completa para gestionar',
-    legendHint: 'Doble clic: expandir | Clic derecho: gestionar',
+    legendHintEmbedded: 'Clic: opciones de empresa | Doble clic: expandir',
+    legendHint: 'Clic: opciones de empresa | Doble clic: expandir | Clic derecho: más',
     hiddenNodes: 'Nodos ocultos',
     nodeCount: count => `${count} nodo${count === 1 ? '' : 's'}`,
     showAll: 'Mostrar todos',
@@ -713,6 +715,8 @@ const SEARCH_COPY = {
       'Has agrupado estos registros manualmente. La agrupación es tu hipótesis de trabajo — no está confirmada por los datos del BORME.',
     nodesMergedToast: (from, to) => `Fusionados: ${from} → ${to}`,
     dataPreview: 'Vista previa de datos',
+    selectedCompany: 'Empresa seleccionada',
+    companyProfile: 'Ficha societaria',
     timeline: 'Línea temporal',
     markResigned: 'Marcar como cesado',
     markActive: 'Marcar como activo',
@@ -4950,6 +4954,7 @@ const SpanishCompanyNetworkGraph = ({
           interaction_source: 'mouse',
           click_action: 'select',
         });
+        setActiveNodeId(nodeId);
       }
     },
     [
@@ -4969,6 +4974,7 @@ const SpanishCompanyNetworkGraph = ({
       ...graphInteractionParams(),
       interaction_source: isTouchDevice ? 'touch' : 'mouse',
     });
+    setActiveNodeId(null);
   }, [graphInteractionParams, isTouchDevice]);
 
   const openEditNodeDialog = useCallback(() => {
@@ -5269,21 +5275,22 @@ const SpanishCompanyNetworkGraph = ({
   }, [graphData.nodes, graphData.links]);
 
   // Data preview: fetch live data normally, or read only the imported snapshot.
-  const openDataPreview = useCallback(async () => {
-    if (!contextNode) return;
-    const name = contextNode.name;
-    const isOfficer = contextNode.type === 'officer';
+  const openDataPreview = useCallback(async (nodeOverride = null) => {
+    const previewTarget = nodeOverride || contextNode;
+    if (!previewTarget) return;
+    const name = previewTarget.name;
+    const isOfficer = previewTarget.type === 'officer';
     closeNodeContextMenu();
     setPreviewNodeName(name);
     setPreviewNodeType(isOfficer ? 'officer' : 'company');
-    setPreviewUserMerged(!!contextNode.userMerged);
+    setPreviewUserMerged(!!previewTarget.userMerged);
     setPreviewData(null);
     setPreviewError(null);
     setPreviewLoading(true);
     setPreviewOpen(true);
 
     if (snapshotMode) {
-      const localPreview = buildSnapshotPreview(contextNode);
+      const localPreview = buildSnapshotPreview(previewTarget);
       if (localPreview) setPreviewData(localPreview);
       else setPreviewError(text.noCompanyPreview);
       setPreviewLoading(false);
@@ -5293,7 +5300,7 @@ const SpanishCompanyNetworkGraph = ({
     try {
       if (isOfficer) {
         // Query all name variants (from merged nodes) to get complete appointment history
-        const nameVariants = contextNode.nameVariants || [];
+        const nameVariants = previewTarget.nameVariants || [];
         const allNames = [name, ...nameVariants.filter(v => v !== name)];
 
         const allOfficers = [];
@@ -5351,7 +5358,7 @@ const SpanishCompanyNetworkGraph = ({
         // group_key already on the node; otherwise resolve via the directory.
         const groupKey = await spanishCompaniesService.resolveCompanyGroupKey(
           name,
-          contextNode.groupKey || null
+          previewTarget.groupKey || null
         );
 
         // Fetch both the company profile and events in parallel, scoped to the
@@ -5371,7 +5378,7 @@ const SpanishCompanyNetworkGraph = ({
 
         if (!company && events.length === 0) {
           // Fallback: use data already in the node
-          const summary = contextNode.companySummary;
+          const summary = previewTarget.companySummary;
           if (summary?.entries?.length > 0) {
             const parsedFallback = parseSpanishCompanyData(summary.entries[0]);
             setPreviewData({ type: 'company', name, entries: summary.entries, parsed: parsedFallback, company: null, enriched: null });
@@ -5478,7 +5485,7 @@ const SpanishCompanyNetworkGraph = ({
           const lastSeen = company?.last_seen || (sortedEvents.length > 0 ? (sortedEvents[0].event_date || sortedEvents[0].indexed_date) : null);
 
           // Previous names — merge node-derived names with v3 name_changes
-          const nodePrevNames = contextNode.companySummary?.previousNames || contextNode.previousNames || [];
+          const nodePrevNames = previewTarget.companySummary?.previousNames || previewTarget.previousNames || [];
           const nameChanges = Array.isArray(company?.name_changes) ? company.name_changes : [];
           const previousNamesSet = new Set(nodePrevNames);
           nameChanges.forEach(nc => {
@@ -8792,6 +8799,89 @@ const SpanishCompanyNetworkGraph = ({
           />
         )}
 
+        {contextNode && contextNode.type !== 'officer' && (() => {
+          const profileHref = fullCompanyPageHref(contextNode.name, uiLanguage);
+          return (
+            <Paper
+              elevation={6}
+              sx={{
+                position: 'absolute',
+                left: 12,
+                bottom: 12,
+                zIndex: 20,
+                width: { xs: 'calc(100% - 24px)', sm: 360 },
+                maxWidth: 'calc(100% - 24px)',
+                p: 1.25,
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: (t) => alpha(t.palette.background.paper, 0.96),
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <BusinessIcon sx={{ mt: 0.25, color: 'primary.main' }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {text.selectedCompany}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
+                    {contextNode.name}
+                  </Typography>
+                </Box>
+                <IconButton
+                  size="small"
+                  aria-label={text.close}
+                  onClick={() => setActiveNodeId(null)}
+                  sx={{ mt: -0.5, mr: -0.5 }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<PreviewIcon />}
+                  onClick={() => {
+                    trackEvent('graph_selected_node_action', {
+                      ...graphInteractionParams(contextNode),
+                      interaction_source: 'graph_selection_card',
+                      selected_action: 'data_preview',
+                    });
+                    openDataPreview(contextNode);
+                  }}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {text.dataPreview}
+                </Button>
+                {profileHref && (
+                  <Button
+                    component="a"
+                    href={profileHref}
+                    target="_blank"
+                    rel="noopener"
+                    size="small"
+                    variant="outlined"
+                    endIcon={<OpenInNewIcon />}
+                    onClick={() => trackFullCompanyProfileClick({
+                      href: profileHref,
+                      language: uiLanguage,
+                      entrySource,
+                      placement: 'graph_selected_node',
+                    })}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    {text.companyProfile}
+                  </Button>
+                )}
+              </Box>
+            </Paper>
+          );
+        })()}
+
         {/* Company⇄position unify is now a persistent toolbar toggle ("Unify positions")
             next to Simplify — see cargoToggleNode above. It replaces the old
             discovery banner + transient undo chip: one re-toggleable control that
@@ -9137,6 +9227,19 @@ const SpanishCompanyNetworkGraph = ({
                         </TableCell>
                         <TableCell
                           onClick={
+                            row.companyNode
+                              ? () => {
+                                  setActiveNodeId(row.companyNode.id);
+                                  trackEvent('graph_selected_node_action', {
+                                    ...graphInteractionParams(row.companyNode),
+                                    interaction_source: 'table_row',
+                                    selected_action: 'data_preview',
+                                  });
+                                  openDataPreview(row.companyNode);
+                                }
+                              : undefined
+                          }
+                          onContextMenu={
                             row.companyNode
                               ? (e) => handleNodeRightClick(row.companyNode, e, { interactionSource: 'table_row' })
                               : undefined
@@ -9500,9 +9603,36 @@ const SpanishCompanyNetworkGraph = ({
             </Box>
           )}
           <Divider />
-          {/* First action by design: a bell drawn on the node itself competes
-              with its label, status ring and every incident edge, and on a
-              dense node it simply is not findable. */}
+          <MenuItem onClick={() => runContextAction('data_preview', () => openDataPreview(contextNode))}>
+            <ListItemIcon>
+              <PreviewIcon fontSize="small" color="info" />
+            </ListItemIcon>
+            <ListItemText>{text.dataPreview}</ListItemText>
+          </MenuItem>
+          {contextNode && contextNode.type !== 'officer' && (() => {
+            const profileHref = fullCompanyPageHref(contextNode.name, uiLanguage);
+            return profileHref ? (
+              <MenuItem
+                component="a"
+                href={profileHref}
+                target="_blank"
+                rel="noopener"
+                onClick={() => runContextAction('company_profile', () => {
+                  trackFullCompanyProfileClick({
+                    href: profileHref,
+                    language: uiLanguage,
+                    entrySource,
+                    placement: 'graph_context_menu',
+                  });
+                  closeNodeContextMenu();
+                })}
+              >
+                <ListItemIcon><OpenInNewIcon fontSize="small" color="primary" /></ListItemIcon>
+                <ListItemText>{text.companyProfile}</ListItemText>
+              </MenuItem>
+            ) : null;
+          })()}
+          <Divider />
           {isMonitorableNode(contextNode) && (
             <MenuItem
               onClick={() => {
@@ -9637,12 +9767,6 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.unmergeNode}</ListItemText>
             </MenuItem>
           )}
-          <MenuItem onClick={() => runContextAction('data_preview', openDataPreview)}>
-            <ListItemIcon>
-              <PreviewIcon fontSize="small" color="info" />
-            </ListItemIcon>
-            <ListItemText>{text.dataPreview}</ListItemText>
-          </MenuItem>
           {contextNode && contextNode.type === 'officer' && (
             <MenuItem
               disabled={timelineLoading}
@@ -10502,7 +10626,7 @@ const SpanishCompanyNetworkGraph = ({
                         textDecorationColor: (t) => alpha(t.palette.accent.primary, 0.5),
                       }}
                     >
-                      {uiLanguage === 'en' ? 'View full profile' : 'Ver ficha completa'}
+                      {uiLanguage === 'en' ? 'Open company profile' : 'Abrir ficha societaria'}
                       <OpenInNewIcon sx={{ fontSize: 16 }} />
                     </Typography>
                   )}

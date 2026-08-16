@@ -26,12 +26,17 @@ export function trackUserManualDownload(placement, language) {
  * page. The destination is public and lets GA4 report which profiles attract
  * the strongest interest without sending the user's search query.
  */
-export function trackFullCompanyProfileClick({ href, language, entrySource }) {
+export function trackFullCompanyProfileClick({
+  href,
+  language,
+  entrySource,
+  placement = 'graph_company_preview',
+}) {
   trackEvent('company_full_profile_click', {
-    placement: 'graph_company_preview',
+    placement,
     language,
     entry_source: entrySource,
     link_url: href,
-    link_text: language === 'en' ? 'View full profile' : 'Ver ficha completa',
+    link_text: language === 'en' ? 'Open company profile' : 'Abrir ficha societaria',
   });
 }

@@ -47,3 +47,39 @@ test('BORME address shows WITHOUT the external caveat', () => {
   assert.match(html, /C\/ REAL 1/);
   assert.doesNotMatch(html, /estimación de fuente externa/);
 });
+
+test('relationship summary and map action are visible before registry details', () => {
+  const html = render({
+    officers_active: [{ name: 'ANA ADMIN', position_normalized: 'PRESIDENTE' }],
+    officers_resigned: [{ name: 'LUIS FORMER', position_normalized: 'CONSEJERO' }],
+    sole_shareholders: ['OWNER HOLDING SL'],
+    total_publications: 12,
+  });
+
+  assert.match(html, /Relaciones societarias de un vistazo/);
+  assert.match(html, /Explorar relaciones en el mapa/);
+  assert.match(html, /\/app\?search=TEST%20CO%20SL/);
+  assert.ok(
+    html.indexOf('Relaciones societarias de un vistazo') < html.indexOf('Datos registrales'),
+  );
+});
+
+test('non-board officer roles remain available in a collapsed details table', () => {
+  const html = render({
+    officers_active: [
+      { name: 'ANA ADMIN', position_normalized: 'PRESIDENTE' },
+      { name: 'PABLO POWER', position_normalized: 'APODERADO', appointed_date: '2024-01-02' },
+    ],
+  });
+
+  assert.match(html, /Ver otros cargos registrados \(1\)/);
+  assert.match(html, /PABLO POWER/);
+  assert.doesNotMatch(html, /no incluidos/);
+});
+
+test('standalone company pages report their own GA4 page view', () => {
+  const html = render({});
+
+  assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-HHWT6ZTKZD/);
+  assert.match(html, /gtag\('event','page_view'/);
+});
