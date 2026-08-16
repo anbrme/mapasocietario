@@ -92,7 +92,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { normalizeCompanyName } from '../utils/companyName';
-import { trackEvent } from '../utils/track';
+import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
 import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
@@ -10477,6 +10477,11 @@ const SpanishCompanyNetworkGraph = ({
                       href={fullHref}
                       target="_blank"
                       rel="noopener"
+                      onClick={() => trackFullCompanyProfileClick({
+                        href: fullHref,
+                        language: uiLanguage,
+                        entrySource,
+                      })}
                       variant="body2"
                       sx={{
                         display: 'inline-flex',

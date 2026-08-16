@@ -20,3 +20,18 @@ export function trackUserManualDownload(placement, language) {
     file_name: 'mapa-societario-user-guide-en-es.pdf',
   });
 }
+
+/**
+ * Track the hand-off from the graph's company preview to the full company
+ * page. The destination is public and lets GA4 report which profiles attract
+ * the strongest interest without sending the user's search query.
+ */
+export function trackFullCompanyProfileClick({ href, language, entrySource }) {
+  trackEvent('company_full_profile_click', {
+    placement: 'graph_company_preview',
+    language,
+    entry_source: entrySource,
+    link_url: href,
+    link_text: language === 'en' ? 'View full profile' : 'Ver ficha completa',
+  });
+}

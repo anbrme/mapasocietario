@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { trackUserManualDownload } from './track';
+import { trackFullCompanyProfileClick, trackUserManualDownload } from './track';
 
-describe('trackUserManualDownload', () => {
+describe('analytics tracking helpers', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -24,5 +24,25 @@ describe('trackUserManualDownload', () => {
     vi.stubGlobal('window', {});
 
     expect(() => trackUserManualDownload('graph_view_menu', 'en')).not.toThrow();
+  });
+
+  it('tracks a full company profile click with its language and destination', () => {
+    const gtag = vi.fn();
+    vi.stubGlobal('window', { gtag });
+
+    trackFullCompanyProfileClick({
+      href: '/en/company/acme-sl',
+      language: 'en',
+      entrySource: 'homepage',
+    });
+
+    expect(gtag).toHaveBeenCalledOnce();
+    expect(gtag).toHaveBeenCalledWith('event', 'company_full_profile_click', {
+      placement: 'graph_company_preview',
+      language: 'en',
+      entry_source: 'homepage',
+      link_url: '/en/company/acme-sl',
+      link_text: 'View full profile',
+    });
   });
 });
