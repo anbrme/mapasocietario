@@ -1,3 +1,11 @@
 name = "mapasocietario"
 compatibility_date = "2024-12-01"
 pages_build_output_dir = "dist"
+
+# Demand-based indexing store for /empresa pages (functions/api/company-demand.js,
+# functions/sitemaps/*). Top-level binding: inherited by both the production and
+# preview Pages environments.
+[[d1_databases]]
+binding = "SEO_DB"
+database_name = "mapasocietario-seo"
+database_id = "2e471c22-6478-4d55-b3c6-9d0fc279e6ba"
