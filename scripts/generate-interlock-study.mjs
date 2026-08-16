@@ -294,6 +294,14 @@ function render(lang) {
 <meta name="twitter:description" content="${esc(t.desc)}">
 ${jsonLd(t, lang)}
 ${STYLE}
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
+<script>
+  window.dataLayer=window.dataLayer||[];
+  function gtag(){dataLayer.push(arguments)}
+  gtag('js',new Date());
+  gtag('config','G-HHWT6ZTKZD',{send_page_view:false});
+  gtag('event','page_view',{page_path:location.pathname+location.search,page_title:document.title});
+</script>
 </head>
 <body>
 <div class="wrap">

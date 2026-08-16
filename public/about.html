@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>About | Mapa Societario</title>
     <link rel="canonical" href="https://mapasocietario.es/about" />
+    <link rel="alternate" hreflang="en" href="https://mapasocietario.es/about" />
+    <link rel="alternate" hreflang="es" href="https://mapasocietario.es/about-es" />
+    <link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/about" />
     <meta
       name="description"
       content="Learn how Mapa Societario works: data sources, methodology, coverage, and the technology behind Spain's corporate relationship graph."
     />
     <meta name="robots" content="index,follow" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
+    <script src="/ga4-pageview.js"></script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -81,7 +86,7 @@
     <main>
       <p style="margin:0 0 1.25rem;font-size:0.85rem;display:flex;justify-content:space-between;align-items:center;">
         <a href="/">&larr; Mapa Societario</a>
-        <a href="/about-es.html" hreflang="es" lang="es">Español</a>
+        <a href="/about-es" hreflang="es" lang="es">Español</a>
       </p>
       <h1>About Mapa Societario</h1>
       <p class="muted">A free, open tool to explore Spain's corporate network</p>
@@ -120,6 +125,17 @@
         <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion" target="_blank" rel="noopener">reuse conditions</a>.
         We transform, extract, reorder, combine and analyze BOE/BORME publications to create a
         value-added search and graph service.
+      </p>
+      <p>
+        <strong>Tax identifiers (NIF/CIF):</strong> the BORME does not publish them, so where a
+        company profile shows one it comes from other official open datasets — public-subsidy
+        records from the
+        <a href="https://www.infosubvenciones.es" target="_blank" rel="noopener">Sistema Nacional de Publicidad de Subvenciones</a>
+        and public-procurement records from the
+        <a href="https://huggingface.co/datasets/nextprocurement/PLSP_Company_Info" target="_blank" rel="noopener">NextProcurement PLSP company dataset</a>,
+        reused under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
+        An identifier is only attached when the company name, legal form and province all agree; where
+        they do not, no NIF is shown.
       </p>
 
       <h2>Independent service based on official sources</h2>

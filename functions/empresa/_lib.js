@@ -17,6 +17,7 @@ import { nameToSlug, pickSlugMatch } from './_slug.js';
 import { renderConfirmationBlock } from './_confirmation.js';
 import { CONFIRMATIONS } from './_confirmations.js';
 import { buildTrademarksBlock } from './_trademarks.js';
+import { findPromotedCompanyBySlug } from './_demand.js';
 // The canonical position classifier shared with the graph + officer-capping
 // service (backed by src/data/terms.json, swept by test/position-categories.test.mjs).
 // Pure module (no React/DOM/SPA deps — its purity is guarded by that node test),
@@ -1068,7 +1069,7 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
       <div class="overview-stat"><span class="overview-value">${esc(ownerCount)}</span><span class="overview-label">${t.overviewOwners}</span></div>
       <div class="overview-stat"><span class="overview-value">${esc(filingCount)}</span><span class="overview-label">${t.overviewFilings}</span></div>
     </div>
-    <a class="overview-action" href="/app?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
+    <a class="overview-action" data-track="profile_open_graph" href="/app?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
   </section>`;
 
   // Significant shareholders from CNMV (listed companies only). Reproduced
@@ -1322,8 +1323,8 @@ ${STYLE}
   <div class="badges">${badges}</div>
   <p class="lead">${t.lead}</p>
   <div class="hero-actions">
-    <a class="hero-primary" href="/app?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
-    <a class="hero-secondary" href="#registry-data">${t.topRegistryBtn}</a>
+    <a class="hero-primary" data-track="profile_open_graph" href="/app?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
+    <a class="hero-secondary" data-track="profile_registry_jump" href="#registry-data">${t.topRegistryBtn}</a>
   </div>
 
   ${renameNotice}
@@ -1377,13 +1378,28 @@ ${STYLE}
     <h2>${t.ddCtaTitle}</h2>
     <p>${esc(t.ddCtaText(name))}</p>
     <div class="cta-actions">
-      <a class="cta-primary" href="/due-diligence?company=${encodeURIComponent(name)}">${t.ddCtaBtn}</a>
-      <a class="cta-secondary" href="/app?search=${encodeURIComponent(name)}">${t.ctaBtn}</a>
+      <a class="cta-primary" data-track="profile_due_diligence" href="/due-diligence?company=${encodeURIComponent(name)}">${t.ddCtaBtn}</a>
+      <a class="cta-secondary" data-track="profile_open_graph" href="/app?search=${encodeURIComponent(name)}">${t.ctaBtn}</a>
     </div>
   </div>
 
   <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}</footer>
 </div>
+<script>
+(function(){
+  document.querySelectorAll('[data-track]').forEach(function(link){
+    link.addEventListener('click',function(){
+      if(typeof gtag!=='function')return;
+      gtag('event','company_profile_cta_click',{
+        action:link.getAttribute('data-track'),
+        company_slug:${JSON.stringify(canonicalSlug)},
+        language:${JSON.stringify(lang)},
+        link_url:link.getAttribute('href')||''
+      });
+    });
+  });
+})();
+</script>
 </body>
 </html>`;
 }
@@ -1406,21 +1422,25 @@ function notFoundPage(slug, lang = 'es') {
 // Pages Function entrypoint (shared by both languages)
 // ---------------------------------------------------------------------------
 
-export async function handleCompany({ params }, lang = 'es') {
+export async function handleCompany({ params, env }, lang = 'es') {
   const slug = String(params.slug || '').toLowerCase();
   const resolved = resolveSlug(slug);
-  // Non-curated slugs fall back to a name lookup (served noindex). Curated/IBEX
-  // resolve via their stored v3Name as before.
-  const isFallback = resolved.kind === 'notfound';
+  // A demand-promoted company is resolved by its stable group_key and becomes
+  // indexable without being hard-coded in CURATED. When D1 is absent or a row
+  // is not promoted, the existing safe noindex fallback remains unchanged.
+  const promoted = resolved.kind === 'notfound'
+    ? await findPromotedCompanyBySlug(env?.SEO_DB, slug)
+    : null;
+  const isFallback = resolved.kind === 'notfound' && !promoted;
   const seed = resolved.kind === 'seed' ? resolved.entry : null;
-  let name = isFallback ? slugToQuery(slug) : resolved.entry.v3Name;
+  let name = promoted?.canonical_name || (isFallback ? slugToQuery(slug) : resolved.entry.v3Name);
 
   // Seed companies resolve by registry identity (hoja → group_key), not by
   // name: enrichment runs can re-canonicalize a doc's name (e.g. "INDUSTRIA DE
   // DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)" → "...S.A."), and by-name lookups can
   // collide with smaller same-named docs (BANKINTER SA exists on 3 hojas). The
   // hoja never changes, so these indexed pages survive both.
-  const groupKey = seed && seed.hoja ? `H:${seed.hoja.replace(/\s+/g, '-')}` : null;
+  const groupKey = promoted?.group_key || (seed && seed.hoja ? `H:${seed.hoja.replace(/\s+/g, '-')}` : null);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
@@ -1530,13 +1550,23 @@ export async function handleCompany({ params }, lang = 'es') {
       .filter((e) => !e.group_key || allowed.has(e.group_key))
       .slice(0, 100);
 
+    // A promoted page is indexable, so it has to keep round-tripping too. If the
+    // company was renamed after promotion its live name no longer matches this
+    // slug, and asserting the page as canonical would point Google at a stale
+    // identity. Keep serving it (it may already be indexed) but drop it out of
+    // the index; the next demand signal re-validates and demotes the D1 row.
+    const staleSlug = Boolean(promoted) && nameToSlug(company.company_name) !== slug;
+    const noindex = isFallback || staleSlug;
+
     const gleif = gleifResp && gleifResp.success ? gleifResp.data : null;
-    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, isFallback);
+    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex);
     return new Response(html, {
       status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
-        'cache-control': 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800',
+        'cache-control': noindex
+          ? 'public, max-age=0, s-maxage=600'
+          : 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800',
       },
     });
   } catch {
@@ -1647,6 +1677,14 @@ export function renderHub(lang = 'es') {
 <meta property="og:image" content="${SITE}/og-image.svg">
 <script type="application/ld+json">${ld}</script>
 ${HUB_STYLE}
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
+<script>
+  window.dataLayer=window.dataLayer||[];
+  function gtag(){dataLayer.push(arguments)}
+  gtag('js',new Date());
+  gtag('config','G-HHWT6ZTKZD',{send_page_view:false});
+  gtag('event','page_view',{page_path:location.pathname+location.search,page_title:document.title});
+</script>
 </head>
 <body>
 <div class="wrap">

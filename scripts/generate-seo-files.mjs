@@ -21,6 +21,12 @@ Sitemap: ${siteUrl}/sitemap.xml
 // pending). Same flag as generate-barometro.mjs; set BAROMETRO_PUBLISHED=1 to restore.
 const BAROMETRO_PUBLISHED = process.env.BAROMETRO_PUBLISHED === '1' || process.env.BAROMETRO_PUBLISHED === 'true';
 
+// /sitemap-demand.xml is served by a Pages Function and 404s until the first
+// company is promoted. Referencing a 404 from the sitemap index is a Search
+// Console error, so the reference stays off until there is something to list.
+// Set DEMAND_SITEMAP_PUBLISHED=1 once /sitemap-demand.xml returns 200.
+const DEMAND_SITEMAP_PUBLISHED = process.env.DEMAND_SITEMAP_PUBLISHED === '1' || process.env.DEMAND_SITEMAP_PUBLISHED === 'true';
+
 const sitemapRoutes = [
   { path: '/', changefreq: 'daily', priority: '1.0' },
   { path: '/app/', changefreq: 'daily', priority: '0.8' },
@@ -39,7 +45,12 @@ const sitemapRoutes = [
   { path: '/es/mapa-relaciones-societarias/', changefreq: 'weekly', priority: '0.8' },
   { path: '/estudios/consejos-cruzados-ibex-35/', changefreq: 'monthly', priority: '0.7' },
   { path: '/en/studies/ibex-35-interlocking-boards/', changefreq: 'monthly', priority: '0.7' },
+  { path: '/connect-claude/', changefreq: 'monthly', priority: '0.6' },
+  { path: '/es/conectar-claude/', changefreq: 'monthly', priority: '0.6' },
   { path: '/about', changefreq: 'monthly', priority: '0.5' },
+  { path: '/about-es', changefreq: 'monthly', priority: '0.5' },
+  { path: '/faq', changefreq: 'monthly', priority: '0.5' },
+  { path: '/faq-es', changefreq: 'monthly', priority: '0.5' },
   { path: '/terms', changefreq: 'monthly', priority: '0.4' },
   { path: '/privacy', changefreq: 'monthly', priority: '0.3' },
 ].filter((r) => BAROMETRO_PUBLISHED || r.path !== '/es/barometro-empresarial/');
@@ -62,6 +73,14 @@ ${sitemapUrls}
 </urlset>
 `;
 
+const demandSitemapEntry = DEMAND_SITEMAP_PUBLISHED
+  ? `  <sitemap>
+    <loc>${siteUrl}/sitemap-demand.xml</loc>
+    <lastmod>${buildDate}</lastmod>
+  </sitemap>
+`
+  : '';
+
 const sitemapIndexXml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
@@ -72,7 +91,7 @@ const sitemapIndexXml = `<?xml version="1.0" encoding="UTF-8"?>
     <loc>${siteUrl}/sitemap-empresas.xml</loc>
     <lastmod>${buildDate}</lastmod>
   </sitemap>
-</sitemapindex>
+${demandSitemapEntry}</sitemapindex>
 `;
 
 mkdirSync(publicDir, { recursive: true });

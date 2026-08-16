@@ -9,9 +9,12 @@
       content="Cómo funciona Mapa Societario: fuentes de datos, metodología, cobertura y la tecnología tras el grafo de relaciones societarias de España."
     />
     <meta name="robots" content="index,follow" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
+    <script src="/ga4-pageview.js"></script>
     <link rel="canonical" href="https://mapasocietario.es/about-es" />
     <link rel="alternate" hreflang="es" href="https://mapasocietario.es/about-es" />
-    <link rel="alternate" hreflang="en" href="https://mapasocietario.es/about.html" />
+    <link rel="alternate" hreflang="en" href="https://mapasocietario.es/about" />
+    <link rel="alternate" hreflang="x-default" href="https://mapasocietario.es/about" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -64,7 +67,7 @@
     <main>
       <div class="topbar">
         <a href="/es">&larr; Mapa Societario</a>
-        <a href="/about.html" hreflang="en" lang="en">English</a>
+        <a href="/about" hreflang="en" lang="en">English</a>
       </div>
 
       <h1>Acerca de Mapa Societario</h1>
@@ -107,6 +110,17 @@
         <a href="https://www.boe.es/informacion/aviso_legal/index.php#reutilizacion" target="_blank" rel="noopener">condiciones de reutilización</a>.
         Transformamos, extraemos, reordenamos, combinamos y analizamos las publicaciones del BOE/BORME
         para crear un servicio de búsqueda y grafo con valor añadido.
+      </p>
+      <p>
+        <strong>Identificadores fiscales (NIF/CIF):</strong> el BORME no los publica, así que cuando
+        una ficha muestra uno procede de otros conjuntos de datos abiertos oficiales: los registros de
+        subvenciones públicas del
+        <a href="https://www.infosubvenciones.es" target="_blank" rel="noopener">Sistema Nacional de Publicidad de Subvenciones</a>
+        y los de contratación pública del
+        <a href="https://huggingface.co/datasets/nextprocurement/PLSP_Company_Info" target="_blank" rel="noopener">conjunto de datos NextProcurement PLSP</a>,
+        reutilizados bajo <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
+        Solo se asocia un identificador cuando coinciden el nombre, la forma jurídica y la provincia;
+        si no coinciden, no se muestra ningún NIF.
       </p>
 
       <h2>Servicio independiente basado en fuentes oficiales</h2>
