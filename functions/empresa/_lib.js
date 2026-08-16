@@ -237,7 +237,24 @@ const T = {
     capitalHistory: 'Evolución del capital social',
     thDate: 'Fecha',
     thCapital: 'Capital',
-    recentHistory: 'Historial reciente (BORME)',
+    recentHistory: 'Historial de publicaciones (BORME)',
+    historyIntro: (shown, total) =>
+      total > shown
+        ? `Se muestran las ${shown} publicaciones más recientes de ${total}. Despliega cada año para consultar el detalle.`
+        : `${shown} publicaciones agrupadas por año. Despliega cada año para consultar el detalle.`,
+    historyYear: (year, count) => `${year} · ${count} ${count === 1 ? 'publicación' : 'publicaciones'}`,
+    historyBatch: (from, to) => `Ver publicaciones ${from}–${to}`,
+    historyUnknownYear: 'Sin fecha',
+    historyChartTitle: 'Cambios por año y tipo',
+    historyChartNote: 'Número de cambios publicados. Una publicación puede contener más de un tipo de cambio.',
+    historyChangeTypes: {
+      appointments: 'Nombramientos y reelecciones',
+      departures: 'Ceses y revocaciones',
+      capital: 'Capital',
+      ownership: 'Socios y unipersonalidad',
+      company: 'Datos societarios',
+      other: 'Otros actos',
+    },
     registryAct: 'Acto registral',
     ctaTitle: 'Ver el mapa societario interactivo',
     ctaText: (name) =>
@@ -406,7 +423,24 @@ const T = {
     capitalHistory: 'Share capital history',
     thDate: 'Date',
     thCapital: 'Capital',
-    recentHistory: 'Recent history (BORME)',
+    recentHistory: 'Publication history (BORME)',
+    historyIntro: (shown, total) =>
+      total > shown
+        ? `Showing the ${shown} most recent publications out of ${total}. Expand each year to view the details.`
+        : `${shown} publications grouped by year. Expand each year to view the details.`,
+    historyYear: (year, count) => `${year} · ${count} publication${count === 1 ? '' : 's'}`,
+    historyBatch: (from, to) => `View publications ${from}–${to}`,
+    historyUnknownYear: 'Undated',
+    historyChartTitle: 'Changes by year and type',
+    historyChartNote: 'Number of published changes. A single publication may contain more than one type of change.',
+    historyChangeTypes: {
+      appointments: 'Appointments and re-elections',
+      departures: 'Departures and revocations',
+      capital: 'Capital',
+      ownership: 'Shareholders and sole ownership',
+      company: 'Company details',
+      other: 'Other acts',
+    },
     registryAct: 'Registry act',
     ddCtaTitle: 'Full due diligence report',
     ddCtaText: (name) =>
@@ -588,19 +622,124 @@ function listBlock(title, arr) {
   return `<h3>${esc(title)}</h3><ul class="pill">${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
 }
 
-function eventsBlock(events, t, lang) {
-  if (!events || !events.length) return '';
-  const rows = events
-    .slice(0, 8)
-    .map((e) => {
-      const types = (e.event_types || []).map((x) => x.type).join(', ');
-      const summary = (e.full_entry || '').slice(0, 180);
-      return `<li><span class="date">${esc(fmtDate(e.event_date, lang))}</span>
+const HISTORY_BATCH_SIZE = 10;
+const HISTORY_CATEGORIES = ['appointments', 'departures', 'capital', 'ownership', 'company', 'other'];
+
+function eventTypeText(value) {
+  return typeof value === 'string' ? value : value && value.type ? value.type : '';
+}
+
+function eventTypeCategory(value) {
+  const type = eventTypeText(value).toUpperCase();
+  if (/NOMBR|REELEC/.test(type)) return 'appointments';
+  if (/CESE|DIMIS|REVOC/.test(type)) return 'departures';
+  if (/CAPITAL/.test(type)) return 'capital';
+  if (/SOCIO|UNIPERSONAL|PARTICIPACION|PARTICIPACIÓN/.test(type)) return 'ownership';
+  if (/DOMICIL|OBJETO|DENOMIN|ESTATUT|CONSTITU|DISOLU|CONCURSO|TRANSFORM|FUSI|ESCISI/.test(type)) return 'company';
+  return 'other';
+}
+
+function eventYear(event, t) {
+  const match = String(event.event_date || event.indexed_date || '').match(/^(\d{4})/);
+  return match ? match[1] : t.historyUnknownYear;
+}
+
+function eventRows(events, t, lang) {
+  return events
+    .map((event) => {
+      const types = (event.event_types || []).map(eventTypeText).filter(Boolean).join(', ');
+      const fullEntry = event.full_entry || '';
+      const summary = fullEntry.slice(0, 180);
+      return `<li><span class="date">${esc(fmtDate(event.event_date, lang))}</span>
         <strong>${esc(types || t.registryAct)}</strong>
-        <p>${esc(summary)}${(e.full_entry || '').length > 180 ? '…' : ''}</p></li>`;
+        <p>${esc(summary)}${fullEntry.length > 180 ? '…' : ''}</p></li>`;
     })
     .join('');
-  return `<section><h2>${t.recentHistory}</h2><ol class="timeline">${rows}</ol></section>`;
+}
+
+function eventsHistoryChart(yearGroups, t) {
+  const series = yearGroups.map(([year, yearEvents]) => {
+    const counts = Object.fromEntries(HISTORY_CATEGORIES.map((category) => [category, 0]));
+    yearEvents.forEach((event) => {
+      const types = (event.event_types || []).length ? event.event_types : [''];
+      types.forEach((type) => { counts[eventTypeCategory(type)] += 1; });
+    });
+    return { year, counts, total: Object.values(counts).reduce((sum, count) => sum + count, 0) };
+  });
+  const maxTotal = Math.max(1, ...series.map((year) => year.total));
+  const usedCategories = HISTORY_CATEGORIES.filter((category) =>
+    series.some((year) => year.counts[category] > 0),
+  );
+  const legend = usedCategories
+    .map((category) => `<span><i class="history-swatch history-${category}"></i>${esc(t.historyChangeTypes[category])}</span>`)
+    .join('');
+  const rows = series
+    .map(({ year, counts, total }) => {
+      const width = Math.max(8, (total / maxTotal) * 100).toFixed(2);
+      const segments = usedCategories
+        .filter((category) => counts[category] > 0)
+        .map((category) => `<span class="history-segment history-${category}" style="flex:${counts[category]}" title="${esc(t.historyChangeTypes[category])}: ${counts[category]}"></span>`)
+        .join('');
+      return `<div class="history-chart-row">
+        <span class="history-chart-year">${esc(year)}</span>
+        <span class="history-track"><span class="history-bar" style="width:${width}%">${segments}</span></span>
+        <strong>${total}</strong>
+      </div>`;
+    })
+    .join('');
+  const accessibleSummary = series
+    .map(({ year, total }) => `${year}: ${total}`)
+    .join(', ');
+  return `<div class="history-chart" role="img" aria-label="${esc(`${t.historyChartTitle}. ${accessibleSummary}`)}">
+    <h3>${t.historyChartTitle}</h3>
+    <div class="history-legend">${legend}</div>
+    ${rows}
+    <p class="more">${t.historyChartNote}</p>
+  </div>`;
+}
+
+function eventsBlock(events, t, lang, totalPublications = null) {
+  if (!events || !events.length) return '';
+  const sortedEvents = [...events].sort((a, b) =>
+    String(b.event_date || b.indexed_date || '').localeCompare(String(a.event_date || a.indexed_date || '')),
+  );
+  const groups = new Map();
+  sortedEvents.forEach((event) => {
+    const year = eventYear(event, t);
+    if (!groups.has(year)) groups.set(year, []);
+    groups.get(year).push(event);
+  });
+  const yearGroups = Array.from(groups.entries());
+  const years = yearGroups
+    .map(([year, yearEvents], yearIndex) => {
+      const batches = [];
+      for (let index = 0; index < yearEvents.length; index += HISTORY_BATCH_SIZE) {
+        batches.push(yearEvents.slice(index, index + HISTORY_BATCH_SIZE));
+      }
+      const firstBatch = `<ol class="timeline">${eventRows(batches[0], t, lang)}</ol>`;
+      const remainingBatches = batches
+        .slice(1)
+        .map((batch, batchIndex) => {
+          const from = (batchIndex + 1) * HISTORY_BATCH_SIZE + 1;
+          const to = from + batch.length - 1;
+          return `<details class="history-batch"><summary>${t.historyBatch(from, to)}</summary><ol class="timeline">${eventRows(batch, t, lang)}</ol></details>`;
+        })
+        .join('');
+      return `<details class="history-year"${yearIndex === 0 ? ' open' : ''}>
+        <summary>${t.historyYear(year, yearEvents.length)}</summary>
+        ${firstBatch}${remainingBatches}
+      </details>`;
+    })
+    .join('');
+  const parsedTotal = Number(totalPublications);
+  const total = Number.isFinite(parsedTotal) && parsedTotal > sortedEvents.length
+    ? parsedTotal
+    : sortedEvents.length;
+  return `<section class="history"><h2>${t.recentHistory}</h2>
+    <p class="more">${t.historyIntro(sortedEvents.length, total)}</p>
+    ${eventsHistoryChart(yearGroups, t)}
+    <div class="history-years">${years}</div>
+  </section>`;
 }
 
 function jsonLd(company, slug, lang, t, seed) {
@@ -700,6 +839,28 @@ const STYLE = `<style>
   .timeline li{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:10px}
   .timeline .date{display:inline-block;font-size:12px;color:var(--mut);margin-right:8px}
   .timeline p{margin:6px 0 0;font-size:13px;color:#334155}
+  .history-chart{margin:20px 0 24px}
+  .history-chart h3{margin-bottom:10px}
+  .history-legend{display:flex;gap:8px 14px;flex-wrap:wrap;margin:0 0 14px;font-size:12px;color:var(--mut)}
+  .history-legend span{display:inline-flex;align-items:center;gap:5px}
+  .history-swatch{display:inline-block;width:9px;height:9px;border-radius:2px}
+  .history-chart-row{display:grid;grid-template-columns:48px minmax(0,1fr) 32px;gap:9px;align-items:center;margin:8px 0;font-size:13px}
+  .history-chart-year{font-variant-numeric:tabular-nums;color:#334155}
+  .history-track{display:block;height:18px;background:#e2e8f0;border-radius:4px;overflow:hidden}
+  .history-bar{display:flex;height:100%;min-width:3px;border-radius:4px;overflow:hidden}
+  .history-segment{display:block;height:100%}
+  .history-appointments{background:#2563eb}
+  .history-departures{background:#dc2626}
+  .history-capital{background:#7c3aed}
+  .history-ownership{background:#d97706}
+  .history-company{background:#059669}
+  .history-other{background:#64748b}
+  .history-year{border-top:1px solid var(--line);padding:10px 0}
+  .history-year:last-child{border-bottom:1px solid var(--line)}
+  .history-year>summary{font-size:15px;font-weight:700}
+  .history-year>.timeline{margin-top:12px}
+  .history-batch{margin:8px 0 0 14px}
+  .history-batch>summary{font-weight:600;margin-bottom:10px}
   .more{font-size:13px;color:var(--mut);margin:8px 2px 0}
   .boe-list{list-style:none;padding:0;margin:0}
   .boe-list li{padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
@@ -1210,7 +1371,7 @@ ${STYLE}
       : ''
   }
 
-  ${eventsBlock(events, t, lang)}
+  ${eventsBlock(events, t, lang, company.total_publications)}
 
   <div class="cta">
     <h2>${t.ddCtaTitle}</h2>
@@ -1276,11 +1437,12 @@ export async function handleCompany({ params }, lang = 'es') {
           : `${API_BASE}/bormes/v3/company/${encodeURIComponent(name)}`,
         controller.signal,
       ),
-      // Over-fetch (16) so the group_key post-filter below can still fill 8 slots.
+      // Fetch enough history to group publications by year and paginate them
+      // inside the page without a second browser request.
       jsonOrNull(
         groupKey
-          ? `${API_BASE}/bormes/v3/events?group_key=${encodeURIComponent(groupKey)}&size=16`
-          : `${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=16`,
+          ? `${API_BASE}/bormes/v3/events?group_key=${encodeURIComponent(groupKey)}&size=100`
+          : `${API_BASE}/bormes/v3/events?company=${encodeURIComponent(name)}&size=100`,
         controller.signal,
       ),
       // Significant shareholders + history chart: only IBEX seed companies have CNMV data.
@@ -1324,7 +1486,7 @@ export async function handleCompany({ params }, lang = 'es') {
       if (canonical) {
         const [p2, e2] = await Promise.all([
           jsonOrNull(`${API_BASE}/bormes/v3/company/${encodeURIComponent(canonical)}`, controller.signal),
-          jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(canonical)}&size=16`, controller.signal),
+          jsonOrNull(`${API_BASE}/bormes/v3/events?company=${encodeURIComponent(canonical)}&size=100`, controller.signal),
         ]);
         if (p2 && p2.company) {
           company = p2.company;
@@ -1366,7 +1528,7 @@ export async function handleCompany({ params }, lang = 'es') {
     );
     const events = ((eventsResp && eventsResp.events) || [])
       .filter((e) => !e.group_key || allowed.has(e.group_key))
-      .slice(0, 8);
+      .slice(0, 100);
 
     const gleif = gleifResp && gleifResp.success ? gleifResp.data : null;
     const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, isFallback);

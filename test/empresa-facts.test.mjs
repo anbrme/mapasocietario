@@ -83,3 +83,40 @@ test('standalone company pages report their own GA4 page view', () => {
   assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-HHWT6ZTKZD/);
   assert.match(html, /gtag\('event','page_view'/);
 });
+
+test('publication history is grouped by year, batched, and charted by change type', () => {
+  const currentYearEvents = Array.from({ length: 13 }, (_, index) => ({
+    event_date: `2025-01-${String(index + 1).padStart(2, '0')}`,
+    event_types: [{ type: index % 2 === 0 ? 'Nombramientos' : 'Ceses/Dimisiones' }],
+    full_entry: `Publicación actual ${index + 1}`,
+  }));
+  const priorYearEvents = [
+    {
+      event_date: '2024-06-01',
+      event_types: [{ type: 'Ampliación de capital' }],
+      full_entry: 'Capital anterior',
+    },
+    {
+      event_date: '2024-02-01',
+      event_types: [{ type: 'Cambio de domicilio social' }],
+      full_entry: 'Domicilio anterior',
+    },
+  ];
+  const html = renderCompanyPage(
+    { ...base, total_publications: 30 },
+    [...priorYearEvents, ...currentYearEvents],
+    'test-co-sl',
+    null,
+    'es',
+  );
+
+  assert.match(html, /Cambios por año y tipo/);
+  assert.match(html, /history-appointments/);
+  assert.match(html, /history-departures/);
+  assert.match(html, /history-capital/);
+  assert.match(html, /history-company/);
+  assert.match(html, /<details class="history-year" open>[\s\S]*2025 · 13 publicaciones/);
+  assert.match(html, /<details class="history-year">[\s\S]*2024 · 2 publicaciones/);
+  assert.match(html, /Ver publicaciones 11–13/);
+  assert.match(html, /15 publicaciones más recientes de 30/);
+});
