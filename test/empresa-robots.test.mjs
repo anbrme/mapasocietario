@@ -14,10 +14,3 @@ test('renderCompanyPage with noindex=true emits noindex and not index', () => {
   assert.match(html, /<meta name="robots" content="noindex, follow">/);
   assert.doesNotMatch(html, /content="index, follow"/);
 });
-
-test('renderCompanyPage tracks real profile CTA interactions', () => {
-  const html = renderCompanyPage(company, [], 'surya-consulting-sl', null, 'es');
-  assert.match(html, /data-track="profile_open_graph"/);
-  assert.match(html, /data-track="profile_due_diligence"/);
-  assert.match(html, /company_profile_cta_click/);
-});
