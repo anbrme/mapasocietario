@@ -112,5 +112,5 @@ test('renderNetArticle includes net hero, province net table, charts, source', (
   assert.match(html, /Registradores/);
   assert.match(html, /id="bar"/);
   assert.match(html, /barometro-empresarial\.csv/);
-  assert.match(html, /href="\/app"/);
+  assert.match(html, /href="\/app\/"/);
 });

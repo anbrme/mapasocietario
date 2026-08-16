@@ -784,7 +784,7 @@ function jsonLd(company, slug, lang, t, seed) {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: t.home, item: `${SITE}/` },
-      { '@type': 'ListItem', position: 2, name: t.crumbCompanies, item: `${SITE}/app` },
+      { '@type': 'ListItem', position: 2, name: t.crumbCompanies, item: `${SITE}/app/` },
       { '@type': 'ListItem', position: 3, name: company.company_name },
     ],
   };
@@ -1069,7 +1069,7 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
       <div class="overview-stat"><span class="overview-value">${esc(ownerCount)}</span><span class="overview-label">${t.overviewOwners}</span></div>
       <div class="overview-stat"><span class="overview-value">${esc(filingCount)}</span><span class="overview-label">${t.overviewFilings}</span></div>
     </div>
-    <a class="overview-action" data-track="profile_open_graph" href="/app?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
+    <a class="overview-action" data-track="profile_open_graph" href="/app/?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
   </section>`;
 
   // Significant shareholders from CNMV (listed companies only). Reproduced
@@ -1317,13 +1317,13 @@ ${STYLE}
 </head>
 <body>
 <div class="wrap">
-  <nav class="crumbs"><span class="langs"><a href="${altPath}">${altLabel}</a></span><a href="/">${t.home}</a> › <a href="/app">${t.crumbCompanies}</a> › ${esc(name)}</nav>
+  <nav class="crumbs"><span class="langs"><a href="${altPath}">${altLabel}</a></span><a href="/">${t.home}</a> › <a href="/app/">${t.crumbCompanies}</a> › ${esc(name)}</nav>
 
   <h1>${esc(name)}</h1>
   <div class="badges">${badges}</div>
   <p class="lead">${t.lead}</p>
   <div class="hero-actions">
-    <a class="hero-primary" data-track="profile_open_graph" href="/app?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
+    <a class="hero-primary" data-track="profile_open_graph" href="/app/?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
     <a class="hero-secondary" data-track="profile_registry_jump" href="#registry-data">${t.topRegistryBtn}</a>
   </div>
 
@@ -1378,8 +1378,8 @@ ${STYLE}
     <h2>${t.ddCtaTitle}</h2>
     <p>${esc(t.ddCtaText(name))}</p>
     <div class="cta-actions">
-      <a class="cta-primary" data-track="profile_due_diligence" href="/due-diligence?company=${encodeURIComponent(name)}">${t.ddCtaBtn}</a>
-      <a class="cta-secondary" data-track="profile_open_graph" href="/app?search=${encodeURIComponent(name)}">${t.ctaBtn}</a>
+      <a class="cta-primary" data-track="profile_due_diligence" href="/due-diligence/?company=${encodeURIComponent(name)}">${t.ddCtaBtn}</a>
+      <a class="cta-secondary" data-track="profile_open_graph" href="/app/?search=${encodeURIComponent(name)}">${t.ctaBtn}</a>
     </div>
   </div>
 
@@ -1414,7 +1414,7 @@ function notFoundPage(slug, lang = 'es') {
 </head><body>
 <h1>${t.notFoundH1}</h1>
 <p>${t.notFoundP(esc(slugToQuery(slug)))}</p>
-<p><a href="/app">${t.searchLink}</a></p>
+<p><a href="/app/">${t.searchLink}</a></p>
 </body></html>`;
 }
 

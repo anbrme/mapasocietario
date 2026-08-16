@@ -96,7 +96,7 @@ export default function EnglishDirectorSearchPage() {
             ))}
           </Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
-            <Button href="/app?lang=en&type=officer&source=director_search" variant="contained" startIcon={<PersonSearchIcon />} sx={{ bgcolor: COLORS.tealStrong, color: '#fff', textTransform: 'none', fontWeight: 700, borderRadius: 2, px: 2.5, '&:hover': { bgcolor: '#168f83' } }}>
+            <Button href="/app/?lang=en&type=officer&source=director_search" variant="contained" startIcon={<PersonSearchIcon />} sx={{ bgcolor: COLORS.tealStrong, color: '#fff', textTransform: 'none', fontWeight: 700, borderRadius: 2, px: 2.5, '&:hover': { bgcolor: '#168f83' } }}>
               Search a director
             </Button>
             <Button href="/spanish-company-register-search/" variant="outlined" startIcon={<BusinessIcon />} sx={{ color: COLORS.teal, borderColor: COLORS.border, textTransform: 'none', fontWeight: 650, borderRadius: 2 }}>
@@ -128,7 +128,7 @@ export default function EnglishDirectorSearchPage() {
               The relationship graph is free to explore. When a company needs a documented review, move from the graph to a due diligence report with registry history and risk context.
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
-              <Button href="/app?lang=en&type=officer&source=director_search_bottom" variant="contained" startIcon={<AccountTreeIcon />} sx={{ bgcolor: COLORS.tealStrong, color: '#fff', textTransform: 'none', fontWeight: 700, borderRadius: 2, '&:hover': { bgcolor: '#168f83' } }}>
+              <Button href="/app/?lang=en&type=officer&source=director_search_bottom" variant="contained" startIcon={<AccountTreeIcon />} sx={{ bgcolor: COLORS.tealStrong, color: '#fff', textTransform: 'none', fontWeight: 700, borderRadius: 2, '&:hover': { bgcolor: '#168f83' } }}>
                 Open officer search
               </Button>
               <Button href="/spanish-company-due-diligence/" variant="outlined" startIcon={<DescriptionIcon />} sx={{ color: COLORS.teal, borderColor: '#2e736c', textTransform: 'none', fontWeight: 650, borderRadius: 2 }}>

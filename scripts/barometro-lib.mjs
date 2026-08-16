@@ -164,7 +164,7 @@ export function renderArticleHtml(d) {
       <p>Las disoluciones y la creación neta (constituciones − disoluciones) se incorporarán en una próxima edición,
          una vez validada la cobertura de los datos de disolución por registro.</p>
       <p><a href="/es/barometro-empresarial.csv">Descargar datos (CSV)</a></p>
-      <p><a href="/app">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
+      <p><a href="/app/">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
     </main>`;
 }
 
@@ -329,7 +329,7 @@ export function renderNetArticle(d) {
       <p>Fuente: <strong>Colegio de Registradores de España</strong> (estadística mercantil). "Constitución" y "extinción"
          según inscripción registral; "creación neta" = constituciones − extinciones. Cobertura 2011–${d.year}. Sin desestacionalizar.</p>
       <p><a href="/es/barometro-empresarial.csv">Descargar datos (CSV)</a></p>
-      <p><a href="/app">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
+      <p><a href="/app/">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
     </main>`;
 }
 

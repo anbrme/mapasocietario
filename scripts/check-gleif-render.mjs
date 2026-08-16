@@ -54,7 +54,7 @@ assert(!html3.includes('cabecera de grupo'), 'parent-only: should not claim grou
 // the "Empresas" breadcrumb links to /app.
 assert(html.includes('<th>LEI</th>') && html.includes('95980020140005558665'), 'cotizada LEI row missing');
 assert(!html.includes('search=NEXPLORE'), 'GLEIF subsidiary must not be a search link');
-assert(html.includes('<a href="/app">Empresas</a>'), 'Empresas breadcrumb should link to /app');
+assert(html.includes('<a href="/app/">Empresas</a>'), 'Empresas breadcrumb should link to /app');
 
 // Tab UI + map panel present, with the map script referenced.
 assert(html.includes('class="gleif-tabs"'), 'gleif tabs missing');

@@ -335,7 +335,7 @@ ${STYLE}
   <div class="cta">
     <h2>${esc(t.ctaTitle)}</h2>
     <p>${esc(t.ctaText)}</p>
-    <a href="/app">${esc(t.ctaBtn)}</a>
+    <a href="/app/">${esc(t.ctaBtn)}</a>
   </div>
 
   <footer>Mapa Societario · ${fmtDate(data.as_of, lang)}</footer>

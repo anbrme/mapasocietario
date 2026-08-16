@@ -294,7 +294,7 @@ export default function SpanishSeoPage({ pageKey: explicitPageKey }) {
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
             <Button
-              href="/es"
+              href="/es/"
               variant="outlined"
               size="small"
               sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 650 }}

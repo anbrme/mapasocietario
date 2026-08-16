@@ -797,7 +797,7 @@ export default function OrderStatusPage() {
 
                 <Button
                   variant="text"
-                  href="/app"
+                  href="/app/"
                   sx={{
                     textTransform: 'none',
                     fontWeight: 600,
@@ -951,7 +951,7 @@ export default function OrderStatusPage() {
             {copy.footer.home}
           </Link>
           <Link
-            href="/app"
+            href="/app/"
             variant="caption"
             sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
           >

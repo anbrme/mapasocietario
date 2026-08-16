@@ -42,7 +42,7 @@ function writePlaceholder() {
       <p style="margin:0 0 1.2rem"><a href="/" style="text-decoration:none;font-weight:700">Mapa Societario</a></p>
       <h1>Barómetro empresarial</h1>
       <p>Esta sección está temporalmente no disponible mientras revisamos nuestras fuentes de datos. Vuelve pronto.</p>
-      <p><a href="/app">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
+      <p><a href="/app/">Buscar una empresa</a> · <a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></p>
     </main>`;
   html = html.replace('<div id="root"></div>', `<div id="root">${body}</div>`);
   html = html.replace(/<script[^>]*\btype="module"[^>]*>[\s\S]*?<\/script>/g, '');

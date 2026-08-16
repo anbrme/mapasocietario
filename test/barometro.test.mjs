@@ -104,7 +104,7 @@ test('renderArticleHtml includes a row per province and the charts', () => {
   assert.match(html, /id="bar"/);
   assert.match(html, /id="trend"/);
   assert.match(html, /barometro-empresarial\.csv/);
-  assert.match(html, /href="\/app"/);
+  assert.match(html, /href="\/app\/"/);
 });
 
 test('injectHead sets title, description and canonical', () => {

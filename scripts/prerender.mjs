@@ -202,7 +202,7 @@ const routes = [
           <li><strong>Investigators and journalists:</strong> follow people across companies through shared roles, prior appointments and wider corporate networks.</li>
           <li><strong>Advisers, analysts and researchers:</strong> annotate and save an investigation, then generate a sourced report when a client or internal file needs documentation.</li>
         </ul>
-        <p><a href="/app?source=home_search">Search a Spanish company or officer</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/spanish-company-due-diligence/">Document a due diligence review</a></p>
+        <p><a href="/app/?source=home_search">Search a Spanish company or officer</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/spanish-company-due-diligence/">Document a due diligence review</a></p>
         <h2>Data quality you can understand, not a black box</h2>
         <p>Mapa Societario reconciles companies across name changes, mergers, spin-offs and registry transfers; preserves appointments and resignations so historical and current roles are not silently mixed; and updates from official BOE/BORME publications on business days.</p>
         <p>Name matching, automated extraction and incomplete shareholder publication are disclosed so professionals know which findings still require verification against the original notice or current Registro Mercantil documents.</p>
@@ -236,7 +236,7 @@ const routes = [
         ${freeReportHtml('en')}
         <h2>Explore</h2>
         <ul>
-          <li><a href="/app">Open the Spanish company relationship graph</a></li>
+          <li><a href="/app/">Open the Spanish company relationship graph</a></li>
           <li><a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a> &middot; <a href="/en/listed-companies">IBEX 35 listed companies</a></li>
           <li><a href="/es/">Mapa societario de empresas espa&ntilde;olas</a></li>
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
@@ -276,7 +276,7 @@ const routes = [
           <li>Visualize corporate relationships in real time</li>
           <li>Purchase Due Diligence reports from the search toolbar</li>
         </ul>
-        <p><a href="/">Back to Mapa Societario</a> | <a href="/spanish-company-register-search">Spanish company register and BORME publication guide</a> | <a href="${FACEBOOK_URL}">Facebook</a></p>
+        <p><a href="/">Back to Mapa Societario</a> | <a href="/spanish-company-register-search/">Spanish company register and BORME publication guide</a> | <a href="${FACEBOOK_URL}">Facebook</a></p>
       </main>`,
   },
   {
@@ -300,7 +300,7 @@ const routes = [
           <li><strong>PDF Report</strong> &mdash; Professional, downloadable PDF for compliance files, investor reviews, or internal records.</li>
         </ul>
         ${freeReportHtml('en')}
-        <p><a href="/app">Search for a company to get started</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence guide</a></p>
+        <p><a href="/app/">Search for a company to get started</a> | <a href="/spanish-company-due-diligence/">Spanish company due diligence guide</a></p>
       </main>`,
   },
   {
@@ -327,7 +327,7 @@ const routes = [
         <h2>API access and higher-touch investigations</h2>
         <p>The self-serve report is the fast mid-tier option. For third-party data integrations, Spanish registry intelligence is available through NC Data API access and data feeds. For higher-stakes matters, Nurnberg Consulting SL can add human analyst work, source retrieval, document review, and bespoke conclusions.</p>
         <p><a href="mailto:mapasocietario@ncdata.eu?subject=NC%20Data%20Spanish%20API">Discuss NC Data API access</a> | <a href="https://nurnbergconsulting.com">Human-led investigations</a></p>
-        <p><a href="/app">Open the relationship graph</a> | <a href="/due-diligence">See report details</a> | <a href="/spanish-company-register-search">Spanish company register and BORME publication guide</a></p>
+        <p><a href="/app/">Open the relationship graph</a> | <a href="/due-diligence/">See report details</a> | <a href="/spanish-company-register-search/">Spanish company register and BORME publication guide</a></p>
       </main>`,
   },
   {
@@ -340,7 +340,7 @@ const routes = [
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Search Spanish companies and understand the company register</h1>
         <p>Search company and director histories published in BORME, explore their relationships, and understand when you still need an official document from Spain’s Commercial Registry.</p>
-        <p><a href="/app?lang=en&amp;source=register_guide">Open the relationship graph</a></p>
+        <p><a href="/app/?lang=en&amp;source=register_guide">Open the relationship graph</a></p>
         <h2>Which source should you use?</h2>
         <p>The three services answer different questions. Registry history requires a paid offline request; Mapa Societario makes BORME publication history immediately explorable as a relationship graph.</p>
         <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
@@ -379,7 +379,7 @@ const routes = [
           <li>Expand the graph when a director, proxy, or related company needs more context.</li>
           <li>Order a due diligence report only when you need a PDF record.</li>
         </ol>
-        <p><a href="/app?lang=en&amp;source=register_guide">Open the relationship graph</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/en/listed-companies">Browse IBEX 35 listed companies</a> | <a href="/spanish-company-due-diligence">Spanish company due diligence reports</a></p>
+        <p><a href="/app/?lang=en&amp;source=register_guide">Open the relationship graph</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/en/listed-companies">Browse IBEX 35 listed companies</a> | <a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></p>
       </main>`,
   },
   {
@@ -393,7 +393,7 @@ const routes = [
         <h1>Search Spanish company directors and officers</h1>
         <p>Find the Spanish companies linked to a director, administrator, board member or proxy, then explore appointments, resignations and shared corporate relationships published in BORME.</p>
         ${disclaimerHtmlEn}
-        <p><a href="/app?lang=en&amp;type=officer&amp;source=director_search">Search a director in the relationship graph</a></p>
+        <p><a href="/app/?lang=en&amp;type=officer&amp;source=director_search">Search a director in the relationship graph</a></p>
         <h2>Search a director across Spanish companies</h2>
         <p>Enter a director, administrator, board member or proxy and choose a person result. Mapa Societario brings together the Spanish companies where that name appears in published BORME records.</p>
         <p>Expand the graph to follow appointments, resignations, shared directors and connected companies instead of reviewing each company separately.</p>
@@ -415,7 +415,7 @@ const routes = [
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Registro Mercantil, BORME y Mapa Societario: qu&eacute; fuente usar</h1>
         <p>Explora las publicaciones diarias del BORME posteriores a actos del Registro Mercantil. Mapa Societario no es una consulta directa del Registro ni ofrece certificaciones registrales actuales.</p>
-        <p><a href="/app?lang=es&amp;source=register_guide">Abrir el grafo de relaciones</a></p>
+        <p><a href="/app/?lang=es&amp;source=register_guide">Abrir el grafo de relaciones</a></p>
         <h2>&iquest;Qu&eacute; fuente debes utilizar?</h2>
         <p>Las tres fuentes responden a necesidades distintas. El historial del Registro exige una solicitud offline de pago; Mapa Societario permite explorar inmediatamente el historial publicado en BORME como un grafo de relaciones.</p>
         <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
@@ -446,7 +446,7 @@ const routes = [
           <li>Ampl&iacute;a el grafo cuando un administrador, apoderado o empresa relacionada necesite m&aacute;s contexto.</li>
           <li>Solicita un informe due diligence cuando necesites un PDF documental.</li>
         </ol>
-        <p><a href="/app?lang=es&amp;source=register_guide">Abrir el grafo de relaciones</a> | <a href="/empresas-cotizadas">Empresas del IBEX 35</a> | <a href="/due-diligence?lang=es">Informes due diligence</a></p>
+        <p><a href="/app/?lang=es&amp;source=register_guide">Abrir el grafo de relaciones</a> | <a href="/empresas-cotizadas">Empresas del IBEX 35</a> | <a href="/due-diligence/?lang=es">Informes due diligence</a></p>
       </main>`,
   },
   {
@@ -469,8 +469,8 @@ const routes = [
         <p>Prices exclude VAT, calculated at checkout. On Android, Google Play is the merchant of record and adds VAT per country.</p>
         ${freeReportHtml('en')}
         <h2>Volume pricing</h2>
-        <p>Law firms, consultancies, and compliance teams running repeat checks can get volume pricing. See the <a href="/pricing">pricing page</a> to get in touch.</p>
-        <p><a href="/app">Search a company</a> | <a href="/spanish-company-due-diligence">What is in a report</a></p>
+        <p>Law firms, consultancies, and compliance teams running repeat checks can get volume pricing. See the <a href="/pricing/">pricing page</a> to get in touch.</p>
+        <p><a href="/app/">Search a company</a> | <a href="/spanish-company-due-diligence/">What is in a report</a></p>
       </main>`,
   },
   {
@@ -512,7 +512,7 @@ const routes = [
           <li><strong>Investigación y periodismo:</strong> sigue a las personas entre empresas mediante cargos compartidos, nombramientos anteriores y redes societarias más amplias.</li>
           <li><strong>Asesoría, análisis e investigación:</strong> anota y guarda una investigación y genera un informe con fuentes cuando un cliente o expediente interno necesite documentación.</li>
         </ul>
-        <p><a href="/app?lang=es&amp;source=home_search">Buscar una empresa o administrador</a> | <a href="/es/buscar-administradores-empresas/">Buscar administradores</a> | <a href="/es/informes-due-diligence-empresas/">Documentar una due diligence</a></p>
+        <p><a href="/app/?lang=es&amp;source=home_search">Buscar una empresa o administrador</a> | <a href="/es/buscar-administradores-empresas/">Buscar administradores</a> | <a href="/es/informes-due-diligence-empresas/">Documentar una due diligence</a></p>
         <h2>Calidad de datos comprensible, no una caja negra</h2>
         <p>Mapa Societario reconcilia empresas entre cambios de denominación, fusiones, escisiones y traslados registrales; conserva nombramientos y ceses para no mezclar relaciones históricas y actuales; y se actualiza desde publicaciones oficiales BOE/BORME en días laborables.</p>
         <p>La coincidencia por nombre, la extracción automática y la publicación incompleta de accionistas se explican para que el profesional sepa qué hallazgos debe verificar en el anuncio original o con documentación actual del Registro Mercantil.</p>
@@ -521,9 +521,9 @@ const routes = [
         ${freeReportHtml('es')}
         <h2>Explorar</h2>
         <ul>
-          <li><a href="/app">Buscar relaciones societarias</a></li>
+          <li><a href="/app/">Buscar relaciones societarias</a></li>
           <li><a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a></li>
-          <li><a href="/due-diligence">Informes due diligence</a></li>
+          <li><a href="/due-diligence/">Informes due diligence</a></li>
           <li><a href="/es/informes-due-diligence-empresas/">Informes due diligence de empresas</a></li>
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
@@ -554,7 +554,7 @@ const routes = [
         <h2>Cuándo pedir una revisión de estructura societaria</h2>
         <p>Antes de firmar con una contraparte, incorporar un proveedor, invertir o adquirir una sociedad, una revisión de la estructura societaria muestra quién controla la empresa, qué administradores figuran, cómo ha evolucionado su capital y qué sociedades están vinculadas. Es el contexto que una simple consulta registral no ofrece.</p>
         ${freeReportHtml('es')}
-        <p><a href="/app">Buscar una empresa</a> | <a href="/empresas-cotizadas">Ver empresas del IBEX 35</a></p>
+        <p><a href="/app/">Buscar una empresa</a> | <a href="/empresas-cotizadas">Ver empresas del IBEX 35</a></p>
       </main>`,
   },
   {
@@ -571,7 +571,7 @@ const routes = [
         ${disclaimerHtmlEs}
         <h2>Cómo funciona la búsqueda</h2>
         <p>Cambia el buscador a modo persona y escribe el nombre de un administrador, consejero o apoderado. La herramienta muestra sociedades asociadas, permite expandir la red e identifica con una insignia amarilla a quienes tienen o tuvieron cargo político en el Congreso de los Diputados.</p>
-        <p><a href="/app">Buscar administradores</a></p>
+        <p><a href="/app/">Buscar administradores</a></p>
       </main>`,
   },
   {
@@ -588,7 +588,7 @@ const routes = [
         ${disclaimerHtmlEs}
         <h2>Del boletín al grafo</h2>
         <p>Las sociedades y personas son nodos, y los cargos, socios únicos, participaciones al 100% o relaciones societarias actúan como enlaces que permiten explorar la red.</p>
-        <p><a href="/app">Buscar en el gráfico</a></p>
+        <p><a href="/app/">Buscar en el gráfico</a></p>
       </main>`,
   },
   {
@@ -605,7 +605,7 @@ const routes = [
         ${disclaimerHtmlEs}
         <h2>Qué revela un mapa societario</h2>
         <p>Ayuda a ver administradores comunes, empresas vinculadas, socios únicos, participaciones al 100%, cambios en órganos de administración, cargos políticos en el Congreso de los Diputados y conexiones relevantes para una revisión de riesgo o investigación corporativa, incluyendo cruces con sanciones BOE cuando se solicita un informe.</p>
-        <p><a href="/app">Explorar relaciones societarias</a></p>
+        <p><a href="/app/">Explorar relaciones societarias</a></p>
       </main>`,
   },
   {
@@ -626,7 +626,7 @@ const routes = [
           <li>Ask about a Spanish company &mdash; Claude uses the connector and asks permission the first time.</li>
         </ol>
         <p>No login, no API key, free to use.</p>
-        <p><a href="/app">Search a company</a> | <a href="/es/conectar-claude">Versión en español</a></p>
+        <p><a href="/app/">Search a company</a> | <a href="/es/conectar-claude/">Versión en español</a></p>
       </main>`,
   },
   {
@@ -648,7 +648,7 @@ const routes = [
           <li>Pregunta por una empresa española &mdash; Claude usa el conector y pide permiso la primera vez.</li>
         </ol>
         <p>Sin registro, sin clave de API, uso gratuito.</p>
-        <p><a href="/app">Buscar una empresa</a> | <a href="/connect-claude">English version</a></p>
+        <p><a href="/app/">Buscar una empresa</a> | <a href="/connect-claude/">English version</a></p>
       </main>`,
   },
 ];
