@@ -241,7 +241,7 @@ const T = {
     historyIntro: (shown, total) =>
       total > shown
         ? `Se muestran las ${shown} publicaciones más recientes de ${total}. Despliega cada año para consultar el detalle.`
-        : `${shown} publicaciones agrupadas por año. Despliega cada año para consultar el detalle.`,
+        : `${shown} publicaciones, agrupadas por año. Despliega cada año para consultar el detalle.`,
     historyYear: (year, count) => `${year} · ${count} ${count === 1 ? 'publicación' : 'publicaciones'}`,
     historyBatch: (from, to) => `Ver publicaciones ${from}–${to}`,
     historyUnknownYear: 'Sin fecha',
@@ -427,7 +427,7 @@ const T = {
     historyIntro: (shown, total) =>
       total > shown
         ? `Showing the ${shown} most recent publications out of ${total}. Expand each year to view the details.`
-        : `${shown} publications grouped by year. Expand each year to view the details.`,
+        : `${shown} publications, grouped by year. Expand each year to view the details.`,
     historyYear: (year, count) => `${year} · ${count} publication${count === 1 ? '' : 's'}`,
     historyBatch: (from, to) => `View publications ${from}–${to}`,
     historyUnknownYear: 'Undated',
