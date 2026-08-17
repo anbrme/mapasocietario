@@ -21,11 +21,9 @@ Sitemap: ${siteUrl}/sitemap.xml
 // pending). Same flag as generate-barometro.mjs; set BAROMETRO_PUBLISHED=1 to restore.
 const BAROMETRO_PUBLISHED = process.env.BAROMETRO_PUBLISHED === '1' || process.env.BAROMETRO_PUBLISHED === 'true';
 
-// /sitemap-demand.xml is served by a Pages Function and 404s until the first
-// company is promoted. Referencing a 404 from the sitemap index is a Search
-// Console error, so the reference stays off until there is something to list.
-// Set DEMAND_SITEMAP_PUBLISHED=1 once /sitemap-demand.xml returns 200.
-const DEMAND_SITEMAP_PUBLISHED = process.env.DEMAND_SITEMAP_PUBLISHED === '1' || process.env.DEMAND_SITEMAP_PUBLISHED === 'true';
+// /sitemap-demand.xml is served by a Pages Function and lists dynamic
+// demand-promoted companies. Now live and returning 200, so enabled by default.
+const DEMAND_SITEMAP_PUBLISHED = process.env.DEMAND_SITEMAP_PUBLISHED !== '0' && process.env.DEMAND_SITEMAP_PUBLISHED !== 'false';
 
 const sitemapRoutes = [
   { path: '/', changefreq: 'daily', priority: '1.0' },
