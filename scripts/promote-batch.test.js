@@ -137,3 +137,14 @@ describe('promotionSqlChunks', () => {
     expect(chunks[2].match(/INSERT INTO company_index_candidates/g)).toHaveLength(1);
   });
 });
+
+describe('reservedIdentities', () => {
+  it('reserves every seed by dash-normalized group_key and both slug forms', async () => {
+    const { reservedIdentities } = await import('./promote-batch-lib.mjs');
+    const r = reservedIdentities();
+    expect(r.groupKeys.has('H:BI-17')).toBe(true); // BBVA, seed hoja 'BI 17'
+    expect(r.slugs.has('bbva')).toBe(true); // curated slug
+    expect(r.slugs.has('banco-bilbao-vizcaya-argentaria-sa')).toBe(true); // nameToSlug(v3Name)
+    expect(r.slugs.has('nurnberg-consulting-sl')).toBe(true); // CURATED
+  });
+});

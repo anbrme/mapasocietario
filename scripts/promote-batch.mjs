@@ -33,6 +33,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import {
   candidateFromDoc,
+  reservedIdentities,
   isEligibleCandidate,
   rankAndDedupe,
   promotionSqlChunks,
@@ -56,9 +57,18 @@ function argValue(flag, fallback) {
 const OUT_DIR = argValue('--out', 'batch-promotion-out');
 const TARGET_SIZE = Number(argValue('--size', 2000));
 const ES_URL = argValue('--es', process.env.ES_URL || 'http://localhost:9201');
+// ES behind the tunnel requires basic auth: pass ES_AUTH="user:password" via
+// env (e.g. command-substituted from the server's /etc/default/borme-search)
+// so the credential never lands in argv or shell history.
+const ES_AUTH_HEADER = process.env.ES_AUTH
+  ? { Authorization: `Basic ${Buffer.from(process.env.ES_AUTH).toString('base64')}` }
+  : {};
 
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
+async function fetchJson(url, options = {}) {
+  const withAuth = url.startsWith(ES_URL)
+    ? { ...options, headers: { ...(options.headers || {}), ...ES_AUTH_HEADER } }
+    : options;
+  const response = await fetch(url, withAuth);
   if (!response.ok) throw new Error(`${url} → HTTP ${response.status}`);
   return response.json();
 }
@@ -171,9 +181,12 @@ async function verifyCandidate(candidate) {
 }
 
 async function stageVerify() {
-  const candidates = JSON.parse(await readFile(join(OUT_DIR, 'candidates.json'), 'utf8'));
-  const excludeSlugs = await promotedSlugsFromD1();
-  console.log(`Excluding ${excludeSlugs.size} already-promoted slugs`);
+  const rawCandidates = JSON.parse(await readFile(join(OUT_DIR, 'candidates.json'), 'utf8'));
+  const reserved = reservedIdentities();
+  const candidates = rawCandidates.filter((c) => !reserved.groupKeys.has(c.group_key));
+  const promoted = await promotedSlugsFromD1();
+  const excludeSlugs = new Set([...promoted, ...reserved.slugs]);
+  console.log(`Excluding ${promoted.size} already-promoted slugs and ${rawCandidates.length - candidates.length} seed companies`);
   // Rank locally first so verification spends API calls on the best rows only.
   const shortlist = rankAndDedupe(candidates, {
     size: Math.ceil(TARGET_SIZE * 1.5),

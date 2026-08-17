@@ -10,6 +10,8 @@
  */
 
 import { nameToSlug } from '../functions/empresa/_slug.js';
+import { SEED } from '../functions/empresa/_ibex35.js';
+import { CURATED } from '../functions/empresa/_curated.js';
 
 // Eligibility: the page must have enough substance that Google never sees a
 // thin stub. Mirrors the criteria agreed for batch 1: a NIF to show, at least
@@ -113,4 +115,27 @@ export function promotionSqlChunks(rows, { chunkSize = 400 } = {}) {
     chunks.push(rows.slice(start, start + chunkSize).map(promotionSql).join('\n'));
   }
   return chunks;
+}
+
+/**
+ * Companies that already have a curated indexable page must never enter the
+ * batch: they'd render the same entity under a second slug (e.g. seed
+ * /empresa/banco-santander vs generated /empresa/banco-santander-sa) —
+ * textbook duplicate content. Seeds are excluded by registry identity
+ * (hoja → group_key, dash-normalized like handleCompany does) AND by slug;
+ * curated entries carry no hoja, so their slugs cover them.
+ */
+export function reservedIdentities() {
+  const groupKeys = new Set(
+    Object.values(SEED)
+      .filter((entry) => entry.hoja)
+      .map((entry) => `H:${entry.hoja.replace(/\s+/g, '-')}`),
+  );
+  const slugs = new Set([
+    ...Object.keys(SEED),
+    ...Object.keys(CURATED),
+    ...Object.values(SEED).map((entry) => nameToSlug(entry.v3Name)),
+    ...Object.values(CURATED).map((entry) => nameToSlug(entry.v3Name)),
+  ]);
+  return { groupKeys, slugs };
 }
