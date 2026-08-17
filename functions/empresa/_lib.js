@@ -248,6 +248,16 @@ const T = {
     historyUnknownYear: 'Sin fecha',
     historyChartTitle: 'Cambios por año y tipo',
     historyChartNote: 'Número de cambios publicados. Una publicación puede contener más de un tipo de cambio.',
+    historyMatrixHeaders: {
+      year: 'Año',
+      appointments: 'Nombramientos',
+      departures: 'Ceses',
+      capital: 'Capital',
+      ownership: 'Socios',
+      company: 'Datos soc.',
+      other: 'Otros',
+      total: 'Total',
+    },
     historyChangeTypes: {
       appointments: 'Nombramientos y reelecciones',
       departures: 'Ceses y revocaciones',
@@ -434,6 +444,16 @@ const T = {
     historyUnknownYear: 'Undated',
     historyChartTitle: 'Changes by year and type',
     historyChartNote: 'Number of published changes. A single publication may contain more than one type of change.',
+    historyMatrixHeaders: {
+      year: 'Year',
+      appointments: 'Appointments',
+      departures: 'Departures',
+      capital: 'Capital',
+      ownership: 'Shareholders',
+      company: 'Company info',
+      other: 'Other',
+      total: 'Total',
+    },
     historyChangeTypes: {
       appointments: 'Appointments and re-elections',
       departures: 'Departures and revocations',
@@ -658,43 +678,54 @@ function eventRows(events, t, lang) {
     .join('');
 }
 
+function historyYearCounts(yearEvents) {
+  const counts = Object.fromEntries(HISTORY_CATEGORIES.map((category) => [category, 0]));
+  yearEvents.forEach((event) => {
+    const types = (event.event_types || []).length ? event.event_types : [''];
+    types.forEach((type) => { counts[eventTypeCategory(type)] += 1; });
+  });
+  return counts;
+}
+
+// Annual activity matrix: one row per year, one column per change type actually
+// present in the data, with explicit counts. Replaces a stacked colour bar that
+// made the reader decode segment widths instead of reading numbers.
 function eventsHistoryChart(yearGroups, t) {
   const series = yearGroups.map(([year, yearEvents]) => {
-    const counts = Object.fromEntries(HISTORY_CATEGORIES.map((category) => [category, 0]));
-    yearEvents.forEach((event) => {
-      const types = (event.event_types || []).length ? event.event_types : [''];
-      types.forEach((type) => { counts[eventTypeCategory(type)] += 1; });
-    });
+    const counts = historyYearCounts(yearEvents);
     return { year, counts, total: Object.values(counts).reduce((sum, count) => sum + count, 0) };
   });
-  const maxTotal = Math.max(1, ...series.map((year) => year.total));
   const usedCategories = HISTORY_CATEGORIES.filter((category) =>
     series.some((year) => year.counts[category] > 0),
   );
-  const legend = usedCategories
-    .map((category) => `<span><i class="history-swatch history-${category}"></i>${esc(t.historyChangeTypes[category])}</span>`)
+  if (!usedCategories.length) return '';
+  const h = t.historyMatrixHeaders;
+  const cell = (count, label) =>
+    count > 0
+      ? `<td class="history-count" data-label="${esc(label)}">${count}</td>`
+      : '<td class="history-zero">—</td>';
+  const headCells = usedCategories
+    .map((category) => `<th scope="col" title="${esc(t.historyChangeTypes[category])}"><i class="history-swatch history-${category}"></i>${esc(h[category])}</th>`)
     .join('');
   const rows = series
-    .map(({ year, counts, total }) => {
-      const width = Math.max(8, (total / maxTotal) * 100).toFixed(2);
-      const segments = usedCategories
-        .filter((category) => counts[category] > 0)
-        .map((category) => `<span class="history-segment history-${category}" style="flex:${counts[category]}" title="${esc(t.historyChangeTypes[category])}: ${counts[category]}"></span>`)
-        .join('');
-      return `<div class="history-chart-row">
-        <span class="history-chart-year">${esc(year)}</span>
-        <span class="history-track"><span class="history-bar" style="width:${width}%">${segments}</span></span>
-        <strong>${total}</strong>
-      </div>`;
-    })
+    .map(({ year, counts, total }) =>
+      `<tr><th scope="row">${esc(year)}</th>${usedCategories.map((category) => cell(counts[category], h[category])).join('')}<td class="history-total" data-label="${esc(h.total)}">${total}</td></tr>`,
+    )
     .join('');
-  const accessibleSummary = series
-    .map(({ year, total }) => `${year}: ${total}`)
-    .join(', ');
-  return `<div class="history-chart" role="img" aria-label="${esc(`${t.historyChartTitle}. ${accessibleSummary}`)}">
+  const totals = usedCategories.map((category) =>
+    series.reduce((sum, year) => sum + year.counts[category], 0),
+  );
+  const grandTotal = totals.reduce((sum, count) => sum + count, 0);
+  const footer = series.length > 1
+    ? `<tfoot><tr><th scope="row">${esc(h.total)}</th>${totals.map((count, index) => cell(count, h[usedCategories[index]])).join('')}<td class="history-total" data-label="${esc(h.total)}">${grandTotal}</td></tr></tfoot>`
+    : '';
+  return `<div class="history-chart">
     <h3>${t.historyChartTitle}</h3>
-    <div class="history-legend">${legend}</div>
-    ${rows}
+    <div class="history-matrix-wrap"><table class="history-matrix">
+      <thead><tr><th scope="col">${esc(h.year)}</th>${headCells}<th scope="col">${esc(h.total)}</th></tr></thead>
+      <tbody>${rows}</tbody>
+      ${footer}
+    </table></div>
     <p class="more">${t.historyChartNote}</p>
   </div>`;
 }
@@ -842,14 +873,18 @@ const STYLE = `<style>
   .timeline p{margin:6px 0 0;font-size:13px;color:#334155}
   .history-chart{margin:20px 0 24px}
   .history-chart h3{margin-bottom:10px}
-  .history-legend{display:flex;gap:8px 14px;flex-wrap:wrap;margin:0 0 14px;font-size:12px;color:var(--mut)}
-  .history-legend span{display:inline-flex;align-items:center;gap:5px}
-  .history-swatch{display:inline-block;width:9px;height:9px;border-radius:2px}
-  .history-chart-row{display:grid;grid-template-columns:48px minmax(0,1fr) 32px;gap:9px;align-items:center;margin:8px 0;font-size:13px}
-  .history-chart-year{font-variant-numeric:tabular-nums;color:#334155}
-  .history-track{display:block;height:18px;background:#e2e8f0;border-radius:4px;overflow:hidden}
-  .history-bar{display:flex;height:100%;min-width:3px;border-radius:4px;overflow:hidden}
-  .history-segment{display:block;height:100%}
+  .history-swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
+  .history-matrix-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .history-matrix{font-size:13px;font-variant-numeric:tabular-nums;min-width:100%}
+  .history-matrix th,.history-matrix td{padding:8px 12px;text-align:right;white-space:nowrap;vertical-align:middle}
+  .history-matrix thead th{background:#f8fafc;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--mut);border-bottom:1px solid #cbd5e1}
+  .history-matrix thead th:first-child,.history-matrix tbody th,.history-matrix tfoot th{text-align:left}
+  .history-matrix tbody th{font-weight:700;color:#334155}
+  .history-matrix .history-count{color:#0f172a}
+  .history-matrix .history-zero{color:#cbd5e1}
+  .history-matrix .history-total{font-weight:700}
+  .history-matrix tbody tr:last-child td,.history-matrix tbody tr:last-child th{border-bottom:0}
+  .history-matrix tfoot th,.history-matrix tfoot td{border-top:1px solid #cbd5e1;border-bottom:0;background:#f8fafc;font-weight:700;color:#334155}
   .history-appointments{background:#2563eb}
   .history-departures{background:#dc2626}
   .history-capital{background:#7c3aed}
@@ -926,6 +961,17 @@ const STYLE = `<style>
     .overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .hero-actions a{width:100%;text-align:center}
     .facts th{width:135px}
+    .history-matrix-wrap{overflow-x:visible}
+    .history-matrix{display:block;border:0;background:transparent;font-size:13px}
+    .history-matrix thead{display:none}
+    .history-matrix tbody,.history-matrix tfoot,.history-matrix tr{display:block}
+    .history-matrix tr{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:0 0 8px}
+    .history-matrix tbody th,.history-matrix tfoot th{display:block;padding:0 0 3px;border:0;background:transparent;font-size:14px}
+    .history-matrix td{display:inline-block;padding:0;border:0;margin:0 12px 0 0;text-align:left;background:transparent;color:#334155}
+    .history-matrix td::before{content:attr(data-label) " ";color:var(--mut);font-weight:600}
+    .history-matrix .history-zero{display:none}
+    .history-matrix tfoot th,.history-matrix tfoot td{border:0;background:transparent}
+    .history-matrix tfoot tr{background:#f8fafc}
   }
 </style>`;
 
