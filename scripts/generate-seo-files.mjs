@@ -76,6 +76,10 @@ const demandSitemapEntry = DEMAND_SITEMAP_PUBLISHED
     <loc>${siteUrl}/sitemap-demand.xml</loc>
     <lastmod>${buildDate}</lastmod>
   </sitemap>
+  <sitemap>
+    <loc>${siteUrl}/sitemap-directorio.xml</loc>
+    <lastmod>${buildDate}</lastmod>
+  </sitemap>
 `
   : '';
 

@@ -115,6 +115,35 @@ export async function listPromotedCompanies(db, { limit, offset }) {
   return result?.results || [];
 }
 
+/** Distinct provinces of promoted companies with their page counts. */
+export async function listPromotedProvinceCounts(db) {
+  if (!db) return [];
+  const result = await db.prepare(
+    `SELECT province, COUNT(*) AS total
+     FROM company_index_candidates
+     WHERE status = ? AND province IS NOT NULL AND province <> ''
+     GROUP BY province`,
+  ).bind(PROMOTED_STATUS).all();
+  return result?.results || [];
+}
+
+/**
+ * Promoted companies for a set of province spellings (the same province can
+ * be stored under case variants coming from different upstream sources).
+ */
+export async function listPromotedByProvinces(db, provinces, { limit = 2000 } = {}) {
+  if (!db || !provinces.length) return [];
+  const placeholders = provinces.map(() => '?').join(', ');
+  const result = await db.prepare(
+    `SELECT slug, canonical_name, nif
+     FROM company_index_candidates
+     WHERE status = ? AND province IN (${placeholders})
+     ORDER BY canonical_name ASC
+     LIMIT ?`,
+  ).bind(PROMOTED_STATUS, ...provinces, limit).all();
+  return result?.results || [];
+}
+
 /**
  * Record that verification ran. Stamping the timestamp on FAILURE too is what
  * makes the retry back-off work: without it, a candidate stuck above the

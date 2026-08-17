@@ -1093,7 +1093,14 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
   const facts = [
     [t.cNif, nifVal],
     [t.factLegalForm, esc(company.company_type)],
-    [t.factProvince, esc(company.province)],
+    // Linking the province to its /directorio hub closes the crawl mesh:
+    // hub → companies and every company → its hub.
+    [
+      t.factProvince,
+      company.province
+        ? `<a href="/directorio/${esc(nameToSlug(company.province))}">${esc(company.province)}</a>`
+        : '',
+    ],
     [t.factAddress, addressVal],
     [t.factActivity, esc(company.activity)],
     [t.factCapital, capitalVal],
@@ -1668,7 +1675,7 @@ export async function handleCompany({ params, env }, lang = 'es') {
 // IBEX 35 hub page (/empresas-cotizadas, /en/listed-companies)
 // ---------------------------------------------------------------------------
 
-const HUB_STYLE = `<style>
+export const HUB_STYLE = `<style>
   :root{--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--bg:#f8fafc;--brand:#2563eb}
   *{box-sizing:border-box}
   body{margin:0;font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}

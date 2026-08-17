@@ -12,4 +12,8 @@
     <loc>https://mapasocietario.es/sitemap-demand.xml</loc>
     <lastmod>2026-08-17</lastmod>
   </sitemap>
+  <sitemap>
+    <loc>https://mapasocietario.es/sitemap-directorio.xml</loc>
+    <lastmod>2026-08-17</lastmod>
+  </sitemap>
 </sitemapindex>
