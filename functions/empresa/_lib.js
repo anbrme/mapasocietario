@@ -184,10 +184,17 @@ const T = {
   es: {
     htmlLang: 'es',
     ogLocale: 'es_ES',
-    title: (name) => `${name} — Socios, administradores y estructura societaria (Registro Mercantil) | Mapa Societario`,
+    // "[empresa] cif" is by far the highest-volume Spanish company query, so the
+    // title leads with the CIF — but ONLY when the page can actually show one.
+    // A "CIF" title on a page without the number is a broken snippet promise
+    // (instant bounce back to the SERP on the exact query being targeted).
+    title: (name, nif) =>
+      nif
+        ? `${name}: CIF ${nif}, administradores y estructura societaria | Mapa Societario`
+        : `${name} — Socios, administradores y estructura societaria (Registro Mercantil) | Mapa Societario`,
     ogTitle: (name) => `${name} — Estructura societaria`,
-    desc: (name, cap, prov) =>
-      `Ficha del Registro Mercantil (BORME) de ${name}: socios, administradores actuales y cesados, capital social (${cap || 'n/d'})${prov ? `, domicilio en ${prov}` : ''} e historial mercantil reciente. Consulta gratuita.`,
+    desc: (name, cap, prov, nif) =>
+      `Ficha del Registro Mercantil (BORME) de ${name}${nif ? ` (CIF ${nif})` : ''}: socios, administradores actuales y cesados, capital social (${cap || 'n/d'})${prov ? `, domicilio en ${prov}` : ''} e historial mercantil reciente. Consulta gratuita.`,
     jsonLdDesc: (name) =>
       `Estructura societaria de ${name}: administradores, socios, capital social e historial mercantil oficial (BORME).`,
     home: 'Mapa Societario',
@@ -380,10 +387,13 @@ const T = {
   en: {
     htmlLang: 'en',
     ogLocale: 'en_GB',
-    title: (name) => `${name}: Directors & Company Records | Mapa Societario`,
+    title: (name, nif) =>
+      nif
+        ? `${name}: CIF ${nif}, Directors & Company Records | Mapa Societario`
+        : `${name}: Directors & Company Records | Mapa Societario`,
     ogTitle: (name) => `${name}: directors and Spanish company records`,
-    desc: (name, cap, prov) =>
-      `Search ${name} in Spain: directors, officers, registered address${prov ? ` in ${prov}` : ''}, share capital${cap ? ` (${cap})` : ''} and BORME filing history. Free company profile.`,
+    desc: (name, cap, prov, nif) =>
+      `Search ${name} in Spain${nif ? ` (CIF ${nif})` : ''}: directors, officers, registered address${prov ? ` in ${prov}` : ''}, share capital${cap ? ` (${cap})` : ''} and BORME filing history. Free company profile.`,
     jsonLdDesc: (name) =>
       `Ownership structure of ${name}: directors, shareholders, share capital and official Spanish commercial-registry (BORME) history.`,
     home: 'Mapa Societario',
@@ -638,6 +648,26 @@ function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = fals
   return `${primary}${more}`;
 }
 
+/**
+ * The one NIF used for SEO surfaces (title, description, registry heading).
+ * Priority: curated seed (human-verified) → registry value → enriched value.
+ * Enriched NIFs are externally sourced estimates; the page body already shows
+ * them with a caveat, so mirroring them in the snippet is consistent — but
+ * they are deliberately NOT asserted as taxID in structured data (see jsonLd).
+ */
+export function resolveNif(company, seed) {
+  return (seed && seed.nif) || (company && (company.nif || company.enriched_nif)) || null;
+}
+
+/** Title + meta description for a company page, CIF-aware when a NIF is known. */
+export function buildSeoMeta(lang, name, { nif = null, capital = '', province = '' } = {}) {
+  const t = T[lang] || T.es;
+  return {
+    title: t.title(name, nif),
+    desc: t.desc(name, capital, province, nif),
+  };
+}
+
 function listBlock(title, arr) {
   if (!arr || !arr.length) return '';
   return `<h3>${esc(title)}</h3><ul class="pill">${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
@@ -782,8 +812,12 @@ function jsonLd(company, slug, lang, t, seed) {
   // The old `(company.identifiers || []).join(', ')` was a comma-joined blob of ~400
   // BORME entry IDs, which reset yearly and aren't a real identifier; it's dropped.
   const identifier = [];
+  // Structured data asserts facts without the page's "external estimate" caveat,
+  // so only verified NIFs (curated seed or registry-sourced) become taxID /
+  // identifier here — enriched_nif stays out even though the snippet shows it.
+  const verifiedNif = (seed && seed.nif) || company.nif || null;
+  if (verifiedNif) identifier.push({ '@type': 'PropertyValue', propertyID: 'NIF', value: verifiedNif });
   if (seed) {
-    if (seed.nif) identifier.push({ '@type': 'PropertyValue', propertyID: 'NIF', value: seed.nif });
     if (seed.lei) identifier.push({ '@type': 'PropertyValue', propertyID: 'LEI', value: seed.lei });
     if (seed.isin) identifier.push({ '@type': 'PropertyValue', propertyID: 'ISIN', value: seed.isin });
   }
@@ -798,6 +832,7 @@ function jsonLd(company, slug, lang, t, seed) {
     name: company.company_name,
     url: companyUrl(lang, slug),
     ...(seed && seed.ticker ? { tickerSymbol: seed.ticker } : {}),
+    ...(verifiedNif ? { taxID: verifiedNif } : {}),
     ...(company.current_address ? { address: company.current_address } : {}),
     ...(company.province ? { areaServed: company.province } : {}),
     ...(officers.length ? { employee: officers.slice(0, 10).map((n) => ({ '@type': 'Person', name: n })) } : {}),
@@ -1014,8 +1049,12 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
   // concise label in search snippets while keeping the legal name and registry
   // data visible in the page body and structured data.
   const seoName = seed?.name || name;
-  const title = t.title(seoName);
-  const desc = t.desc(seoName, fmtEur(company.current_capital, lang), company.province);
+  const seoNif = resolveNif(company, seed);
+  const { title, desc } = buildSeoMeta(lang, seoName, {
+    nif: seoNif,
+    capital: fmtEur(company.current_capital, lang),
+    province: company.province,
+  });
 
   const badges = [
     company.company_type ? `<span class="badge">${esc(company.company_type)}</span>` : '',
@@ -1380,7 +1419,7 @@ ${STYLE}
 
   ${relationshipOverviewBlock}
 
-  <h2 id="registry-data">${t.registryData}</h2>
+  <h2 id="registry-data">${t.registryData}${seoNif ? ` · CIF ${esc(seoNif)}` : ''}</h2>
   <table class="facts"><tbody>${facts}</tbody></table>
 
   ${cnmvBlock}
