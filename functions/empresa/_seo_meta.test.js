@@ -84,3 +84,17 @@ describe('renderCompanyPage NIF wiring', () => {
     expect(enriched).not.toContain('taxID');
   });
 });
+
+describe('normalizeNif', () => {
+  it('strips separators and uppercases for titles and taxID', async () => {
+    const { normalizeNif } = await import('./_lib.js');
+    expect(normalizeNif('A-28004885')).toBe('A28004885');
+    expect(normalizeNif(' a.480.10615 ')).toBe('A48010615');
+    expect(normalizeNif('')).toBeNull();
+  });
+
+  it('applies to seed NIFs end to end', async () => {
+    const { resolveNif } = await import('./_lib.js');
+    expect(resolveNif({}, { nif: 'A-28004885' })).toBe('A28004885');
+  });
+});

@@ -655,8 +655,18 @@ function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = fals
  * them with a caveat, so mirroring them in the snippet is consistent — but
  * they are deliberately NOT asserted as taxID in structured data (see jsonLd).
  */
+/** Canonical NIF form for machine surfaces: strip separators, uppercase.
+ * Seed NIFs are stored as entered ("A-28004885"); titles, descriptions and
+ * taxID must never render the hyphenated variant. */
+export function normalizeNif(value) {
+  const cleaned = String(value || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+  return cleaned || null;
+}
+
 export function resolveNif(company, seed) {
-  return (seed && seed.nif) || (company && (company.nif || company.enriched_nif)) || null;
+  return normalizeNif(
+    (seed && seed.nif) || (company && (company.nif || company.enriched_nif)) || null,
+  );
 }
 
 /** Title + meta description for a company page, CIF-aware when a NIF is known. */
@@ -815,7 +825,7 @@ function jsonLd(company, slug, lang, t, seed) {
   // Structured data asserts facts without the page's "external estimate" caveat,
   // so only verified NIFs (curated seed or registry-sourced) become taxID /
   // identifier here — enriched_nif stays out even though the snippet shows it.
-  const verifiedNif = (seed && seed.nif) || company.nif || null;
+  const verifiedNif = normalizeNif((seed && seed.nif) || company.nif || null);
   if (verifiedNif) identifier.push({ '@type': 'PropertyValue', propertyID: 'NIF', value: verifiedNif });
   if (seed) {
     if (seed.lei) identifier.push({ '@type': 'PropertyValue', propertyID: 'LEI', value: seed.lei });
