@@ -40,7 +40,10 @@ export async function fetchJsonWithRetry(url, {
       lastError = error;
       if (attempt === attempts) break;
 
-      const delayMs = baseDelayMs * (2 ** (attempt - 1));
+      // Rate limits need patience, not speed: a hot 429 window outlasts the
+      // sub-second exponential schedule, so give it a multi-second floor.
+      const backoffMs = baseDelayMs * (2 ** (attempt - 1));
+      const delayMs = error.message === 'HTTP 429' ? Math.max(backoffMs, 5_000 * attempt) : backoffMs;
       console.warn(
         `  ↻ ${label}: transient fetch failure (${error.message}); retrying ${attempt + 1}/${attempts} in ${delayMs}ms`,
       );

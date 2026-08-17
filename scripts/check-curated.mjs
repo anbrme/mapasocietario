@@ -15,7 +15,12 @@ import { fetchJsonWithRetry } from './fetch-json-with-retry.mjs';
 const API = 'https://api.ncdata.eu';
 let failures = 0;
 
+const pace = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function fetchCompany(url, label) {
+  // ~3 req/s across the ~40 entries keeps this checker from tripping the
+  // API's rate limiter (which then 429s the whole build).
+  await pace(300);
   const data = await fetchJsonWithRetry(url, { label });
   return (data && data.company) || null;
 }
