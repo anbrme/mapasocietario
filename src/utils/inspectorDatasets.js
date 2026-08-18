@@ -1,0 +1,146 @@
+import { formatDate } from './formatDate';
+
+/**
+ * Turns a resolved preview payload into the tabular datasets shown in the
+ * bottom data dock, plus the counts the inspector renders as filter chips.
+ *
+ * The inspector itself stays a fixed-height fact sheet: everything that grows
+ * with company size ends up here, paginated, instead of extending the panel
+ * into tens of thousands of pixels of scroll.
+ */
+
+const EMPTY_OFFICERS = { nombramientos: [], reelecciones: [], ceses_dimisiones: [], revocaciones: [] };
+
+/** BORME event categories, in the order they read as a history. */
+const EVENT_CATEGORIES = [
+  { key: 'nombramientos', labelKey: 'appointments' },
+  { key: 'reelecciones', labelKey: 'reelections' },
+  { key: 'ceses_dimisiones', labelKey: 'cessations' },
+  { key: 'revocaciones', labelKey: 'revocations' },
+];
+
+/**
+ * v3 expand-officer reports `status` ("active"/"ceased") on most rows, but older
+ * ones only carry `event_type`. Prefer the explicit field, fall back to the
+ * event, and say "unknown" rather than guessing.
+ */
+export const resolveOfficerStatus = (officer, labels) => {
+  const status = (officer.status || '').toLowerCase();
+  if (status === 'active') return labels.active;
+  if (status === 'ceased') return labels.ceased;
+
+  const event = (officer.event_type || '').toLowerCase();
+  if (event.includes('nombr') || event.includes('reelecc')) return labels.active;
+  if (event.includes('cese') || event.includes('dimis') || event.includes('revoc')) return labels.ceased;
+  return labels.unknown;
+};
+
+const officerColumns = labels => [
+  { key: 'name', label: labels.name, width: '45%' },
+  { key: 'position', label: labels.role, width: '35%' },
+  { key: 'date', label: labels.date, width: '20%' },
+];
+
+/**
+ * One row per SEAT, not per person: an officer holding three roles becomes three
+ * rows, which is what makes the table searchable by role.
+ */
+const flattenCurrentOfficers = (currentOfficers, lang) =>
+  (currentOfficers || []).flatMap(officer =>
+    (officer.positions || []).map(position => ({
+      name: officer.name || '-',
+      position: position.position || '-',
+      date: position.date ? formatDate(position.date, lang) : '-',
+    }))
+  );
+
+const mapEventOfficers = (officers, lang) =>
+  (officers || []).map(officer => ({
+    name: officer.name || '-',
+    position: officer.position || '-',
+    date: officer.date ? formatDate(officer.date, lang) : '-',
+  }));
+
+const buildCompanyDatasets = (data, { lang, labels }) => {
+  const enriched = data.enriched || {};
+  const officers = enriched.officers || EMPTY_OFFICERS;
+
+  // The registry's own totals, used to admit when the loaded rows are a subset.
+  // These come from the raw v3 doc, not from the event window the rows derive
+  // from, so they are the honest denominator.
+  const registryActive = data.company?.officers_active?.length;
+  const registryResigned = data.company?.officers_resigned?.length;
+
+  const datasets = [
+    {
+      key: 'current',
+      label: labels.currentOfficersShort,
+      columns: officerColumns(labels),
+      rows: flattenCurrentOfficers(enriched.currentOfficers, lang),
+      registryTotal: registryActive,
+    },
+    ...EVENT_CATEGORIES.map(({ key, labelKey }) => ({
+      key,
+      label: labels[labelKey],
+      columns: officerColumns(labels),
+      rows: mapEventOfficers(officers[key], lang),
+      registryTotal: key === 'ceses_dimisiones' ? registryResigned : undefined,
+    })),
+  ];
+
+  return datasets.filter(dataset => dataset.rows.length > 0);
+};
+
+const buildOfficerDatasets = (data, { lang, labels }) => {
+  const roles = (data.officers || []).map(officer => ({
+    company: officer.company_name || officer.company || labels.unknown,
+    position:
+      officer.specific_role || officer.position_normalized || officer.role || officer.position || '-',
+    status: resolveOfficerStatus(officer, labels),
+    date: formatDate(officer.date || officer.event_date || '', lang),
+  }));
+
+  const owned = (data.whollyOwned || []).map(company => ({
+    company: company.name || '-',
+    stake: '100%',
+    isDissolved: !!company.is_dissolved,
+    isInConcurso: !!company.is_in_concurso,
+  }));
+
+  return [
+    {
+      key: 'roles',
+      label: labels.rolesShort,
+      columns: [
+        { key: 'company', label: labels.company, width: '45%' },
+        { key: 'position', label: labels.role, width: '25%' },
+        { key: 'status', label: labels.status, width: '15%' },
+        { key: 'date', label: labels.date, width: '15%' },
+      ],
+      rows: roles,
+    },
+    {
+      key: 'owned',
+      label: labels.whollyOwnedShort,
+      columns: [
+        { key: 'company', label: labels.company, width: '85%' },
+        { key: 'stake', label: '%', width: '15%' },
+      ],
+      rows: owned,
+    },
+  ].filter(dataset => dataset.rows.length > 0);
+};
+
+export const buildInspectorDatasets = (data, { lang = 'es', labels }) => {
+  if (!data) return [];
+  if (data.type === 'company') return buildCompanyDatasets(data, { lang, labels });
+  if (data.type === 'officer') return buildOfficerDatasets(data, { lang, labels });
+  return [];
+};
+
+/**
+ * Chip counts for the inspector — the same datasets reduced to a label and a
+ * number, so clicking one can open the dock on exactly that table.
+ */
+export const summariseCounts = (datasets = []) =>
+  datasets.map(({ key, label, rows }) => ({ key, label, count: rows.length }));

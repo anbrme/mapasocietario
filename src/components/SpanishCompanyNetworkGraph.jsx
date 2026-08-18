@@ -97,6 +97,8 @@ import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } fr
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 import ApoderadosSidebar from './ApoderadosSidebar';
 import CompanyInspectorPanel from './CompanyInspectorPanel';
+import CompanyDataDock from './CompanyDataDock';
+import { buildInspectorDatasets, summariseCounts } from '../utils/inspectorDatasets';
 import Ibex35MarketSidebar from './Ibex35MarketSidebar';
 import Ibex35MarketDialog from './Ibex35MarketDialog';
 import LegalDisclaimer from './LegalDisclaimer';
@@ -225,6 +227,10 @@ const INSPECTOR_WIDTH_WIDE = 520;
 const INSPECTOR_WIDTH_COMPACT = 460;
 // Never starve the canvas entirely, however narrow the container gets.
 const MIN_CANVAS_WIDTH = 240;
+// Bottom dock height. Tables want width, not height: ~8 rows across the full
+// width beats ~8 rows in a 520px column, and the graph keeps the band above.
+const DATA_DOCK_HEIGHT = 300;
+const MIN_CANVAS_HEIGHT = 200;
 
 const SEARCH_COPY = {
   en: {
@@ -486,6 +492,11 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Roles in ${count} compan${count === 1 ? 'y' : 'ies'}`,
     role: 'Role',
     unknown: 'Unknown',
+    structureSection: 'Structure',
+    structureHint: 'Opens the full table in the panel below.',
+    currentOfficersShort: 'Current officers',
+    rolesShort: 'Positions',
+    whollyOwnedShort: 'Wholly owned',
     close: 'Close',
     legalTitle: 'Source and legal notice',
     markResignedBody: name => (
@@ -802,6 +813,11 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Cargos en ${count} empresa${count === 1 ? '' : 's'}`,
     role: 'Cargo',
     unknown: 'Desconocido',
+    structureSection: 'Estructura',
+    structureHint: 'Abre la tabla completa en el panel inferior.',
+    currentOfficersShort: 'Directivos actuales',
+    rolesShort: 'Cargos',
+    whollyOwnedShort: 'Participadas 100%',
     close: 'Cerrar',
     legalTitle: 'Fuente y aviso legal',
     markResignedBody: name => (
@@ -1481,6 +1497,11 @@ const SpanishCompanyNetworkGraph = ({
 
   // Data preview modal state
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Which tabular dataset the bottom dock is showing (null = dock closed).
+  const [activeDatasetKey, setActiveDatasetKey] = useState(null);
+  // handleNodeClick is defined above openDataPreview, so it calls through this
+  // ref rather than closing over a binding that is not initialised yet.
+  const openDataPreviewRef = useRef(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [previewData, setPreviewData] = useState(null);
@@ -1705,10 +1726,12 @@ const SpanishCompanyNetworkGraph = ({
   const inspectorWidth = isWideViewport ? INSPECTOR_WIDTH_WIDE : INSPECTOR_WIDTH_COMPACT;
   const isInspectorDocked = previewOpen && isInspectorDockable;
   const reservedInspectorWidth = isInspectorDocked ? inspectorWidth : 0;
+  const isDockOpen = previewOpen && Boolean(activeDatasetKey);
+  const reservedDockHeight = isDockOpen ? DATA_DOCK_HEIGHT : 0;
   const canvasDimensions = React.useMemo(() => ({
     width: Math.max(MIN_CANVAS_WIDTH, containerDimensions.width - reservedInspectorWidth),
-    height: containerDimensions.height,
-  }), [containerDimensions, reservedInspectorWidth]);
+    height: Math.max(MIN_CANVAS_HEIGHT, containerDimensions.height - reservedDockHeight),
+  }), [containerDimensions, reservedInspectorWidth, reservedDockHeight]);
   const graphPalette = theme.palette.graph;
 
   // Node colors and shapes
@@ -4981,9 +5004,14 @@ const SpanishCompanyNetworkGraph = ({
         trackEvent('graph_node_click', {
           ...graphInteractionParams(node),
           interaction_source: 'mouse',
-          click_action: 'select',
+          click_action: 'select_and_inspect',
         });
         setActiveNodeId(nodeId);
+        // The legend already tells desktop users "Clic: ficha de empresa".
+        // Now it is true. Safe to do on every click because the inspector is a
+        // fixed-height fact sheet — the long tables only load into the dock when
+        // the user asks for them.
+        openDataPreviewRef.current?.(node);
       }
     },
     [
@@ -4996,6 +5024,15 @@ const SpanishCompanyNetworkGraph = ({
       isTouchDevice,
       toggleInvestigationNode,
     ]
+  );
+
+  const inspectorDatasets = React.useMemo(
+    () => buildInspectorDatasets(previewData, { lang: uiLanguage, labels: text }),
+    [previewData, uiLanguage, text]
+  );
+  const inspectorCounts = React.useMemo(
+    () => summariseCounts(inspectorDatasets),
+    [inspectorDatasets]
   );
 
   const handleBackgroundClick = useCallback(() => {
@@ -5305,6 +5342,15 @@ const SpanishCompanyNetworkGraph = ({
 
   // Data preview: fetch live data normally, or read only the imported snapshot.
   const openDataPreview = useCallback(async (nodeOverride = null) => {
+    // Re-clicking the node already on screen must not refetch it — with single
+    // click bound to the inspector, exploration would otherwise fire a profile
+    // and an events request per click.
+    const alreadyShowing =
+      previewOpen &&
+      previewNodeName === (nodeOverride?.name ?? contextNode?.name) &&
+      previewNodeType === ((nodeOverride ?? contextNode)?.type === 'officer' ? 'officer' : 'company');
+    if (alreadyShowing) return;
+
     const previewTarget = nodeOverride || contextNode;
     if (!previewTarget) return;
     const name = previewTarget.name;
@@ -5673,7 +5719,22 @@ const SpanishCompanyNetworkGraph = ({
     } finally {
       setPreviewLoading(false);
     }
-  }, [contextNode, closeNodeContextMenu, text, uiLanguage, snapshotMode, buildSnapshotPreview]);
+  }, [
+    contextNode,
+    closeNodeContextMenu,
+    text,
+    uiLanguage,
+    snapshotMode,
+    buildSnapshotPreview,
+    previewOpen,
+    previewNodeName,
+    previewNodeType,
+  ]);
+
+  // Keep the ref used by handleNodeClick pointed at the latest callback.
+  useEffect(() => {
+    openDataPreviewRef.current = openDataPreview;
+  }, [openDataPreview]);
 
   const saveNodeEdit = useCallback(() => {
     if (!contextNode) return;
@@ -9473,8 +9534,11 @@ const SpanishCompanyNetworkGraph = ({
             sits beside the panel rather than under it. */}
         <CompanyInspectorPanel
           open={previewOpen}
-          onClose={() => setPreviewOpen(false)}
+          onClose={() => { setPreviewOpen(false); setActiveDatasetKey(null); }}
           width={isInspectorDockable ? inspectorWidth : null}
+          counts={inspectorCounts}
+          activeDatasetKey={activeDatasetKey}
+          onOpenDataset={key => setActiveDatasetKey(prev => (prev === key ? null : key))}
           nodeName={previewNodeName}
           nodeType={previewNodeType}
           userMerged={previewUserMerged}
@@ -9491,6 +9555,20 @@ const SpanishCompanyNetworkGraph = ({
             setDdCheckoutCompany(previewNodeName);
             setDdCheckoutOpen(true);
           }}
+        />
+
+        {/* Tabular data — full width along the bottom, paginated. The canvas
+            reserved this height, so the graph sits above the dock rather than
+            behind it. */}
+        <CompanyDataDock
+          open={isDockOpen}
+          onClose={() => setActiveDatasetKey(null)}
+          datasets={inspectorDatasets}
+          activeKey={activeDatasetKey}
+          onActiveKeyChange={setActiveDatasetKey}
+          lang={uiLanguage}
+          height={DATA_DOCK_HEIGHT}
+          rightOffset={reservedInspectorWidth}
         />
       </Box>
 

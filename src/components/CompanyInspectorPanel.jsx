@@ -8,12 +8,6 @@ import {
   Alert,
   Paper,
   Tooltip,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Chip,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
@@ -28,6 +22,8 @@ import {
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import GroupsIcon from '@mui/icons-material/Groups';
+import TableRowsIcon from '@mui/icons-material/TableRows';
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
@@ -61,6 +57,9 @@ const CompanyInspectorPanel = ({
   officerDeputyMatches = {},
   entrySource = 'direct',
   width = null,
+  counts = [],
+  activeDatasetKey = null,
+  onOpenDataset,
   onOpenReport,
   onBuyDueDiligence,
 }) => {
@@ -194,36 +193,39 @@ const CompanyInspectorPanel = ({
         {data?.snapshotLocal && (
           <Alert severity="info" sx={{ mb: 2 }}>{text.snapshotPreviewNotice}</Alert>
         )}
+
+        {/* Structure — the parts of the record the GRAPH already draws. Showing
+            them as counts rather than tables keeps this panel a fixed height
+            whatever the company's size: a bank with 30,000 registry officers
+            renders the same four chips as a two-person SL. Clicking one opens
+            that table in the data dock, paginated. */}
+        {counts.length > 0 && (
+          <Box sx={{ mb: 2.5 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+              <GroupsIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
+              {text.structureSection}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+              {counts.map(({ key, label, count }) => (
+                <Chip
+                  key={key}
+                  label={`${label} · ${count}`}
+                  size="small"
+                  clickable
+                  onClick={() => onOpenDataset?.(key)}
+                  color={key === activeDatasetKey ? 'primary' : 'default'}
+                  variant={key === activeDatasetKey ? 'filled' : 'outlined'}
+                  icon={<TableRowsIcon sx={{ fontSize: 15 }} />}
+                />
+              ))}
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+              {text.structureHint}
+            </Typography>
+          </Box>
+        )}
         {data && data.type === 'company' && (() => {
           const e = data.enriched;
-          const officerTable = (officers, color, title) => officers.length > 0 && (
-            <>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color }}>
-                {title} ({officers.length})
-              </Typography>
-              <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>{text.name}</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>{text.role}</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {officers.map((o, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{o.name || '-'}</TableCell>
-                        <TableCell>{o.position || '-'}</TableCell>
-                        <TableCell>{o.date ? formatDate(o.date, lang) : '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </>
-          );
-
           const fullHref = fullCompanyPageHref(data.name, lang);
           return (
             <Box>
@@ -458,82 +460,6 @@ const CompanyInspectorPanel = ({
                 </Typography>
               )}
 
-              {/* Current officers — grouped by person, sorted by position importance */}
-              {e?.currentOfficers?.length > 0 && (
-                <>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: 'primary.main' }}>
-                    {text.currentOfficers(e.currentOfficers.length)}
-                  </Typography>
-                  <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 700 }}>{text.name}</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>{text.role}(s)</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {e.currentOfficers.map((officer, i) => {
-                          const dm = officerDeputyMatches[officer.name];
-                          const deputyChip = dm?.deputy ? (
-                            <Chip
-                              label={dm.deputy.FECHABAJA ? `🏛️ ${lang === 'en' ? 'Former MP' : 'Ex-dip.'}` : `🏛️ ${text.congressDeputy}${dm.deputy.FORMACIONELECTORAL ? ` · ${dm.deputy.FORMACIONELECTORAL}` : ''}`}
-                              size="small"
-                              variant="outlined"
-                              sx={{
-                                ml: 0.75,
-                                height: 18,
-                                fontSize: '0.6rem',
-                                color: dm.deputy.FECHABAJA ? 'text.secondary' : 'warning.dark',
-                                borderColor: dm.deputy.FECHABAJA ? 'grey.400' : 'warning.main',
-                              }}
-                            />
-                          ) : null;
-                          return officer.positions.length === 1 ? (
-                            <TableRow key={i}>
-                              <TableCell>
-                                {officer.name || '-'}
-                                {deputyChip}
-                              </TableCell>
-                              <TableCell>{officer.positions[0].position || '-'}</TableCell>
-                              <TableCell>{officer.positions[0].date ? formatDate(officer.positions[0].date, lang) : '-'}</TableCell>
-                            </TableRow>
-                          ) : (
-                            officer.positions.map((pos, j) => (
-                              <TableRow key={`${i}-${j}`}>
-                                {j === 0 ? (
-                                  <TableCell rowSpan={officer.positions.length} sx={{ verticalAlign: 'top', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'divider' }}>
-                                    {officer.name || '-'}
-                                    {deputyChip}
-                                  </TableCell>
-                                ) : null}
-                                <TableCell sx={j === officer.positions.length - 1 ? { borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'divider' } : undefined}>
-                                  {pos.position || '-'}
-                                </TableCell>
-                                <TableCell sx={j === officer.positions.length - 1 ? { borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'divider' } : undefined}>
-                                  {pos.date ? formatDate(pos.date, lang) : '-'}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </>
-              )}
-
-              {/* Officers by category (historical) */}
-              {e?.officers && (
-                <>
-                  {officerTable(e.officers.nombramientos, 'graph.link.appointment', text.appointments)}
-                  {officerTable(e.officers.reelecciones, 'graph.link.appointment', text.reelections)}
-                  {officerTable(e.officers.ceses_dimisiones, 'graph.link.cessation', text.cessations)}
-                  {officerTable(e.officers.revocaciones, 'graph.link.cessation', text.revocations)}
-                </>
-              )}
-
               {/* Watermark */}
               <Typography
                 variant="caption"
@@ -546,30 +472,9 @@ const CompanyInspectorPanel = ({
         })()}
 
         {data && data.type === 'officer' && (() => {
-          const officers = data.officers || [];
+          // The roles-per-company and wholly-owned tables live in the data dock;
+          // this branch only renders what the graph cannot draw about a person.
           const variants = data.nameVariants;
-          // Group by company
-          const byCompany = {};
-          officers.forEach(o => {
-            const companyName = o.company_name || o.company || text.unknown;
-            if (!byCompany[companyName]) byCompany[companyName] = [];
-            byCompany[companyName].push(o);
-          });
-          // v3 expand-officer returns: officer_name, company_name, specific_role,
-          // event_type ("nombramientos"/"ceses_dimisiones"), status ("active"/"ceased"), date
-          const resolveStatus = (o) => {
-            const st = (o.status || '').toLowerCase();
-            if (st === 'active') return { label: lang === 'en' ? 'Active' : 'Activo', color: 'success' };
-            if (st === 'ceased') return { label: lang === 'en' ? 'Ceased' : 'Cesado', color: 'error' };
-            const evt = (o.event_type || '').toLowerCase();
-            if (evt.includes('nombr') || evt.includes('reelecc')) return { label: lang === 'en' ? 'Active' : 'Activo', color: 'success' };
-            if (evt.includes('cese') || evt.includes('dimis') || evt.includes('revoc')) return { label: lang === 'en' ? 'Ceased' : 'Cesado', color: 'error' };
-            return { label: text.unknown, color: 'default' };
-          };
-          const resolvePosition = (o) => o.specific_role || o.position_normalized || o.role || o.position || '-';
-          const resolveDate = (o) => o.date || o.event_date || '';
-
-          const whollyOwned = data.whollyOwned || [];
           const deputyMatch = officerDeputyMatches[data.name];
           return (
             <Box>
@@ -687,104 +592,6 @@ const CompanyInspectorPanel = ({
                 </Alert>
               )}
 
-              {/* Wholly-owned companies (sole shareholder positions) */}
-              {whollyOwned.length > 0 && (
-                <Box sx={{ mb: 2.5 }}>
-                  <Alert severity="warning" sx={{ mb: 1.5 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      {text.whollyOwned(whollyOwned.length)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {text.whollyOwnedHelp}
-                    </Typography>
-                  </Alert>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                    {whollyOwned.map((c, i) => {
-                      const isDissolved = c.is_dissolved;
-                      const isInConcurso = c.is_in_concurso;
-                      return (
-                        <Paper
-                          key={`wo-${i}`}
-                          variant="outlined"
-                          sx={{
-                            p: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            bgcolor: isDissolved
-                              ? 'error.50'
-                              : isInConcurso
-                                ? 'warning.50'
-                                : 'background.paper',
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
-                            <BusinessIcon sx={{ fontSize: 16, color: isDissolved ? 'error.main' : 'primary.main' }} />
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontWeight: 500,
-                                textDecoration: isDissolved ? 'line-through' : 'none',
-                              }}
-                              noWrap
-                            >
-                              {c.name}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                            {isDissolved && <Chip label={text.dissolved} size="small" color="error" />}
-                            {isInConcurso && <Chip label={text.concurso} size="small" color="warning" />}
-                            <Chip label="100%" size="small" color={isDissolved ? 'error' : 'success'} />
-                          </Box>
-                        </Paper>
-                      );
-                    })}
-                  </Box>
-                </Box>
-              )}
-
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
-                <PersonIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
-                {text.rolesInCompanies(Object.keys(byCompany).length)}
-              </Typography>
-              {Object.entries(byCompany).map(([companyName, companyOfficers]) => (
-                <Paper key={companyName} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
-                    <BusinessIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'text-bottom' }} />
-                    {companyName}
-                  </Typography>
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 700 }}>{text.role}</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>{text.status}</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {companyOfficers.map((o, i) => {
-                          const status = resolveStatus(o);
-                          return (
-                            <TableRow key={i}>
-                              <TableCell>{resolvePosition(o)}</TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={status.label}
-                                  size="small"
-                                  color={status.color}
-                                  variant="outlined"
-                                />
-                              </TableCell>
-                              <TableCell>{formatDate(resolveDate(o), lang)}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Paper>
-              ))}
               <Typography
                 variant="caption"
                 sx={{ display: 'block', textAlign: 'center', color: 'text.disabled', mt: 2, fontStyle: 'italic' }}
@@ -794,31 +601,32 @@ const CompanyInspectorPanel = ({
             </Box>
           );
         })()}
+
+        {/* What the paid report adds over this preview — the value gap, stated
+            plainly. Lives in the scroll area so the pinned footer stays short. */}
+        {data?.type === 'company' && (
+          <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.5, mt: 3 }}>
+            {text.fullReportAdds}
+          </Typography>
+        )}
+
       </Box>
       {data?.type === 'company' ? (
         <Box sx={{ px: 2, pb: 2, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
-          {/* What the paid report adds over this preview — the value gap, stated plainly. */}
-          <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.5, mb: 1 }}>
-            {text.fullReportAdds}
-          </Typography>
-          {/* Data-quality guarantee — surfaced here, at the decision point, not only at checkout. */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 1,
-              p: 1.25,
-              mb: 1.5,
-              borderRadius: 1.5,
-              bgcolor: (t) => alpha(t.palette.success.main, 0.08),
-              border: (t) => `1px solid ${alpha(t.palette.success.main, 0.25)}`,
-            }}
-          >
-            <VerifiedUserIcon sx={{ fontSize: 18, color: 'accent.success', mt: '1px', flexShrink: 0 }} />
-            <Typography variant="caption" sx={{ color: 'accent.success', fontSize: '0.74rem', lineHeight: 1.45 }}>
-              {text.previewGuarantee}
-            </Typography>
-          </Box>
+          {/* Data-quality guarantee — kept at the decision point, but on one line
+              so the pinned footer does not crowd out the fact sheet above it. */}
+          <Tooltip title={text.previewGuarantee}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1 }}>
+              <VerifiedUserIcon sx={{ fontSize: 16, color: 'accent.success', flexShrink: 0 }} />
+              <Typography
+                variant="caption"
+                noWrap
+                sx={{ color: 'accent.success', fontSize: '0.72rem', minWidth: 0 }}
+              >
+                {text.previewGuarantee}
+              </Typography>
+            </Box>
+          </Tooltip>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
             <Button
               variant="contained"
