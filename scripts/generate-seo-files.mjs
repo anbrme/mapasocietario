@@ -11,8 +11,42 @@ const rawSiteUrl = process.env.SITE_URL || process.env.VITE_SITE_URL || 'https:/
 const siteUrl = rawSiteUrl.replace(/\/+$/, '');
 const buildDate = new Date().toISOString().split('T')[0];
 
-const robotsTxt = `User-agent: *
+// robots.txt is authored HERE, in git, deliberately. Cloudflare's managed
+// robots.txt setting (Bots -> Managed robots.txt) prepends a wholesale
+// "Disallow: /" for every known AI crawler and is invisible in the repo, which
+// silently contradicted the AEO strategy. That setting must stay OFF so this
+// file is the single source of truth.
+//
+// Content signals (https://contentsignals.org/): search and AI answers are the
+// whole point of the AEO work, so both are granted. Training is granted too --
+// the facts are BORME-derived public record, and the product's value is
+// freshness, which a frozen model cannot substitute for.
+//
+// The one exception is /empresa/: those pages carry officer names, i.e.
+// personal data. Inclusion in a training corpus is effectively irreversible, so
+// a later erasure request could not be honoured downstream. Company pages stay
+// fully open to search and to AI answers -- only training is withheld.
+const robotsTxt = `# Content signals: https://contentsignals.org/
+User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
+
+# Officer names on company pages are personal data: open to search and AI
+# answers, withheld from model training.
+User-agent: GPTBot
+Disallow: /empresa/
+
+User-agent: ClaudeBot
+Disallow: /empresa/
+
+User-agent: CCBot
+Disallow: /empresa/
+
+User-agent: Applebot-Extended
+Disallow: /empresa/
+
+User-agent: meta-externalagent
+Disallow: /empresa/
 
 Sitemap: ${siteUrl}/sitemap.xml
 `;
