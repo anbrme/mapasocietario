@@ -1,9 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Typography,
   Box,
   Button,
@@ -43,9 +39,10 @@ import { formatDate } from '../utils/formatDate';
 /**
  * Company / officer inspector for the network graph.
  *
- * Extracted from SpanishCompanyNetworkGraph's data-preview modal. All fetching
- * stays in the graph (`openDataPreview`); this is a pure renderer over the
- * resolved preview payload.
+ * A non-modal panel docked to the right edge: the graph stays visible and
+ * interactive behind it, so a profile can be read against the structure it sits
+ * in. All fetching stays in the graph (`openDataPreview`); this is a pure
+ * renderer over the resolved preview payload.
  *
  * Deliberately non-copyable (userSelect: none, copy/context-menu suppressed) —
  * this is the free preview that sits in front of the paid Due Diligence report.
@@ -63,84 +60,126 @@ const CompanyInspectorPanel = ({
   text,
   officerDeputyMatches = {},
   entrySource = 'direct',
-  container,
   onOpenReport,
   onBuyDueDiligence,
 }) => {
+  // Escape closes the panel — the modal gave users that for free; a non-modal
+  // fixed Paper has no backdrop or focus trap, so it has to be wired by hand.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (ev) => {
+      if (ev.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const statusChips = data?.type === 'company' && (
+    <>
+      {data.enriched?.isDissolved && (
+        <Chip label={text.dissolved} size="small" color="error" />
+      )}
+      {data.enriched?.isInConcurso && (
+        <Chip label={text.concurso} size="small" color="warning" />
+      )}
+      {data.enriched?.isUnipersonal && (
+        <Chip label={text.unipersonal} size="small" color="info" variant="outlined" />
+      )}
+      {data.enriched?.previousSoleShareholders?.length > 0 && (() => {
+        // Chain of socio único: previous (superseded) → current.
+        const chain = [
+          ...data.enriched.previousSoleShareholders,
+          ...(data.enriched.soleShareholders || []),
+        ].join(' → ');
+        return (
+          <Tooltip title={`${text.unipersonal}: ${chain}`}>
+            <Chip
+              label={chain}
+              size="small"
+              color="info"
+              variant="outlined"
+              sx={{
+                maxWidth: '100%',
+                '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
+              }}
+            />
+          </Tooltip>
+        );
+      })()}
+    </>
+  );
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      container={container}
-      PaperProps={{
-        sx: {
-          maxHeight: '85vh',
-          userSelect: 'none',
-          WebkitUserSelect: 'none',
-          MozUserSelect: 'none',
-          msUserSelect: 'none',
-        },
-        onContextMenu: e => e.preventDefault(),
-        onCopy: e => e.preventDefault(),
+    // Non-modal, right-anchored inspector: a fixed Paper (NO backdrop, no focus
+    // trap) so the graph stays pannable and clickable behind it — the whole point
+    // of reading a profile in a graph view is seeing the structure it sits in.
+    // Matches the ApoderadosSidebar pattern already used here.
+    <Paper
+      elevation={8}
+      onContextMenu={e => e.preventDefault()}
+      onCopy={e => e.preventDefault()}
+      sx={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: { xs: '100%', sm: 460, md: 520 },
+        maxWidth: '100vw',
+        zIndex: theme => theme.zIndex.drawer + 2,
+        display: 'flex',
+        flexDirection: 'column',
+        borderLeft: '1px solid',
+        borderColor: 'divider',
+        boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        MozUserSelect: 'none',
+        msUserSelect: 'none',
       }}
     >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {nodeType === 'officer' ? <PersonIcon /> : <BusinessIcon />}
-          <Typography variant="h6" component="span" noWrap sx={{ maxWidth: 500 }}>
-            {nodeName}
-          </Typography>
-          <Chip
-            label={nodeType === 'officer' ? text.officer : text.company}
-            size="small"
-            color={nodeType === 'officer' ? 'warning' : 'primary'}
-            variant="outlined"
-          />
-          {userMerged && (
-            <Tooltip title={text.userMergedTooltip}>
-              <Chip label={text.userMergedBadge} size="small" color="warning" variant="outlined" />
-            </Tooltip>
-          )}
-          {data?.type === 'company' && data.enriched?.isDissolved && (
-            <Chip label={text.dissolved} size="small" color="error" />
-          )}
-          {data?.type === 'company' && data.enriched?.isInConcurso && (
-            <Chip label={text.concurso} size="small" color="warning" />
-          )}
-          {data?.type === 'company' && data.enriched?.isUnipersonal && (
-            <Chip label={text.unipersonal} size="small" color="info" variant="outlined" />
-          )}
-          {data?.type === 'company' &&
-            data.enriched?.previousSoleShareholders?.length > 0 &&
-            (() => {
-              // Chain of socio único: previous (superseded) → current.
-              const chain = [
-                ...data.enriched.previousSoleShareholders,
-                ...(data.enriched.soleShareholders || []),
-              ].join(' → ');
-              return (
-                <Tooltip title={`${text.unipersonal}: ${chain}`}>
-                  <Chip
-                    label={chain}
-                    size="small"
-                    color="info"
-                    variant="outlined"
-                    sx={{
-                      maxWidth: 380,
-                      '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
-                    }}
-                  />
-                </Tooltip>
-              );
-            })()}
+      {/* Header — name on its own line, chips wrapping beneath it: the panel is
+          far narrower than the dialog was, so the old single-row title overflows. */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 1,
+          p: 2,
+          pb: 1.5,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+            {nodeType === 'officer' ? <PersonIcon /> : <BusinessIcon />}
+            <Typography variant="h6" component="span" noWrap sx={{ minWidth: 0 }}>
+              {nodeName}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, mt: 0.75 }}>
+            <Chip
+              label={nodeType === 'officer' ? text.officer : text.company}
+              size="small"
+              color={nodeType === 'officer' ? 'warning' : 'primary'}
+              variant="outlined"
+            />
+            {userMerged && (
+              <Tooltip title={text.userMergedTooltip}>
+                <Chip label={text.userMergedBadge} size="small" color="warning" variant="outlined" />
+              </Tooltip>
+            )}
+            {statusChips}
+          </Box>
         </Box>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={onClose} size="small" aria-label={text.close} sx={{ flexShrink: 0 }}>
           <CloseIcon />
         </IconButton>
-      </DialogTitle>
-      <DialogContent dividers sx={{ userSelect: 'none' }}>
+      </Box>
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
             <CircularProgress size={40} />
@@ -712,34 +751,36 @@ const CompanyInspectorPanel = ({
                     <BusinessIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'text-bottom' }} />
                     {companyName}
                   </Typography>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 700 }}>{text.role}</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>{text.status}</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {companyOfficers.map((o, i) => {
-                        const status = resolveStatus(o);
-                        return (
-                          <TableRow key={i}>
-                            <TableCell>{resolvePosition(o)}</TableCell>
-                            <TableCell>
-                              <Chip
-                                label={status.label}
-                                size="small"
-                                color={status.color}
-                                variant="outlined"
-                              />
-                            </TableCell>
-                            <TableCell>{formatDate(resolveDate(o), lang)}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 700 }}>{text.role}</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>{text.status}</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {companyOfficers.map((o, i) => {
+                          const status = resolveStatus(o);
+                          return (
+                            <TableRow key={i}>
+                              <TableCell>{resolvePosition(o)}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={status.label}
+                                  size="small"
+                                  color={status.color}
+                                  variant="outlined"
+                                />
+                              </TableCell>
+                              <TableCell>{formatDate(resolveDate(o), lang)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 </Paper>
               ))}
               <Typography
@@ -751,9 +792,9 @@ const CompanyInspectorPanel = ({
             </Box>
           );
         })()}
-      </DialogContent>
+      </Box>
       {data?.type === 'company' ? (
-        <Box sx={{ px: 3, pb: 2, pt: 1 }}>
+        <Box sx={{ px: 2, pb: 2, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
           {/* What the paid report adds over this preview — the value gap, stated plainly. */}
           <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.5, mb: 1 }}>
             {text.fullReportAdds}
@@ -803,11 +844,11 @@ const CompanyInspectorPanel = ({
           </Box>
         </Box>
       ) : (
-        <DialogActions>
+        <Box sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', textAlign: 'right' }}>
           <Button onClick={onClose}>{text.close}</Button>
-        </DialogActions>
+        </Box>
       )}
-    </Dialog>
+    </Paper>
   );
 };
 

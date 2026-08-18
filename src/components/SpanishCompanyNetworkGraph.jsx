@@ -5286,6 +5286,7 @@ const SpanishCompanyNetworkGraph = ({
     const name = previewTarget.name;
     const isOfficer = previewTarget.type === 'officer';
     closeNodeContextMenu();
+    setApoderadosSidebar({ open: false, company: null });
     setPreviewNodeName(name);
     setPreviewNodeType(isOfficer ? 'officer' : 'company');
     setPreviewUserMerged(!!previewTarget.userMerged);
@@ -7626,6 +7627,7 @@ const SpanishCompanyNetworkGraph = ({
               // (and thus the Select's displayed numeric value) unchanged.
               if (e.target.value === 'all') {
                 const focused = resolveFocusedCompany();
+                setPreviewOpen(false);
                 if (focused) setApoderadosSidebar({ open: true, company: focused });
                 return;
               }
@@ -9907,6 +9909,7 @@ const SpanishCompanyNetworkGraph = ({
                 runContextAction('show_apoderados', () => {
                   const n = contextNode;
                   closeNodeContextMenu();
+                  setPreviewOpen(false);
                   if (n) setApoderadosSidebar({ open: true, company: { name: n.name, groupKey: n.groupKey || null } });
                 });
               }}
@@ -9994,7 +9997,7 @@ const SpanishCompanyNetworkGraph = ({
         />
 
         <Ibex35MarketSidebar
-          open={Boolean(focusedIbexSeed) && !snapshotMode && !ibexSidebarDismissed && !apoderadosSidebar.open && !isAndroidNativeApp()}
+          open={Boolean(focusedIbexSeed) && !snapshotMode && !ibexSidebarDismissed && !apoderadosSidebar.open && !previewOpen && !isAndroidNativeApp()}
           seedEntry={focusedIbexSeed}
           lang={uiLanguage}
           onClose={() => setIbexSidebarDismissed(true)}
@@ -10327,7 +10330,6 @@ const SpanishCompanyNetworkGraph = ({
           text={text}
           officerDeputyMatches={officerDeputyMatches}
           entrySource={entrySource}
-          container={overlayContainer}
           onOpenReport={openReport}
           onBuyDueDiligence={() => {
             setPreviewOpen(false);
