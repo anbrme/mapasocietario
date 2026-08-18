@@ -651,6 +651,128 @@ const routes = [
         <p><a href="/app/">Buscar una empresa</a> | <a href="/connect-claude/">English version</a></p>
       </main>`,
   },
+  {
+    path: '/glossary',
+    title: 'Spanish Company Registry Glossary | Mapa Societario',
+    description:
+      'Plain-English definitions of Spanish company registry terms — socio unico, BORME, nota simple, hoja registral, administrador vs apoderado — and what Spanish records do and do not reveal about ownership.',
+    ogType: 'article',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Spanish Company Registry Glossary</h1>
+        <p>Spanish company records answer some questions precisely and others not at all. This glossary explains the terms that most often mislead people researching a Spanish company from abroad, and is written to correct the specific assumptions that do not transfer from other jurisdictions.</p>
+        ${disclaimerHtmlEn}
+
+        <h2>What does "socio unico" mean, and why is it the only ownership Spain publishes?</h2>
+        <p>A <strong>socio unico</strong> is a sole shareholder &mdash; the single person or company that owns 100% of a Spanish company. Spain requires this to be declared to the registry, so it is the one ownership fact the public record reliably contains. It is not a general shareholder list.</p>
+        <p>This is the single most misread part of Spanish company data. When a company has no socio unico recorded, that means it is not wholly owned by one party &mdash; it does <em>not</em> mean the owner is unknown, and it certainly does not mean the company has no owner. A company with three shareholders simply produces no ownership entry at all.</p>
+
+        <h2>Why can I not find a Spanish company's shareholders or cap table?</h2>
+        <p>Because Spain does not maintain one publicly. Unlike the UK's confirmation statement or similar filings elsewhere, there is no public register of a Spanish company's shareholders. Only sole ownership is disclosed, along with share transfers that happen to be inscribed for other reasons.</p>
+        <p>If you need the full shareholder position of a Spanish company, the public record will not give it to you at any price. It generally requires the company's own corporate books, a notarial deed, or disclosure from the counterparty.</p>
+
+        <h2>What is the BORME, and how does it differ from the Registro Mercantil?</h2>
+        <p>The <strong>Registro Mercantil</strong> is the companies registry itself. The <strong>BORME</strong> (Boletin Oficial del Registro Mercantil) is the official daily bulletin that publishes what the registry has inscribed &mdash; incorporations, director appointments and cessations, capital changes, dissolutions.</p>
+        <p>The practical consequence: BORME is a stream of published events, not a live snapshot of a company. Reconstructing a company's current state means reading its filings in order, which is what this site does.</p>
+
+        <h2>What is a nota simple, and when do I need one instead?</h2>
+        <p>A <strong>nota simple</strong> is an official informative extract issued by the Registro Mercantil summarising a company's current registry position. It is the document to request when you need something official, dated and attributable &mdash; for a transaction, a court filing or a regulator.</p>
+        <p>Derived data, including everything on this site, is useful for research, screening and mapping relationships. It is not a substitute for a nota simple where an official document is required.</p>
+
+        <h2>What is a hoja registral, and why does it matter more than the company name?</h2>
+        <p>The <strong>hoja registral</strong> is the registry sheet opened for each company, identified by a province and sheet number. It is the company's durable identity in the registry.</p>
+        <p>This matters because company names change and are reused, while the hoja does not. Two companies can share a name across provinces, and a company that renames keeps the same hoja. Tracking a company by name alone will eventually merge two different entities or lose one across a rename &mdash; a common and consequential research error.</p>
+
+        <h2>Where are Spanish annual accounts (Cuentas Anuales)?</h2>
+        <p><strong>Cuentas Anuales</strong> are the annual financial statements that Spanish companies deposit with the Registro Mercantil each year. They are deposited separately from the events published in the BORME and are obtained as registry documents, usually for a fee.</p>
+        <p>So a company's registry history and its financial statements are two different sources. Directors, capital and structure come from BORME filings; revenue, assets and results do not appear there at all.</p>
+
+        <h2>What is the difference between an administrador and an apoderado?</h2>
+        <p>An <strong>administrador</strong> is a director &mdash; part of the body that governs and legally represents the company. An <strong>apoderado</strong> holds a power of attorney granting specific authority to act, often narrow and often operational.</p>
+        <p>Confusing the two badly distorts a due-diligence picture. Large Spanish companies routinely have hundreds of apoderados, including branch and regional staff. Treating them as directors turns a five-person board into a list of hundreds and buries the people who actually control the company.</p>
+
+        <h2>What does "cargo vigente" or "cesado" mean, and can a director look active when they are not?</h2>
+        <p><strong>Vigente</strong> means a position is currently held; <strong>cesado</strong> means it has ended. Both derive from published appointment and cessation events.</p>
+        <p>The trap is that a cessation only appears if someone inscribed it. Departures are not always filed, and a dissolved company frequently has no cessation entries at all &mdash; so directors can appear indefinitely active in the raw record. Treat a long-unchanged appointment at a dormant or dissolved company as unconfirmed rather than current.</p>
+
+        <h2>What is a NIF, and is it the same as a CIF?</h2>
+        <p>The <strong>NIF</strong> (Numero de Identificacion Fiscal) is the tax identification number of a Spanish company. <strong>CIF</strong> is the former name for the company equivalent and was superseded, though the term is still used informally and appears on older documents. In practice people asking for a CIF want the NIF.</p>
+        <p>The NIF is a tax identifier rather than a registry one, so it is not part of what the BORME publishes. Where a NIF is shown here it comes from other sources and is labelled accordingly.</p>
+
+        <h2>What is the minimum share capital of a Spanish SL?</h2>
+        <p>Since the Ley 18/2022 reform, a <strong>sociedad de responsabilidad limitada</strong> (SL) can be incorporated with share capital as low as one euro, subject to reserve requirements until it reaches the previous threshold. Older sources widely cite around 3,000 euros, which was the long-standing minimum before the change.</p>
+        <p>Consequently a very low stated capital in a recently incorporated company is not by itself a warning sign, and comparisons against the older figure will misread companies formed after the reform.</p>
+
+        <h2>Disolucion and extincion &mdash; is a dissolved company gone?</h2>
+        <p>Not necessarily. <strong>Disolucion</strong> opens the process of winding a company up; the company continues to exist in liquidation. <strong>Extincion</strong> is the final cancellation of its registry sheet, after which the entity is gone.</p>
+        <p>A company can remain dissolved but not extinguished for years. It still exists, may still hold assets and obligations, and should not be read as struck off.</p>
+
+        <p><a href="/app/">Search a Spanish company</a> | <a href="/faq">Data coverage and sources</a> | <a href="/es/glosario/">Version en espanol</a></p>
+      </main>
+      <script type="application/ld+json">
+      {"@context":"https://schema.org","@type":"DefinedTermSet","name":"Spanish Company Registry Glossary","url":"https://mapasocietario.es/glossary/","inDefinedTermSet":"https://mapasocietario.es/glossary/","hasDefinedTerm":[{"@type":"DefinedTerm","name":"Socio unico","description":"A sole shareholder owning 100% of a Spanish company. The only ownership fact the Spanish public registry reliably records; its absence does not imply unknown ownership."},{"@type":"DefinedTerm","name":"BORME","description":"Boletin Oficial del Registro Mercantil, the official daily bulletin publishing events inscribed by the Spanish companies registry."},{"@type":"DefinedTerm","name":"Nota simple","description":"An official informative extract issued by the Registro Mercantil summarising a company's current registry position."},{"@type":"DefinedTerm","name":"Hoja registral","description":"The registry sheet identifying a Spanish company by province and number; its durable identity across name changes."},{"@type":"DefinedTerm","name":"Cuentas Anuales","description":"Annual financial statements deposited with the Registro Mercantil, separate from BORME event publications."},{"@type":"DefinedTerm","name":"Administrador","description":"A director forming part of the governing body that legally represents a Spanish company."},{"@type":"DefinedTerm","name":"Apoderado","description":"A holder of a power of attorney with specific authority to act for a company; not a director."},{"@type":"DefinedTerm","name":"NIF","description":"Numero de Identificacion Fiscal, the tax identification number of a Spanish company; formerly called CIF for entities."},{"@type":"DefinedTerm","name":"Disolucion","description":"The opening of a winding-up process; the company continues to exist in liquidation until extincion."},{"@type":"DefinedTerm","name":"Extincion","description":"Final cancellation of a company's registry sheet, after which the entity no longer exists."}]}
+      </script>`,
+  },
+  {
+    path: '/es/glosario',
+    title: 'Glosario del Registro Mercantil | Mapa Societario',
+    description:
+      'Definiciones claras de los terminos del registro mercantil espanol: socio unico, BORME, nota simple, hoja registral, administrador y apoderado, y que revelan realmente los registros espanoles sobre la propiedad.',
+    ogType: 'article',
+    lang: 'es',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Glosario del Registro Mercantil</h1>
+        <p>Los registros mercantiles espanoles responden con precision a unas preguntas y a otras no responden en absoluto. Este glosario explica los terminos que mas confusion generan al investigar una sociedad espanola y corrige los supuestos que no se trasladan bien desde otras jurisdicciones.</p>
+        ${disclaimerHtmlEs}
+
+        <h2>Que significa socio unico y por que es la unica propiedad que se publica?</h2>
+        <p>El <strong>socio unico</strong> es la persona fisica o juridica que posee el 100% de una sociedad. La ley obliga a declararlo al registro, por lo que es el unico dato de propiedad que el registro publico recoge de forma fiable. No es una lista de socios.</p>
+        <p>Es la parte peor interpretada de los datos societarios espanoles. Que no conste socio unico significa que la sociedad no pertenece integramente a una sola parte; <em>no</em> significa que se desconozca quien es el propietario ni que no lo tenga. Una sociedad con tres socios simplemente no genera ninguna anotacion de propiedad.</p>
+
+        <h2>Por que no aparecen los socios ni el reparto del capital?</h2>
+        <p>Porque en Espana no existe un registro publico de socios. A diferencia de otros paises, solo se publica la propiedad integra y aquellas transmisiones que se inscriben por otros motivos.</p>
+        <p>Si necesita conocer el accionariado completo, el registro publico no se lo va a facilitar. Normalmente hace falta el libro registro de socios de la propia sociedad, una escritura notarial o que la contraparte lo aporte.</p>
+
+        <h2>Que es el BORME y en que se diferencia del Registro Mercantil?</h2>
+        <p>El <strong>Registro Mercantil</strong> es el registro en si. El <strong>BORME</strong> (Boletin Oficial del Registro Mercantil) es el boletin diario que publica lo que el registro ha inscrito: constituciones, nombramientos y ceses, cambios de capital, disoluciones.</p>
+        <p>La consecuencia practica es que el BORME es un flujo de hechos publicados, no una fotografia actual de la sociedad. Reconstruir su situacion exige leer los asientos en orden, que es justamente lo que hace esta web.</p>
+
+        <h2>Que es una nota simple y cuando la necesito?</h2>
+        <p>La <strong>nota simple</strong> es un extracto informativo oficial del Registro Mercantil que resume la situacion registral vigente de una sociedad. Es el documento a solicitar cuando se necesita algo oficial, fechado y atribuible: una operacion, un procedimiento judicial o un regulador.</p>
+        <p>Los datos derivados, incluidos los de esta web, sirven para investigar, cribar y mapear relaciones. No sustituyen a una nota simple cuando se exige un documento oficial.</p>
+
+        <h2>Que es la hoja registral y por que importa mas que el nombre?</h2>
+        <p>La <strong>hoja registral</strong> es la hoja que el registro abre a cada sociedad, identificada por provincia y numero. Es su identidad duradera.</p>
+        <p>Importa porque los nombres cambian y se reutilizan, y la hoja no. Dos sociedades pueden compartir denominacion en provincias distintas, y una sociedad que cambia de nombre conserva su hoja. Seguir a una sociedad solo por el nombre acaba fusionando entidades distintas o perdiendo el rastro tras un cambio de denominacion.</p>
+
+        <h2>Donde estan las cuentas anuales?</h2>
+        <p>Las <strong>cuentas anuales</strong> se depositan cada ejercicio en el Registro Mercantil, de forma independiente a los actos que publica el BORME, y se obtienen como documentos registrales, normalmente de pago.</p>
+        <p>Por tanto el historial registral y los estados financieros son dos fuentes distintas. Administradores, capital y estructura proceden del BORME; ingresos, activos y resultados no aparecen alli.</p>
+
+        <h2>Que diferencia hay entre un administrador y un apoderado?</h2>
+        <p>El <strong>administrador</strong> forma parte del organo que gobierna y representa legalmente a la sociedad. El <strong>apoderado</strong> tiene un poder que le otorga facultades concretas para actuar, a menudo limitadas y operativas.</p>
+        <p>Confundirlos distorsiona gravemente cualquier analisis. Las sociedades grandes acumulan cientos de apoderados, incluido personal de sucursal. Tratarlos como administradores convierte un consejo de cinco personas en un listado de cientos y oculta a quienes de verdad controlan la sociedad.</p>
+
+        <h2>Que significa cargo vigente o cesado, y puede un administrador figurar activo sin serlo?</h2>
+        <p><strong>Vigente</strong> indica que el cargo esta en vigor; <strong>cesado</strong>, que ha terminado. Ambos se derivan de los nombramientos y ceses publicados.</p>
+        <p>El problema es que un cese solo consta si alguien lo inscribe. No siempre se inscriben, y una sociedad disuelta a menudo no tiene ningun cese anotado, de modo que sus administradores pueden figurar activos indefinidamente. Ante una sociedad inactiva o disuelta, conviene tratar el cargo como no confirmado y no como vigente.</p>
+
+        <h2>Que es el NIF y es lo mismo que el CIF?</h2>
+        <p>El <strong>NIF</strong> (Numero de Identificacion Fiscal) identifica fiscalmente a la sociedad. El <strong>CIF</strong> fue la denominacion anterior para las personas juridicas y quedo sustituida, aunque el termino sigue usandose de forma coloquial y aparece en documentos antiguos. Quien pide un CIF pide en realidad el NIF.</p>
+        <p>Al ser un identificador fiscal y no registral, no forma parte de lo que publica el BORME. Cuando aqui se muestra un NIF procede de otras fuentes y se indica como tal.</p>
+
+        <h2>Cual es el capital social minimo de una SL?</h2>
+        <p>Desde la reforma de la Ley 18/2022, una <strong>sociedad de responsabilidad limitada</strong> puede constituirse con un capital social de tan solo un euro, con obligaciones de reserva hasta alcanzar el umbral anterior. Muchas fuentes siguen citando unos 3.000 euros, que era el minimo historico antes del cambio.</p>
+        <p>Por tanto, un capital muy bajo en una sociedad de constitucion reciente no es por si mismo una senal de alarma, y comparar con la cifra antigua lleva a interpretar mal a las sociedades constituidas tras la reforma.</p>
+
+        <h2>Disolucion y extincion: una sociedad disuelta ha desaparecido?</h2>
+        <p>No necesariamente. La <strong>disolucion</strong> abre el proceso de liquidacion y la sociedad sigue existiendo. La <strong>extincion</strong> es la cancelacion definitiva de su hoja registral, tras la cual la entidad deja de existir.</p>
+        <p>Una sociedad puede permanecer disuelta y no extinguida durante anos. Sigue existiendo, puede mantener activos y obligaciones, y no debe interpretarse como dada de baja.</p>
+
+        <p><a href="/app/">Buscar una empresa</a> | <a href="/faq-es">Cobertura y fuentes</a> | <a href="/glossary/">English version</a></p>
+      </main>`,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -690,6 +812,7 @@ const HREFLANG_PAIRS = [
   ['/', '/es'],
   ['/spanish-company-register-search', '/es/busqueda-registro-mercantil'],
   ['/connect-claude', '/es/conectar-claude'],
+  ['/glossary', '/es/glosario'],
   ['/due-diligence', '/es/informes-due-diligence-empresas'],
   ['/company-director-search', '/es/buscar-administradores-empresas'],
 ];

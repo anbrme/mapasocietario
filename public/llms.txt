@@ -35,6 +35,9 @@ the limits of the source itself, not of this site.
 - **Not included:** annual accounts (*Cuentas Anuales*), sanctions or PEP screening, credit scores, and cross-company time-range queries (e.g. "every company that changed registry between March and May").
 - **Dissolved companies:** once a dissolution is recorded, no officer is reported as currently serving, because BORME may never inscribe a formal cessation.
 
+- [Glossary of Spanish registry terms](https://mapasocietario.es/glossary/): what socio unico, BORME, nota simple, hoja registral, administrador vs apoderado and disolucion vs extincion actually mean, and the assumptions from other jurisdictions that do not transfer.
+- [Glosario del Registro Mercantil (ES)](https://mapasocietario.es/es/glosario/): Spanish version of the glossary.
+
 ## Research and analysis
 
 - [IBEX 35 interlocking boards](https://mapasocietario.es/en/studies/ibex-35-interlocking-boards/): original analysis of shared directorships across Spain's main index.

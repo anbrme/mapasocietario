@@ -44,6 +44,8 @@ const sitemapRoutes = [
   { path: '/estudios/consejos-cruzados-ibex-35/', changefreq: 'monthly', priority: '0.7' },
   { path: '/en/studies/ibex-35-interlocking-boards/', changefreq: 'monthly', priority: '0.7' },
   { path: '/connect-claude/', changefreq: 'monthly', priority: '0.6' },
+  { path: '/glossary/', changefreq: 'monthly', priority: '0.7' },
+  { path: '/es/glosario/', changefreq: 'monthly', priority: '0.7' },
   { path: '/es/conectar-claude/', changefreq: 'monthly', priority: '0.6' },
   { path: '/about', changefreq: 'monthly', priority: '0.5' },
   { path: '/about-es', changefreq: 'monthly', priority: '0.5' },

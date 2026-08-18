@@ -103,6 +103,18 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://mapasocietario.es/glossary/</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://mapasocietario.es/es/glosario/</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://mapasocietario.es/es/conectar-claude/</loc>
     <lastmod>2026-08-18</lastmod>
     <changefreq>monthly</changefreq>
