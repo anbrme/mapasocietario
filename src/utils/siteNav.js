@@ -25,6 +25,8 @@ export function siteNav(lang = 'en') {
     pricing: es ? '/pricing?lang=es' : '/pricing',
     // "Use in Claude" connector page — bilingual SPA route per language.
     connectClaude: es ? '/es/conectar-claude' : '/connect-claude',
+    // Registry glossary — prerendered static route per language.
+    glossary: es ? '/es/glosario' : '/glossary',
     dashboard: '/dashboard',
     // Manage everything an address monitors. Deliberately reachable with no
     // token — the page offers to mail a fresh one — which is the whole point:

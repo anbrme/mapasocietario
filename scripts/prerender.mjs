@@ -202,7 +202,7 @@ const routes = [
           <li><strong>Investigators and journalists:</strong> follow people across companies through shared roles, prior appointments and wider corporate networks.</li>
           <li><strong>Advisers, analysts and researchers:</strong> annotate and save an investigation, then generate a sourced report when a client or internal file needs documentation.</li>
         </ul>
-        <p><a href="/app/?source=home_search">Search a Spanish company or officer</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/spanish-company-due-diligence/">Document a due diligence review</a></p>
+        <p><a href="/app/?source=home_search">Search a Spanish company or officer</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/spanish-company-due-diligence/">Document a due diligence review</a> | <a href="/glossary/">Spanish registry glossary</a></p>
         <h2>Data quality you can understand, not a black box</h2>
         <p>Mapa Societario reconciles companies across name changes, mergers, spin-offs and registry transfers; preserves appointments and resignations so historical and current roles are not silently mixed; and updates from official BOE/BORME publications on business days.</p>
         <p>Name matching, automated extraction and incomplete shareholder publication are disclosed so professionals know which findings still require verification against the original notice or current Registro Mercantil documents.</p>
@@ -512,7 +512,7 @@ const routes = [
           <li><strong>Investigación y periodismo:</strong> sigue a las personas entre empresas mediante cargos compartidos, nombramientos anteriores y redes societarias más amplias.</li>
           <li><strong>Asesoría, análisis e investigación:</strong> anota y guarda una investigación y genera un informe con fuentes cuando un cliente o expediente interno necesite documentación.</li>
         </ul>
-        <p><a href="/app/?lang=es&amp;source=home_search">Buscar una empresa o administrador</a> | <a href="/es/buscar-administradores-empresas/">Buscar administradores</a> | <a href="/es/informes-due-diligence-empresas/">Documentar una due diligence</a></p>
+        <p><a href="/app/?lang=es&amp;source=home_search">Buscar una empresa o administrador</a> | <a href="/es/buscar-administradores-empresas/">Buscar administradores</a> | <a href="/es/informes-due-diligence-empresas/">Documentar una due diligence</a> | <a href="/es/glosario/">Glosario del Registro Mercantil</a></p>
         <h2>Calidad de datos comprensible, no una caja negra</h2>
         <p>Mapa Societario reconcilia empresas entre cambios de denominación, fusiones, escisiones y traslados registrales; conserva nombramientos y ceses para no mezclar relaciones históricas y actuales; y se actualiza desde publicaciones oficiales BOE/BORME en días laborables.</p>
         <p>La coincidencia por nombre, la extracción automática y la publicación incompleta de accionistas se explican para que el profesional sepa qué hallazgos debe verificar en el anuncio original o con documentación actual del Registro Mercantil.</p>

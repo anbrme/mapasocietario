@@ -687,6 +687,9 @@ export default function LandingPage({ lang = 'en' }) {
             <Link href={nav.connectClaude} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.connectClaude}
             </Link>
+            <Link href={nav.glossary} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+              {copy.footer.glossary}
+            </Link>
             <Link href="https://ncdata.eu" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.ncdata}
             </Link>
