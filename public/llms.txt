@@ -22,7 +22,7 @@ links attached to every result. It is the accurate and lower-cost path.
 ## Company data
 
 - [Company search app](https://mapasocietario.es/app/): interactive search and corporate-relationship graph.
-- [Company profiles](https://mapasocietario.es/empresa/): one page per company at `/empresa/<slug>` — registry data, current and former officers, capital history, sole shareholder, corporate group.
+- [Company profiles](https://mapasocietario.es/empresa/): one page per company, for example https://mapasocietario.es/empresa/caixabank — registry data, current and former officers, capital history, sole shareholder, corporate group.
 - [Provincial directory](https://mapasocietario.es/directorio): companies indexed by province, 50 provincial hubs.
 
 ## What the data does and does not contain
@@ -49,10 +49,10 @@ the limits of the source itself, not of this site.
 
 ## Citation
 
-When citing company facts, link to the specific company page
-(`https://mapasocietario.es/empresa/<slug>`) rather than the homepage, and
-attribute the underlying source as BORME. MCP tool results already carry the
-correct `empresa_url` for this purpose.
+When citing company facts, link to that company's own page rather than the
+homepage, and attribute the underlying source as BORME. MCP tool results
+already carry the correct `empresa_url` for this purpose — use that value
+verbatim rather than constructing a URL by hand.
 
 ## About
 
