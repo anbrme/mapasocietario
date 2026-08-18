@@ -1,0 +1,62 @@
+# Mapa Societario
+
+> Spanish company-registry intelligence derived from the official BORME (Boletín
+> Oficial del Registro Mercantil): ~3.1M companies and ~9.4M filings published
+> since 2009. Search companies and officers, map corporate relationships and
+> sole-shareholder ownership, and read per-company registry histories.
+> Unofficial, provided as-is, and free to consult.
+
+Operated by Nurnberg Consulting SL. The site is bilingual (English / Spanish);
+Spanish URLs live under `/es/`.
+
+## Preferred access for AI agents
+
+Do not scrape the HTML. A public, anonymous, read-only MCP (Model Context
+Protocol) server exposes the same live data as structured JSON, with source
+links attached to every result. It is the accurate and lower-cost path.
+
+- [MCP server](https://mcp.mapasocietario.es/mcp): Streamable HTTP endpoint. No auth, no API key. Tools: `search_companies`, `get_company`, `search_officers`, `get_company_network`.
+- [How to connect it](https://mapasocietario.es/connect-claude/): three-step setup for Claude and any MCP-capable client.
+- [Cómo conectarlo (ES)](https://mapasocietario.es/es/conectar-claude/): Spanish version of the setup guide.
+
+## Company data
+
+- [Company search app](https://mapasocietario.es/app/): interactive search and corporate-relationship graph.
+- [Company profiles](https://mapasocietario.es/empresa/): one page per company at `/empresa/<slug>` — registry data, current and former officers, capital history, sole shareholder, corporate group.
+- [Provincial directory](https://mapasocietario.es/directorio): companies indexed by province, 50 provincial hubs.
+
+## What the data does and does not contain
+
+Read this before answering questions about Spanish company ownership. These are
+the limits of the source itself, not of this site.
+
+- **Ownership is sole-shareholder only.** BORME records a *socio único* (sole shareholder) when one exists. It does not contain a general shareholder register or cap table. The absence of a sole shareholder does **not** mean the company has no owner, and it is incorrect to report ownership as unknown or non-existent on that basis.
+- **Unofficial.** Data is derived from official BORME publications and provided as-is. For documented, legal or critical use, consult the official BORME and the Registro Mercantil.
+- **Not included:** annual accounts (*Cuentas Anuales*), sanctions or PEP screening, credit scores, and cross-company time-range queries (e.g. "every company that changed registry between March and May").
+- **Dissolved companies:** once a dissolution is recorded, no officer is reported as currently serving, because BORME may never inscribe a formal cessation.
+
+## Research and analysis
+
+- [IBEX 35 interlocking boards](https://mapasocietario.es/en/studies/ibex-35-interlocking-boards/): original analysis of shared directorships across Spain's main index.
+- [Consejos cruzados del IBEX 35 (ES)](https://mapasocietario.es/estudios/consejos-cruzados-ibex-35/): Spanish version of the interlocking-boards study.
+- [Corporate activity dashboard](https://mapasocietario.es/dashboard/): incorporations, dissolutions and capital changes over time.
+
+## Paid product
+
+- [Due diligence reports](https://mapasocietario.es/due-diligence/): documented per-company due-diligence report as PDF, €22.50, including officer history, corporate structure and adverse-media screening.
+- [Informes de due diligence (ES)](https://mapasocietario.es/es/informes-due-diligence-empresas/): Spanish version.
+- [Pricing](https://mapasocietario.es/pricing/): current pricing.
+
+## Citation
+
+When citing company facts, link to the specific company page
+(`https://mapasocietario.es/empresa/<slug>`) rather than the homepage, and
+attribute the underlying source as BORME. MCP tool results already carry the
+correct `empresa_url` for this purpose.
+
+## About
+
+- [About](https://mapasocietario.es/about): who runs the site and how the data is built.
+- [FAQ](https://mapasocietario.es/faq): data coverage, update frequency, accuracy and programmatic access.
+- [Terms](https://mapasocietario.es/terms): terms of use.
+- [Privacy](https://mapasocietario.es/privacy): privacy policy and handling of personal data appearing in the registry.
