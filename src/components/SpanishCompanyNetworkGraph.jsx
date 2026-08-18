@@ -39,6 +39,7 @@ import {
   Badge,
   Checkbox,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { alpha, darken } from '@mui/material/styles';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -217,6 +218,13 @@ const companyNameToId = name => {
   const clean = normalizeCompanyName(name);
   return `company-${clean.replace(/\s+/g, '-').toLowerCase()}`;
 };
+
+// Inspector panel width, by viewport. Reserved out of the canvas so the graph
+// reflows rather than hiding behind the panel.
+const INSPECTOR_WIDTH_WIDE = 520;
+const INSPECTOR_WIDTH_COMPACT = 460;
+// Never starve the canvas entirely, however narrow the container gets.
+const MIN_CANVAS_WIDTH = 240;
 
 const SEARCH_COPY = {
   en: {
@@ -1685,6 +1693,22 @@ const SpanishCompanyNetworkGraph = ({
   const MAX_NODE_SPEED = 30;
 
   const theme = useTheme();
+
+  // The inspector docks over the right edge of the graph container rather than
+  // floating above the canvas. Reserving its width here (instead of letting it
+  // overlap) is what makes the graph reflow: the canvas gets a smaller width,
+  // and the re-fit effect below zooms the graph to fit what is left. Below `sm`
+  // there is no room to sit beside the graph, so the panel covers it instead
+  // (width 0 reserved) and behaves like the old modal.
+  const isInspectorDockable = useMediaQuery(theme.breakpoints.up('sm'));
+  const isWideViewport = useMediaQuery(theme.breakpoints.up('md'));
+  const inspectorWidth = isWideViewport ? INSPECTOR_WIDTH_WIDE : INSPECTOR_WIDTH_COMPACT;
+  const isInspectorDocked = previewOpen && isInspectorDockable;
+  const reservedInspectorWidth = isInspectorDocked ? inspectorWidth : 0;
+  const canvasDimensions = React.useMemo(() => ({
+    width: Math.max(MIN_CANVAS_WIDTH, containerDimensions.width - reservedInspectorWidth),
+    height: containerDimensions.height,
+  }), [containerDimensions, reservedInspectorWidth]);
   const graphPalette = theme.palette.graph;
 
   // Node colors and shapes
@@ -2081,19 +2105,19 @@ const SpanishCompanyNetworkGraph = ({
   }, [graphData.nodes.length, snapshotMode]);
 
   // Re-fit graph when container dimensions change significantly (e.g. after table renders)
-  const prevDimRef = useRef(containerDimensions);
+  const prevDimRef = useRef(canvasDimensions);
   useEffect(() => {
     const prev = prevDimRef.current;
-    prevDimRef.current = containerDimensions;
-    const dw = Math.abs(prev.width - containerDimensions.width);
-    const dh = Math.abs(prev.height - containerDimensions.height);
+    prevDimRef.current = canvasDimensions;
+    const dw = Math.abs(prev.width - canvasDimensions.width);
+    const dh = Math.abs(prev.height - canvasDimensions.height);
     if (!snapshotMode && (dw > 50 || dh > 50) && graphData.nodes.length > 0 && fgRef.current) {
       const timer = setTimeout(() => {
         fgRef.current?.zoomToFit(400, 50);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [containerDimensions, graphData.nodes.length, snapshotMode]);
+  }, [canvasDimensions, graphData.nodes.length, snapshotMode]);
 
   // Imported snapshots carry their own camera. Apply it after ForceGraph has
   // attached to the canvas and consumed the restored graph data.
@@ -8802,8 +8826,8 @@ const SpanishCompanyNetworkGraph = ({
             cooldownTicks={40}
             onEngineTick={handleEngineTick}
             onEngineStop={handleEngineTick}
-            width={containerDimensions.width}
-            height={containerDimensions.height}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
           />
         )}
 
@@ -8995,7 +9019,7 @@ const SpanishCompanyNetworkGraph = ({
             position: 'absolute',
             ...(tablePosition.x != null
               ? { left: tablePosition.x, top: tablePosition.y }
-              : { right: 12, top: 12 }),
+              : { right: 12 + reservedInspectorWidth, top: 12 }),
             width: isTableCollapsed ? 'auto' : 520,
             maxHeight: isTableCollapsed ? 'auto' : '70%',
             zIndex: 20,
@@ -9443,6 +9467,31 @@ const SpanishCompanyNetworkGraph = ({
             </TableContainer>
           )}
         </Paper>
+
+        {/* Company inspector — docked to the right edge of the canvas. The
+            canvas already reserved this width (canvasDimensions), so the graph
+            sits beside the panel rather than under it. */}
+        <CompanyInspectorPanel
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          width={isInspectorDockable ? inspectorWidth : null}
+          nodeName={previewNodeName}
+          nodeType={previewNodeType}
+          userMerged={previewUserMerged}
+          data={previewData}
+          loading={previewLoading}
+          error={previewError}
+          lang={uiLanguage}
+          text={text}
+          officerDeputyMatches={officerDeputyMatches}
+          entrySource={entrySource}
+          onOpenReport={openReport}
+          onBuyDueDiligence={() => {
+            setPreviewOpen(false);
+            setDdCheckoutCompany(previewNodeName);
+            setDdCheckoutOpen(true);
+          }}
+        />
       </Box>
 
       {/* Legend - compact inline bar */}
@@ -10317,26 +10366,6 @@ const SpanishCompanyNetworkGraph = ({
           </DialogActions>
         </Dialog>
 
-        <CompanyInspectorPanel
-          open={previewOpen}
-          onClose={() => setPreviewOpen(false)}
-          nodeName={previewNodeName}
-          nodeType={previewNodeType}
-          userMerged={previewUserMerged}
-          data={previewData}
-          loading={previewLoading}
-          error={previewError}
-          lang={uiLanguage}
-          text={text}
-          officerDeputyMatches={officerDeputyMatches}
-          entrySource={entrySource}
-          onOpenReport={openReport}
-          onBuyDueDiligence={() => {
-            setPreviewOpen(false);
-            setDdCheckoutCompany(previewNodeName);
-            setDdCheckoutOpen(true);
-          }}
-        />
 
         {/* Officer Timeline Dialog */}
         <OfficerTimelineDialog

@@ -60,6 +60,7 @@ const CompanyInspectorPanel = ({
   text,
   officerDeputyMatches = {},
   entrySource = 'direct',
+  width = null,
   onOpenReport,
   onBuyDueDiligence,
 }) => {
@@ -112,24 +113,25 @@ const CompanyInspectorPanel = ({
   );
 
   return (
-    // Non-modal, right-anchored inspector: a fixed Paper (NO backdrop, no focus
-    // trap) so the graph stays pannable and clickable behind it — the whole point
-    // of reading a profile in a graph view is seeing the structure it sits in.
-    // Matches the ApoderadosSidebar pattern already used here.
+    // Docked to the right edge of the GRAPH CONTAINER, not the viewport. The
+    // container reserves this width out of the canvas, so the graph reflows
+    // beside the panel instead of hiding under it. `width` null means the
+    // viewport is too narrow to sit side by side — the panel covers the canvas.
     <Paper
       elevation={8}
       onContextMenu={e => e.preventDefault()}
       onCopy={e => e.preventDefault()}
       sx={{
-        position: 'fixed',
+        position: 'absolute',
         top: 0,
         right: 0,
         bottom: 0,
-        width: { xs: '100%', sm: 460, md: 520 },
-        maxWidth: '100vw',
-        zIndex: theme => theme.zIndex.drawer + 2,
+        width: width ?? '100%',
+        maxWidth: '100%',
+        zIndex: 40,
         display: 'flex',
         flexDirection: 'column',
+        borderRadius: 0,
         borderLeft: '1px solid',
         borderColor: 'divider',
         boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
