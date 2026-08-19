@@ -85,6 +85,93 @@ describe('renderCompanyPage NIF wiring', () => {
   });
 });
 
+describe('renderCompanyPage incorporation date', () => {
+  const baseCompany = {
+    company_name: 'ACME SL',
+    company_type: 'SL',
+    province: 'MADRID',
+    officers_active: [],
+    officers_resigned: [],
+    identifiers: [],
+    first_seen: '2014-03-12',
+  };
+
+  const constitucion = { event_date: '2014-03-12', event_types: ['Constitución'], full_entry: '' };
+
+  it('names the field a constitution when the first filing IS the incorporation', () => {
+    const html = renderCompanyPage(baseCompany, [constitucion], 'acme-sl', null, 'es');
+    expect(html).toContain('Constitución (primera inscripción)');
+    expect(html).not.toContain('Primera inscripción (desde el 1/1/2009)');
+  });
+
+  it('uses the English label on the English route', () => {
+    const html = renderCompanyPage(baseCompany, [constitucion], 'acme-sl', null, 'en');
+    expect(html).toContain('Incorporation (first filing)');
+    expect(html).not.toContain('First filing (since 1 Jan 2009)');
+  });
+
+  it('keeps the neutral label when the first filing is an ordinary act', () => {
+    const html = renderCompanyPage(
+      baseCompany,
+      [{ event_date: '2014-03-12', event_types: ['Nombramientos'], full_entry: '' }],
+      'acme-sl', null, 'es'
+    );
+    expect(html).toContain('Primera inscripción (desde el 1/1/2009)');
+    expect(html).not.toContain('Constitución (primera inscripción)');
+  });
+
+  it('does not claim incorporation when the constitution is dated AFTER first_seen', () => {
+    // A later "Constitución"-flagged act must not relabel an earlier first filing.
+    const html = renderCompanyPage(
+      baseCompany,
+      [
+        { event_date: '2014-03-12', event_types: ['Nombramientos'], full_entry: '' },
+        { event_date: '2019-06-01', event_types: ['Constitución'], full_entry: '' },
+      ],
+      'acme-sl', null, 'es'
+    );
+    expect(html).toContain('Primera inscripción (desde el 1/1/2009)');
+  });
+
+  it('stays neutral when the first filing is missing from a capped event list', () => {
+    // Events are fetched size=100, so a long-lived company's opening filing may
+    // simply be absent. Absence must not be read as "not an incorporation"
+    // either way — the label just stays generic.
+    const html = renderCompanyPage(baseCompany, [], 'acme-sl', null, 'es');
+    expect(html).toContain('Primera inscripción (desde el 1/1/2009)');
+  });
+
+  it('reads the API event_types object shape, not just plain strings', () => {
+    // The live v3 events endpoint returns [{category, type}], never bare strings.
+    const html = renderCompanyPage(
+      baseCompany,
+      [{
+        event_date: '2014-03-12',
+        event_types: [
+          { category: 'company', type: 'Constitución' },
+          { category: 'administrative', type: 'Datos registrales' },
+        ],
+        full_entry: '',
+      }],
+      'acme-sl', null, 'es'
+    );
+    expect(html).toContain('Constitución (primera inscripción)');
+    expect(html).toContain('"foundingDate":"2014-03-12"');
+  });
+
+  it('emits foundingDate in JSON-LD only when the incorporation is known', () => {
+    const known = renderCompanyPage(baseCompany, [constitucion], 'acme-sl', null, 'es');
+    expect(known).toContain('"foundingDate":"2014-03-12"');
+
+    const unknown = renderCompanyPage(
+      baseCompany,
+      [{ event_date: '2014-03-12', event_types: ['Nombramientos'], full_entry: '' }],
+      'acme-sl', null, 'es'
+    );
+    expect(unknown).not.toContain('foundingDate');
+  });
+});
+
 describe('normalizeNif', () => {
   it('strips separators and uppercases for titles and taxID', async () => {
     const { normalizeNif } = await import('./_lib.js');

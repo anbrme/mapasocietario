@@ -210,6 +210,7 @@ const T = {
     factActivity: 'Objeto social',
     externalEstimate: '(estimación de fuente externa — verificar)',
     factFirstSeen: 'Primera inscripción (desde el 1/1/2009)',
+    factIncorporation: 'Constitución (primera inscripción)',
     factLastSeen: 'Última actualización',
     factBormeIds: 'Identificadores BORME',
     factFilings: 'Publicaciones',
@@ -409,6 +410,7 @@ const T = {
     factActivity: 'Corporate purpose',
     externalEstimate: '(externally sourced estimate — verify)',
     factFirstSeen: 'First filing (since 1 Jan 2009)',
+    factIncorporation: 'Incorporation (first filing)',
     factLastSeen: 'Last updated',
     factBormeIds: 'BORME IDs',
     factFilings: 'Filings',
@@ -690,6 +692,30 @@ function eventTypeText(value) {
   return typeof value === 'string' ? value : value && value.type ? value.type : '';
 }
 
+/**
+ * True when the company's FIRST BORME filing is its own incorporation.
+ *
+ * BORME's digital record starts on 1 Jan 2009, so `first_seen` normally means
+ * "the earliest filing we can see", NOT when the company was formed — which is
+ * why the fact is labelled defensively and why foundingDate is withheld. When
+ * the filing on that date is a Constitución the two genuinely coincide, and it
+ * is the one case where the page can say when the company was formed.
+ *
+ * Events arrive capped (size=100), so an older filing may be missing entirely.
+ * Matching on `first_seen` rather than on the earliest event in the list keeps
+ * this honest when the list is only a tail: if the opening filing is not there,
+ * nothing is claimed.
+ */
+function firstFilingIsIncorporation(company, events) {
+  const firstSeen = String(company?.first_seen || '').slice(0, 10);
+  if (!firstSeen) return false;
+  return (events || []).some((event) => {
+    const date = String(event?.event_date || event?.indexed_date || '').slice(0, 10);
+    if (date !== firstSeen) return false;
+    return (event?.event_types || []).some((type) => /CONSTITU/i.test(eventTypeText(type)));
+  });
+}
+
 function eventTypeCategory(value) {
   const type = eventTypeText(value).toUpperCase();
   if (/NOMBR|REELEC/.test(type)) return 'appointments';
@@ -814,7 +840,7 @@ function eventsBlock(events, t, lang, totalPublications = null) {
   </section>`;
 }
 
-function jsonLd(company, slug, lang, t, seed) {
+function jsonLd(company, slug, lang, t, seed, isIncorporation = false) {
   const officers = (company.officers_active || []).map((o) => o.name || o.name_normalized).filter(Boolean);
 
   // Identifiers: for curated IBEX companies use the verified NIF/LEI/ISIN from the
@@ -848,10 +874,15 @@ function jsonLd(company, slug, lang, t, seed) {
     ...(officers.length ? { employee: officers.slice(0, 10).map((n) => ({ '@type': 'Person', name: n })) } : {}),
     ...(identifier.length ? { identifier } : {}),
     ...(sameAs.length ? { sameAs } : {}),
+    ...(isIncorporation && company.first_seen
+      ? { foundingDate: String(company.first_seen).slice(0, 10) }
+      : {}),
     description: t.jsonLdDesc(company.company_name),
   };
-  // foundingDate dropped: the only date available is company.first_seen (first BORME
-  // appearance), which is not the incorporation date \u2014 wrong data is worse than none.
+  // foundingDate is emitted ONLY when the first BORME filing is the company's own
+  // Constituci\u00f3n. Otherwise the only date available is company.first_seen (first
+  // BORME appearance), which is not the incorporation date \u2014 wrong data is worse
+  // than none.
 
   // BreadcrumbList mirrors the visible breadcrumb (Home \u203a Empresas \u203a Name) at the
   // bottom of the page; Google requires the structured trail to match the on-page one.
@@ -1029,6 +1060,9 @@ function hreflangTags(slug) {
 }
 
 export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false) {
+  // Does the record actually establish when this company was formed? Drives both
+  // the label on the date fact and whether foundingDate is safe to publish.
+  const isIncorporation = firstFilingIsIncorporation(company, events);
   const t = T[lang] || T.es;
   const nameKey = (s) => (s || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
   const registeredName = company.company_name || company.company_name_normalized || '';
@@ -1114,7 +1148,7 @@ export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv
     [t.factAddress, addressVal],
     [t.factActivity, esc(company.activity)],
     [t.factCapital, capitalVal],
-    [t.factFirstSeen, esc(fmtDate(company.first_seen, lang))],
+    [isIncorporation ? t.factIncorporation : t.factFirstSeen, esc(fmtDate(company.first_seen, lang))],
     [t.factLastSeen, esc(fmtDate(company.last_seen, lang))],
     [t.factBormeIds, idsCell],
     [t.factFilings, esc(company.total_publications)],
@@ -1406,7 +1440,7 @@ ${hreflangTags(canonicalSlug)}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(t.ogTitle(seoName))}">
 <meta name="twitter:description" content="${esc(desc)}">
-${jsonLd(company, canonicalSlug, lang, t, seed)}
+${jsonLd(company, canonicalSlug, lang, t, seed, isIncorporation)}
 ${STYLE}
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
 <script>
