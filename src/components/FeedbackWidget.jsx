@@ -36,17 +36,17 @@ const STRINGS = {
 const CLIENT_MAX_COMMENT_LENGTH = 500;
 const THANKS_DISPLAY_MS = 2000;
 
-// Bottom-right (not right-edge-centered) so it never collides with the
-// existing full-height right-anchored panels (Ibex35MarketSidebar,
-// ApoderadosSidebar), which only appear conditionally.
+// Bottom-LEFT. The right edge is now permanently occupied on the graph view:
+// the company inspector docks there on every node click, and this widget sat on
+// top of its footer. The right-anchored panels it used to dodge
+// (Ibex35MarketSidebar, ApoderadosSidebar) were conditional; the inspector is
+// not, so moving out of that column is the fix rather than restacking.
 const FIXED_POSITION_SX = {
   position: 'fixed',
-  right: 'calc(16px + env(safe-area-inset-right))',
+  left: 'calc(16px + env(safe-area-inset-left))',
   bottom: 'calc(16px + env(safe-area-inset-bottom))',
-  // Stay below theme.zIndex.drawer so an open Ibex35MarketSidebar
-  // (drawer + 1) or ApoderadosSidebar (drawer + 2) — both full-height,
-  // right-anchored — visually covers this widget instead of the other
-  // way around. Do not bump this back up to a fixed literal.
+  // Kept below theme.zIndex.drawer so any full-height drawer still covers this
+  // widget rather than the other way around. Do not bump this to a literal.
   zIndex: (theme) => theme.zIndex.drawer - 1,
 };
 
