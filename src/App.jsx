@@ -6,7 +6,6 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
-import FeedbackWidget from './components/FeedbackWidget';
 import { ThemeModeToggle } from './theme/ThemeModeToggle';
 import { DATA_MAINTENANCE } from './config/dataMaintenance';
 import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
@@ -328,7 +327,6 @@ export default function App() {
         language={language}
         entrySource={graphEntrySource}
       />
-      <FeedbackWidget lang={language} />
     </Box>
   );
 }

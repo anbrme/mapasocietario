@@ -50,9 +50,27 @@ const FIXED_POSITION_SX = {
   zIndex: (theme) => theme.zIndex.drawer - 1,
 };
 
-const FeedbackWidget = ({ lang = 'en' }) => {
+/**
+ * Feedback widget.
+ *
+ * Two modes. On the landing page it owns its own launcher — a button floating
+ * bottom-left. In the graph view the canvas edges are all spoken for (inspector
+ * right, data dock bottom), so the launcher is suppressed and the panel is
+ * opened from the graph's settings instead: pass `showLauncher={false}` plus a
+ * controlled `open`/`onOpenChange` pair.
+ */
+const FeedbackWidget = ({ lang = 'en', showLauncher = true, open: openProp, onOpenChange }) => {
   const t = STRINGS[lang === 'es' ? 'es' : 'en'];
-  const [open, setOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : uncontrolledOpen;
+  const setOpen = React.useCallback(
+    (value) => {
+      if (!isControlled) setUncontrolledOpen(value);
+      onOpenChange?.(value);
+    },
+    [isControlled, onOpenChange]
+  );
   const [reaction, setReaction] = React.useState(null);
   const [comment, setComment] = React.useState('');
   const [honeypot, setHoneypot] = React.useState('');
@@ -94,6 +112,7 @@ const FeedbackWidget = ({ lang = 'en' }) => {
   };
 
   if (!open) {
+    if (!showLauncher) return null;
     return (
       <Button
         variant="contained"

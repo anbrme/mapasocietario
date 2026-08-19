@@ -18,6 +18,7 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
+import FeedbackWidget from './FeedbackWidget';
 import HeroNetwork from './HeroNetwork';
 import LandingEntitySearch from './LandingEntitySearch';
 import { LANDING_COPY } from './landingCopy';
@@ -705,6 +706,7 @@ export default function LandingPage({ lang = 'en' }) {
           </Box>
         </Box>
       </Box>
+      <FeedbackWidget lang={lang} />
     </>
   );
 }

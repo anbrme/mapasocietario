@@ -99,6 +99,8 @@ import ApoderadosSidebar from './ApoderadosSidebar';
 import CompanyInspectorPanel from './CompanyInspectorPanel';
 import CompanyDataDock from './CompanyDataDock';
 import GraphNodeHoverCard from './GraphNodeHoverCard';
+import FeedbackWidget from './FeedbackWidget';
+import FeedbackIcon from '@mui/icons-material/RateReviewOutlined';
 import { buildInspectorDatasets, summariseCounts } from '../utils/inspectorDatasets';
 import Ibex35MarketSidebar from './Ibex35MarketSidebar';
 import Ibex35MarketDialog from './Ibex35MarketDialog';
@@ -266,6 +268,7 @@ const SEARCH_COPY = {
     legalLabel: 'Source and legal notice',
     pathfinderTooltip: 'Find connection path (Pathfinder)',
     graphSettingsTitle: 'Graph controls',
+    sendFeedback: 'Send feedback',
     pathfinderTitle: 'Connection Path Finder (Pathfinder)',
     originNode: 'Source milestone',
     destinationNode: 'Destination milestone',
@@ -592,6 +595,7 @@ const SEARCH_COPY = {
     legalLabel: 'Fuente y aviso legal',
     pathfinderTooltip: 'Buscar camino de conexión (Pathfinder)',
     graphSettingsTitle: 'Controles del grafo',
+    sendFeedback: 'Enviar opinión',
     pathfinderTitle: 'Buscador de Caminos de Conexión (Pathfinder)',
     originNode: 'Hito de origen',
     destinationNode: 'Hito de destino',
@@ -1710,6 +1714,10 @@ const SpanishCompanyNetworkGraph = ({
 
   // Graph settings
   const [showSettings, setShowSettings] = useState(false);
+  // Feedback lives in the settings panel here: every edge of the canvas is
+  // already taken (inspector right, data dock bottom), so a floating launcher
+  // had nowhere to sit without covering something.
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [showShareholders, setShowShareholders] = useState(true);
   const [showPreviousShareholders, setShowPreviousShareholders] = useState(true);
   const [nodeSize, setNodeSize] = useState(9);
@@ -6344,21 +6352,35 @@ const SpanishCompanyNetworkGraph = ({
     return degrees;
   }, [filteredGraphData.links]);
 
-  const inactiveNodeIds = React.useMemo(() => {
-    const seen = new Map(); // id -> has at least one active link
-    const mark = (end, active) => {
+  // Nodes that are DEAD ENDS: their only tie in the current view is a ceased
+  // one, so there is nothing current here and expanding them reveals nothing.
+  //
+  // Deliberately NOT "every link is ceased" — that just restates what the red
+  // edge already says. A person with ceased seats at four companies is still
+  // worth opening; a leaf hanging off one company by a single ceased edge is
+  // not. Hollow marks the second, which the edge colour cannot express.
+  const deadEndNodeIds = React.useMemo(() => {
+    const total = new Map();
+    const ceased = new Map();
+    const bump = (map, end) => {
       const id = normalizeNodeId(typeof end === 'object' && end !== null ? end.id : end);
       if (id == null) return;
-      seen.set(id, (seen.get(id) || false) || active);
+      map.set(id, (map.get(id) || 0) + 1);
     };
     filteredGraphData.links.forEach(link => {
-      const active = isActiveLinkCategory(getLinkEffectiveCategory(link) || '');
-      mark(link.source, active);
-      mark(link.target, active);
+      const isCeased = !isActiveLinkCategory(getLinkEffectiveCategory(link) || '');
+      bump(total, link.source);
+      bump(total, link.target);
+      if (isCeased) {
+        bump(ceased, link.source);
+        bump(ceased, link.target);
+      }
     });
-    const inactive = new Set();
-    seen.forEach((hasActive, id) => { if (!hasActive) inactive.add(id); });
-    return inactive;
+    const deadEnds = new Set();
+    total.forEach((degree, id) => {
+      if (degree === 1 && (ceased.get(id) || 0) === 1) deadEnds.add(id);
+    });
+    return deadEnds;
   }, [filteredGraphData.links]);
 
 
@@ -6616,8 +6638,8 @@ const SpanishCompanyNetworkGraph = ({
       // canvas, and capped so the biggest node stays under 2x the smallest.
       const nodeDegree = nodeDegrees.get(normalizeNodeId(node.id)) || 0;
       const nodeRadius = nodeSize * (1 + Math.min(0.85, Math.log10(1 + nodeDegree) * 0.55));
-      // Every incident link is a departure — this seat is historic, not current.
-      const isHistoric = inactiveNodeIds.has(normalizeNodeId(node.id));
+      // Sole tie is a ceased one: a dead end, nothing left to explore here.
+      const isDeadEnd = deadEndNodeIds.has(normalizeNodeId(node.id));
 
       // Pathfinder alpha control
       const inPath = shortestPathNodes.has(normalizeNodeId(node.id));
@@ -6683,11 +6705,11 @@ const SpanishCompanyNetworkGraph = ({
       // surface base keeps the tint identical wherever a link passes underneath,
       // then the node colour goes over it at low alpha.
       //
-      // Hollow is now reserved for historic nodes (all links ceased), so the
-      // absence of fill carries information instead of being the default.
+      // Hollow is reserved for dead ends, so the absence of fill says something
+      // the red edge does not: there is nothing further down this branch.
       ctx.fillStyle = graphPalette.surface.nodeFill;
       ctx.strokeStyle = color;
-      ctx.lineWidth = isHistoric ? 1.5 : 2.25;
+      ctx.lineWidth = isDeadEnd ? 1.5 : 2.25;
 
       // Shape encodes type: companies are rounded squares, officers are circles
       // (same grammar as the hero network, so the real graph reads as the same product).
@@ -6710,7 +6732,7 @@ const SpanishCompanyNetworkGraph = ({
       }
       ctx.fill();
       ctx.save();
-      ctx.globalAlpha = isHistoric ? 0.10 : 0.45;
+      ctx.globalAlpha = isDeadEnd ? 0.10 : 0.45;
       ctx.fillStyle = color;
       ctx.fill();
       ctx.restore();
@@ -6901,7 +6923,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, nodeDegrees, inactiveNodeIds]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, nodeDegrees, deadEndNodeIds]
   );
 
   const linkCanvasObject = useCallback(
@@ -8877,6 +8899,15 @@ const SpanishCompanyNetworkGraph = ({
               />
             </Box>
           </Box>
+          <Divider sx={{ my: 1.5 }} />
+          <Button
+            size="small"
+            startIcon={<FeedbackIcon />}
+            onClick={() => setFeedbackOpen(true)}
+            sx={{ textTransform: 'none' }}
+          >
+            {text.sendFeedback}
+          </Button>
         </Box>
       )}
 
@@ -9373,6 +9404,13 @@ const SpanishCompanyNetworkGraph = ({
         {/* Tabular data — full width along the bottom, paginated. The canvas
             reserved this height, so the graph sits above the dock rather than
             behind it. */}
+        <FeedbackWidget
+          lang={uiLanguage}
+          showLauncher={false}
+          open={feedbackOpen}
+          onOpenChange={setFeedbackOpen}
+        />
+
         <CompanyDataDock
           open={isDockOpen}
           onClose={() => setActiveDatasetKey(null)}
