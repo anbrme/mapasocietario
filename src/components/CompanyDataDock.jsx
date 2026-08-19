@@ -68,6 +68,7 @@ const CompanyDataDock = ({
   lang = 'es',
   height = 300,
   rightOffset = 0,
+  toolbarExtra = null,
 }) => {
   const t = STRINGS[lang] || STRINGS.es;
   const [query, setQuery] = useState('');
@@ -169,6 +170,8 @@ const CompanyDataDock = ({
             ),
           }}
         />
+
+        {toolbarExtra}
 
         <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
           {t.showing(from, to, total)}

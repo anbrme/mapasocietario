@@ -231,6 +231,9 @@ const MIN_CANVAS_WIDTH = 240;
 // Bottom dock height. Tables want width, not height: ~8 rows across the full
 // width beats ~8 rows in a 520px column, and the graph keeps the band above.
 const DATA_DOCK_HEIGHT = 300;
+// The whole-graph table shares the dock with the per-entity datasets, so it
+// needs a key that cannot collide with a BORME event category.
+const GRAPH_DATASET_KEY = '__whole_graph__';
 const MIN_CANVAS_HEIGHT = 200;
 
 const SEARCH_COPY = {
@@ -493,6 +496,7 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Roles in ${count} compan${count === 1 ? 'y' : 'ies'}`,
     role: 'Role',
     unknown: 'Unknown',
+    tableWholeGraph: 'Whole graph',
     viewAsCompany: 'View company profile',
     corporateOfficerNotice: 'This position is held by a company, which has its own registry record.',
     hoverConnections: 'Connections',
@@ -818,6 +822,7 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Cargos en ${count} empresa${count === 1 ? '' : 's'}`,
     role: 'Cargo',
     unknown: 'Desconocido',
+    tableWholeGraph: 'Todo el grafo',
     viewAsCompany: 'Ver ficha de empresa',
     corporateOfficerNotice: 'Este cargo lo ejerce una sociedad, que tiene su propia ficha registral.',
     hoverConnections: 'Conexiones',
@@ -1680,15 +1685,11 @@ const SpanishCompanyNetworkGraph = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Floating table panel state
-  const [tablePosition, setTablePosition] = useState({ x: null, y: null }); // null = default position
   // Default collapsed everywhere so the Datos panel doesn't cover the graph on
   // open; the user expands it on demand (it was intrusive opening expanded).
-  const [isTableCollapsed, setIsTableCollapsed] = useState(true);
   // Date filter: click on a date cell filters the table to rows sharing same date + company + category
   // Shape: { date, companyNodeId, category } or null
   const [dateFilter, setDateFilter] = useState(null);
-  const tableDragRef = useRef(null);
-  const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const dragFreezeRef = useRef(null);
 
   // Autocomplete state
@@ -1755,7 +1756,7 @@ const SpanishCompanyNetworkGraph = ({
   const inspectorWidth = isWideViewport ? INSPECTOR_WIDTH_WIDE : INSPECTOR_WIDTH_COMPACT;
   const isInspectorDocked = previewOpen && isInspectorDockable;
   const reservedInspectorWidth = isInspectorDocked ? inspectorWidth : 0;
-  const isDockOpen = previewOpen && Boolean(activeDatasetKey);
+  const isDockOpen = Boolean(activeDatasetKey);
   const reservedDockHeight = isDockOpen ? DATA_DOCK_HEIGHT : 0;
   const canvasDimensions = React.useMemo(() => ({
     width: Math.max(MIN_CANVAS_WIDTH, containerDimensions.width - reservedInspectorWidth),
@@ -5056,38 +5057,14 @@ const SpanishCompanyNetworkGraph = ({
     ]
   );
 
-  const inspectorDatasets = React.useMemo(
+  const entityDatasets = React.useMemo(
     () => buildInspectorDatasets(previewData, { lang: uiLanguage, labels: text }),
     [previewData, uiLanguage, text]
   );
   const inspectorCounts = React.useMemo(
-    () => summariseCounts(inspectorDatasets),
-    [inspectorDatasets]
+    () => summariseCounts(entityDatasets),
+    [entityDatasets]
   );
-
-  // Hovering is a pointer affordance: touch devices never fire it, and showing
-  // the HUD while a context menu is open would cover the menu.
-  const handleNodeHover = useCallback(node => {
-    if (isTouchDevice || !node) {
-      hoverNodeRef.current = null;
-      setHoverNode(null);
-      setHoverPosition(null);
-      return;
-    }
-    hoverNodeRef.current = node;
-    setHoverNode(node);
-    setHoverPosition(pointerRef.current);
-  }, [isTouchDevice]);
-
-  // Track the cursor so the card follows it across a node instead of pinning to
-  // wherever the pointer first crossed the hit area.
-  const handleContainerPointerMove = useCallback(event => {
-    const rect = containerEl?.getBoundingClientRect();
-    if (!rect) return;
-    const next = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    pointerRef.current = next;
-    if (hoverNodeRef.current) setHoverPosition(next);
-  }, [containerEl]);
 
   const handleBackgroundClick = useCallback(() => {
     trackEvent('graph_background_click', {
@@ -7282,6 +7259,168 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, [visibleTableRows, text, uiLanguage]);
 
+  // The whole-graph table, formerly a floating panel over the canvas. It lives in
+  // the dock as one more tab: same surface for every table, and the canvas gets
+  // its middle back. Cell behaviour is carried over from the old table — company
+  // and officer open the inspector, the date cell toggles the date filter, and
+  // the checkbox toggles AI-investigation membership.
+  const graphDataset = React.useMemo(() => {
+    if (!visibleTableRows.length) return null;
+    const openNode = (node) => {
+      if (!node) return;
+      setActiveNodeId(node.id);
+      openDataPreviewRef.current?.(node);
+    };
+    const linkSx = (node) => ({
+      cursor: node ? 'pointer' : 'default',
+      color: node ? 'primary.main' : 'inherit',
+      textDecoration: node ? 'underline' : 'none',
+    });
+    return {
+      key: GRAPH_DATASET_KEY,
+      label: text.tableWholeGraph,
+      rows: visibleTableRows,
+      columns: [
+        {
+          key: '__investigate',
+          label: '',
+          width: 36,
+          render: (row) => {
+            const toggleNode = row.officerNode || row.companyNode;
+            if (!toggleNode) return null;
+            const inSet = investigationSet.has(normalizeNodeId(toggleNode.id));
+            return (
+              <Checkbox
+                size="small"
+                checked={inSet}
+                onChange={() => toggleInvestigationNode(toggleNode.id)}
+                title={inSet ? text.investigationRemove : text.investigationAdd}
+                sx={{ p: 0 }}
+              />
+            );
+          },
+        },
+        {
+          key: 'company',
+          label: text.tableCompany,
+          width: '24%',
+          render: (row) => (
+            <Box component="span" onClick={() => openNode(row.companyNode)} sx={linkSx(row.companyNode)}>
+              {row.company || '-'}
+            </Box>
+          ),
+        },
+        {
+          key: 'officer',
+          label: text.tableOfficer,
+          width: '24%',
+          render: (row) => (
+            <Box component="span" onClick={() => openNode(row.officerNode)} sx={linkSx(row.officerNode)}>
+              {row.officer || '-'}
+            </Box>
+          ),
+        },
+        { key: 'position', label: text.tableRole, width: '18%' },
+        {
+          key: 'category',
+          label: text.tableType,
+          width: '16%',
+          render: (row) => {
+            const isDeparture = row.category === 'ceses_dimisiones' || row.category === 'revocaciones';
+            return (
+              <Chip
+                size="small"
+                variant="outlined"
+                color={isDeparture ? 'error' : 'success'}
+                label={getCategoryLabel(row.category, uiLanguage)}
+                sx={{ height: 20, fontSize: '0.65rem' }}
+              />
+            );
+          },
+        },
+        {
+          key: 'date',
+          label: text.tableDate,
+          width: '14%',
+          render: (row) => {
+            const canFilter = row.date && row.date !== '-' && row.companyNode;
+            const isActive =
+              dateFilter &&
+              row.companyNode &&
+              dateFilter.date === row.date &&
+              dateFilter.companyNodeId === row.companyNode.id &&
+              dateFilter.category === row.category;
+            return (
+              <Box
+                component="span"
+                onClick={
+                  canFilter
+                    ? () =>
+                        setDateFilter(
+                          isActive
+                            ? null
+                            : {
+                                date: row.date,
+                                companyNodeId: row.companyNode.id,
+                                companyName: row.company,
+                                category: row.category,
+                              }
+                        )
+                    : undefined
+                }
+                sx={{
+                  cursor: canFilter ? 'pointer' : 'default',
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? 'primary.main' : 'inherit',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {row.date}
+              </Box>
+            );
+          },
+        },
+      ],
+    };
+  }, [
+    visibleTableRows,
+    text,
+    uiLanguage,
+    dateFilter,
+    investigationSet,
+    toggleInvestigationNode,
+  ]);
+
+  const inspectorDatasets = React.useMemo(
+    () => [...entityDatasets, graphDataset].filter(Boolean),
+    [entityDatasets, graphDataset]
+  );
+
+  // Hovering is a pointer affordance: touch devices never fire it, and showing
+  // the HUD while a context menu is open would cover the menu.
+  const handleNodeHover = useCallback(node => {
+    if (isTouchDevice || !node) {
+      hoverNodeRef.current = null;
+      setHoverNode(null);
+      setHoverPosition(null);
+      return;
+    }
+    hoverNodeRef.current = node;
+    setHoverNode(node);
+    setHoverPosition(pointerRef.current);
+  }, [isTouchDevice]);
+
+  // Track the cursor so the card follows it across a node instead of pinning to
+  // wherever the pointer first crossed the hit area.
+  const handleContainerPointerMove = useCallback(event => {
+    const rect = containerEl?.getBoundingClientRect();
+    if (!rect) return;
+    const next = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    pointerRef.current = next;
+    if (hoverNodeRef.current) setHoverPosition(next);
+  }, [containerEl]);
+
+
   const buildCurrentGraphSnapshot = useCallback(() => createGraphSnapshot({
     graphData,
     view: {
@@ -7306,8 +7445,6 @@ const SpanishCompanyNetworkGraph = ({
       simplifyGraph,
       colorByCluster,
       showSharedConnections,
-      tablePosition,
-      isTableCollapsed,
       dateFilter,
       camera: cameraState,
       pathfinder: {
@@ -7342,8 +7479,6 @@ const SpanishCompanyNetworkGraph = ({
     simplifyGraph,
     colorByCluster,
     showSharedConnections,
-    tablePosition,
-    isTableCollapsed,
     dateFilter,
     cameraState,
     pathfinderActive,
@@ -7426,12 +7561,6 @@ const SpanishCompanyNetworkGraph = ({
     setSimplifyGraph(view.simplifyGraph !== false);
     setColorByCluster(!!view.colorByCluster);
     setShowSharedConnections(!!view.showSharedConnections);
-    setTablePosition(
-      view.tablePosition && typeof view.tablePosition === 'object'
-        ? { x: view.tablePosition.x ?? null, y: view.tablePosition.y ?? null }
-        : { x: null, y: null }
-    );
-    setIsTableCollapsed(view.isTableCollapsed !== false);
     setDateFilter(view.dateFilter && typeof view.dateFilter === 'object' ? view.dateFilter : null);
     setCameraState(camera);
     setZoomLevel(camera.k);
@@ -7632,42 +7761,6 @@ const SpanishCompanyNetworkGraph = ({
     }, 300);
   }, [isFullscreen]);
 
-  // Table drag handlers (always absolute, relative to offsetParent container)
-  const handleTableDragStart = useCallback(e => {
-    // Drag only with primary mouse button.
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const tableEl = tableDragRef.current?.closest('[data-floating-table]');
-    if (!tableEl) return;
-    const tableRect = tableEl.getBoundingClientRect();
-    const parentRect = tableEl.offsetParent?.getBoundingClientRect() || { left: 0, top: 0 };
-    // Current position relative to the container
-    const currentLeft = tableRect.left - parentRect.left;
-    const currentTop = tableRect.top - parentRect.top;
-    dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      posX: currentLeft,
-      posY: currentTop,
-    };
-
-    const handleMove = ev => {
-      const dx = ev.clientX - dragStartRef.current.x;
-      const dy = ev.clientY - dragStartRef.current.y;
-      setTablePosition({
-        x: dragStartRef.current.posX + dx,
-        y: dragStartRef.current.posY + dy,
-      });
-    };
-    const handleUp = () => {
-      document.removeEventListener('mousemove', handleMove, true);
-      document.removeEventListener('mouseup', handleUp, true);
-    };
-    // Capture phase avoids losing mouseup when parent containers stop bubbling.
-    document.addEventListener('mousemove', handleMove, true);
-    document.addEventListener('mouseup', handleUp, true);
-  }, []);
 
   // Apply a chosen autocomplete suggestion. Search is selection-only: we always
   // act on a real, specific database entity here, never a free-text query (which
@@ -9153,484 +9246,32 @@ const SpanishCompanyNetworkGraph = ({
           );
         })()}
 
-        {/* Floating Data Table. This card is a deliberately theme-INDEPENDENT
-            light surface (dense data reads best on a light card regardless of
-            app theme, like a spreadsheet embed) — it was white-on-dark before
-            light mode existed and stays white-on-either after. Its internal
-            literal colours (this bgcolor, the pale-yellow filter row, the
-            table header/body text and badge colours further down) are left
-            unchanged on purpose; only the teal drag-header (theme-branded)
-            and the outer border (already `divider`) are theme-aware. */}
-        <Paper
-          data-floating-table
-          elevation={6}
-          sx={{
-            position: 'absolute',
-            ...(tablePosition.x != null
-              ? { left: tablePosition.x, top: tablePosition.y }
-              : { right: 12 + reservedInspectorWidth, top: 12 }),
-            width: isTableCollapsed ? 'auto' : 520,
-            maxHeight: isTableCollapsed ? 'auto' : '70%',
-            zIndex: 20,
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: 2,
-            overflow: 'hidden',
-            bgcolor: 'rgba(255, 255, 255, 0.96)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid',
-            borderColor: 'divider',
-            transition: 'width 0.2s ease',
-          }}
-        >
-          {/* Drag header */}
-          <Box
-            ref={tableDragRef}
-            onMouseDown={handleTableDragStart}
+        {/* The whole-graph table used to float here as a draggable card over the
+            middle of the canvas. It now opens in the bottom dock alongside the
+            per-company tables, so every table shares one surface and the canvas
+            keeps its centre. This is just the way in. */}
+        {visibleTableRows.length > 0 && (
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<TableIcon />}
+            onClick={() =>
+              setActiveDatasetKey((prev) =>
+                prev === GRAPH_DATASET_KEY ? null : GRAPH_DATASET_KEY
+              )
+            }
             sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              px: 1.5,
-              py: 0.75,
-              cursor: 'move',
-              userSelect: 'none',
-              background: (t) => `linear-gradient(135deg, ${t.palette.primary.main} 0%, ${t.palette.primary.dark} 100%)`,
-              color: 'white',
-              '&:hover': {
-                background: (t) => `linear-gradient(135deg, ${t.palette.primary.light} 0%, ${t.palette.primary.main} 100%)`,
-              },
+              position: 'absolute',
+              top: 12,
+              right: 12 + reservedInspectorWidth,
+              zIndex: 20,
+              textTransform: 'none',
+              fontWeight: 700,
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              
-              <TableIcon sx={{ fontSize: 16 }} />
-              <Typography variant="subtitle2" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                {text.data} (
-                {dateFilter
-                  ? `${visibleTableRows.length} / ${tableRows.length}`
-                  : tableRows.length}
-                )
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-              {contextNode && contextNode.type !== 'officer' && (
-                <Tooltip title={text.buyDdTooltip}>
-                  <span>
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        const name = contextNode.name;
-                        if (!name) return;
-                        setDdCheckoutCompany(name);
-                        setDdCheckoutOpen(true);
-                      }}
-                      // Hover overlay sits on the always-teal drag header (theme-aware
-                      // gradient above), never on a neutral surface, so a fixed white
-                      // tint stays visible in both themes — same for the two below.
-                      sx={{ color: '#ffeb3b', '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
-                    >
-                      <DescriptionIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              )}
-              <Tooltip title={text.copyTableTooltip}>
-                <span>
-                  <IconButton
-                    size="small"
-                    onClick={copyTableToClipboard}
-                    disabled={tableRows.length === 0}
-                    sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
-                  >
-                    <CopyIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title={isTableCollapsed ? text.expandTable : text.minimizeTable}>
-                <IconButton
-                  size="small"
-                  onClick={() => setIsTableCollapsed(prev => !prev)}
-                  sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
-                >
-                  {isTableCollapsed ? (
-                    <ExpandMoreIcon sx={{ fontSize: 16 }} />
-                  ) : (
-                    <ExpandLessIcon sx={{ fontSize: 16 }} />
-                  )}
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
-
-          {/* Active date-filter chip */}
-          {!isTableCollapsed && dateFilter && (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 1,
-                py: 0.5,
-                bgcolor: '#fff8e1', // Part of the always-light floating table card (see comment above the Paper)
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}
-            >
-              <Chip
-                size="small"
-                color={
-                  dateFilter.category === 'ceses_dimisiones' ||
-                  dateFilter.category === 'revocaciones'
-                    ? 'error'
-                    : 'success'
-                }
-                label={`${getCategoryLabel(dateFilter.category, uiLanguage)} · ${dateFilter.date}`}
-                onDelete={() => setDateFilter(null)}
-                sx={{ fontSize: '0.65rem', height: 22 }}
-              />
-              <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', flexGrow: 1 }}>
-                {dateFilter.companyName || ''}
-              </Typography>
-            </Box>
-          )}
-
-          {/* Table body (collapsible) */}
-          {!isTableCollapsed && (
-            <TableContainer sx={{ flex: 1, overflow: 'auto', maxHeight: 400 }}>
-              <Table
-                size="small"
-                stickyHeader
-                // Always-light floating table card (see comment above the Paper) —
-                // body text stays dark-on-white regardless of app theme.
-                sx={{
-                  '& .MuiTableBody-root .MuiTableCell-root': {
-                    color: '#1f2937',
-                  },
-                }}
-              >
-                <TableHead>
-                  <TableRow>
-                    {/* All 6 header cells below: always-light card (see comment above
-                        the Paper) — bgcolor/color stay fixed regardless of app theme. */}
-                    <TableCell
-                      sx={{
-                        fontWeight: 'bold',
-                        fontSize: '0.7rem',
-                        py: 0.5,
-                        bgcolor: '#f5f5f5',
-                        color: '#0d9488',
-                        width: 32,
-                        px: 0.5,
-                      }}
-                    />
-                    <TableCell
-                      sx={{
-                        fontWeight: 'bold',
-                        fontSize: '0.7rem',
-                        py: 0.5,
-                        bgcolor: '#f5f5f5',
-                        color: '#0d9488',
-                      }}
-                    >
-                      {text.tableCompany}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontWeight: 'bold',
-                        fontSize: '0.7rem',
-                        py: 0.5,
-                        bgcolor: '#f5f5f5',
-                        color: '#0d9488',
-                      }}
-                    >
-                      {text.tableOfficer}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontWeight: 'bold',
-                        fontSize: '0.7rem',
-                        py: 0.5,
-                        bgcolor: '#f5f5f5',
-                        color: '#0d9488',
-                      }}
-                    >
-                      {text.tableRole}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontWeight: 'bold',
-                        fontSize: '0.7rem',
-                        py: 0.5,
-                        bgcolor: '#f5f5f5',
-                        color: '#0d9488',
-                      }}
-                    >
-                      {text.tableType}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontWeight: 'bold',
-                        fontSize: '0.7rem',
-                        py: 0.5,
-                        bgcolor: '#f5f5f5',
-                        color: '#0d9488',
-                      }}
-                    >
-                      {text.tableDate}
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {visibleTableRows.length === 0 ? (
-                    <TableRow>
-                      {/* Always-light card (see comment above the Paper) */}
-                      <TableCell colSpan={6} align="center" sx={{ py: 3, color: '#4b5563' }}>
-                        <Typography variant="caption" sx={{ color: '#4b5563' }}>
-                          {text.emptyTable}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    visibleTableRows.map((row, idx) => (
-                      <TableRow
-                        key={`${row.company}-${row.officer}-${row.position}-${idx}`}
-                        hover
-                        // Always-light card (see comment above the Paper) — teal tint
-                        // reads fine on the fixed white row background either way.
-                        sx={{
-                          '&:nth-of-type(odd)': { bgcolor: 'rgba(20,184,166, 0.03)' },
-                          '&:hover': { bgcolor: 'rgba(20,184,166, 0.08)' },
-                        }}
-                      >
-                        <TableCell sx={{ py: 0.25, px: 0.5, width: 32 }}>
-                          {(row.officerNode || row.companyNode) && (() => {
-                            const toggleNode = row.officerNode || row.companyNode;
-                            const inSet = investigationSet.has(normalizeNodeId(toggleNode.id));
-                            return (
-                              <Checkbox
-                                size="small"
-                                checked={inSet}
-                                onChange={() => toggleInvestigationNode(toggleNode.id)}
-                                title={inSet ? text.investigationRemove : text.investigationAdd}
-                                sx={{ p: 0 }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            );
-                          })()}
-                        </TableCell>
-                        <TableCell
-                          onClick={
-                            row.companyNode
-                              ? () => {
-                                  setActiveNodeId(row.companyNode.id);
-                                  trackEvent('graph_selected_node_action', {
-                                    ...graphInteractionParams(row.companyNode),
-                                    interaction_source: 'table_row',
-                                    selected_action: 'data_preview',
-                                  });
-                                  openDataPreview(row.companyNode);
-                                }
-                              : undefined
-                          }
-                          onContextMenu={
-                            row.companyNode
-                              ? (e) => handleNodeRightClick(row.companyNode, e, { interactionSource: 'table_row' })
-                              : undefined
-                          }
-                          sx={{
-                            fontSize: '0.7rem',
-                            py: 0.25,
-                            maxWidth: 110,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            cursor: row.companyNode ? 'pointer' : 'default',
-                            color: row.companyNode ? 'primary.main' : 'inherit',
-                            '&:hover': row.companyNode
-                              ? { textDecoration: 'underline' }
-                              : undefined,
-                          }}
-                          title={row.companyNode ? text.rowCompanyActions(row.company) : row.company}
-                        >
-                          {row.company}
-                        </TableCell>
-                        <TableCell
-                          // Left click opens the inspector, matching the company
-                          // column and the canvas. Right click still opens the
-                          // context menu (below) for the editing actions.
-                          onClick={
-                            row.officerNode
-                              ? () => {
-                                  setActiveNodeId(row.officerNode.id);
-                                  trackEvent('graph_table_officer_click', {
-                                    ...graphInteractionParams(row.officerNode),
-                                    interaction_source: 'table_row',
-                                  });
-                                  openDataPreview(row.officerNode);
-                                }
-                              : undefined
-                          }
-                          onContextMenu={
-                            row.officerNode
-                              ? (e) => handleNodeRightClick(row.officerNode, e, {
-                                  statusCategory: row.category,
-                                  interactionSource: 'table_row',
-                                })
-                              : undefined
-                          }
-                          sx={{
-                            fontSize: '0.7rem',
-                            py: 0.25,
-                            maxWidth: 110,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            cursor: row.officerNode ? 'pointer' : 'default',
-                            color: row.officerNode ? 'primary.main' : 'inherit',
-                            '&:hover': row.officerNode
-                              ? { textDecoration: 'underline' }
-                              : undefined,
-                          }}
-                          title={
-                            officerDeputyMatches[row.officer]?.deputy
-                              ? `${row.officer} — ${officerDeputyMatches[row.officer].deputy.FECHABAJA ? text.formerCongressDeputy : text.congressDeputy}${officerDeputyMatches[row.officer].deputy.FORMACIONELECTORAL ? ' · ' + officerDeputyMatches[row.officer].deputy.FORMACIONELECTORAL : ''}`
-                              : row.officerNode
-                                ? text.rowOfficerActions(row.officer)
-                                : row.officer
-                          }
-                        >
-                          {row.officer}
-                          {officerDeputyMatches[row.officer]?.deputy && (
-                            // Always-light card (see comment above the Paper)
-                            <Box
-                              component="span"
-                              sx={{
-                                ml: 0.5,
-                                fontSize: '0.6rem',
-                                fontWeight: 600,
-                                px: 0.5,
-                                py: 0.05,
-                                borderRadius: 0.5,
-                                color: officerDeputyMatches[row.officer].deputy.FECHABAJA
-                                  ? '#6b7280'
-                                  : '#b26500',
-                                bgcolor: officerDeputyMatches[row.officer].deputy.FECHABAJA
-                                  ? '#f3f4f6'
-                                  : '#fff4e0',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              🏛️ {officerDeputyMatches[row.officer].deputy.FECHABAJA ? (uiLanguage === 'en' ? 'Former MP' : 'Ex-dip.') : text.congressDeputy}
-                            </Box>
-                          )}
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            fontSize: '0.7rem',
-                            py: 0.25,
-                            maxWidth: 90,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                          title={row.position}
-                        >
-                          {row.position}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: '0.7rem', py: 0.25 }}>
-                          {/* Always-light card (see comment above the Paper) */}
-                          <Box
-                            component="span"
-                            sx={{
-                              px: 0.5,
-                              py: 0.125,
-                              borderRadius: 0.5,
-                              bgcolor:
-                                row.category === 'ceses_dimisiones' ||
-                                row.category === 'revocaciones'
-                                  ? '#ffebee'
-                                  : '#e8f5e9',
-                              color:
-                                row.category === 'ceses_dimisiones' ||
-                                row.category === 'revocaciones'
-                                  ? '#c62828'
-                                  : '#2e7d32',
-                              fontSize: '0.65rem',
-                              fontWeight: 500,
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {getCategoryLabel(row.category, uiLanguage)}
-                          </Box>
-                        </TableCell>
-                        <TableCell
-                          onClick={
-                            row.date && row.date !== '-' && row.companyNode
-                              ? () => {
-                                  const isActive =
-                                    dateFilter &&
-                                    dateFilter.date === row.date &&
-                                    dateFilter.companyNodeId === row.companyNode.id &&
-                                    dateFilter.category === row.category;
-                                  setDateFilter(
-                                    isActive
-                                      ? null
-                                      : {
-                                          date: row.date,
-                                          companyNodeId: row.companyNode.id,
-                                          companyName: row.company,
-                                          category: row.category,
-                                        }
-                                  );
-                                }
-                              : undefined
-                          }
-                          sx={{
-                            fontSize: '0.7rem',
-                            py: 0.25,
-                            whiteSpace: 'nowrap',
-                            cursor:
-                              row.date && row.date !== '-' && row.companyNode
-                                ? 'pointer'
-                                : 'default',
-                            color:
-                              dateFilter &&
-                              row.companyNode &&
-                              dateFilter.date === row.date &&
-                              dateFilter.companyNodeId === row.companyNode.id &&
-                              dateFilter.category === row.category
-                                ? 'primary.main'
-                                : 'inherit',
-                            fontWeight:
-                              dateFilter &&
-                              row.companyNode &&
-                              dateFilter.date === row.date &&
-                              dateFilter.companyNodeId === row.companyNode.id &&
-                              dateFilter.category === row.category
-                                ? 600
-                                : 400,
-                            '&:hover':
-                              row.date && row.date !== '-' && row.companyNode
-                                ? { textDecoration: 'underline' }
-                                : undefined,
-                          }}
-                          title={
-                            row.date && row.date !== '-' && row.companyNode
-                              ? text.filterByDate(row.company)
-                              : row.date
-                          }
-                        >
-                          {row.date}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Paper>
+            {text.data} ({visibleTableRows.length})
+          </Button>
+        )}
 
         {/* Instant node summary — the answer to "what is this?" with no click
             and no request. Suppressed while a context menu is open so it never
@@ -9691,6 +9332,30 @@ const SpanishCompanyNetworkGraph = ({
           lang={uiLanguage}
           height={DATA_DOCK_HEIGHT}
           rightOffset={reservedInspectorWidth}
+          toolbarExtra={
+            activeDatasetKey === GRAPH_DATASET_KEY ? (
+              <>
+                {dateFilter && (
+                  <Chip
+                    size="small"
+                    color={
+                      dateFilter.category === 'ceses_dimisiones' || dateFilter.category === 'revocaciones'
+                        ? 'error'
+                        : 'success'
+                    }
+                    label={`${getCategoryLabel(dateFilter.category, uiLanguage)} · ${dateFilter.date}`}
+                    onDelete={() => setDateFilter(null)}
+                    sx={{ height: 22, fontSize: '0.65rem', flexShrink: 0 }}
+                  />
+                )}
+                <Tooltip title={text.copyTableTooltip}>
+                  <IconButton size="small" onClick={copyTableToClipboard} sx={{ flexShrink: 0 }}>
+                    <CopyIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </>
+            ) : null
+          }
         />
       </Box>
 
