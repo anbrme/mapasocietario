@@ -5403,7 +5403,16 @@ const SpanishCompanyNetworkGraph = ({
     setPreviewLoading(true);
     setPreviewOpen(true);
 
-    if (snapshotMode) {
+    // Snapshot graphs carry no NIF, capital or address: BORME events never held
+    // them, and they are only ever read off the live company doc. So a purely
+    // local preview shows a fact sheet with those rows blank.
+    //
+    // That is correct for an IMPORTED snapshot — a shared snapshot is a record
+    // of a moment, and silently mixing today's registry data into it would
+    // misrepresent what was captured. It is wrong for a RECOVERED session,
+    // which is just the user's own working graph on a live app: there the
+    // profile should load exactly as it does on any other click.
+    if (snapshotMode && snapshotSource !== 'autosave') {
       const localPreview = buildSnapshotPreview(previewTarget);
       if (localPreview) setPreviewData(localPreview);
       else setPreviewError(text.noCompanyPreview);
@@ -5767,6 +5776,7 @@ const SpanishCompanyNetworkGraph = ({
     previewOpen,
     previewNodeName,
     previewNodeType,
+    snapshotSource,
   ]);
 
   // Keep the ref used by handleNodeClick pointed at the latest callback.
