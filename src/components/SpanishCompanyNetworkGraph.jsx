@@ -102,6 +102,7 @@ import GraphNodeHoverCard from './GraphNodeHoverCard';
 import FeedbackWidget from './FeedbackWidget';
 import FeedbackIcon from '@mui/icons-material/RateReviewOutlined';
 import { buildInspectorDatasets, summariseCounts } from '../utils/inspectorDatasets';
+import { buildOfficerChart } from '../utils/officerTimeline';
 import Ibex35MarketSidebar from './Ibex35MarketSidebar';
 import Ibex35MarketDialog from './Ibex35MarketDialog';
 import LegalDisclaimer from './LegalDisclaimer';
@@ -506,6 +507,11 @@ const SEARCH_COPY = {
     hoverHint: 'Click: profile · Double click: expand · Right click: options',
     structureSection: 'Structure',
     structureHint: 'Opens the full table in the panel below.',
+    trackRecord: 'Track record',
+    openTimeline: 'Open the full timeline',
+    andMoreSeats: n => `+${n} more · view all`,
+    seeInTable: 'Table',
+    companiesShort: 'Companies',
     currentOfficersShort: 'Current officers',
     rolesShort: 'Positions',
     whollyOwnedShort: 'Wholly owned',
@@ -833,6 +839,11 @@ const SEARCH_COPY = {
     hoverHint: 'Clic: ficha · Doble clic: expandir · Clic derecho: opciones',
     structureSection: 'Estructura',
     structureHint: 'Abre la tabla completa en el panel inferior.',
+    trackRecord: 'Trayectoria',
+    openTimeline: 'Ver la línea temporal completa',
+    andMoreSeats: n => `+${n} más · ver todo`,
+    seeInTable: 'Tabla',
+    companiesShort: 'Empresas',
     currentOfficersShort: 'Directivos actuales',
     rolesShort: 'Cargos',
     whollyOwnedShort: 'Participadas 100%',
@@ -1513,6 +1524,14 @@ const SpanishCompanyNetworkGraph = ({
   const [timelineOfficerName, setTimelineOfficerName] = useState('');
   const [timelineOfficerRecords, setTimelineOfficerRecords] = useState([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
+  // The merged-name variants the loaded records were queried under. Held in
+  // state rather than read off contextNode at render time: the dialog can now
+  // be opened from the inspector, where contextNode is null or points at a
+  // different node entirely.
+  const [timelineNameVariants, setTimelineNameVariants] = useState([]);
+  // Which officer the loaded records belong to, so re-clicking the same person
+  // reuses them instead of refetching.
+  const timelineOfficerRef = useRef(null);
 
   // Data preview modal state
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -5386,6 +5405,80 @@ const SpanishCompanyNetworkGraph = ({
   }, [graphData.nodes, graphData.links]);
 
   // Data preview: fetch live data normally, or read only the imported snapshot.
+  /**
+   * Load an officer's BORME acts — the data behind both the mini chart in the
+   * inspector and the full timeline dialog.
+   *
+   * Was inlined in the timeline context-menu item; extracted so the inspector
+   * can reach the same records without a second copy of the fetch drifting out
+   * of sync. Prefetched when the inspector opens, which also means the dialog
+   * opens instantly instead of spinning.
+   */
+  const loadOfficerTimeline = useCallback(async (name, nameVariants = []) => {
+    if (!name || timelineOfficerRef.current === name) return;
+    timelineOfficerRef.current = name;
+    setTimelineOfficerName(name);
+    setTimelineNameVariants(nameVariants.length > 1 ? nameVariants : []);
+    setTimelineOfficerRecords([]);
+    setTimelineLoading(true);
+    try {
+      const allNames = [name, ...nameVariants.filter(v => v !== name)];
+      const allRecords = [];
+      const seenKeys = new Set();
+      await Promise.all(
+        allNames.map(async (queryName) => {
+          // The event log, NOT expand-officer: the latter reads the
+          // entity-assembled companies index, which keeps current STATE (one
+          // appointed_date per seat), so a revoke-and-reappoint collapses to
+          // the latest appointment. This is a "Cronología BORME" — it needs
+          // every published act. Falls back to the state endpoint if the
+          // history one is unavailable, so the timeline degrades instead of
+          // going blank.
+          let records = [];
+          try {
+            const events = await spanishCompaniesService.getOfficerEventsV3(queryName);
+            if (events.success) records = events.movements || [];
+          } catch (err) {
+            console.warn(`[Timeline] officer-events failed for "${queryName}":`, err.message);
+          }
+          if (records.length === 0) {
+            try {
+              const data = await spanishCompaniesService.expandOfficerV3(queryName);
+              if (data.success) records = data.officers || [];
+            } catch (err) {
+              console.warn(`[Timeline] Failed to expand variant "${queryName}":`, err.message);
+            }
+          }
+          records.forEach(o => {
+            const date = o.date || o.event_date || '';
+            const role = (o.specific_role || o.position_normalized || o.position || '').toUpperCase();
+            // event_type is part of the key: a revocation and a re-appointment
+            // of the same role on the same day are two distinct movements, not
+            // a duplicate.
+            const key = `${(o.company_name || '').toUpperCase()}|${role}|${date}|${(o.event_type || '').toUpperCase()}`;
+            if (seenKeys.has(key)) return;
+            seenKeys.add(key);
+            allRecords.push(o);
+          });
+        })
+      );
+      setTimelineOfficerRecords(allRecords);
+    } catch (err) {
+      console.error('Error fetching officer timeline:', err);
+      // Clear the guard so the next click retries rather than showing an empty
+      // chart for the rest of the session.
+      timelineOfficerRef.current = null;
+    } finally {
+      setTimelineLoading(false);
+    }
+  }, []);
+
+  const openOfficerTimeline = useCallback((node) => {
+    if (!node?.name) return;
+    setTimelineDialogOpen(true);
+    loadOfficerTimeline(node.name, node.nameVariants || []);
+  }, [loadOfficerTimeline]);
+
   const openDataPreview = useCallback(async (nodeOverride = null) => {
     // Re-clicking the node already on screen must not refetch it — with single
     // click bound to the inspector, exploration would otherwise fire a profile
@@ -5432,6 +5525,12 @@ const SpanishCompanyNetworkGraph = ({
         // Query all name variants (from merged nodes) to get complete appointment history
         const nameVariants = previewTarget.nameVariants || [];
         const allNames = [name, ...nameVariants.filter(v => v !== name)];
+
+        // Track record, in parallel and deliberately un-awaited: the panel must
+        // paint on the profile, not wait on the chart. It is the same request
+        // the timeline dialog needs, so fetching it here also removes the wait
+        // when the user opens the full chart.
+        loadOfficerTimeline(name, nameVariants);
 
         const allOfficers = [];
         const seenKeys = new Set();
@@ -5784,7 +5883,45 @@ const SpanishCompanyNetworkGraph = ({
     previewNodeName,
     previewNodeType,
     snapshotSource,
+    loadOfficerTimeline,
   ]);
+
+  /**
+   * The officer track record, shaped for the chart. Bound to the officer the
+   * inspector is actually showing: without the name check a stale chart from
+   * the previously inspected person would flash into the new panel.
+   */
+  const officerChart = React.useMemo(() => {
+    if (previewNodeType !== 'officer' || !previewNodeName) return null;
+    if (timelineOfficerName !== previewNodeName) return null;
+    if (!timelineOfficerRecords.length) return null;
+    return buildOfficerChart(timelineOfficerRecords, {
+      unknownLabel: text.unknown,
+      fallbackRole: text.role,
+      today: new Date(),
+    });
+  }, [
+    previewNodeType,
+    previewNodeName,
+    timelineOfficerName,
+    timelineOfficerRecords,
+    text.unknown,
+    text.role,
+  ]);
+
+  /**
+   * Jump from a row in the inspector to that company's own profile. Focuses the
+   * node when it is already on the canvas; otherwise the profile still opens,
+   * so a seat at a company the user never expanded is not a dead link.
+   */
+  const focusCompanyByName = useCallback((companyName) => {
+    if (!companyName) return;
+    const nodeId = companyNameToId(normalizeCompanyName(companyName));
+    if (graphData.nodes.some(node => isSameNodeId(node.id, nodeId))) {
+      setActiveNodeId(normalizeNodeId(nodeId));
+    }
+    openDataPreview({ name: companyName, type: 'spanish-company-group' });
+  }, [graphData.nodes, openDataPreview]);
 
   // Keep the ref used by handleNodeClick pointed at the latest callback.
   useEffect(() => {
@@ -9399,6 +9536,13 @@ const SpanishCompanyNetworkGraph = ({
           text={text}
           officerDeputyMatches={officerDeputyMatches}
           entrySource={entrySource}
+          officerChart={officerChart}
+          officerChartLoading={timelineLoading && previewNodeType === 'officer'}
+          onOpenTimeline={() => openOfficerTimeline({
+            name: previewNodeName,
+            nameVariants: previewData?.nameVariants || [],
+          })}
+          onFocusCompany={focusCompanyByName}
           onOpenReport={openReport}
           onBuyDueDiligence={() => {
             setPreviewOpen(false);
@@ -9815,69 +9959,11 @@ const SpanishCompanyNetworkGraph = ({
           {contextNode && contextNode.type === 'officer' && (
             <MenuItem
               disabled={timelineLoading}
-              onClick={async () => {
+              onClick={() => {
                 runContextAction('officer_timeline');
-                const name = contextNode.name;
+                const node = contextNode;
                 closeNodeContextMenu();
-                if (!name) return;
-                setTimelineLoading(true);
-                setTimelineOfficerName(name);
-                setTimelineOfficerRecords([]);
-                setTimelineDialogOpen(true);
-                try {
-                  // Query all name variants (from merged nodes) for complete timeline
-                  const nameVariants = contextNode.nameVariants || [];
-                  const allNames = [name, ...nameVariants.filter(v => v !== name)];
-                  const allRecords = [];
-                  const seenKeys = new Set();
-                  await Promise.all(
-                    allNames.map(async (queryName) => {
-                      // The event log, NOT expand-officer: the latter reads the
-                      // entity-assembled companies index, which keeps current
-                      // STATE (one appointed_date per seat), so a
-                      // revoke-and-reappoint collapses to the latest
-                      // appointment. This dialog is a "Cronología BORME" — it
-                      // needs every published act. Falls back to the state
-                      // endpoint if the history one is unavailable, so the
-                      // timeline degrades to today's behaviour instead of
-                      // going blank.
-                      let records = [];
-                      try {
-                        const events = await spanishCompaniesService.getOfficerEventsV3(queryName);
-                        if (events.success) records = events.movements || [];
-                      } catch (err) {
-                        console.warn(`[Timeline] officer-events failed for "${queryName}":`, err.message);
-                      }
-                      if (records.length === 0) {
-                        try {
-                          const data = await spanishCompaniesService.expandOfficerV3(queryName);
-                          if (data.success) records = data.officers || [];
-                        } catch (err) {
-                          console.warn(`[Timeline] Failed to expand variant "${queryName}":`, err.message);
-                        }
-                      }
-                      records.forEach(o => {
-                        const date = o.date || o.event_date || '';
-                        const role = (o.specific_role || o.position_normalized || o.position || '').toUpperCase();
-                        // event_type is part of the key: a revocation and a
-                        // re-appointment of the same role on the same day are
-                        // two distinct movements, not a duplicate.
-                        const key = `${(o.company_name || '').toUpperCase()}|${role}|${date}|${(o.event_type || '').toUpperCase()}`;
-                        if (!seenKeys.has(key)) {
-                          seenKeys.add(key);
-                          allRecords.push(o);
-                        }
-                      });
-                    })
-                  );
-                  if (allRecords.length > 0) {
-                    setTimelineOfficerRecords(allRecords);
-                  }
-                } catch (err) {
-                  console.error('Error fetching officer timeline:', err);
-                } finally {
-                  setTimelineLoading(false);
-                }
+                openOfficerTimeline(node);
               }}
             >
               <ListItemIcon>
@@ -10340,7 +10426,7 @@ const SpanishCompanyNetworkGraph = ({
           open={timelineDialogOpen}
           officerName={timelineOfficerName}
           officerRecords={timelineOfficerRecords}
-          nameVariants={contextNode?.nameVariants}
+          nameVariants={timelineNameVariants}
           language={uiLanguage}
           onClose={() => setTimelineDialogOpen(false)}
           container={overlayContainer}

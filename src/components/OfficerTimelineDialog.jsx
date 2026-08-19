@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -9,51 +9,26 @@ import {
   Typography,
   IconButton,
   Tooltip,
-  Chip,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Timeline as TimelineIcon,
-  ContentCopy as CopyIcon,
+  TableChart as TableChartIcon,
+  Image as ImageIcon,
+  Download as DownloadIcon,
   CheckCircle as ActiveIcon,
   Cancel as InactiveIcon,
 } from '@mui/icons-material';
 import { isAppointmentMovement } from '../utils/officerMovements';
-
-// ─── Position category colors (pattern-based) ────────────────────────────────
-// Left as fixed literals rather than theme tokens: this is an 11-way role
-// legend local to the Gantt timeline (admin/consejero/presidente/…) with no
-// counterpart in graph.node or graph.link (the canvas only distinguishes
-// company vs officer, not specific role), so there is no existing token to
-// map onto without inventing one. All 11 are mid-to-dark saturated colors —
-// none read as white-on-white — and were spot-checked as legible on both the
-// dark canvas and a white dialog paper, so left unchanged pending a design
-// call on whether this legend deserves its own theme.graph.role.* branch.
-const CATEGORY_COLORS = {
-  admin: '#7c3aed',
-  consejero: '#2563eb',
-  presidente: '#1e40af',
-  secretario: '#0891b2',
-  apoderado: '#059669',
-  auditor: '#d97706',
-  comisario: '#dc2626',
-  liquidador: '#b91c1c',
-  director: '#6d28d9',
-  socio: '#0d9488',
-  other: '#6366f1',
-};
-
-const POSITION_PATTERNS = [
-  [/^(ADM|ADMIN)/i, 'admin'],
-  [/^(CON\.?DEL|CON\.?IND|CONS|CONSEJ)/i, 'consejero'],
-  [/^(PRES|VICEPRES)/i, 'presidente'],
-  [/^(SEC|VICESEC|LETRADO)/i, 'secretario'],
-  [/^(APO|APOD)/i, 'apoderado'],
-  [/^(AUD|COAUD)/i, 'auditor'],
-  [/^(COM[IO]S)/i, 'comisario'],
-  [/^(LIQ)/i, 'liquidador'],
-  [/^(DIR|D\.GRAL|GERENTE)/i, 'director'],
-  [/^(SOCIO)/i, 'socio'],
-];
+import { buildOfficerChart } from '../utils/officerTimeline';
+import {
+  renderGanttCanvas,
+  canvasToPngBlob,
+  copyPngToClipboard,
+  downloadBlob,
+  isImageClipboardSupported,
+} from '../utils/ganttImage';
 
 const TIMELINE_COPY = {
   en: {
@@ -63,8 +38,13 @@ const TIMELINE_COPY = {
     cessation: 'cessation',
     active: 'Active',
     appointment: 'Appointment',
-    copied: 'Copied',
-    copyForWord: 'Copy for Word',
+    copiedTable: 'Table copied',
+    copiedImage: 'Chart copied as an image',
+    copyTable: 'Copy table (for Word)',
+    copyChart: 'Copy chart as an image',
+    downloadChart: 'Download chart (PNG)',
+    imageCopyFailed: 'This browser will not accept an image on the clipboard — the PNG has been downloaded instead.',
+    imageFailed: 'The chart could not be rendered as an image.',
     mergedData: 'Combined data from merged nodes',
     mergedWarning: 'If the names belong to different people, the timeline may mix unrelated data.',
     bormeTimeline: count => `BORME timeline (${count} ${count === 1 ? 'movement' : 'movements'})`,
@@ -75,6 +55,7 @@ const TIMELINE_COPY = {
     noData: 'No timeline data available.',
     close: 'Close',
     unknownCompany: 'Unknown',
+    chartSource: 'Source: BORME (Registro Mercantil) via mapasocietario.es',
   },
   es: {
     timeline: 'Línea temporal',
@@ -83,8 +64,13 @@ const TIMELINE_COPY = {
     cessation: 'cese',
     active: 'Activo',
     appointment: 'Nombramiento',
-    copied: 'Copiado',
-    copyForWord: 'Copiar para Word',
+    copiedTable: 'Tabla copiada',
+    copiedImage: 'Gráfico copiado como imagen',
+    copyTable: 'Copiar tabla (para Word)',
+    copyChart: 'Copiar gráfico como imagen',
+    downloadChart: 'Descargar gráfico (PNG)',
+    imageCopyFailed: 'Este navegador no admite imágenes en el portapapeles — se ha descargado el PNG en su lugar.',
+    imageFailed: 'No se ha podido generar el gráfico como imagen.',
     mergedData: 'Datos combinados de nodos fusionados',
     mergedWarning: 'Si los nombres corresponden a personas distintas, la línea temporal puede mezclar datos no relacionados.',
     bormeTimeline: count => `Cronología BORME (${count} movimientos)`,
@@ -95,155 +81,66 @@ const TIMELINE_COPY = {
     noData: 'No hay datos de línea temporal disponibles.',
     close: 'Cerrar',
     unknownCompany: 'Desconocida',
+    chartSource: 'Fuente: BORME (Registro Mercantil) vía mapasocietario.es',
   },
 };
 
-const _colorCache = {};
-const getPositionColor = (role) => {
-  if (_colorCache[role]) return _colorCache[role];
-  for (const [pattern, category] of POSITION_PATTERNS) {
-    if (pattern.test(role)) {
-      _colorCache[role] = CATEGORY_COLORS[category];
-      return CATEGORY_COLORS[category];
-    }
-  }
-  _colorCache[role] = CATEGORY_COLORS.other;
-  return CATEGORY_COLORS.other;
-};
+const ROW_HEIGHT = 32;
+const LABEL_COLUMN_WIDTH = 180;
 
-// ─── Date parsing ────────────────────────────────────────────────────────────
-const parseDate = (str) => {
-  if (!str) return null;
-  const iso = String(str).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]);
-  const d = new Date(str);
-  return isNaN(d) ? null : d;
-};
-
-// ─── Gantt Timeline Component ────────────────────────────────────────────────
-const OfficerGanttTimeline = ({ companies, language = 'es' }) => {
-  const copy = TIMELINE_COPY[language === 'en' ? 'en' : 'es'];
-  const spans = useMemo(() => {
-    if (!companies?.length) return [];
-    const result = [];
-    companies.forEach((company) => {
-      const positions = company.positions || [];
-      const byRole = {};
-      positions.forEach(pos => {
-        const role = pos.specific_role || pos.position || copy.role;
-        if (!byRole[role]) byRole[role] = { appointments: [], cessations: [] };
-        const isAppt = isAppointmentMovement(pos);
-        const d = parseDate(pos.date);
-        if (d) {
-          if (isAppt) byRole[role].appointments.push({ date: d, raw: pos.date });
-          else byRole[role].cessations.push({ date: d, raw: pos.date });
-        }
-      });
-      Object.entries(byRole).forEach(([role, { appointments, cessations }]) => {
-        appointments.sort((a, b) => a.date - b.date);
-        cessations.sort((a, b) => a.date - b.date);
-        const usedCessations = new Set();
-        const paired = [];
-        for (let i = appointments.length - 1; i >= 0; i--) {
-          const appt = appointments[i];
-          const cessIdx = cessations.findIndex(c => c.date >= appt.date && !usedCessations.has(c));
-          const cessation = cessIdx >= 0 ? cessations[cessIdx] : null;
-          if (cessation) usedCessations.add(cessation);
-          paired.unshift({ appt, cessation });
-        }
-        paired.forEach(({ appt, cessation }) => {
-          result.push({
-            company: company.name,
-            role,
-            startDate: appt.date,
-            endDate: cessation ? cessation.date : null,
-            start: appt.raw,
-            end: cessation ? cessation.raw : null,
-            isActive: !cessation,
-          });
-        });
-        cessations.forEach(cess => {
-          if (!usedCessations.has(cess)) {
-            result.push({
-              company: company.name, role,
-              startDate: cess.date, endDate: cess.date,
-              start: cess.raw, end: cess.raw,
-              isActive: false, unknownStart: true,
-            });
-          }
-        });
-      });
-    });
-    return result;
-  }, [companies, copy.role]);
-
-  if (!spans.length) return null;
-
-  const allDates = spans.flatMap(s => [s.startDate, s.endDate].filter(Boolean));
-  if (!allDates.length) return null;
-  const minDate = new Date(Math.min(...allDates));
-  const today = new Date();
-  const maxDate = new Date(Math.max(...allDates, today));
-  const rangeStart = new Date(minDate.getFullYear(), minDate.getMonth() - 3, 1);
-  const rangeEnd = new Date(maxDate.getFullYear(), maxDate.getMonth() + 4, 0);
-  const totalMs = rangeEnd - rangeStart || 1;
-
-  const toPercent = (d) => {
-    if (!d) return null;
-    const date = d instanceof Date ? d : parseDate(d);
-    if (!date) return null;
-    return Math.max(0, Math.min(100, ((date - rangeStart) / totalMs) * 100));
-  };
-
-  const years = [];
-  for (let y = rangeStart.getFullYear(); y <= rangeEnd.getFullYear(); y++) {
-    const pct = ((new Date(y, 0, 1) - rangeStart) / totalMs) * 100;
-    if (pct >= 0 && pct <= 100) years.push({ year: y, pct });
-  }
-
-  const companyNames = [...new Set(spans.map(s => s.company))];
-  const rows = [];
-  const allRoles = new Set();
-  companyNames.forEach(companyName => {
-    const companySpans = spans.filter(s => s.company === companyName);
-    const roles = [...new Set(companySpans.map(s => s.role))];
-    roles.forEach(role => {
-      allRoles.add(role);
-      rows.push({
-        company: companyName, role,
-        spans: companySpans.filter(s => s.role === role),
-        color: getPositionColor(role),
-      });
-    });
-  });
-
-  const todayPct = Math.max(0, Math.min(100, ((today - rangeStart) / totalMs) * 100));
+// ─── Gantt Timeline ──────────────────────────────────────────────────────────
+const OfficerGanttTimeline = ({ chart, copy }) => {
+  const { rows, scale, roles } = chart;
+  if (!rows.length || !scale) return null;
 
   return (
     <Box sx={{ py: 2 }}>
       <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700 }}>
         {copy.timeline}
       </Typography>
-      <Box sx={{ position: 'relative', minHeight: rows.length * 36 + 32 }}>
-        <Box sx={{ position: 'absolute', top: 0, left: 180, right: 0, bottom: 0 }}>
-          {years.map(({ year, pct }) => (
-            <Box key={year} sx={{ position: 'absolute', left: `${pct}%`, top: 0, bottom: 0, borderLeft: '1px solid', borderColor: 'grey.200', zIndex: 0 }}>
-              <Typography variant="caption" sx={{ position: 'absolute', top: -18, left: 2, fontSize: '0.65rem', color: 'text.secondary', userSelect: 'none' }}>{year}</Typography>
+      <Box sx={{ position: 'relative', minHeight: rows.length * (ROW_HEIGHT + 4) + 32 }}>
+        <Box sx={{ position: 'absolute', top: 0, left: LABEL_COLUMN_WIDTH, right: 0, bottom: 0 }}>
+          {scale.years.map(({ year, pct }) => (
+            <Box
+              key={year}
+              sx={{
+                position: 'absolute', left: `${pct}%`, top: 0, bottom: 0,
+                borderLeft: '1px solid', borderColor: 'divider', zIndex: 0,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{ position: 'absolute', top: -18, left: 2, fontSize: '0.65rem', color: 'text.secondary', userSelect: 'none' }}
+              >
+                {year}
+              </Typography>
             </Box>
           ))}
-          {todayPct >= 0 && todayPct <= 100 && (
-            <Box sx={{ position: 'absolute', left: `${todayPct}%`, top: 0, bottom: 0, borderLeft: '2px dashed', borderColor: 'warning.main', zIndex: 1, opacity: 0.6 }} />
+          {scale.todayPct >= 0 && scale.todayPct <= 100 && (
+            <Box sx={{
+              position: 'absolute', left: `${scale.todayPct}%`, top: 0, bottom: 0,
+              borderLeft: '2px dashed', borderColor: 'warning.main', zIndex: 1, opacity: 0.6,
+            }} />
           )}
         </Box>
         <Box sx={{ pt: 2 }}>
           {rows.map((row, rowIdx) => (
-            <Box key={`${row.company}-${row.role}-${rowIdx}`} sx={{ display: 'flex', alignItems: 'center', height: 32, mb: 0.5 }}>
+            <Box
+              key={`${row.company}-${row.role}-${rowIdx}`}
+              sx={{ display: 'flex', alignItems: 'center', height: ROW_HEIGHT, mb: 0.5 }}
+            >
               <Tooltip title={copy.roleAtCompany(row.role, row.company)} placement="left" arrow>
-                <Box sx={{ width: 180, flexShrink: 0, pr: 1, overflow: 'hidden' }}>
-                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.65rem', lineHeight: 1.2, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'text.primary' }}>
+                <Box sx={{ width: LABEL_COLUMN_WIDTH, flexShrink: 0, pr: 1, overflow: 'hidden' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 600, fontSize: '0.65rem', lineHeight: 1.2, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'text.primary' }}
+                  >
                     {row.company}
                   </Typography>
-                  <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary', lineHeight: 1, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ fontSize: '0.6rem', color: 'text.secondary', lineHeight: 1, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
                     {row.role}
                   </Typography>
                 </Box>
@@ -251,7 +148,7 @@ const OfficerGanttTimeline = ({ companies, language = 'es' }) => {
               <Box sx={{ flex: 1, position: 'relative', height: '100%' }}>
                 {row.spans.map((span, sIdx) => {
                   if (span.unknownStart) {
-                    const pos = toPercent(span.endDate) ?? 0;
+                    const pos = scale.toPercent(span.endDate) ?? 0;
                     return (
                       <Tooltip key={sIdx} title={`${span.role}: ? → ${span.end} (${copy.cessation})`} arrow>
                         {/* border punches the dot out from whatever surface it
@@ -259,12 +156,17 @@ const OfficerGanttTimeline = ({ companies, language = 'es' }) => {
                             background.paper rather than a fixed white — a
                             literal white ring is invisible on a white paper
                             in light mode. */}
-                        <Box sx={{ position: 'absolute', left: `${pos}%`, top: 10, width: 12, height: 12, borderRadius: '50%', bgcolor: row.color, opacity: 0.65, transform: 'translateX(-6px)', border: '2px solid', borderColor: 'background.paper', boxShadow: 1 }} />
+                        <Box sx={{
+                          position: 'absolute', left: `${pos}%`, top: 10, width: 12, height: 12,
+                          borderRadius: '50%', bgcolor: row.color, opacity: 0.65,
+                          transform: 'translateX(-6px)', border: '2px solid',
+                          borderColor: 'background.paper', boxShadow: 1,
+                        }} />
                       </Tooltip>
                     );
                   }
-                  const startPct = toPercent(span.startDate) ?? 0;
-                  const endPct = span.endDate ? toPercent(span.endDate) : todayPct;
+                  const startPct = scale.toPercent(span.startDate) ?? 0;
+                  const endPct = span.endDate ? scale.toPercent(span.endDate) : scale.todayPct;
                   const width = Math.max(endPct - startPct, 0.5);
                   return (
                     <Tooltip key={sIdx} title={`${span.role}: ${span.start || '?'} → ${span.end || copy.active}`} arrow>
@@ -287,9 +189,12 @@ const OfficerGanttTimeline = ({ companies, language = 'es' }) => {
       </Box>
       {/* Legend */}
       <Box sx={{ display: 'flex', gap: 1.5, mt: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
-        {[...allRoles].map(role => (
+        {roles.map(role => (
           <Box key={role} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: getPositionColor(role) }} />
+            <Box sx={{
+              width: 10, height: 10, borderRadius: '2px',
+              bgcolor: rows.find(r => r.role === role)?.color,
+            }} />
             <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>{role}</Typography>
           </Box>
         ))}
@@ -302,28 +207,32 @@ const OfficerGanttTimeline = ({ companies, language = 'es' }) => {
   );
 };
 
+/** Filesystem-safe stem for a downloaded chart. */
+const fileStem = (officerName) =>
+  (officerName || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'linea-temporal';
+
 // ─── Main Dialog ─────────────────────────────────────────────────────────────
 const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants, language = 'es', onClose, container }) => {
-  const [copied, setCopied] = useState(false);
+  const [notice, setNotice] = useState(null);
   const copy = TIMELINE_COPY[language === 'en' ? 'en' : 'es'];
 
-  // Transform flat officer records into the companies structure the Gantt expects
-  const companies = useMemo(() => {
-    if (!officerRecords?.length) return [];
-    const byCompany = {};
-    officerRecords.forEach(o => {
-      const name = o.company_name || o.company || copy.unknownCompany;
-      if (!byCompany[name]) byCompany[name] = { name, positions: [] };
-      byCompany[name].positions.push({
-        date: o.date || o.event_date,
-        specific_role: o.specific_role || o.position_normalized || o.role || o.position,
-        event_type: o.event_type,
-        movement: o.movement,
-        status: o.status,
-      });
-    });
-    return Object.values(byCompany);
-  }, [officerRecords, copy.unknownCompany]);
+  // One "today" per opening, shared by the on-screen chart and any PNG taken
+  // from it: re-reading the clock per render would let the exported image and
+  // the visible chart disagree about where the marker sits.
+  const chart = useMemo(
+    () => buildOfficerChart(officerRecords, {
+      unknownLabel: copy.unknownCompany,
+      fallbackRole: copy.role,
+      today: new Date(),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [officerRecords, copy.unknownCompany, copy.role, open],
+  );
 
   // Flat timeline for the table
   const timeline = useMemo(() => {
@@ -339,47 +248,101 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
       .sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [officerRecords, copy.unknownCompany]);
 
-  const handleCopy = () => {
+  const handleCopyTable = useCallback(() => {
     const rows = timeline.map(evt =>
       `<tr><td style="padding:4px 8px;border:1px solid #ccc">${evt.date}</td><td style="padding:4px 8px;border:1px solid #ccc">${evt.isAppointment ? copy.appointment : copy.cessation}</td><td style="padding:4px 8px;border:1px solid #ccc">${evt.position}</td><td style="padding:4px 8px;border:1px solid #ccc">${evt.company}</td></tr>`
     ).join('');
     const html = `<table style="border-collapse:collapse;font-family:Calibri,sans-serif;font-size:11pt"><thead><tr style="background:#7c3aed;color:white"><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">${copy.date}</th><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">${copy.type}</th><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">${copy.role}</th><th style="padding:6px 10px;border:1px solid #7c3aed;text-align:left">${copy.company}</th></tr></thead><tbody>${rows}</tbody></table>`;
     const plain = `${copy.date}\t${copy.type}\t${copy.role}\t${copy.company}\n` +
       timeline.map(evt => `${evt.date}\t${evt.isAppointment ? copy.appointment : copy.cessation}\t${evt.position}\t${evt.company}`).join('\n');
-    navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([plain], { type: 'text/plain' }) })]);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([plain], { type: 'text/plain' }),
+    })]);
+    setNotice({ severity: 'success', message: copy.copiedTable });
+  }, [timeline, copy]);
+
+  const chartImageOptions = useMemo(() => ({
+    title: `${copy.timeline} — ${officerName || ''}`.trim(),
+    subtitle: nameVariants?.length ? `${copy.mergedData}: ${nameVariants.join(' / ')}` : '',
+    source: copy.chartSource,
+  }), [copy, officerName, nameVariants]);
+
+  const downloadChartPng = useCallback(async () => {
+    const canvas = renderGanttCanvas(chart, chartImageOptions);
+    if (!canvas) {
+      setNotice({ severity: 'error', message: copy.imageFailed });
+      return;
+    }
+    downloadBlob(await canvasToPngBlob(canvas), `${fileStem(officerName)}-linea-temporal.png`);
+  }, [chart, chartImageOptions, copy.imageFailed, officerName]);
+
+  const handleCopyChart = useCallback(() => {
+    const canvas = renderGanttCanvas(chart, chartImageOptions);
+    if (!canvas) {
+      setNotice({ severity: 'error', message: copy.imageFailed });
+      return;
+    }
+    // The ClipboardItem is built from an UNRESOLVED promise on purpose — see
+    // copyPngToClipboard. Awaiting the blob first breaks the write in Safari,
+    // which requires the item to exist inside the user gesture.
+    copyPngToClipboard(canvasToPngBlob(canvas))
+      .then(() => setNotice({ severity: 'success', message: copy.copiedImage }))
+      .catch(() => {
+        // Firefox and older Safari refuse image writes. Rather than fail, hand
+        // the user the same picture as a file.
+        downloadChartPng();
+        setNotice({ severity: 'info', message: copy.imageCopyFailed });
+      });
+  }, [chart, chartImageOptions, copy, downloadChartPng]);
+
+  const hasChart = chart.rows.length > 0 && !!chart.scale;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth container={container}>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
           <TimelineIcon color="primary" />
-          <Typography variant="h6">{copy.timeline} — {officerName}</Typography>
+          <Typography variant="h6" noWrap>{copy.timeline} — {officerName}</Typography>
         </Box>
-        {timeline.length > 0 && (
-          <Tooltip title={copied ? copy.copied : copy.copyForWord}>
-            <IconButton size="small" onClick={handleCopy}>
-              <CopyIcon fontSize="small" color={copied ? 'success' : 'inherit'} />
-            </IconButton>
-          </Tooltip>
-        )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+          {timeline.length > 0 && (
+            <Tooltip title={copy.copyTable}>
+              <IconButton size="small" onClick={handleCopyTable} aria-label={copy.copyTable}>
+                <TableChartIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {hasChart && isImageClipboardSupported() && (
+            <Tooltip title={copy.copyChart}>
+              <IconButton size="small" onClick={handleCopyChart} aria-label={copy.copyChart}>
+                <ImageIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {hasChart && (
+            <Tooltip title={copy.downloadChart}>
+              <IconButton size="small" onClick={downloadChartPng} aria-label={copy.downloadChart}>
+                <DownloadIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
       </DialogTitle>
       <DialogContent dividers>
         {nameVariants && nameVariants.length > 0 && (
-          <Box sx={{ mb: 2, p: 1.5, bgcolor: 'info.50', border: '1px solid', borderColor: 'info.200', borderRadius: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: 'info.dark' }}>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
               {copy.mergedData}: {nameVariants.join(' / ')}
             </Typography>
             <Typography variant="caption" display="block" sx={{ color: 'text.secondary', mt: 0.25 }}>
               {copy.mergedWarning}
             </Typography>
-          </Box>
+          </Alert>
         )}
-        {companies.length > 0 ? (
+        {hasChart || timeline.length > 0 ? (
           <>
-            <OfficerGanttTimeline companies={companies} language={language} />
+            {hasChart && <OfficerGanttTimeline chart={chart} copy={copy} />}
             {timeline.length > 0 && (
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 700 }}>
@@ -388,7 +351,7 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
                 <Box component="table" sx={{
                   width: '100%', borderCollapse: 'collapse',
                   '& th, & td': { px: 1.5, py: 0.75, border: '1px solid', borderColor: 'divider', fontSize: '0.8rem' },
-                  '& th': { bgcolor: 'grey.100', fontWeight: 600, textAlign: 'left' },
+                  '& th': { bgcolor: 'action.hover', fontWeight: 600, textAlign: 'left' },
                 }}>
                   <thead><tr><th>{copy.date}</th><th>{copy.type}</th><th>{copy.role}</th><th>{copy.company}</th></tr></thead>
                   <tbody>
@@ -419,6 +382,16 @@ const OfficerTimelineDialog = ({ open, officerName, officerRecords, nameVariants
       <DialogActions>
         <Button onClick={onClose}>{copy.close}</Button>
       </DialogActions>
+      <Snackbar
+        open={!!notice}
+        autoHideDuration={4000}
+        onClose={() => setNotice(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={notice?.severity || 'success'} variant="filled" onClose={() => setNotice(null)}>
+          {notice?.message}
+        </Alert>
+      </Snackbar>
     </Dialog>
   );
 };

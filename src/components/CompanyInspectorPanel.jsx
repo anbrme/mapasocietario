@@ -25,6 +25,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import GroupsIcon from '@mui/icons-material/Groups';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
+import OfficerInspectorBody from './OfficerInspectorBody.jsx';
 import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
@@ -64,6 +65,13 @@ const CompanyInspectorPanel = ({
   onOpenDataset,
   onOpenReport,
   onBuyDueDiligence,
+  // Officer track record. The chart is prefetched alongside the profile so the
+  // preview is populated by the time the panel paints, and so opening the full
+  // dialog costs no second wait.
+  officerChart = null,
+  officerChartLoading = false,
+  onOpenTimeline,
+  onFocusCompany,
 }) => {
   // Escape closes the panel — the modal gave users that for free; a non-modal
   // fixed Paper has no backdrop or focus trap, so it has to be wired by hand.
@@ -201,7 +209,10 @@ const CompanyInspectorPanel = ({
             whatever the company's size: a bank with 30,000 registry officers
             renders the same four chips as a two-person SL. Clicking one opens
             that table in the data dock, paginated. */}
-        {counts.length > 0 && (
+        {/* Officers get their seats rendered in full below, so the chip row
+            would only restate them. It stays for companies, where the counts
+            ARE the summary. */}
+        {counts.length > 0 && data?.type !== 'officer' && (
           <Box sx={{ mb: 2.5 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
               <GroupsIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
@@ -607,6 +618,17 @@ const CompanyInspectorPanel = ({
                   </Typography>
                 </Alert>
               )}
+
+              <OfficerInspectorBody
+                data={data}
+                text={text}
+                lang={lang}
+                chart={officerChart}
+                timelineLoading={officerChartLoading}
+                onOpenTimeline={onOpenTimeline}
+                onFocusCompany={onFocusCompany}
+                onOpenDataset={onOpenDataset}
+              />
 
               <Typography
                 variant="caption"
