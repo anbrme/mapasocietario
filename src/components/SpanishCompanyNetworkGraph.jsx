@@ -493,6 +493,8 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Roles in ${count} compan${count === 1 ? 'y' : 'ies'}`,
     role: 'Role',
     unknown: 'Unknown',
+    viewAsCompany: 'View company profile',
+    corporateOfficerNotice: 'This position is held by a company, which has its own registry record.',
     hoverConnections: 'Connections',
     hoverHint: 'Click: profile · Double click: expand · Right click: options',
     structureSection: 'Structure',
@@ -816,6 +818,8 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Cargos en ${count} empresa${count === 1 ? '' : 's'}`,
     role: 'Cargo',
     unknown: 'Desconocido',
+    viewAsCompany: 'Ver ficha de empresa',
+    corporateOfficerNotice: 'Este cargo lo ejerce una sociedad, que tiene su propia ficha registral.',
     hoverConnections: 'Conexiones',
     hoverHint: 'Clic: ficha · Doble clic: expandir · Clic derecho: opciones',
     structureSection: 'Estructura',
@@ -1507,6 +1511,17 @@ const SpanishCompanyNetworkGraph = ({
   // handleNodeClick is defined above openDataPreview, so it calls through this
   // ref rather than closing over a binding that is not initialised yet.
   const openDataPreviewRef = useRef(null);
+
+  // The inspector describes a node in the graph. Whenever the graph goes away,
+  // so must the panel and its data dock — otherwise a cleared canvas is left
+  // sitting next to a fact sheet for a company that is no longer on it.
+  const closeInspector = useCallback(() => {
+    setPreviewOpen(false);
+    setActiveDatasetKey(null);
+    setPreviewData(null);
+    setPreviewError(null);
+    setPreviewLoading(false);
+  }, []);
   // Hovered node + its position in canvas coordinates, for the instant HUD.
   const [hoverNode, setHoverNode] = useState(null);
   const [hoverPosition, setHoverPosition] = useState(null);
@@ -1882,6 +1897,7 @@ const SpanishCompanyNetworkGraph = ({
   useEffect(() => {
     if (!embedded && !visible) {
       setGraphData({ nodes: [], links: [] });
+      closeInspector();
       setSnapshotMode(false);
       setSnapshotSource(null);
       pendingSnapshotCameraRef.current = null;
@@ -7089,6 +7105,7 @@ const SpanishCompanyNetworkGraph = ({
       clearGraphAutosave().catch(() => setAutosaveStatus('error'));
     }
     setGraphData({ nodes: [], links: [] });
+    closeInspector();
     setSnapshotMode(false);
     setSnapshotSource(null);
     pendingSnapshotCameraRef.current = null;
@@ -9439,7 +9456,22 @@ const SpanishCompanyNetworkGraph = ({
                           {row.company}
                         </TableCell>
                         <TableCell
+                          // Left click opens the inspector, matching the company
+                          // column and the canvas. Right click still opens the
+                          // context menu (below) for the editing actions.
                           onClick={
+                            row.officerNode
+                              ? () => {
+                                  setActiveNodeId(row.officerNode.id);
+                                  trackEvent('graph_table_officer_click', {
+                                    ...graphInteractionParams(row.officerNode),
+                                    interaction_source: 'table_row',
+                                  });
+                                  openDataPreview(row.officerNode);
+                                }
+                              : undefined
+                          }
+                          onContextMenu={
                             row.officerNode
                               ? (e) => handleNodeRightClick(row.officerNode, e, {
                                   statusCategory: row.category,
@@ -9620,9 +9652,13 @@ const SpanishCompanyNetworkGraph = ({
             sits beside the panel rather than under it. */}
         <CompanyInspectorPanel
           open={previewOpen}
-          onClose={() => { setPreviewOpen(false); setActiveDatasetKey(null); }}
+          onClose={closeInspector}
           width={isInspectorDockable ? inspectorWidth : null}
           counts={inspectorCounts}
+          isCorporateOfficer={
+            previewNodeType === 'officer' && isCompanyOfficer(previewNodeName || '')
+          }
+          onViewAsCompany={() => openDataPreview({ name: previewNodeName, type: 'spanish-company-group' })}
           activeDatasetKey={activeDatasetKey}
           onOpenDataset={key => setActiveDatasetKey(prev => (prev === key ? null : key))}
           nodeName={previewNodeName}
@@ -9839,13 +9875,22 @@ const SpanishCompanyNetworkGraph = ({
             </Box>
           )}
           <Divider />
+          {/* Redundant on pointer devices — a single click already opens the
+              inspector. On touch the first tap only selects, so this stays the
+              way in. */}
+          {isTouchDevice && (
           <MenuItem onClick={() => runContextAction('data_preview', () => openDataPreview(contextNode))}>
             <ListItemIcon>
               <PreviewIcon fontSize="small" color="info" />
             </ListItemIcon>
             <ListItemText>{text.dataPreview}</ListItemText>
           </MenuItem>
-          {contextNode && contextNode.type !== 'officer' && (() => {
+          )}
+          {/* Companies acting as officers have a registry record too — the old
+              `type !== 'officer'` test hid it from exactly those nodes. */}
+          {contextNode
+            && (contextNode.type !== 'officer' || isCompanyOfficer(contextNode.name || ''))
+            && (() => {
             const profileHref = fullCompanyPageHref(contextNode.name, uiLanguage);
             return profileHref ? (
               <MenuItem

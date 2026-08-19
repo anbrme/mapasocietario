@@ -58,6 +58,8 @@ const CompanyInspectorPanel = ({
   entrySource = 'direct',
   width = null,
   counts = [],
+  isCorporateOfficer = false,
+  onViewAsCompany,
   activeDatasetKey = null,
   onOpenDataset,
   onOpenReport,
@@ -470,6 +472,20 @@ const CompanyInspectorPanel = ({
             </Box>
           );
         })()}
+
+        {data?.type === 'officer' && isCorporateOfficer && (
+          <Alert
+            severity="info"
+            sx={{ mb: 2 }}
+            action={
+              <Button size="small" onClick={() => onViewAsCompany?.()} sx={{ textTransform: 'none', fontWeight: 700 }}>
+                {text.viewAsCompany}
+              </Button>
+            }
+          >
+            <Typography variant="body2">{text.corporateOfficerNotice}</Typography>
+          </Alert>
+        )}
 
         {data && data.type === 'officer' && (() => {
           // The roles-per-company and wholly-owned tables live in the data dock;
