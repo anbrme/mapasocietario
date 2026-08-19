@@ -39,6 +39,7 @@ import {
   Badge,
   Checkbox,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { alpha, darken } from '@mui/material/styles';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -56,7 +57,6 @@ import {
   Fullscreen as FullscreenIcon,
   FullscreenExit as FullscreenExitIcon,
   ContentCopy as CopyIcon,
-  OutlinedFlag as ReportIcon,
 
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
@@ -74,8 +74,6 @@ import {
   EventBusy as EventBusyIcon,
   EventAvailable as EventAvailableIcon,
   FactCheck as FactCheckIcon,
-  PictureAsPdf as PictureAsPdfIcon,
-  VerifiedUser as VerifiedUserIcon,
   Download as DownloadIcon,
   UploadFile as UploadFileIcon,
   StickyNote2 as NoteIcon,
@@ -98,6 +96,10 @@ import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 import ApoderadosSidebar from './ApoderadosSidebar';
+import CompanyInspectorPanel from './CompanyInspectorPanel';
+import CompanyDataDock from './CompanyDataDock';
+import GraphNodeHoverCard from './GraphNodeHoverCard';
+import { buildInspectorDatasets, summariseCounts } from '../utils/inspectorDatasets';
 import Ibex35MarketSidebar from './Ibex35MarketSidebar';
 import Ibex35MarketDialog from './Ibex35MarketDialog';
 import LegalDisclaimer from './LegalDisclaimer';
@@ -132,8 +134,6 @@ import {
   findShortestPath,
   detectConnectedComponents,
 } from '../utils/networkAnalysis';
-import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
-import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import {
   createGraphSnapshot,
   MAX_GRAPH_SNAPSHOT_BYTES,
@@ -155,7 +155,7 @@ import {
   setNodeNote,
 } from '../utils/nodeNotes';
 import { rebindLinksAfterNodeUpdate } from '../utils/graphLinkBinding';
-import { nameToSlug } from '../../functions/empresa/_slug.js';
+import { formatDate } from '../utils/formatDate';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
 import { matchIbexSeed, matchAllIbexNodes } from '../utils/ibex35Match';
 import { getIbexCompanyData } from '../services/ibex35DashboardClient';
@@ -222,20 +222,16 @@ const companyNameToId = name => {
   return `company-${clean.replace(/\s+/g, '-').toLowerCase()}`;
 };
 
-const formatDate = (dateStr, language = 'es') => {
-  if (!dateStr) return '-';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '-';
-    return d.toLocaleDateString(language === 'en' ? 'en-GB' : 'es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  } catch {
-    return '-';
-  }
-};
+// Inspector panel width, by viewport. Reserved out of the canvas so the graph
+// reflows rather than hiding behind the panel.
+const INSPECTOR_WIDTH_WIDE = 520;
+const INSPECTOR_WIDTH_COMPACT = 460;
+// Never starve the canvas entirely, however narrow the container gets.
+const MIN_CANVAS_WIDTH = 240;
+// Bottom dock height. Tables want width, not height: ~8 rows across the full
+// width beats ~8 rows in a 520px column, and the graph keeps the band above.
+const DATA_DOCK_HEIGHT = 300;
+const MIN_CANVAS_HEIGHT = 200;
 
 const SEARCH_COPY = {
   en: {
@@ -497,6 +493,13 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Roles in ${count} compan${count === 1 ? 'y' : 'ies'}`,
     role: 'Role',
     unknown: 'Unknown',
+    hoverConnections: 'Connections',
+    hoverHint: 'Click: profile · Double click: expand · Right click: options',
+    structureSection: 'Structure',
+    structureHint: 'Opens the full table in the panel below.',
+    currentOfficersShort: 'Current officers',
+    rolesShort: 'Positions',
+    whollyOwnedShort: 'Wholly owned',
     close: 'Close',
     legalTitle: 'Source and legal notice',
     markResignedBody: name => (
@@ -813,6 +816,13 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Cargos en ${count} empresa${count === 1 ? '' : 's'}`,
     role: 'Cargo',
     unknown: 'Desconocido',
+    hoverConnections: 'Conexiones',
+    hoverHint: 'Clic: ficha · Doble clic: expandir · Clic derecho: opciones',
+    structureSection: 'Estructura',
+    structureHint: 'Abre la tabla completa en el panel inferior.',
+    currentOfficersShort: 'Directivos actuales',
+    rolesShort: 'Cargos',
+    whollyOwnedShort: 'Participadas 100%',
     close: 'Cerrar',
     legalTitle: 'Fuente y aviso legal',
     markResignedBody: name => (
@@ -1492,6 +1502,20 @@ const SpanishCompanyNetworkGraph = ({
 
   // Data preview modal state
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Which tabular dataset the bottom dock is showing (null = dock closed).
+  const [activeDatasetKey, setActiveDatasetKey] = useState(null);
+  // handleNodeClick is defined above openDataPreview, so it calls through this
+  // ref rather than closing over a binding that is not initialised yet.
+  const openDataPreviewRef = useRef(null);
+  // Hovered node + its position in canvas coordinates, for the instant HUD.
+  const [hoverNode, setHoverNode] = useState(null);
+  const [hoverPosition, setHoverPosition] = useState(null);
+  // Last pointer position in CONTAINER coordinates. The HUD is anchored to the
+  // cursor rather than to graph2ScreenCoords: the canvas is backed at a device
+  // pixel ratio, so the graph-to-screen transform does not land in the CSS
+  // pixel space the card is positioned in. The cursor is already in that space.
+  const pointerRef = useRef({ x: 0, y: 0 });
+  const hoverNodeRef = useRef(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [previewData, setPreviewData] = useState(null);
@@ -1704,6 +1728,24 @@ const SpanishCompanyNetworkGraph = ({
   const MAX_NODE_SPEED = 30;
 
   const theme = useTheme();
+
+  // The inspector docks over the right edge of the graph container rather than
+  // floating above the canvas. Reserving its width here (instead of letting it
+  // overlap) is what makes the graph reflow: the canvas gets a smaller width,
+  // and the re-fit effect below zooms the graph to fit what is left. Below `sm`
+  // there is no room to sit beside the graph, so the panel covers it instead
+  // (width 0 reserved) and behaves like the old modal.
+  const isInspectorDockable = useMediaQuery(theme.breakpoints.up('sm'));
+  const isWideViewport = useMediaQuery(theme.breakpoints.up('md'));
+  const inspectorWidth = isWideViewport ? INSPECTOR_WIDTH_WIDE : INSPECTOR_WIDTH_COMPACT;
+  const isInspectorDocked = previewOpen && isInspectorDockable;
+  const reservedInspectorWidth = isInspectorDocked ? inspectorWidth : 0;
+  const isDockOpen = previewOpen && Boolean(activeDatasetKey);
+  const reservedDockHeight = isDockOpen ? DATA_DOCK_HEIGHT : 0;
+  const canvasDimensions = React.useMemo(() => ({
+    width: Math.max(MIN_CANVAS_WIDTH, containerDimensions.width - reservedInspectorWidth),
+    height: Math.max(MIN_CANVAS_HEIGHT, containerDimensions.height - reservedDockHeight),
+  }), [containerDimensions, reservedInspectorWidth, reservedDockHeight]);
   const graphPalette = theme.palette.graph;
 
   // Node colors and shapes
@@ -2100,19 +2142,19 @@ const SpanishCompanyNetworkGraph = ({
   }, [graphData.nodes.length, snapshotMode]);
 
   // Re-fit graph when container dimensions change significantly (e.g. after table renders)
-  const prevDimRef = useRef(containerDimensions);
+  const prevDimRef = useRef(canvasDimensions);
   useEffect(() => {
     const prev = prevDimRef.current;
-    prevDimRef.current = containerDimensions;
-    const dw = Math.abs(prev.width - containerDimensions.width);
-    const dh = Math.abs(prev.height - containerDimensions.height);
+    prevDimRef.current = canvasDimensions;
+    const dw = Math.abs(prev.width - canvasDimensions.width);
+    const dh = Math.abs(prev.height - canvasDimensions.height);
     if (!snapshotMode && (dw > 50 || dh > 50) && graphData.nodes.length > 0 && fgRef.current) {
       const timer = setTimeout(() => {
         fgRef.current?.zoomToFit(400, 50);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [containerDimensions, graphData.nodes.length, snapshotMode]);
+  }, [canvasDimensions, graphData.nodes.length, snapshotMode]);
 
   // Imported snapshots carry their own camera. Apply it after ForceGraph has
   // attached to the canvas and consumed the restored graph data.
@@ -4976,9 +5018,14 @@ const SpanishCompanyNetworkGraph = ({
         trackEvent('graph_node_click', {
           ...graphInteractionParams(node),
           interaction_source: 'mouse',
-          click_action: 'select',
+          click_action: 'select_and_inspect',
         });
         setActiveNodeId(nodeId);
+        // The legend already tells desktop users "Clic: ficha de empresa".
+        // Now it is true. Safe to do on every click because the inspector is a
+        // fixed-height fact sheet — the long tables only load into the dock when
+        // the user asks for them.
+        openDataPreviewRef.current?.(node);
       }
     },
     [
@@ -4992,6 +5039,39 @@ const SpanishCompanyNetworkGraph = ({
       toggleInvestigationNode,
     ]
   );
+
+  const inspectorDatasets = React.useMemo(
+    () => buildInspectorDatasets(previewData, { lang: uiLanguage, labels: text }),
+    [previewData, uiLanguage, text]
+  );
+  const inspectorCounts = React.useMemo(
+    () => summariseCounts(inspectorDatasets),
+    [inspectorDatasets]
+  );
+
+  // Hovering is a pointer affordance: touch devices never fire it, and showing
+  // the HUD while a context menu is open would cover the menu.
+  const handleNodeHover = useCallback(node => {
+    if (isTouchDevice || !node) {
+      hoverNodeRef.current = null;
+      setHoverNode(null);
+      setHoverPosition(null);
+      return;
+    }
+    hoverNodeRef.current = node;
+    setHoverNode(node);
+    setHoverPosition(pointerRef.current);
+  }, [isTouchDevice]);
+
+  // Track the cursor so the card follows it across a node instead of pinning to
+  // wherever the pointer first crossed the hit area.
+  const handleContainerPointerMove = useCallback(event => {
+    const rect = containerEl?.getBoundingClientRect();
+    if (!rect) return;
+    const next = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    pointerRef.current = next;
+    if (hoverNodeRef.current) setHoverPosition(next);
+  }, [containerEl]);
 
   const handleBackgroundClick = useCallback(() => {
     trackEvent('graph_background_click', {
@@ -5300,11 +5380,21 @@ const SpanishCompanyNetworkGraph = ({
 
   // Data preview: fetch live data normally, or read only the imported snapshot.
   const openDataPreview = useCallback(async (nodeOverride = null) => {
+    // Re-clicking the node already on screen must not refetch it — with single
+    // click bound to the inspector, exploration would otherwise fire a profile
+    // and an events request per click.
+    const alreadyShowing =
+      previewOpen &&
+      previewNodeName === (nodeOverride?.name ?? contextNode?.name) &&
+      previewNodeType === ((nodeOverride ?? contextNode)?.type === 'officer' ? 'officer' : 'company');
+    if (alreadyShowing) return;
+
     const previewTarget = nodeOverride || contextNode;
     if (!previewTarget) return;
     const name = previewTarget.name;
     const isOfficer = previewTarget.type === 'officer';
     closeNodeContextMenu();
+    setApoderadosSidebar({ open: false, company: null });
     setPreviewNodeName(name);
     setPreviewNodeType(isOfficer ? 'officer' : 'company');
     setPreviewUserMerged(!!previewTarget.userMerged);
@@ -5667,7 +5757,22 @@ const SpanishCompanyNetworkGraph = ({
     } finally {
       setPreviewLoading(false);
     }
-  }, [contextNode, closeNodeContextMenu, text, uiLanguage, snapshotMode, buildSnapshotPreview]);
+  }, [
+    contextNode,
+    closeNodeContextMenu,
+    text,
+    uiLanguage,
+    snapshotMode,
+    buildSnapshotPreview,
+    previewOpen,
+    previewNodeName,
+    previewNodeType,
+  ]);
+
+  // Keep the ref used by handleNodeClick pointed at the latest callback.
+  useEffect(() => {
+    openDataPreviewRef.current = openDataPreview;
+  }, [openDataPreview]);
 
   const saveNodeEdit = useCallback(() => {
     if (!contextNode) return;
@@ -5788,6 +5893,8 @@ const SpanishCompanyNetworkGraph = ({
 
   // Handle zoom changes
   const handleZoom = useCallback(transform => {
+    setHoverNode(null);
+    setHoverPosition(null);
     const k = typeof transform === 'number' ? transform : transform?.k;
     if (Number.isFinite(k) && k > 0) setZoomLevel(k);
     if (
@@ -5802,6 +5909,8 @@ const SpanishCompanyNetworkGraph = ({
   // Freeze all other nodes during drag to avoid graph drift and restore after drag.
   const handleNodeDrag = useCallback(
     node => {
+      setHoverNode(null);
+      setHoverPosition(null);
       const freezeSession = dragFreezeRef.current;
       if (!freezeSession || freezeSession.draggedNodeId !== node.id) {
         const frozenNodes = new Map();
@@ -6217,6 +6326,20 @@ const SpanishCompanyNetworkGraph = ({
     if (ceased > 0) return 'ceased';
     return 'unknown';
   }, [contextNode, nodeContextMenu, filteredGraphData.links, graphData.links]);
+
+  const nodeDegrees = React.useMemo(() => {
+    const degrees = new Map();
+    const bump = end => {
+      const id = normalizeNodeId(typeof end === 'object' && end !== null ? end.id : end);
+      if (id == null) return;
+      degrees.set(id, (degrees.get(id) || 0) + 1);
+    };
+    filteredGraphData.links.forEach(link => {
+      bump(link.source);
+      bump(link.target);
+    });
+    return degrees;
+  }, [filteredGraphData.links]);
 
   const contextOfficerCanMarkCeased =
     contextOfficerStatus === 'active' || contextOfficerStatus === 'mixed';
@@ -7645,6 +7768,7 @@ const SpanishCompanyNetworkGraph = ({
               // (and thus the Select's displayed numeric value) unchanged.
               if (e.target.value === 'all') {
                 const focused = resolveFocusedCompany();
+                setPreviewOpen(false);
                 if (focused) setApoderadosSidebar({ open: true, company: focused });
                 return;
               }
@@ -8763,6 +8887,7 @@ const SpanishCompanyNetworkGraph = ({
       <Box
         ref={containerCallbackRef}
         sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: 'graph.surface.canvas' }}
+        onMouseMove={handleContainerPointerMove}
       >
         {containerReady && (
           <ForceGraph2D
@@ -8782,7 +8907,11 @@ const SpanishCompanyNetworkGraph = ({
                 ctx.fill();
               }
             }}
+            // Suppress force-graph's built-in name tooltip — GraphNodeHoverCard
+            // replaces it and would otherwise show the name twice.
+            nodeLabel={() => ''}
             onNodeClick={handleNodeClick}
+            onNodeHover={handleNodeHover}
             onNodeRightClick={handleNodeRightClick}
             onBackgroundClick={handleBackgroundClick}
             onNodeDrag={handleNodeDrag}
@@ -8819,12 +8948,12 @@ const SpanishCompanyNetworkGraph = ({
             cooldownTicks={40}
             onEngineTick={handleEngineTick}
             onEngineStop={handleEngineTick}
-            width={containerDimensions.width}
-            height={containerDimensions.height}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
           />
         )}
 
-        {contextNode && contextNode.type !== 'officer' && (() => {
+        {isTouchDevice && contextNode && contextNode.type !== 'officer' && (() => {
           const profileHref = fullCompanyPageHref(contextNode.name, uiLanguage);
           return (
             <Paper
@@ -9012,7 +9141,7 @@ const SpanishCompanyNetworkGraph = ({
             position: 'absolute',
             ...(tablePosition.x != null
               ? { left: tablePosition.x, top: tablePosition.y }
-              : { right: 12, top: 12 }),
+              : { right: 12 + reservedInspectorWidth, top: 12 }),
             width: isTableCollapsed ? 'auto' : 520,
             maxHeight: isTableCollapsed ? 'auto' : '70%',
             zIndex: 20,
@@ -9460,6 +9589,63 @@ const SpanishCompanyNetworkGraph = ({
             </TableContainer>
           )}
         </Paper>
+
+        {/* Instant node summary — the answer to "what is this?" with no click
+            and no request. Suppressed while a context menu is open so it never
+            covers the menu the user just asked for. */}
+        {!nodeContextMenu && (
+          <GraphNodeHoverCard
+            node={hoverNode}
+            position={hoverPosition}
+            containerWidth={canvasDimensions.width}
+            containerHeight={canvasDimensions.height}
+            lang={uiLanguage}
+            text={text}
+            degree={hoverNode ? nodeDegrees.get(normalizeNodeId(hoverNode.id)) : undefined}
+          />
+        )}
+
+        {/* Company inspector — docked to the right edge of the canvas. The
+            canvas already reserved this width (canvasDimensions), so the graph
+            sits beside the panel rather than under it. */}
+        <CompanyInspectorPanel
+          open={previewOpen}
+          onClose={() => { setPreviewOpen(false); setActiveDatasetKey(null); }}
+          width={isInspectorDockable ? inspectorWidth : null}
+          counts={inspectorCounts}
+          activeDatasetKey={activeDatasetKey}
+          onOpenDataset={key => setActiveDatasetKey(prev => (prev === key ? null : key))}
+          nodeName={previewNodeName}
+          nodeType={previewNodeType}
+          userMerged={previewUserMerged}
+          data={previewData}
+          loading={previewLoading}
+          error={previewError}
+          lang={uiLanguage}
+          text={text}
+          officerDeputyMatches={officerDeputyMatches}
+          entrySource={entrySource}
+          onOpenReport={openReport}
+          onBuyDueDiligence={() => {
+            setPreviewOpen(false);
+            setDdCheckoutCompany(previewNodeName);
+            setDdCheckoutOpen(true);
+          }}
+        />
+
+        {/* Tabular data — full width along the bottom, paginated. The canvas
+            reserved this height, so the graph sits above the dock rather than
+            behind it. */}
+        <CompanyDataDock
+          open={isDockOpen}
+          onClose={() => setActiveDatasetKey(null)}
+          datasets={inspectorDatasets}
+          activeKey={activeDatasetKey}
+          onActiveKeyChange={setActiveDatasetKey}
+          lang={uiLanguage}
+          height={DATA_DOCK_HEIGHT}
+          rightOffset={reservedInspectorWidth}
+        />
       </Box>
 
       {/* Legend - compact inline bar */}
@@ -9926,6 +10112,7 @@ const SpanishCompanyNetworkGraph = ({
                 runContextAction('show_apoderados', () => {
                   const n = contextNode;
                   closeNodeContextMenu();
+                  setPreviewOpen(false);
                   if (n) setApoderadosSidebar({ open: true, company: { name: n.name, groupKey: n.groupKey || null } });
                 });
               }}
@@ -10013,7 +10200,7 @@ const SpanishCompanyNetworkGraph = ({
         />
 
         <Ibex35MarketSidebar
-          open={Boolean(focusedIbexSeed) && !snapshotMode && !ibexSidebarDismissed && !apoderadosSidebar.open && !isAndroidNativeApp()}
+          open={Boolean(focusedIbexSeed) && !snapshotMode && !ibexSidebarDismissed && !apoderadosSidebar.open && !previewOpen && !isAndroidNativeApp()}
           seedEntry={focusedIbexSeed}
           lang={uiLanguage}
           onClose={() => setIbexSidebarDismissed(true)}
@@ -10333,751 +10520,6 @@ const SpanishCompanyNetworkGraph = ({
           </DialogActions>
         </Dialog>
 
-        {/* Data Preview Modal — non-copyable */}
-        <Dialog
-          open={previewOpen}
-          onClose={() => setPreviewOpen(false)}
-          maxWidth="md"
-          fullWidth
-          container={overlayContainer}
-          PaperProps={{
-            sx: {
-              maxHeight: '85vh',
-              userSelect: 'none',
-              WebkitUserSelect: 'none',
-              MozUserSelect: 'none',
-              msUserSelect: 'none',
-            },
-            onContextMenu: e => e.preventDefault(),
-            onCopy: e => e.preventDefault(),
-          }}
-        >
-          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {previewNodeType === 'officer' ? <PersonIcon /> : <BusinessIcon />}
-              <Typography variant="h6" component="span" noWrap sx={{ maxWidth: 500 }}>
-                {previewNodeName}
-              </Typography>
-              <Chip
-                label={previewNodeType === 'officer' ? text.officer : text.company}
-                size="small"
-                color={previewNodeType === 'officer' ? 'warning' : 'primary'}
-                variant="outlined"
-              />
-              {previewUserMerged && (
-                <Tooltip title={text.userMergedTooltip}>
-                  <Chip label={text.userMergedBadge} size="small" color="warning" variant="outlined" />
-                </Tooltip>
-              )}
-              {previewData?.type === 'company' && previewData.enriched?.isDissolved && (
-                <Chip label={text.dissolved} size="small" color="error" />
-              )}
-              {previewData?.type === 'company' && previewData.enriched?.isInConcurso && (
-                <Chip label={text.concurso} size="small" color="warning" />
-              )}
-              {previewData?.type === 'company' && previewData.enriched?.isUnipersonal && (
-                <Chip label={text.unipersonal} size="small" color="info" variant="outlined" />
-              )}
-              {previewData?.type === 'company' &&
-                previewData.enriched?.previousSoleShareholders?.length > 0 &&
-                (() => {
-                  // Chain of socio único: previous (superseded) → current.
-                  const chain = [
-                    ...previewData.enriched.previousSoleShareholders,
-                    ...(previewData.enriched.soleShareholders || []),
-                  ].join(' → ');
-                  return (
-                    <Tooltip title={`${text.unipersonal}: ${chain}`}>
-                      <Chip
-                        label={chain}
-                        size="small"
-                        color="info"
-                        variant="outlined"
-                        sx={{
-                          maxWidth: 380,
-                          '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
-                        }}
-                      />
-                    </Tooltip>
-                  );
-                })()}
-            </Box>
-            <IconButton onClick={() => setPreviewOpen(false)} size="small">
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent dividers sx={{ userSelect: 'none' }}>
-            {previewLoading && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
-                <CircularProgress size={40} />
-                <Typography sx={{ ml: 2 }} color="text.secondary">{text.loadingData}</Typography>
-              </Box>
-            )}
-            {previewError && (
-              <Alert severity="warning" sx={{ my: 2 }}>{previewError}</Alert>
-            )}
-            {previewData?.snapshotLocal && (
-              <Alert severity="info" sx={{ mb: 2 }}>{text.snapshotPreviewNotice}</Alert>
-            )}
-            {previewData && previewData.type === 'company' && (() => {
-              const e = previewData.enriched;
-              const officerTable = (officers, color, title) => officers.length > 0 && (
-                <>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color }}>
-                    {title} ({officers.length})
-                  </Typography>
-                  <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ fontWeight: 700 }}>{text.name}</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>{text.role}</TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {officers.map((o, i) => (
-                          <TableRow key={i}>
-                            <TableCell>{o.name || '-'}</TableCell>
-                            <TableCell>{o.position || '-'}</TableCell>
-                            <TableCell>{o.date ? formatDate(o.date, uiLanguage) : '-'}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </>
-              );
-
-              const fullHref = fullCompanyPageHref(previewData.name, uiLanguage);
-              return (
-                <Box>
-                  <CurrencyConfirmationCard
-                    rec={CONFIRMATIONS[nameToSlug(previewData.name)]}
-                    lang={uiLanguage}
-                  />
-                  {/* Overview section */}
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
-                    <InfoIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
-                    {text.summary}
-                  </Typography>
-                  <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                      <Box sx={{ gridColumn: '1 / -1' }}>
-                        <Typography variant="caption" color="text.secondary">{text.legalName}</Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 600,
-                            textDecoration: e?.isDissolved ? 'line-through' : 'none',
-                            color: e?.isDissolved ? 'error.main' : 'inherit',
-                          }}
-                        >
-                          {previewData.name}
-                        </Typography>
-                        {e?.nameChanges?.length > 0 ? (
-                          <Box sx={{ mt: 0.25 }}>
-                            {e.nameChanges.map((nc, idx) => (
-                              <Typography
-                                key={idx}
-                                variant="caption"
-                                display="block"
-                                sx={{ color: 'warning.main', fontStyle: 'italic' }}
-                              >
-                                {nc.date ? `${formatDate(nc.date, uiLanguage)}: ` : ''}
-                                {nc.old_name} → {nc.new_name}
-                              </Typography>
-                            ))}
-                          </Box>
-                        ) : (
-                          e?.previousNames?.length > 0 && (
-                            <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
-                              {text.previous}: {e.previousNames.join(', ')}
-                            </Typography>
-                          )
-                        )}
-                      </Box>
-                      {(e?.isDissolved || e?.isInConcurso || e?.isUnipersonal) && (
-                        <Box sx={{ gridColumn: '1 / -1' }}>
-                          <Typography variant="caption" color="text.secondary">{text.status}</Typography>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
-                            {e.isDissolved && (
-                              <Chip label={text.dissolved} size="small" color="error" />
-                            )}
-                            {e.isInConcurso && (
-                              <Chip label={text.concurso} size="small" color="warning" />
-                            )}
-                            {e.isUnipersonal && (
-                              <Chip label={text.unipersonal} size="small" color="info" variant="outlined" />
-                            )}
-                          </Box>
-                        </Box>
-                      )}
-                      {e?.cif ? (
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="body2" className="registry-ref">{e.cif}</Typography>
-                            <Tooltip title={text.reportNifTooltip}>
-                              <IconButton
-                                size="small"
-                                onClick={() => openReport('nif', e.cif)}
-                                sx={{ p: 0.25 }}
-                                aria-label={text.reportNifTooltip}
-                              >
-                                <ReportIcon sx={{ fontSize: 14, color: 'warning.main' }} />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </Box>
-                      ) : previewData?.type === 'company' ? (
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                            <Typography variant="body2" color="text.disabled">{text.nifMissingLabel}</Typography>
-                            <Button
-                              size="small"
-                              variant="text"
-                              startIcon={<ReportIcon sx={{ fontSize: 14 }} />}
-                              onClick={() => openReport('nif', '')}
-                              sx={{ textTransform: 'none', fontSize: '0.7rem', p: 0.25, minWidth: 0, color: 'warning.main' }}
-                            >
-                              {text.reportNifMissingCta}
-                            </Button>
-                          </Box>
-                        </Box>
-                      ) : null}
-                      {e?.address && (
-                        <Box sx={{ gridColumn: e?.cif ? 'auto' : '1 / -1' }}>
-                          <Typography variant="caption" color="text.secondary">{text.address}</Typography>
-                          <Typography variant="body2">
-                            {e.address}
-                            {e.addressExternal && (
-                              <Typography component="span" variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', ml: 0.5 }}>
-                                {text.externalEstimate}
-                              </Typography>
-                            )}
-                          </Typography>
-                        </Box>
-                      )}
-                      {e?.activity && (
-                        <Box sx={{ gridColumn: '1 / -1' }}>
-                          <Typography variant="caption" color="text.secondary">{text.activity}</Typography>
-                          <Typography variant="body2">{e.activity}</Typography>
-                        </Box>
-                      )}
-                      {e?.capital && (
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">{text.capital}</Typography>
-                          <Typography variant="body2" className="registry-ref">
-                            {e.capital}
-                            {e.capitalExternal && (
-                              <Typography component="span" variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', ml: 0.5 }}>
-                                {text.externalEstimate}
-                              </Typography>
-                            )}
-                          </Typography>
-                        </Box>
-                      )}
-                      {(e?.firstSeen || e?.lastSeen) && (
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">{text.bormeRange}</Typography>
-                          <Typography variant="body2" className="registry-ref">
-                            {e.firstSeen ? formatDate(e.firstSeen, uiLanguage) : '?'} — {e.lastSeen ? formatDate(e.lastSeen, uiLanguage) : '?'}
-                          </Typography>
-                        </Box>
-                      )}
-                      {e?.eventCount > 0 && (
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">{text.publicationsFound}</Typography>
-                          <Typography variant="body2" className="registry-ref">{e.eventCount}</Typography>
-                        </Box>
-                      )}
-                      {e?.isUnipersonal &&
-                        ((e?.soleShareholdersCorporate?.length || 0) +
-                          (e?.soleShareholdersIndividual?.length || 0) > 0) && (
-                        <Box sx={{ gridColumn: '1 / -1' }}>
-                          <Typography variant="caption" color="text.secondary">{text.soleShareholder}</Typography>
-                          <Typography variant="body2">
-                            {[
-                              ...e.soleShareholdersCorporate.map((n) => `${n} ${text.companyTag}`),
-                              ...e.soleShareholdersIndividual.map((n) => `${n} ${text.naturalPersonTag}`),
-                            ].join(', ')}
-                          </Typography>
-                          {/* Owners renamed since they were declared: show the
-                              act's wording so the current label stays traceable
-                              to what BORME actually published. */}
-                          {e?.soleShareholderRenames?.map((r, idx) => (
-                            <Typography
-                              key={idx}
-                              variant="caption"
-                              display="block"
-                              sx={{ color: 'text.secondary', fontStyle: 'italic' }}
-                            >
-                              {text.declaredAs} «{r.declaredName}»
-                              {r.declaredDate ? ` (${formatDate(r.declaredDate, uiLanguage)})` : ''}
-                            </Typography>
-                          ))}
-                          {e?.previousSoleShareholders?.length > 0 && (
-                            <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
-                              {text.previous}: {e.previousSoleShareholders.join(', ')}
-                            </Typography>
-                          )}
-                        </Box>
-                      )}
-                      {e?.hojaHistory?.length > 1 && (
-                        <Box sx={{ gridColumn: '1 / -1' }}>
-                          <Typography variant="caption" color="text.secondary">
-                            {text.registrySheetChange}
-                          </Typography>
-                          <Typography variant="body2" className="registry-ref">
-                            {e.hojaHistory.map((h, i) => (
-                              `${h.hoja}${h.province ? ` (${h.province})` : ''} ${formatDate(h.first_seen, uiLanguage)} — ${formatDate(h.last_seen, uiLanguage)}`
-                            )).join('  →  ')}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                  </Paper>
-
-                  {fullHref && (
-                    <Typography
-                      component="a"
-                      href={fullHref}
-                      target="_blank"
-                      rel="noopener"
-                      onClick={() => {
-                        trackFullCompanyProfileClick({
-                          href: fullHref,
-                          language: uiLanguage,
-                          entrySource,
-                        });
-                        recordCompanyDemand({
-                          eventType: 'full_profile_click',
-                          language: uiLanguage,
-                          company: { ...(e || {}), name: previewData.name },
-                        });
-                      }}
-                      variant="body2"
-                      sx={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 3,
-                        // accent.primary in both directions, hover included: the
-                        // old primary.light -> primary.main hover DIMMED the link
-                        // in dark mode (light.dark's "light" shade is brighter than
-                        // its "main"), while accent.primary's light-mode value is
-                        // already darkened to primary.dark for the 4.5:1 text floor
-                        // (finding 1), leaving no further token to darken toward on
-                        // hover. Dropping the hover colour swap avoids reintroducing
-                        // a wrong-direction change in either mode (finding 6).
-                        color: 'accent.primary',
-                        fontWeight: 600,
-                        textDecoration: 'underline',
-                        textDecorationColor: (t) => alpha(t.palette.accent.primary, 0.5),
-                      }}
-                    >
-                      {uiLanguage === 'en' ? 'Open company profile' : 'Abrir ficha societaria'}
-                      <OpenInNewIcon sx={{ fontSize: 16 }} />
-                    </Typography>
-                  )}
-
-                  {/* Current officers — grouped by person, sorted by position importance */}
-                  {e?.currentOfficers?.length > 0 && (
-                    <>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: 'primary.main' }}>
-                        {text.currentOfficers(e.currentOfficers.length)}
-                      </Typography>
-                      <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell sx={{ fontWeight: 700 }}>{text.name}</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>{text.role}(s)</TableCell>
-                              <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {e.currentOfficers.map((officer, i) => {
-                              const dm = officerDeputyMatches[officer.name];
-                              const deputyChip = dm?.deputy ? (
-                                <Chip
-                                  label={dm.deputy.FECHABAJA ? `🏛️ ${uiLanguage === 'en' ? 'Former MP' : 'Ex-dip.'}` : `🏛️ ${text.congressDeputy}${dm.deputy.FORMACIONELECTORAL ? ` · ${dm.deputy.FORMACIONELECTORAL}` : ''}`}
-                                  size="small"
-                                  variant="outlined"
-                                  sx={{
-                                    ml: 0.75,
-                                    height: 18,
-                                    fontSize: '0.6rem',
-                                    color: dm.deputy.FECHABAJA ? 'text.secondary' : 'warning.dark',
-                                    borderColor: dm.deputy.FECHABAJA ? 'grey.400' : 'warning.main',
-                                  }}
-                                />
-                              ) : null;
-                              return officer.positions.length === 1 ? (
-                                <TableRow key={i}>
-                                  <TableCell>
-                                    {officer.name || '-'}
-                                    {deputyChip}
-                                  </TableCell>
-                                  <TableCell>{officer.positions[0].position || '-'}</TableCell>
-                                  <TableCell>{officer.positions[0].date ? formatDate(officer.positions[0].date, uiLanguage) : '-'}</TableCell>
-                                </TableRow>
-                              ) : (
-                                officer.positions.map((pos, j) => (
-                                  <TableRow key={`${i}-${j}`}>
-                                    {j === 0 ? (
-                                      <TableCell rowSpan={officer.positions.length} sx={{ verticalAlign: 'top', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'divider' }}>
-                                        {officer.name || '-'}
-                                        {deputyChip}
-                                      </TableCell>
-                                    ) : null}
-                                    <TableCell sx={j === officer.positions.length - 1 ? { borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'divider' } : undefined}>
-                                      {pos.position || '-'}
-                                    </TableCell>
-                                    <TableCell sx={j === officer.positions.length - 1 ? { borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'divider' } : undefined}>
-                                      {pos.date ? formatDate(pos.date, uiLanguage) : '-'}
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </>
-                  )}
-
-                  {/* Officers by category (historical) */}
-                  {e?.officers && (
-                    <>
-                      {officerTable(e.officers.nombramientos, 'graph.link.appointment', text.appointments)}
-                      {officerTable(e.officers.reelecciones, 'graph.link.appointment', text.reelections)}
-                      {officerTable(e.officers.ceses_dimisiones, 'graph.link.cessation', text.cessations)}
-                      {officerTable(e.officers.revocaciones, 'graph.link.cessation', text.revocations)}
-                    </>
-                  )}
-
-                  {/* Watermark */}
-                  <Typography
-                    variant="caption"
-                    sx={{ display: 'block', textAlign: 'center', color: 'text.disabled', mt: 2, fontStyle: 'italic' }}
-                  >
-                    {text.previewWatermark}
-                  </Typography>
-                </Box>
-              );
-            })()}
-
-            {previewData && previewData.type === 'officer' && (() => {
-              const officers = previewData.officers || [];
-              const variants = previewData.nameVariants;
-              // Group by company
-              const byCompany = {};
-              officers.forEach(o => {
-                const companyName = o.company_name || o.company || text.unknown;
-                if (!byCompany[companyName]) byCompany[companyName] = [];
-                byCompany[companyName].push(o);
-              });
-              // v3 expand-officer returns: officer_name, company_name, specific_role,
-              // event_type ("nombramientos"/"ceses_dimisiones"), status ("active"/"ceased"), date
-              const resolveStatus = (o) => {
-                const st = (o.status || '').toLowerCase();
-                if (st === 'active') return { label: uiLanguage === 'en' ? 'Active' : 'Activo', color: 'success' };
-                if (st === 'ceased') return { label: uiLanguage === 'en' ? 'Ceased' : 'Cesado', color: 'error' };
-                const evt = (o.event_type || '').toLowerCase();
-                if (evt.includes('nombr') || evt.includes('reelecc')) return { label: uiLanguage === 'en' ? 'Active' : 'Activo', color: 'success' };
-                if (evt.includes('cese') || evt.includes('dimis') || evt.includes('revoc')) return { label: uiLanguage === 'en' ? 'Ceased' : 'Cesado', color: 'error' };
-                return { label: text.unknown, color: 'default' };
-              };
-              const resolvePosition = (o) => o.specific_role || o.position_normalized || o.role || o.position || '-';
-              const resolveDate = (o) => o.date || o.event_date || '';
-
-              const whollyOwned = previewData.whollyOwned || [];
-              const deputyMatch = officerDeputyMatches[previewData.name];
-              return (
-                <Box>
-                  {deputyMatch?.deputy && (() => {
-                    const d = deputyMatch.deputy;
-                    const isFormer = !!d.FECHABAJA;
-                    const fullName = d.APELLIDOS ? `${d.NOMBRE || ''} ${d.APELLIDOS}`.trim() : d.NOMBRE;
-                    const legs = Array.from(
-                      new Set((deputyMatch.rows || []).map(r => r.LEGISLATURA).filter(Boolean))
-                    );
-                    const allDates = (deputyMatch.rows || [])
-                      .map(r => r.FECHAINICIOLEGISLATURA)
-                      .filter(Boolean);
-                    const allEnds = (deputyMatch.rows || [])
-                      .map(r => r.FECHAFINLEGISLATURA || r.FECHABAJA)
-                      .filter(Boolean);
-                    const parseEs = s => {
-                      if (!s) return 0;
-                      const p = String(s).split('/');
-                      return p.length === 3 ? Date.parse(`${p[2]}-${p[1]}-${p[0]}`) || 0 : Date.parse(s) || 0;
-                    };
-                    const earliest = allDates.sort((a, b) => parseEs(a) - parseEs(b))[0];
-                    const sittingRow = (deputyMatch.rows || []).find(r => r.LEGISLATURAACTUAL === 'S');
-                    const latest = isFormer
-                      ? allEnds.sort((a, b) => parseEs(b) - parseEs(a))[0]
-                      : null;
-                    return (
-                      <Alert
-                        severity={isFormer ? 'info' : 'warning'}
-                        icon={false}
-                        sx={{ mb: 2, '& .MuiAlert-message': { width: '100%' } }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                            🏛️ {isFormer ? text.formerCongressDeputy : text.congressDeputy}
-                          </Typography>
-                          <Chip
-                            label={`${Math.round(deputyMatch.confidence * 100)}% match`}
-                            size="small"
-                            variant="outlined"
-                            sx={{ height: 18, fontSize: '0.6rem' }}
-                          />
-                        </Box>
-                        {fullName && fullName.toUpperCase() !== (previewData.name || '').toUpperCase() && (
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                            {text.matchesWith}: <b>{fullName}</b>
-                          </Typography>
-                        )}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.75, mt: 0.5 }}>
-                          {d.FORMACIONELECTORAL && (
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">{text.party}</Typography>
-                              <Typography variant="body2" sx={{ fontWeight: 500 }}>{d.FORMACIONELECTORAL}</Typography>
-                            </Box>
-                          )}
-                          {d.GRUPOPARLAMENTARIO && (
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">{text.group}</Typography>
-                              <Typography variant="body2">{d.GRUPOPARLAMENTARIO}</Typography>
-                            </Box>
-                          )}
-                          {d.CIRCUNSCRIPCION && (
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">{text.constituency}</Typography>
-                              <Typography variant="body2">{d.CIRCUNSCRIPCION}</Typography>
-                            </Box>
-                          )}
-                          {legs.length > 0 && (
-                            <Box>
-                              <Typography variant="caption" color="text.secondary">
-                                {text.legislature(legs.length)}
-                              </Typography>
-                              <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>
-                                {legs.join(', ')}
-                              </Typography>
-                            </Box>
-                          )}
-                          {(earliest || latest) && (
-                            <Box sx={{ gridColumn: '1 / -1' }}>
-                              <Typography variant="caption" color="text.secondary">{text.period}</Typography>
-                              <Typography variant="body2">
-                                {earliest || '?'}
-                                {isFormer ? ` — ${latest || '?'}` : ` — ${text.present}`}
-                                {sittingRow?.LEGISLATURA ? ` (${sittingRow.LEGISLATURA})` : ''}
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
-                        {d.BIOGRAFIA && (
-                          <Typography
-                            variant="caption"
-                            component="a"
-                            href={d.BIOGRAFIA}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ display: 'block', mt: 1, color: 'primary.main', textDecoration: 'underline' }}
-                          >
-                            {text.congressProfile} →
-                          </Typography>
-                        )}
-                      </Alert>
-                    );
-                  })()}
-                  {variants && variants.length > 1 && (
-                    <Alert severity="info" sx={{ mb: 2 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                        {text.mergedNodesData}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {text.nameVariants}: {variants.join(' / ')}
-                      </Typography>
-                      <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                        {text.mergedWarning}
-                      </Typography>
-                    </Alert>
-                  )}
-
-                  {/* Wholly-owned companies (sole shareholder positions) */}
-                  {whollyOwned.length > 0 && (
-                    <Box sx={{ mb: 2.5 }}>
-                      <Alert severity="warning" sx={{ mb: 1.5 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {text.whollyOwned(whollyOwned.length)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {text.whollyOwnedHelp}
-                        </Typography>
-                      </Alert>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                        {whollyOwned.map((c, i) => {
-                          const isDissolved = c.is_dissolved;
-                          const isInConcurso = c.is_in_concurso;
-                          return (
-                            <Paper
-                              key={`wo-${i}`}
-                              variant="outlined"
-                              sx={{
-                                p: 1,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                bgcolor: isDissolved
-                                  ? 'error.50'
-                                  : isInConcurso
-                                    ? 'warning.50'
-                                    : 'background.paper',
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
-                                <BusinessIcon sx={{ fontSize: 16, color: isDissolved ? 'error.main' : 'primary.main' }} />
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    fontWeight: 500,
-                                    textDecoration: isDissolved ? 'line-through' : 'none',
-                                  }}
-                                  noWrap
-                                >
-                                  {c.name}
-                                </Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                                {isDissolved && <Chip label={text.dissolved} size="small" color="error" />}
-                                {isInConcurso && <Chip label={text.concurso} size="small" color="warning" />}
-                                <Chip label="100%" size="small" color={isDissolved ? 'error' : 'success'} />
-                              </Box>
-                            </Paper>
-                          );
-                        })}
-                      </Box>
-                    </Box>
-                  )}
-
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
-                    <PersonIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
-                    {text.rolesInCompanies(Object.keys(byCompany).length)}
-                  </Typography>
-                  {Object.entries(byCompany).map(([companyName, companyOfficers]) => (
-                    <Paper key={companyName} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
-                        <BusinessIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'text-bottom' }} />
-                        {companyName}
-                      </Typography>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ fontWeight: 700 }}>{text.role}</TableCell>
-                            <TableCell sx={{ fontWeight: 700 }}>{text.status}</TableCell>
-                            <TableCell sx={{ fontWeight: 700 }}>{text.date}</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {companyOfficers.map((o, i) => {
-                            const status = resolveStatus(o);
-                            return (
-                              <TableRow key={i}>
-                                <TableCell>{resolvePosition(o)}</TableCell>
-                                <TableCell>
-                                  <Chip
-                                    label={status.label}
-                                    size="small"
-                                    color={status.color}
-                                    variant="outlined"
-                                  />
-                                </TableCell>
-                                <TableCell>{formatDate(resolveDate(o), uiLanguage)}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </Paper>
-                  ))}
-                  <Typography
-                    variant="caption"
-                    sx={{ display: 'block', textAlign: 'center', color: 'text.disabled', mt: 2, fontStyle: 'italic' }}
-                  >
-                    {text.previewWatermark}
-                  </Typography>
-                </Box>
-              );
-            })()}
-          </DialogContent>
-          {previewData?.type === 'company' ? (
-            <Box sx={{ px: 3, pb: 2, pt: 1 }}>
-              {/* What the paid report adds over this preview — the value gap, stated plainly. */}
-              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.5, mb: 1 }}>
-                {text.fullReportAdds}
-              </Typography>
-              {/* Data-quality guarantee — surfaced here, at the decision point, not only at checkout. */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 1,
-                  p: 1.25,
-                  mb: 1.5,
-                  borderRadius: 1.5,
-                  bgcolor: (t) => alpha(t.palette.success.main, 0.08),
-                  border: (t) => `1px solid ${alpha(t.palette.success.main, 0.25)}`,
-                }}
-              >
-                <VerifiedUserIcon sx={{ fontSize: 18, color: 'accent.success', mt: '1px', flexShrink: 0 }} />
-                <Typography variant="caption" sx={{ color: 'accent.success', fontSize: '0.74rem', lineHeight: 1.45 }}>
-                  {text.previewGuarantee}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
-                <Button
-                  variant="contained"
-                  color="warning"
-                  startIcon={<DescriptionIcon />}
-                  onClick={() => {
-                    setPreviewOpen(false);
-                    setDdCheckoutCompany(previewNodeName);
-                    setDdCheckoutOpen(true);
-                  }}
-                  sx={{ textTransform: 'none', fontWeight: 700, color: 'warning.contrastText' }}
-                >
-                  {text.buyDueDiligencePriced}
-                </Button>
-                {/* Let buyers see exactly what they're paying for before they commit. */}
-                <Button
-                  component="a"
-                  href="/sample-dd-report.pdf"
-                  target="_blank"
-                  rel="noopener"
-                  startIcon={<PictureAsPdfIcon />}
-                  sx={{ textTransform: 'none', color: 'text.secondary' }}
-                >
-                  {text.previewSeeSample}
-                </Button>
-                <Button onClick={() => setPreviewOpen(false)} sx={{ ml: { xs: 0, sm: 'auto' } }}>
-                  {text.close}
-                </Button>
-              </Box>
-            </Box>
-          ) : (
-            <DialogActions>
-              <Button onClick={() => setPreviewOpen(false)}>{text.close}</Button>
-            </DialogActions>
-          )}
-        </Dialog>
 
         {/* Officer Timeline Dialog */}
         <OfficerTimelineDialog
