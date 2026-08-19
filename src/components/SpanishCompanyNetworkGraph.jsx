@@ -6344,6 +6344,24 @@ const SpanishCompanyNetworkGraph = ({
     return degrees;
   }, [filteredGraphData.links]);
 
+  const inactiveNodeIds = React.useMemo(() => {
+    const seen = new Map(); // id -> has at least one active link
+    const mark = (end, active) => {
+      const id = normalizeNodeId(typeof end === 'object' && end !== null ? end.id : end);
+      if (id == null) return;
+      seen.set(id, (seen.get(id) || false) || active);
+    };
+    filteredGraphData.links.forEach(link => {
+      const active = isActiveLinkCategory(getLinkEffectiveCategory(link) || '');
+      mark(link.source, active);
+      mark(link.target, active);
+    });
+    const inactive = new Set();
+    seen.forEach((hasActive, id) => { if (!hasActive) inactive.add(id); });
+    return inactive;
+  }, [filteredGraphData.links]);
+
+
   const contextOfficerCanMarkCeased =
     contextOfficerStatus === 'active' || contextOfficerStatus === 'mixed';
   const contextOfficerCanMarkActive =
@@ -6593,7 +6611,13 @@ const SpanishCompanyNetworkGraph = ({
     (node, ctx, globalScale) => {
       const label = node.name || node.label || '';
       const fontSize = Math.max(labelSize / globalScale, 4);
-      const nodeRadius = nodeSize;
+      // Size carries meaning: a company holding eighty seats should not look
+      // like a leaf. Logarithmic so a hub reads as a hub without swallowing the
+      // canvas, and capped so the biggest node stays under 2x the smallest.
+      const nodeDegree = nodeDegrees.get(normalizeNodeId(node.id)) || 0;
+      const nodeRadius = nodeSize * (1 + Math.min(0.85, Math.log10(1 + nodeDegree) * 0.55));
+      // Every incident link is a departure — this seat is historic, not current.
+      const isHistoric = inactiveNodeIds.has(normalizeNodeId(node.id));
 
       // Pathfinder alpha control
       const inPath = shortestPathNodes.has(normalizeNodeId(node.id));
@@ -6654,11 +6678,16 @@ const SpanishCompanyNetworkGraph = ({
         ctx.stroke();
       }
 
-      // Hollow/outlined nodes to match the hero network: a dark fill with the
-      // node's color as the outline — the identity is the border, not a solid fill.
+      // Nodes are TINTED, not hollow. Outline-only shapes read as empty
+      // placeholders at this size, which is exactly how they looked. An opaque
+      // surface base keeps the tint identical wherever a link passes underneath,
+      // then the node colour goes over it at low alpha.
+      //
+      // Hollow is now reserved for historic nodes (all links ceased), so the
+      // absence of fill carries information instead of being the default.
       ctx.fillStyle = graphPalette.surface.nodeFill;
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = isHistoric ? 1.5 : 2.25;
 
       // Shape encodes type: companies are rounded squares, officers are circles
       // (same grammar as the hero network, so the real graph reads as the same product).
@@ -6680,6 +6709,11 @@ const SpanishCompanyNetworkGraph = ({
         ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI, false);
       }
       ctx.fill();
+      ctx.save();
+      ctx.globalAlpha = isHistoric ? 0.10 : 0.45;
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.restore();
       ctx.stroke();
 
       // Deputy/PEP chip on officer nodes that match a Congreso deputy.
@@ -6758,6 +6792,22 @@ const SpanishCompanyNetworkGraph = ({
           shouldRenderLabel = globalScale > NODE_LABEL_VISIBILITY_SCALE_DENSE;
         } else {
           shouldRenderLabel = globalScale > NODE_LABEL_VISIBILITY_SCALE_NORMAL;
+        }
+
+        // Leaf nodes are the bulk of a hub-and-spoke graph and the bulk of the
+        // label clutter, while saying least — one seat at the company you are
+        // already looking at. Hold their names back until the user zooms past
+        // the normal threshold; the hover card answers "who is this" instantly
+        // in the meantime, which is why labels no longer have to carry that job.
+        if (
+          shouldRenderLabel &&
+          isDense &&
+          nodeDegree <= 1 &&
+          !isOrigin &&
+          !pinnedNodeIds.has(normalizeNodeId(node.id)) &&
+          globalScale <= NODE_LABEL_VISIBILITY_SCALE_DENSE * 1.6
+        ) {
+          shouldRenderLabel = false;
         }
 
         if (shouldRenderLabel) {
@@ -6851,7 +6901,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette]
+    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, nodeDegrees, inactiveNodeIds]
   );
 
   const linkCanvasObject = useCallback(
