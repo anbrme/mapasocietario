@@ -31,6 +31,23 @@ User-agent: *
 Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 
+# /app and /due-diligence are single-page shells: every query-string combination
+# serves byte-identical HTML and already canonicalises back to the bare path.
+# Each /empresa page links out with ?search=<name> and ?company=<name>, so the
+# ~4k companies in sitemap-demand generate ~16k crawlable duplicates of two
+# pages -- crawl budget spent there is crawl budget not spent on /empresa.
+# Google folds them anyway ("Duplicate without user-selected canonical"), so
+# nothing is lost by never fetching them.
+#
+# Only the unbounded parameters are blocked. ?lang and ?source take a handful of
+# values and are real nav destinations, so they stay crawlable -- blocking those
+# too would just trade "Duplicate without user-selected canonical" for "Blocked
+# by robots.txt" on pages that ought to be reachable. The bare /app/ and
+# /due-diligence/ are unaffected and remain indexable.
+Disallow: /app/?*search=
+Disallow: /app/?*gk=
+Disallow: /due-diligence/?*company=
+
 # Officer names on company pages are personal data: open to search and AI
 # answers, withheld from model training.
 User-agent: GPTBot

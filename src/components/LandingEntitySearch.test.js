@@ -4,12 +4,12 @@ import { buildLandingSearchHref } from './LandingEntitySearch';
 describe('buildLandingSearchHref', () => {
   it('deep-links a selected company into the graph', () => {
     expect(buildLandingSearchHref({ type: 'company', value: 'IBERDROLA SA' }, 'en'))
-      .toBe('/app?search=IBERDROLA+SA&type=company&source=home_search');
+      .toBe('/app/?search=IBERDROLA+SA&type=company&source=home_search');
   });
 
   it('keeps Spanish and officer intent in the deep link', () => {
     expect(buildLandingSearchHref({ type: 'officer', value: 'ORTEGA GAONA AMANCIO' }, 'es'))
-      .toBe('/app?search=ORTEGA+GAONA+AMANCIO&type=officer&source=home_search&lang=es');
+      .toBe('/app/?search=ORTEGA+GAONA+AMANCIO&type=officer&source=home_search&lang=es');
   });
 
   it('rejects free text and empty suggestions', () => {
@@ -59,7 +59,7 @@ describe('buildLandingSearchHref — binding to the exact legal entity', () => {
   it('omits the group key when the suggestion has none', () => {
     // /empresa pages link as /app?search=<company> with no id — must still work.
     expect(buildLandingSearchHref({ type: 'company', value: 'IBERDROLA SA' }, 'en'))
-      .toBe('/app?search=IBERDROLA+SA&type=company&source=home_search');
+      .toBe('/app/?search=IBERDROLA+SA&type=company&source=home_search');
   });
 
   it('does not attach a group key to officer links', () => {

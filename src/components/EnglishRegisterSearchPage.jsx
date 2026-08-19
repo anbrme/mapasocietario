@@ -163,9 +163,9 @@ const COPY = {
       listed: 'IBEX 35 companies',
       borme: 'BORME graph in Spanish',
     },
-    graphHref: '/app?lang=en&source=register_guide',
+    graphHref: '/app/?lang=en&source=register_guide',
     directorsHref: '/company-director-search/',
-    reportsHref: '/spanish-company-due-diligence',
+    reportsHref: '/spanish-company-due-diligence/',
     listedHref: '/en/listed-companies',
   },
   es: {
@@ -295,9 +295,9 @@ const COPY = {
       listed: 'Empresas del IBEX 35',
       borme: 'Grafo de empresas BORME',
     },
-    graphHref: '/app?lang=es&source=register_guide',
+    graphHref: '/app/?lang=es&source=register_guide',
     directorsHref: '/es/buscar-administradores-empresas/',
-    reportsHref: '/due-diligence?lang=es',
+    reportsHref: '/due-diligence/?lang=es',
     listedHref: '/empresas-cotizadas',
   },
 };

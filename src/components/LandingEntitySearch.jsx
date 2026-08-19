@@ -74,7 +74,7 @@ export function buildLandingSearchHref(option, lang = 'en') {
   // name-search behaviour.
   if (!isOfficer && option.id) params.set('gk', String(option.id));
   if (lang === 'es') params.set('lang', 'es');
-  return `/app?${params.toString()}`;
+  return `/app/?${params.toString()}`;
 }
 
 export default function LandingEntitySearch({ lang = 'en', navigate }) {

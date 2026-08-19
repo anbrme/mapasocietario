@@ -115,8 +115,8 @@ export default function LandingPage({ lang = 'en' }) {
       trackEvent('home_graph_auto_redirect', { language: lang });
       navigate(
         lang === 'es'
-          ? '/app?lang=es&source=returning_home_redirect'
-          : '/app?source=returning_home_redirect',
+          ? '/app/?lang=es&source=returning_home_redirect'
+          : '/app/?source=returning_home_redirect',
         { replace: true }
       );
       return;
@@ -141,9 +141,9 @@ export default function LandingPage({ lang = 'en' }) {
 
   const canonical = lang === 'es' ? `${SITE_URL}/es/` : `${SITE_URL}/`;
   const nav = siteNav(lang);
-  const appHref = lang === 'es' ? '/app?lang=es' : '/app';
+  const appHref = lang === 'es' ? '/app/?lang=es' : '/app/';
   const graphHref = (placement) => `${appHref}${appHref.includes('?') ? '&' : '?'}source=home_${placement}`;
-  const demoHref = `/app?search=${encodeURIComponent(DEMO_COMPANY)}${lang === 'es' ? '&lang=es' : ''}&source=home_demo`;
+  const demoHref = `/app/?search=${encodeURIComponent(DEMO_COMPANY)}${lang === 'es' ? '&lang=es' : ''}&source=home_demo`;
   const openGraph = (placement) => {
     trackEvent('home_graph_click', { placement, language: lang });
     navigate(graphHref(placement));
