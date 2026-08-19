@@ -98,6 +98,7 @@ import OfficerTimelineDialog from './OfficerTimelineDialog';
 import ApoderadosSidebar from './ApoderadosSidebar';
 import CompanyInspectorPanel from './CompanyInspectorPanel';
 import CompanyDataDock from './CompanyDataDock';
+import GraphNodeHoverCard from './GraphNodeHoverCard';
 import { buildInspectorDatasets, summariseCounts } from '../utils/inspectorDatasets';
 import Ibex35MarketSidebar from './Ibex35MarketSidebar';
 import Ibex35MarketDialog from './Ibex35MarketDialog';
@@ -492,6 +493,8 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Roles in ${count} compan${count === 1 ? 'y' : 'ies'}`,
     role: 'Role',
     unknown: 'Unknown',
+    hoverConnections: 'Connections',
+    hoverHint: 'Click: profile · Double click: expand · Right click: options',
     structureSection: 'Structure',
     structureHint: 'Opens the full table in the panel below.',
     currentOfficersShort: 'Current officers',
@@ -813,6 +816,8 @@ const SEARCH_COPY = {
     rolesInCompanies: count => `Cargos en ${count} empresa${count === 1 ? '' : 's'}`,
     role: 'Cargo',
     unknown: 'Desconocido',
+    hoverConnections: 'Conexiones',
+    hoverHint: 'Clic: ficha · Doble clic: expandir · Clic derecho: opciones',
     structureSection: 'Estructura',
     structureHint: 'Abre la tabla completa en el panel inferior.',
     currentOfficersShort: 'Directivos actuales',
@@ -1502,6 +1507,15 @@ const SpanishCompanyNetworkGraph = ({
   // handleNodeClick is defined above openDataPreview, so it calls through this
   // ref rather than closing over a binding that is not initialised yet.
   const openDataPreviewRef = useRef(null);
+  // Hovered node + its position in canvas coordinates, for the instant HUD.
+  const [hoverNode, setHoverNode] = useState(null);
+  const [hoverPosition, setHoverPosition] = useState(null);
+  // Last pointer position in CONTAINER coordinates. The HUD is anchored to the
+  // cursor rather than to graph2ScreenCoords: the canvas is backed at a device
+  // pixel ratio, so the graph-to-screen transform does not land in the CSS
+  // pixel space the card is positioned in. The cursor is already in that space.
+  const pointerRef = useRef({ x: 0, y: 0 });
+  const hoverNodeRef = useRef(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [previewData, setPreviewData] = useState(null);
@@ -5035,6 +5049,30 @@ const SpanishCompanyNetworkGraph = ({
     [inspectorDatasets]
   );
 
+  // Hovering is a pointer affordance: touch devices never fire it, and showing
+  // the HUD while a context menu is open would cover the menu.
+  const handleNodeHover = useCallback(node => {
+    if (isTouchDevice || !node) {
+      hoverNodeRef.current = null;
+      setHoverNode(null);
+      setHoverPosition(null);
+      return;
+    }
+    hoverNodeRef.current = node;
+    setHoverNode(node);
+    setHoverPosition(pointerRef.current);
+  }, [isTouchDevice]);
+
+  // Track the cursor so the card follows it across a node instead of pinning to
+  // wherever the pointer first crossed the hit area.
+  const handleContainerPointerMove = useCallback(event => {
+    const rect = containerEl?.getBoundingClientRect();
+    if (!rect) return;
+    const next = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    pointerRef.current = next;
+    if (hoverNodeRef.current) setHoverPosition(next);
+  }, [containerEl]);
+
   const handleBackgroundClick = useCallback(() => {
     trackEvent('graph_background_click', {
       ...graphInteractionParams(),
@@ -5855,6 +5893,8 @@ const SpanishCompanyNetworkGraph = ({
 
   // Handle zoom changes
   const handleZoom = useCallback(transform => {
+    setHoverNode(null);
+    setHoverPosition(null);
     const k = typeof transform === 'number' ? transform : transform?.k;
     if (Number.isFinite(k) && k > 0) setZoomLevel(k);
     if (
@@ -5869,6 +5909,8 @@ const SpanishCompanyNetworkGraph = ({
   // Freeze all other nodes during drag to avoid graph drift and restore after drag.
   const handleNodeDrag = useCallback(
     node => {
+      setHoverNode(null);
+      setHoverPosition(null);
       const freezeSession = dragFreezeRef.current;
       if (!freezeSession || freezeSession.draggedNodeId !== node.id) {
         const frozenNodes = new Map();
@@ -6284,6 +6326,20 @@ const SpanishCompanyNetworkGraph = ({
     if (ceased > 0) return 'ceased';
     return 'unknown';
   }, [contextNode, nodeContextMenu, filteredGraphData.links, graphData.links]);
+
+  const nodeDegrees = React.useMemo(() => {
+    const degrees = new Map();
+    const bump = end => {
+      const id = normalizeNodeId(typeof end === 'object' && end !== null ? end.id : end);
+      if (id == null) return;
+      degrees.set(id, (degrees.get(id) || 0) + 1);
+    };
+    filteredGraphData.links.forEach(link => {
+      bump(link.source);
+      bump(link.target);
+    });
+    return degrees;
+  }, [filteredGraphData.links]);
 
   const contextOfficerCanMarkCeased =
     contextOfficerStatus === 'active' || contextOfficerStatus === 'mixed';
@@ -8831,6 +8887,7 @@ const SpanishCompanyNetworkGraph = ({
       <Box
         ref={containerCallbackRef}
         sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: 'graph.surface.canvas' }}
+        onMouseMove={handleContainerPointerMove}
       >
         {containerReady && (
           <ForceGraph2D
@@ -8850,7 +8907,11 @@ const SpanishCompanyNetworkGraph = ({
                 ctx.fill();
               }
             }}
+            // Suppress force-graph's built-in name tooltip — GraphNodeHoverCard
+            // replaces it and would otherwise show the name twice.
+            nodeLabel={() => ''}
             onNodeClick={handleNodeClick}
+            onNodeHover={handleNodeHover}
             onNodeRightClick={handleNodeRightClick}
             onBackgroundClick={handleBackgroundClick}
             onNodeDrag={handleNodeDrag}
@@ -8892,7 +8953,7 @@ const SpanishCompanyNetworkGraph = ({
           />
         )}
 
-        {contextNode && contextNode.type !== 'officer' && (() => {
+        {isTouchDevice && contextNode && contextNode.type !== 'officer' && (() => {
           const profileHref = fullCompanyPageHref(contextNode.name, uiLanguage);
           return (
             <Paper
@@ -9528,6 +9589,21 @@ const SpanishCompanyNetworkGraph = ({
             </TableContainer>
           )}
         </Paper>
+
+        {/* Instant node summary — the answer to "what is this?" with no click
+            and no request. Suppressed while a context menu is open so it never
+            covers the menu the user just asked for. */}
+        {!nodeContextMenu && (
+          <GraphNodeHoverCard
+            node={hoverNode}
+            position={hoverPosition}
+            containerWidth={canvasDimensions.width}
+            containerHeight={canvasDimensions.height}
+            lang={uiLanguage}
+            text={text}
+            degree={hoverNode ? nodeDegrees.get(normalizeNodeId(hoverNode.id)) : undefined}
+          />
+        )}
 
         {/* Company inspector — docked to the right edge of the canvas. The
             canvas already reserved this width (canvasDimensions), so the graph
