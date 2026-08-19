@@ -54,7 +54,9 @@ export function buildLandingSearchHref(option, lang = 'en') {
   if (!option || typeof option !== 'object') return null;
   const isOfficer = option.type === 'officer' || option.type === 'officer_sole_shareholder';
   const entityType = isOfficer ? 'officer' : 'company';
-  const searchValue = option.value || option.name || '';
+  // Display the current/new name, exactly as the graph's own selection does
+  // (applySelectedOption uses value.name for the search box).
+  const searchValue = (isOfficer ? (option.value || option.name) : (option.name || option.value)) || '';
   if (!searchValue) return null;
 
   const params = new URLSearchParams({
@@ -62,6 +64,15 @@ export function buildLandingSearchHref(option, lang = 'en') {
     type: entityType,
     source: 'home_search',
   });
+  // Bind a company pick to its exact legal entity. Without this the app re-ran
+  // a fuzzy NAME search on arrival, so choosing "NURNBERG CONSULTING SL" also
+  // pulled in "NURNBERG CONSULTING & PARTNERS" — while the same pick inside the
+  // graph resolved to one company, because applySelectedOption passes the
+  // suggestion's stable id as handleSearch's groupKeyOverride. Officers have no
+  // group key (they are searched by name across companies), so they never carry
+  // one. Optional: /empresa deep links arrive without an id and keep the old
+  // name-search behaviour.
+  if (!isOfficer && option.id) params.set('gk', String(option.id));
   if (lang === 'es') params.set('lang', 'es');
   return `/app?${params.toString()}`;
 }
@@ -171,11 +182,23 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
               ),
             }}
             sx={{
+              // The search box is the landing page's primary action, but it was
+              // drawn in teal at 55% opacity — the same hue as most of the text
+              // around it — so it receded into the page instead of leading it.
+              // Teal stays the brand voice everywhere else; the field wins on
+              // CONTRAST instead of a competing hue (amber would have clashed
+              // with the report CTA). A near-white border is the highest-contrast
+              // neutral available on the navy ground, and focus stays teal so the
+              // brand still signs the interaction.
+              //
+              // Hardcoded for dark: themeMode.resolveThemeMode() returns the dark
+              // default for every non-/app route, so the landing page is dark-only
+              // by design and a light branch here would be dead code.
               '& .MuiOutlinedInput-root': {
-                bgcolor: 'rgba(255,255,255,0.07)',
+                bgcolor: 'rgba(255,255,255,0.12)',
                 borderRadius: 2,
-                '& fieldset': { borderColor: 'rgba(94,208,194,0.55)' },
-                '&:hover fieldset': { borderColor: 'primary.light' },
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.72)', borderWidth: 1.5 },
+                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.92)' },
                 '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 2 },
               },
               '& .MuiFormHelperText-root': { color: 'text.disabled', mx: 0.5 },

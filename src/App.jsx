@@ -154,6 +154,14 @@ export default function App() {
     const value = new URLSearchParams(window.location.search).get('type');
     return value === 'officer' ? 'officer' : 'company';
   }, []);
+  // Stable group_key from the landing autocomplete, so a deep-linked company
+  // binds to ONE legal entity instead of re-running a fuzzy name search on
+  // arrival. Absent for /empresa links and hand-typed URLs, which keep the
+  // name-search path.
+  const initialGroupKey = React.useMemo(() => {
+    const value = (new URLSearchParams(window.location.search).get('gk') || '').trim();
+    return value || undefined;
+  }, []);
   const graphEntrySource = React.useMemo(() => {
     const value = new URLSearchParams(window.location.search).get('source') || '';
     return /^[a-z0-9_]{1,40}$/.test(value) ? value : 'direct';
@@ -324,6 +332,7 @@ export default function App() {
         embedded={true}
         initialCompanyName={initialSearch}
         initialSearchType={initialSearchType}
+        initialGroupKey={initialGroupKey}
         language={language}
         entrySource={graphEntrySource}
       />

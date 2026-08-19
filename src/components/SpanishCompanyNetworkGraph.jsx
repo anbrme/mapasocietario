@@ -1367,6 +1367,7 @@ const SpanishCompanyNetworkGraph = ({
   initialCompanyData,
   initialOfficerData,
   initialCompanyName,
+  initialGroupKey,
   initialSearchType,
   language = 'es',
   embedded = false,
@@ -2092,7 +2093,12 @@ const SpanishCompanyNetworkGraph = ({
         setSearchType('officer');
       }
       setSearchQuery(initialCompanyName);
-      handleSearch(initialCompanyName, true, initialSearchType || null, null, 'deep_link');
+      // Pass the group key through as groupKeyOverride — the same argument
+      // applySelectedOption supplies for an in-graph selection. Without it this
+      // path fell back to a fuzzy name search, which is why a landing-page pick
+      // returned more companies than the identical pick inside the graph.
+      handleSearch(initialCompanyName, true, initialSearchType || null,
+                   initialGroupKey || null, 'deep_link');
     }
   }, [initialCompanyName, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
