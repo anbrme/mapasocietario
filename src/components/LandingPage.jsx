@@ -28,6 +28,7 @@ import { LANDING_COPY } from './landingCopy';
 import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE, SAMPLE_REPORT_URL } from '../copy/freeFirstReport';
 import { siteNav } from '../utils/siteNav';
 import { statsService } from '../services/statsService';
+import { millionsLabel, REGISTRY_SCALE_RAW } from '../copy/registryScale';
 import { openListedCompanies } from '../services/listedCompaniesNav';
 import { trackEvent, trackUserManualDownload } from '../utils/track';
 
@@ -41,19 +42,15 @@ const STAT_FIELD = {
   formations: 'constitutions',
 };
 
-// Static fallback so the band renders instantly (and survives an API outage)
-// with values consistent with the homepage structured data. Refined live on
-// mount. Sourced from /bormes/stats/overview.
+// Static fallback so the band renders instantly (and survives an API outage).
+// Same generated figures the FAQ and the structured data quote, rather than a
+// second hardcoded set to drift against them.
 const STAT_FALLBACK = {
-  total_companies: 3150792,
-  total_events: 9564276,
-  officer_changes: 6480122,
-  constitutions: 1730447,
+  total_companies: REGISTRY_SCALE_RAW.totalCompanies,
+  total_events: REGISTRY_SCALE_RAW.totalEvents,
+  officer_changes: REGISTRY_SCALE_RAW.officerChanges,
+  constitutions: REGISTRY_SCALE_RAW.constitutions,
 };
-
-// Floor to one decimal in millions — matches the "3.2M / 9.5M" rounding used in
-// the structured data and prerendered content, so the figures never disagree.
-const fmtMillions = (n) => `${(Math.floor(n / 1e5) / 10).toFixed(1)}M`;
 
 // Company shown in the demo frame. Must match whatever is captured in
 // public/graph-demo.png so the click-through lands on the same graph.
@@ -370,7 +367,7 @@ export default function LandingPage({ lang = 'en' }) {
               {copy.stats.items.map((item) => (
                 <Box key={item.key} sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
                   <Typography component="div" className="registry-ref" sx={{ fontWeight: 700, letterSpacing: '-0.01em', color: 'primary.light', fontSize: { xs: '2rem', sm: '2.45rem' }, lineHeight: 1.05 }}>
-                    {fmtMillions(stats[STAT_FIELD[item.key]] ?? STAT_FALLBACK[STAT_FIELD[item.key]])}
+                    {millionsLabel(stats[STAT_FIELD[item.key]] ?? STAT_FALLBACK[STAT_FIELD[item.key]], lang)}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4, display: 'block', mt: 0.5 }}>
                     {item.label}

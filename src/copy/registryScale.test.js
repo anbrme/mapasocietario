@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { registryScale, REGISTRY_SCALE_RAW } from './registryScale';
+import { registryScale, millionsLabel, REGISTRY_SCALE_RAW } from './registryScale';
 
 /**
  * These figures are public claims about coverage. They were hand-typed in five
@@ -69,7 +69,8 @@ describe('registryScale', () => {
 
   test('no surface hardcodes a scale figure any more', () => {
     // Arrange — the files that quote coverage to the public
-    const files = ['../components/landingCopy.jsx', '../../scripts/prerender.mjs'];
+    const files = ['../components/landingCopy.jsx', '../../scripts/prerender.mjs',
+                   '../components/LandingPage.jsx'];
 
     // Act / Assert — a literal "N.N million" is how the drift started
     for (const rel of files) {
@@ -77,6 +78,23 @@ describe('registryScale', () => {
       expect(source).not.toMatch(/\d\.\d million (companies|published|recorded)/);
       expect(source).not.toMatch(/\d,\d millones de (empresas|publicaciones|cambios)/);
     }
+  });
+
+  test('the landing stats band rounds, it does not truncate', () => {
+    // Arrange — the exact bug: floor(3,152,861 / 1e5) / 10 renders "3.1M"
+    // beside a FAQ that says 3.2 million.
+    // Act / Assert
+    expect(millionsLabel(3_152_861, 'en')).toBe('3.2M');
+    expect(millionsLabel(3_152_861, 'es')).toBe('3,2M');
+  });
+
+  test('the band and the prose quote the same figure', () => {
+    // Arrange
+    const { companies, filings } = registryScale('en');
+
+    // Act / Assert — one rounding rule, or the page contradicts itself
+    expect(millionsLabel(REGISTRY_SCALE_RAW.totalCompanies, 'en')).toBe(`${companies}M`);
+    expect(millionsLabel(REGISTRY_SCALE_RAW.totalEvents, 'en')).toBe(`${filings}M`);
   });
 
   test('raw counts are plausible, not placeholders', () => {

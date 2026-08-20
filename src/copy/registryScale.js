@@ -37,4 +37,18 @@ export const registryScale = (lang = 'en') => ({
   constitutions: inMillions(REGISTRY_SCALE_RAW.constitutions, lang),
 });
 
+/**
+ * The same figure with an "M" suffix, for the landing page's stats band.
+ *
+ * The band formats a LIVE number, so it needs the rounding rule rather than a
+ * precomputed string — but it must be the SAME rule. It used to floor
+ * (`Math.floor(n / 1e5) / 10`), which rendered 3,152,861 as "3.1M" beside a FAQ
+ * that said 3.2 million, under a comment claiming the two matched.
+ *
+ * @param {number} n
+ * @param {'en'|'es'} lang
+ * @returns {string}
+ */
+export const millionsLabel = (n, lang = 'en') => `${inMillions(n, lang)}M`;
+
 export { REGISTRY_SCALE_RAW };
