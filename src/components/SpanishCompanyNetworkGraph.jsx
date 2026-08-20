@@ -7982,7 +7982,7 @@ const SpanishCompanyNetworkGraph = ({
   // used to dump an arbitrary relevance-capped slice of companies onto the graph).
   // Each option carries its own `type`, so we route per-item — companies, people
   // and sole-shareholders all dispatch correctly without a mode toggle.
-  const applySelectedOption = (value, selectionMethod = 'autocomplete') => {
+  const applySelectedOption = async (value, selectionMethod = 'autocomplete') => {
     if (!value || typeof value !== 'object') return;
     setSelectedAutocomplete(value);
     // Display: new/current name; Search: canonical key (original_name for aliases).
@@ -8054,7 +8054,34 @@ const SpanishCompanyNetworkGraph = ({
       ? (value.original_name || value.value || displayName)
       : (value.company_name_normalized || value.value || displayName);
     setSearchQuery(displayName);
-    handleSearch(searchKey, true, 'company', value.id || null);
+    await handleSearch(searchKey, true, 'company', value.id || null);
+
+    // Open the inspector on the company the user just asked for. Everything we
+    // sell lives in its footer — the priced DD button, the data-quality
+    // guarantee and the sample PDF — but it only opened on a second, separate
+    // click on the node. Over the 28 days to 2026-08-20, 94 users selected a
+    // company and 55 clicked a node: 39 people asked for a company and were
+    // never shown the offer. The selection IS the intent signal.
+    //
+    // Pass the autocomplete's stable `id` as the group key — the same value
+    // handed to handleSearch above. resolveCompanyGroupKey takes an explicit
+    // key verbatim, so the panel binds to the exact legal entity and a renamed
+    // company resolves correctly under its current name. Without it the panel
+    // would fall back to resolving `displayName` through the directory, which
+    // is the ambiguous path this argument exists to avoid.
+    // For an alias row the directory returns the OLD name in `company_name`
+    // and the current one in `new_company_name`. The graph plots the node
+    // under the current name (same convention as the alias maps at :1986 and
+    // :4126), so the panel has to use it too or its header contradicts the
+    // node the user is looking at.
+    const previewName = (value.has_new_name && value.new_company_name)
+      ? value.new_company_name
+      : displayName;
+    openDataPreview({
+      name: previewName,
+      type: 'spanish-company-group',
+      groupKey: value.id || null,
+    });
   };
 
   // Shared search panel content

@@ -9,6 +9,8 @@ import {
   Chip,
   Link,
   Alert,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -51,6 +53,26 @@ const ORDER_COPY = {
     contactPost: 'for assistance.',
     copyLink: 'Copy order link',
     copied: 'Copied!',
+    // Buyer profile, asked only AFTER payment. It used to sit in the checkout
+    // dialog; GA (28d to 2026-08-20) showed that dialog losing 74% of the
+    // people who open it, so nothing optional belongs there.
+    buyerRole: {
+      title: 'One optional question',
+      help: 'What are you using this report for? It helps us decide what future reports should lead with. Your report is already on its way and this changes nothing about it.',
+      label: 'Best description',
+      submit: 'Send',
+      thanks: 'Thank you — that genuinely helps.',
+      failed: 'Could not save that. No matter — your report is unaffected.',
+      roles: {
+        legal: 'Lawyer / legal',
+        advisor: 'Accountant / advisor',
+        compliance: 'Compliance / KYC',
+        investor: 'Investor / M&A',
+        journalist: 'Journalist',
+        owner: 'Business owner',
+        other: 'Other',
+      },
+    },
     generating: {
       title: 'Generating your Due Diligence report',
       sub: 'This may take up to 60 seconds. Please do not close this page.',
@@ -111,6 +133,25 @@ const ORDER_COPY = {
     contactPost: 'para obtener ayuda.',
     copyLink: 'Copiar enlace del pedido',
     copied: '¡Copiado!',
+    // Perfil del comprador, preguntado solo DESPUÉS del pago. Ver la nota en la
+    // versión inglesa: el diálogo de compra pierde al 74% de quien lo abre.
+    buyerRole: {
+      title: 'Una pregunta opcional',
+      help: '¿Para qué vas a usar este informe? Nos ayuda a decidir con qué deberían empezar los próximos informes. Tu informe ya está en camino y esto no lo cambia en nada.',
+      label: 'Qué te describe mejor',
+      submit: 'Enviar',
+      thanks: 'Gracias — nos ayuda de verdad.',
+      failed: 'No se pudo guardar. No pasa nada: tu informe no se ve afectado.',
+      roles: {
+        legal: 'Abogado / jurídico',
+        advisor: 'Asesor / gestoría',
+        compliance: 'Compliance / KYC',
+        investor: 'Inversor / M&A',
+        journalist: 'Periodista',
+        owner: 'Empresario / autónomo',
+        other: 'Otro',
+      },
+    },
     generating: {
       title: 'Generando tu informe de Due Diligence',
       sub: 'Esto puede tardar hasta 60 segundos. Por favor, no cierres esta página.',
@@ -209,6 +250,9 @@ export default function OrderStatusPage() {
 
   const [aiCode, setAiCode] = useState(null);
 
+  // Post-purchase buyer profile. Asked here, never in the checkout dialog.
+  const [buyerRole, setBuyerRole] = useState('');
+  const [buyerRoleState, setBuyerRoleState] = useState('idle'); // idle | saving | done | error
   const [monitorState, setMonitorState] = useState('idle'); // idle | loading | success | error
   const [monitorError, setMonitorError] = useState('');
   const [monitorAlert, setMonitorAlert] = useState(null);
@@ -298,6 +342,25 @@ export default function OrderStatusPage() {
   }, [sessionId]);
 
   // Verify payment on mount
+  // Fire-and-forget: this is a nicety, and a failure must never look like a
+  // problem with the order the buyer just paid for.
+  const submitBuyerRole = useCallback(async () => {
+    if (!buyerRole || !sessionId) return;
+    setBuyerRoleState('saving');
+    try {
+      const res = await fetch(`${PAYMENTS_API}/api/stripe/set-order-intake`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, role: buyerRole }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setBuyerRoleState('done');
+    } catch (err) {
+      console.warn('Buyer-role capture failed (non-fatal):', err);
+      setBuyerRoleState('error');
+    }
+  }, [buyerRole, sessionId]);
+
   useEffect(() => {
     if (!sessionId || !/^cs_(test|live|free)_[A-Za-z0-9_]{10,}$/.test(sessionId)) {
       setStatus('error');
@@ -930,6 +993,66 @@ export default function OrderStatusPage() {
                   {copy.monitor.sentTo}
                 </Typography>
               </Box>
+            )}
+          </Paper>
+        )}
+
+        {/* One optional question, asked only once the payment is verified. It
+            deliberately does not live in the checkout dialog: that step loses
+            74% of the people who reach it (GA, 28d to 2026-08-20), so the cost
+            of a field there is real while here it is nil. Hidden once answered
+            so a returning buyer is never asked twice. */}
+        {orderData && (
+          <Paper
+            elevation={0}
+            sx={{
+              width: '100%',
+              p: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2,
+            }}
+          >
+            {buyerRoleState === 'done' ? (
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                {copy.buyerRole.thanks}
+              </Typography>
+            ) : (
+            <>
+            <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.75 }}>
+              {copy.buyerRole.title}
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 2, lineHeight: 1.5 }}>
+              {copy.buyerRole.help}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <TextField
+                select
+                size="small"
+                label={copy.buyerRole.label}
+                value={buyerRole}
+                onChange={(e) => setBuyerRole(e.target.value)}
+                sx={{ minWidth: 220, '& .MuiOutlinedInput-root': { fontSize: '0.85rem' } }}
+              >
+                {Object.entries(copy.buyerRole.roles).map(([value, label]) => (
+                  <MenuItem key={value} value={value} sx={{ fontSize: '0.85rem' }}>{label}</MenuItem>
+                ))}
+              </TextField>
+              <Button
+                variant="outlined"
+                onClick={submitBuyerRole}
+                disabled={!buyerRole || buyerRoleState === 'saving'}
+                sx={{ textTransform: 'none', mt: 0.25 }}
+              >
+                {copy.buyerRole.submit}
+              </Button>
+            </Box>
+            {buyerRoleState === 'error' && (
+              <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: 'text.disabled' }}>
+                {copy.buyerRole.failed}
+              </Typography>
+            )}
+            </>
             )}
           </Paper>
         )}

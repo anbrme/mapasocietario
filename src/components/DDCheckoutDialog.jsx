@@ -36,6 +36,7 @@ import {
 import { API_URL, PAYMENTS_API } from '../config';
 import { getClientId } from '../utils/clientId';
 import { trackEvent } from '../utils/track';
+import { buildCheckoutIntake } from '../utils/checkoutIntake';
 import { resolveGroupKey, listCorrections } from '../services/correctionsService';
 
 const DD_PRICE = 22.50;
@@ -406,6 +407,25 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     };
   }, [open, companyName]);
 
+  // `begin_checkout` fires the moment the form is submitted, before the
+  // company pre-check and before the worker answers — so a user who keeps
+  // hitting a wall emits it again on every retry, and the metric cannot tell
+  // intent from success. GA showed 30 begin_checkout from 6 users against 2
+  // purchases in 28 days; without these two events there is no way to know
+  // whether that is hesitation or a broken path. Log where each attempt ends.
+  const trackCheckoutFailure = (reason) => {
+    trackEvent('checkout_failed', {
+      reason,
+      company: companyName || '',
+      free_report: !!FREE_FIRST_REPORT_CODE && useFreeReport && !isAndroidApp,
+      platform: isAndroidApp ? 'android' : 'web',
+    });
+  };
+
+  const trackCheckoutRedirect = (destination) => {
+    trackEvent('checkout_redirect', { destination, company: companyName || '' });
+  };
+
   const ensureReportCanBeGenerated = async () => {
     // Pre-flight: confirm the Spanish company has a v3 profile before
     // starting a checkout. Foreign entities that appear only as
@@ -502,6 +522,12 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       setError(copy.freeReportRequired);
       return;
     }
+    const checkoutIntake = buildCheckoutIntake({
+      freeActive,
+      role: buyerRole,
+      need: needContext,
+      followUpOptIn,
+    });
     setError('');
     setLoading(true);
     // Funnel stage 2: user submitted the checkout form (pre-redirect). The
@@ -529,10 +555,32 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
     // and immediately close a tab; that flash is the unavoidable cost of the
     // popup-blocker constraint.)
     const checkoutTab = (isAndroidApp || freeActive) ? null : window.open('', '_blank');
+    // The tab above must open in the click gesture, so it exists before we know
+    // where it is going — leaving the buyer staring at an empty window for the
+    // length of the pre-check plus session creation, and flashing blank-then-gone
+    // for an order the server turns out to waive. about:blank is same-origin, so
+    // paint it instead of leaving it empty. Plain DOM, no innerHTML: `copy` is
+    // ours, but this window is a different document and not worth the exception.
+    if (checkoutTab) {
+      try {
+        const doc = checkoutTab.document;
+        doc.title = copy.redirectingStripe;
+        const p = doc.createElement('p');
+        p.textContent = copy.redirectingStripe;
+        p.setAttribute(
+          'style',
+          'font:16px system-ui,-apple-system,sans-serif;color:#333;text-align:center;margin-top:20vh'
+        );
+        doc.body.appendChild(p);
+      } catch {
+        // Cross-origin or a blocked document — the tab still works, just blank.
+      }
+    }
     try {
       const canGenerate = await ensureReportCanBeGenerated();
       if (!canGenerate) {
         checkoutTab?.close();
+        trackCheckoutFailure('company_not_found');
         setLoading(false);
         return;
       }
@@ -602,16 +650,14 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           returnUrl: window.location.href,
           // Free-first-report insight program: the payments worker applies the
           // 100%-off coupon on `freeFirstReport` and persists `intake` to the
-          // Stripe session metadata. No-ops on the backend until that lands.
+          // Stripe session metadata.
           ...(freeActive ? {
             freeFirstReport: true,
             promoCode: FREE_FIRST_REPORT_CODE,
-            intake: {
-              role: buyerRole,
-              need: needContext.trim(),
-              followUpOptIn,
-            },
           } : {}),
+          // `intake` rides both paths — required role + need on the free gate,
+          // optional role alone when paying. Null when the buyer skipped it.
+          ...(checkoutIntake ? { intake: checkoutIntake } : {}),
         }),
       });
       const data = await res.json();
@@ -626,6 +672,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         setFreeEligible(false);
         setFreeEligibilityReason(data.error === 'free_report_blocked' ? 'blocked' : 'already_used');
         setError(copy.freeReportBlockedRetry);
+        trackCheckoutFailure(data.error);
       } else if (isFreeOrder) {
         // Free/waived order: already placed on the server. Do NOT navigate or
         // reload — that would wipe the in-memory graph. Keep the user exactly
@@ -635,6 +682,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         checkoutTab?.close();
         try { sessionStorage.setItem('dd_free_report_ready', data.sessionId); } catch { /* ignore */ }
         window.dispatchEvent(new CustomEvent('dd-free-report-ready', { detail: data.sessionId }));
+        trackCheckoutRedirect('free_order');
         onClose?.();
       } else if (data.url) {
         localStorage.setItem('dd_return_url', window.location.href);
@@ -643,22 +691,27 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         }
         if (checkoutTab) {
           // Send the pre-opened tab to Stripe; the graph tab stays intact.
+          trackCheckoutRedirect('stripe_new_tab');
           checkoutTab.location.href = data.url;
           // Dismiss the dialog so the user lands back on their intact graph.
           onClose?.();
         } else {
           // Popup blocked — complete the sale via same-tab redirect. The graph
           // is lost in this fallback, but a completed purchase matters more.
+          // Counting these separately tells us how often the blocker fires.
+          trackCheckoutRedirect('stripe_same_tab');
           window.location.href = data.url;
         }
       } else {
         checkoutTab?.close();
         setError(copy.createCheckoutFailed);
+        trackCheckoutFailure('no_checkout_url');
       }
     } catch (err) {
       checkoutTab?.close();
       console.error('DD checkout error:', err);
       setError(err.message || copy.connectionError);
+      trackCheckoutFailure('exception');
     } finally {
       setLoading(false);
     }
@@ -765,6 +818,12 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
         <Typography variant="caption" sx={{ display: 'block', mb: 2, px: 0.5, color: 'text.disabled', fontSize: '0.7rem', lineHeight: 1.45 }}>
           {copy.emailHelp}
         </Typography>
+
+        {/* The buyer-profile question deliberately does NOT live here. This
+            dialog loses 74% of the people who open it (GA, 28d to 2026-08-20:
+            23 opened, 6 submitted), so it is the worst place in the product to
+            add anything optional. It is asked on the order page after payment
+            instead — see OrderStatusPage. */}
 
         {/* Report mode selector — only when the user has graph corrections for this
             company. Company-based = registry as-is; Custom = applies your corrections. */}
