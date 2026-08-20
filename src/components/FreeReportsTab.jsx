@@ -20,6 +20,7 @@ export default function FreeReportsTab({ adminKey }) {
     setLoading(true); setError('');
     try {
       const res = await fetch(`${PAYMENTS_API}/api/stripe/list-free-reports`, {
+        cache: 'no-store',
         headers: { Authorization: `Bearer ${adminKey}` },
       });
       if (res.status === 401) { setError('Invalid admin key.'); return; }

@@ -26,6 +26,7 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import { Helmet } from 'react-helmet-async';
 import CnmvReviewTab from './CnmvReviewTab';
 import FreeReportsTab from './FreeReportsTab';
+import AbandonedCheckoutsTab from './AbandonedCheckoutsTab';
 import EnrichmentReviewTab from './EnrichmentReviewTab';
 import MonitoringTab from './MonitoringTab';
 import { ddStatusView, DdStatusChip } from './AdminDdStatus';
@@ -66,7 +67,11 @@ export default function AdminPage() {
     setLoading(true);
     setError('');
     try {
+      // cache: 'no-store' — without it the browser served the previous
+      // response and the Refresh button appeared to do nothing, while a full
+      // page load looked like it worked.
       const res = await fetch(`${PAYMENTS_API}/api/stripe/list-fs-orders`, {
+        cache: 'no-store',
         headers: { 'Authorization': `Bearer ${authKey}` },
       });
       if (res.status === 401) {
@@ -342,6 +347,7 @@ export default function AdminPage() {
 
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
           <Tab label="Orders" sx={{ textTransform: 'none' }} />
+          <Tab label="Abandoned" sx={{ textTransform: 'none' }} />
           <Tab label="CNMV Review" sx={{ textTransform: 'none' }} />
           <Tab label="Free DD" sx={{ textTransform: 'none' }} />
           <Tab label="Enrichment" sx={{ textTransform: 'none' }} />
@@ -457,13 +463,15 @@ export default function AdminPage() {
           </Box>
         </Collapse>
         </>)}
-        {tab === 1 && <CnmvReviewTab adminKey={adminKey} />}
+        {tab === 1 && <AbandonedCheckoutsTab adminKey={adminKey} />}
 
-        {tab === 2 && <FreeReportsTab adminKey={adminKey} />}
+        {tab === 2 && <CnmvReviewTab adminKey={adminKey} />}
 
-        {tab === 3 && <EnrichmentReviewTab adminKey={adminKey} />}
+        {tab === 3 && <FreeReportsTab adminKey={adminKey} />}
 
-        {tab === 4 && <MonitoringTab adminKey={adminKey} />}
+        {tab === 4 && <EnrichmentReviewTab adminKey={adminKey} />}
+
+        {tab === 5 && <MonitoringTab adminKey={adminKey} />}
       </Box>
     </>
   );
