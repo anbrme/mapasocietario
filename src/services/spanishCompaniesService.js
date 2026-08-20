@@ -675,9 +675,23 @@ class SpanishCompaniesService {
       });
     }
     for (const o of resignedList) {
-      bucket(o.resigned_date || company.last_seen).ceses_dimisiones.push({
+      // A seat closed by SUPERSESSION carries no resigned_date — BORME published
+      // no cessation. Falling through to company.last_seen would date it to the
+      // latest bulletin, which is not a fact about this officer at all. Its real
+      // date is superseded_on: when the successor was appointed.
+      const isSuperseded = (o.status || '').toLowerCase() === 'superseded';
+      const when = o.resigned_date || (isSuperseded ? o.superseded_on : null) || company.last_seen;
+      bucket(when).ceses_dimisiones.push({
         name: o.name || o.name_normalized,
         position: o.position_normalized || '',
+        // Carried through so downstream surfaces can explain WHY the seat closed
+        // without re-deriving it. Absent on an ordinary inscribed cese.
+        ...(isSuperseded ? {
+          superseded: true,
+          supersededBy: o.superseded_by || '',
+          supersededOn: o.superseded_on || '',
+          registryStatus: o.registry_status || '',
+        } : {}),
       });
     }
 

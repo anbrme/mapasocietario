@@ -480,6 +480,11 @@ const SEARCH_COPY = {
     appointments: 'Appointments',
     reelections: 'Re-elections',
     cessations: 'Terminations/Resignations',
+    // A seat BORME still shows as held, closed by a later appointment to an
+    // office that admits one holder. Deliberately not called a cessation.
+    superseded: 'Replaced (no cessation filed)',
+    supersededSeats: 'Replaced — no cessation filed',
+    supersededBy: 'Replaced by',
     revocations: 'Revocations',
     previewWatermark: 'Preview - buy a Due Diligence report for the full report',
     congressDeputy: 'Congress deputy',
@@ -812,6 +817,11 @@ const SEARCH_COPY = {
     appointments: 'Nombramientos',
     reelections: 'Reelecciones',
     cessations: 'Ceses/Dimisiones',
+    // Un cargo que el BORME sigue mostrando como vigente, cerrado por un
+    // nombramiento posterior a un cargo que admite un solo titular.
+    superseded: 'Sustituido (sin cese inscrito)',
+    supersededSeats: 'Sustituidos — sin cese inscrito',
+    supersededBy: 'Sustituido por',
     revocations: 'Revocaciones',
     previewWatermark: 'Vista previa - para un informe completo, adquiera una Due Diligence',
     congressDeputy: 'Diputado del Congreso',

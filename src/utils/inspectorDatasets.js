@@ -28,6 +28,9 @@ export const resolveOfficerStatus = (officer, labels) => {
   const status = (officer.status || '').toLowerCase();
   if (status === 'active') return labels.active;
   if (status === 'ceased') return labels.ceased;
+  // Not a cese: BORME published none. A later appointment to a single-holder
+  // office closed the seat. Say so rather than implying a cessation was filed.
+  if (status === 'superseded') return labels.superseded || labels.ceased;
 
   const event = (officer.event_type || '').toLowerCase();
   if (event.includes('nombr') || event.includes('reelecc')) return labels.active;
@@ -71,6 +74,19 @@ const buildCompanyDatasets = (data, { lang, labels }) => {
   const registryActive = data.company?.officers_active?.length;
   const registryResigned = data.company?.officers_resigned?.length;
 
+  // Seats the registry still shows as held, closed by a later appointment to an
+  // office that admits one holder. They are listed rather than hidden: a reader
+  // who cross-checks against BORME will find them there, and the difference is
+  // the useful part.
+  const supersededRows = (data.company?.officers_resigned || [])
+    .filter(o => (o.status || '').toLowerCase() === 'superseded')
+    .map(o => ({
+      name: o.name || o.name_normalized || '-',
+      position: o.position_normalized || '-',
+      date: o.superseded_on ? formatDate(o.superseded_on, lang) : '-',
+      supersededBy: o.superseded_by || '-',
+    }));
+
   const datasets = [
     {
       key: 'current',
@@ -86,6 +102,17 @@ const buildCompanyDatasets = (data, { lang, labels }) => {
       rows: mapEventOfficers(officers[key], lang),
       registryTotal: key === 'ceses_dimisiones' ? registryResigned : undefined,
     })),
+    {
+      key: 'superseded',
+      label: labels.supersededSeats || labels.cessations,
+      columns: [
+        { key: 'name', label: labels.name, width: '35%' },
+        { key: 'position', label: labels.role, width: '25%' },
+        { key: 'supersededBy', label: labels.supersededBy || labels.name, width: '25%' },
+        { key: 'date', label: labels.date, width: '15%' },
+      ],
+      rows: supersededRows,
+    },
   ];
 
   return datasets.filter(dataset => dataset.rows.length > 0);

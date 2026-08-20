@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { buildInspectorDatasets, summariseCounts } from './inspectorDatasets';
+import { buildInspectorDatasets, summariseCounts, resolveOfficerStatus } from './inspectorDatasets';
 
 const LABELS = {
   currentOfficersShort: 'Directivos',
@@ -151,5 +151,82 @@ describe('summariseCounts', () => {
 
   test('is empty when there is nothing tabular to show', () => {
     expect(summariseCounts([])).toEqual([]);
+  });
+});
+
+describe('superseded seats', () => {
+  const SUPERSEDED_LABELS = {
+    ...LABELS,
+    superseded: 'Replaced (no cessation filed)',
+    supersededSeats: 'Replaced — no cessation filed',
+    supersededBy: 'Replaced by',
+  };
+
+  const withSuperseded = () => ({
+    type: 'company',
+    company: {
+      officers_active: [{ name: 'GEAUDIT SLP', position_normalized: 'Auditor' }],
+      officers_resigned: [
+        {
+          name: 'STAFF SLP',
+          position_normalized: 'Auditor',
+          status: 'superseded',
+          registry_status: 'active',
+          superseded_by: 'GEAUDIT SLP',
+          superseded_on: '2024-11-14',
+        },
+        {
+          name: 'KPMG SL',
+          position_normalized: 'Auditor',
+          status: 'resigned',
+          resigned_date: '2011-01-01',
+        },
+      ],
+    },
+    enriched: { officers: { nombramientos: [], reelecciones: [], ceses_dimisiones: [], revocaciones: [] } },
+  });
+
+  test('lists a superseded seat in its own table rather than hiding it', () => {
+    // Arrange / Act
+    const datasets = buildInspectorDatasets(withSuperseded(), { lang: 'en', labels: SUPERSEDED_LABELS });
+    const table = datasets.find(d => d.key === 'superseded');
+
+    // Assert — shown, with who replaced them and when
+    expect(table).toBeTruthy();
+    expect(table.rows).toHaveLength(1);
+    expect(table.rows[0].name).toBe('STAFF SLP');
+    expect(table.rows[0].supersededBy).toBe('GEAUDIT SLP');
+  });
+
+  test('does not treat an inscribed cessation as superseded', () => {
+    // Arrange / Act
+    const datasets = buildInspectorDatasets(withSuperseded(), { lang: 'en', labels: SUPERSEDED_LABELS });
+    const table = datasets.find(d => d.key === 'superseded');
+
+    // Assert
+    expect(table.rows.map(r => r.name)).not.toContain('KPMG SL');
+  });
+
+  test('omits the table entirely when nothing is superseded', () => {
+    // Arrange
+    const data = withSuperseded();
+    data.company.officers_resigned = [
+      { name: 'KPMG SL', position_normalized: 'Auditor', status: 'resigned', resigned_date: '2011-01-01' },
+    ];
+
+    // Act
+    const datasets = buildInspectorDatasets(data, { lang: 'en', labels: SUPERSEDED_LABELS });
+
+    // Assert
+    expect(datasets.find(d => d.key === 'superseded')).toBeUndefined();
+  });
+
+  test('never calls a superseded seat a cessation', () => {
+    // Arrange / Act
+    const status = resolveOfficerStatus({ status: 'superseded' }, SUPERSEDED_LABELS);
+
+    // Assert — the whole point: BORME filed no cese
+    expect(status).toBe('Replaced (no cessation filed)');
+    expect(status).not.toBe(SUPERSEDED_LABELS.ceased);
   });
 });
