@@ -197,6 +197,27 @@ function periods(nowMs) {
 
 /* --------------------------------------------------------------- gather */
 
+/**
+ * An explicit intent funnel, in order.
+ *
+ * GA4's `keyEvents` metric is not usable as a conversion count on this property:
+ * a large number of `graph_*` interaction events are flagged as key events, so
+ * key events routinely exceed sessions (e.g. 177 key events across 32 sessions
+ * on /app). That measures engagement depth, not conversion. These named stages
+ * are counted directly instead, by distinct users, so each stage is a real
+ * narrowing of the previous one.
+ */
+const FUNNEL_STAGES = [
+  { event: 'session_start', label: 'Arrived' },
+  { event: 'graph_activation', label: 'Reached the graph' },
+  { event: 'graph_search_typing_started', label: 'Started a search' },
+  { event: 'graph_search_selection', label: 'Picked a result' },
+  { event: 'graph_node_click', label: 'Explored a node' },
+  { event: 'company_full_profile_click', label: 'Opened a full profile' },
+  { event: 'company_profile_cta_click', label: 'Clicked a profile CTA' },
+  { event: 'view_item', label: 'Viewed a paid item' },
+];
+
 const CORE_METRICS = [
   'sessions',
   'totalUsers',
@@ -233,6 +254,8 @@ async function gather(env, token, propertyId, nowMs) {
     countryRep,
     eventRep,
     deviceRep,
+    funnelCur,
+    funnelPri,
   ] = await Promise.all([
     coreTotals(p.current),
     coreTotals(p.prior),
@@ -297,6 +320,31 @@ async function gather(env, token, propertyId, nowMs) {
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
       limit: 5,
     }),
+    // Funnel stages, current and prior, restricted to the named events.
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['eventName']),
+      metrics: met(['eventCount', 'totalUsers']),
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: FUNNEL_STAGES.map((s) => s.event) },
+        },
+      },
+      limit: 50,
+    }),
+    call({
+      dateRanges: range(p.prior),
+      dimensions: dim(['eventName']),
+      metrics: met(['totalUsers']),
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: FUNNEL_STAGES.map((s) => s.event) },
+        },
+      },
+      limit: 50,
+    }),
   ]);
 
   const priorByChannel = Object.fromEntries(
@@ -330,10 +378,43 @@ async function gather(env, token, propertyId, nowMs) {
       r.totalUsers > 0 ? r.userEngagementDuration / r.totalUsers : 0,
   }));
 
+  const curByEvent = Object.fromEntries(
+    rowsToObjects(funnelCur, ['eventName'], ['eventCount', 'totalUsers']).map((r) => [
+      r.eventName,
+      r,
+    ]),
+  );
+  const priByEvent = Object.fromEntries(
+    rowsToObjects(funnelPri, ['eventName'], ['totalUsers']).map((r) => [
+      r.eventName,
+      r.totalUsers,
+    ]),
+  );
+
+  // Stage 1's user count is the funnel's denominator; each stage also reports
+  // step-over-step retention against the stage immediately above it.
+  const topUsers = curByEvent[FUNNEL_STAGES[0].event]?.totalUsers || 0;
+  let previousUsers = null;
+  const funnel = FUNNEL_STAGES.map((s) => {
+    const users = curByEvent[s.event]?.totalUsers || 0;
+    const row = {
+      event: s.event,
+      label: s.label,
+      users,
+      eventCount: curByEvent[s.event]?.eventCount || 0,
+      priorUsers: priByEvent[s.event] || 0,
+      pctOfTop: topUsers > 0 ? users / topUsers : 0,
+      pctOfPreviousStage: previousUsers ? users / previousUsers : null,
+    };
+    previousUsers = users;
+    return row;
+  });
+
   return {
     generatedAt: new Date(nowMs).toISOString(),
     propertyId,
     period: p,
+    funnel,
     totals: { current: curTotals, prior: priTotals },
     daily: rowsToObjects(dailyRep, ['date'], ['sessions', 'totalUsers', 'keyEvents']),
     channels,
@@ -553,6 +634,40 @@ function toMarkdown(r) {
         fmt(lp.keyEvents),
       ]),
     ),
+  );
+  L.push('');
+
+  L.push('## Intent funnel (distinct users)');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Stage', 'Users', 'Prior wk', 'Change', '% of arrivals', '% of prev stage'],
+      (r.funnel || []).map((f) => [
+        f.label,
+        fmt(f.users),
+        fmt(f.priorUsers),
+        delta(f.users, f.priorUsers),
+        `${(f.pctOfTop * 100).toFixed(1)}%`,
+        f.pctOfPreviousStage === null
+          ? '—'
+          : `${(f.pctOfPreviousStage * 100).toFixed(1)}%`,
+      ]),
+    ),
+  );
+  L.push('');
+  L.push(
+    '_Note: GA4 `keyEvents` on this property counts many graph interaction ' +
+      'events, so it exceeds session count and does not represent conversions. ' +
+      'Use this funnel for conversion questions; treat the key-event column ' +
+      'elsewhere in this report as an engagement-depth signal only._',
+  );
+  L.push('');
+  L.push(
+    '_Stages are independent distinct-user counts for each event, not a strict ' +
+      'sequential funnel: a user can reach a later stage without firing an ' +
+      'earlier one (arriving straight on a company page, for instance). A ' +
+      '"% of prev stage" above 100% means that stage has its own entry path, ' +
+      'not that the data is wrong._',
   );
   L.push('');
 
