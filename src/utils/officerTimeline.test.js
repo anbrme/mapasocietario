@@ -263,3 +263,28 @@ describe('summariseOfficerSeats', () => {
     expect(s.firstDate).toBeNull();
   });
 });
+
+describe('superseded seats in the officer view', () => {
+  it('a superseded seat is not counted as currently held', () => {
+    // Arrange — GRUPO AUDITSAFE SLP at FTI CONSULTING SPAIN SL, as the API
+    // now returns it: no resigned_date, dated by its successor instead.
+    const seat = {
+      company_name: 'FTI CONSULTING SPAIN SL',
+      status: 'superseded',
+      event_type: 'ceses_dimisiones',
+      superseded_by: 'AUDALIA NEXIA AUDITORES SL',
+      date: '2021-01-14',
+    };
+
+    // Act / Assert
+    expect(officerSeatStatus(seat)).toBe('ceased');
+  });
+
+  it('the status does not depend on the event wording', () => {
+    // Arrange — the fallback path this used to rely on
+    const seat = { status: 'superseded', event_type: '' };
+
+    // Act / Assert
+    expect(officerSeatStatus(seat)).toBe('ceased');
+  });
+});

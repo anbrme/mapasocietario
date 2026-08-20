@@ -95,6 +95,10 @@ export const officerSeatStatus = (officer) => {
   const status = (officer.status || '').toLowerCase();
   if (status === 'active') return 'active';
   if (status === 'ceased') return 'ceased';
+  // A seat closed by supersession is not currently held either. It reached the
+  // same answer only by falling through to the event text below, which is one
+  // wording change away from silently flipping to 'unknown'.
+  if (status === 'superseded') return 'ceased';
 
   const event = (officer.event_type || '').toLowerCase();
   if (event.includes('nombr') || event.includes('reelecc')) return 'active';
