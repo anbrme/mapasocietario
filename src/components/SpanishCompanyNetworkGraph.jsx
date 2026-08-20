@@ -485,6 +485,13 @@ const SEARCH_COPY = {
     superseded: 'Replaced (no cessation filed)',
     supersededSeats: 'Replaced — no cessation filed',
     supersededBy: 'Replaced by',
+    // Same firm re-recorded under a corrected name (the Ley 2/2007 SL->SLP
+    // conversion, a restored ampersand). 7.7% of superseded seats. Reported as
+    // a renaming, because calling it a replacement asserts a change of auditor
+    // that never happened.
+    reinscribed: 'Same firm, name updated',
+    reinscribedSeats: 'Same firm — name updated',
+    reinscribedAs: 'Now recorded as',
     revocations: 'Revocations',
     previewWatermark: 'Preview - buy a Due Diligence report for the full report',
     congressDeputy: 'Congress deputy',
@@ -822,6 +829,10 @@ const SEARCH_COPY = {
     superseded: 'Sustituido (sin cese inscrito)',
     supersededSeats: 'Sustituidos — sin cese inscrito',
     supersededBy: 'Sustituido por',
+    // La misma firma reinscrita con la denominacion corregida o actualizada.
+    reinscribed: 'Misma firma, denominación actualizada',
+    reinscribedSeats: 'Misma firma — denominación actualizada',
+    reinscribedAs: 'Ahora inscrita como',
     revocations: 'Revocaciones',
     previewWatermark: 'Vista previa - para un informe completo, adquiera una Due Diligence',
     congressDeputy: 'Diputado del Congreso',

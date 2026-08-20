@@ -689,6 +689,11 @@ class SpanishCompaniesService {
         ...(isSuperseded ? {
           superseded: true,
           supersededBy: o.superseded_by || '',
+          // "succession" (a real replacement) vs "reinscribed_same_entity" (the
+          // same firm re-recorded under a corrected name). Without it a surface
+          // renders "replaced by" over both and asserts a change that never
+          // happened. Absent on docs enriched before the field existed.
+          supersessionKind: o.supersession_kind || '',
           supersededOn: o.superseded_on || '',
           registryStatus: o.registry_status || '',
         } : {}),

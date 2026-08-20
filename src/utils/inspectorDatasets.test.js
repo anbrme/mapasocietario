@@ -230,3 +230,91 @@ describe('superseded seats', () => {
     expect(status).not.toBe(SUPERSEDED_LABELS.ceased);
   });
 });
+
+describe('re-inscribed seats vs real successions', () => {
+  const KIND_LABELS = {
+    ...LABELS,
+    superseded: 'Replaced (no cessation filed)',
+    supersededSeats: 'Replaced — no cessation filed',
+    supersededBy: 'Replaced by',
+    reinscribed: 'Same firm, name updated',
+    reinscribedSeats: 'Same firm — name updated',
+    reinscribedAs: 'Now recorded as',
+  };
+
+  // Shapes taken verbatim from borme_companies_v3_live (T SYSTEMS ITC IBERIA SA):
+  // one company carrying BOTH kinds, superseded on the same date by the same name.
+  const mixed = () => ({
+    type: 'company',
+    company: {
+      officers_resigned: [
+        {
+          name: 'ERNST & YOUNG SL',
+          position_normalized: 'AUDIT.CUENT.',
+          status: 'superseded',
+          supersession_kind: 'succession',
+          registry_status: 'active',
+          superseded_by: 'DELOITTE AUDITORES SL',
+          superseded_on: '2025-10-06',
+        },
+        {
+          name: 'DELOITTE SL',
+          position_normalized: 'AUDIT.INDIV.',
+          status: 'superseded',
+          supersession_kind: 'reinscribed_same_entity',
+          registry_status: 'active',
+          superseded_by: 'DELOITTE AUDITORES SL',
+          superseded_on: '2025-10-06',
+        },
+      ],
+    },
+    enriched: { officers: { nombramientos: [], reelecciones: [], ceses_dimisiones: [], revocaciones: [] } },
+  });
+
+  test('keeps a re-inscription out of the "Replaced by" table', () => {
+    // Arrange / Act
+    const datasets = buildInspectorDatasets(mixed(), { lang: 'en', labels: KIND_LABELS });
+    const replaced = datasets.find(d => d.key === 'superseded');
+
+    // Assert — DELOITTE SL was not replaced by DELOITTE AUDITORES SL; it IS it
+    expect(replaced.rows.map(r => r.name)).toEqual(['ERNST & YOUNG SL']);
+  });
+
+  test('lists the re-inscription in its own table, as a renaming', () => {
+    // Arrange / Act
+    const datasets = buildInspectorDatasets(mixed(), { lang: 'en', labels: KIND_LABELS });
+    const reinscribed = datasets.find(d => d.key === 'reinscribed');
+
+    // Assert
+    expect(reinscribed).toBeTruthy();
+    expect(reinscribed.rows).toHaveLength(1);
+    expect(reinscribed.rows[0].name).toBe('DELOITTE SL');
+    expect(reinscribed.rows[0].reinscribedAs).toBe('DELOITTE AUDITORES SL');
+  });
+
+  test('treats a seat with no supersession_kind as a replacement, not a renaming', () => {
+    // Arrange — docs enriched before the kind field existed
+    const data = mixed();
+    delete data.company.officers_resigned[1].supersession_kind;
+
+    // Act
+    const datasets = buildInspectorDatasets(data, { lang: 'en', labels: KIND_LABELS });
+
+    // Assert — old payloads keep the previous behaviour rather than silently
+    // claiming two different firms are the same one
+    expect(datasets.find(d => d.key === 'superseded').rows).toHaveLength(2);
+    expect(datasets.find(d => d.key === 'reinscribed')).toBeUndefined();
+  });
+
+  test('does not say a re-inscribed firm was replaced', () => {
+    // Arrange / Act
+    const status = resolveOfficerStatus(
+      { status: 'superseded', supersession_kind: 'reinscribed_same_entity' },
+      KIND_LABELS
+    );
+
+    // Assert
+    expect(status).toBe('Same firm, name updated');
+    expect(status).not.toBe(KIND_LABELS.superseded);
+  });
+});

@@ -9,6 +9,13 @@ import { formatDate } from './formatDate';
  * into tens of thousands of pixels of scroll.
  */
 
+/**
+ * A later appointment under a drifted name for the same firm ("DELOITTE SL" ->
+ * "DELOITTE AUDITORES SL") — a re-inscription, not a change of auditor. Across
+ * the live index this is 4,402 of 56,846 superseded seats (7.7%).
+ */
+const REINSCRIBED = 'reinscribed_same_entity';
+
 const EMPTY_OFFICERS = { nombramientos: [], reelecciones: [], ceses_dimisiones: [], revocaciones: [] };
 
 /** BORME event categories, in the order they read as a history. */
@@ -30,13 +37,29 @@ export const resolveOfficerStatus = (officer, labels) => {
   if (status === 'ceased') return labels.ceased;
   // Not a cese: BORME published none. A later appointment to a single-holder
   // office closed the seat. Say so rather than implying a cessation was filed.
-  if (status === 'superseded') return labels.superseded || labels.ceased;
+  if (status === 'superseded') {
+    // A re-inscription is not a replacement: the SAME firm was re-recorded under
+    // a corrected name. Calling that "replaced" asserts a change of auditor that
+    // never happened.
+    if (officer.supersession_kind === REINSCRIBED) {
+      return labels.reinscribed || labels.superseded || labels.ceased;
+    }
+    return labels.superseded || labels.ceased;
+  }
 
   const event = (officer.event_type || '').toLowerCase();
   if (event.includes('nombr') || event.includes('reelecc')) return labels.active;
   if (event.includes('cese') || event.includes('dimis') || event.includes('revoc')) return labels.ceased;
   return labels.unknown;
 };
+
+/** Both seat tables share a shape; only the successor column differs. */
+const seatColumns = (labels, successorKey, successorLabel) => [
+  { key: 'name', label: labels.name, width: '35%' },
+  { key: 'position', label: labels.role, width: '25%' },
+  { key: successorKey, label: successorLabel, width: '25%' },
+  { key: 'date', label: labels.date, width: '15%' },
+];
 
 const officerColumns = labels => [
   { key: 'name', label: labels.name, width: '45%' },
@@ -78,14 +101,27 @@ const buildCompanyDatasets = (data, { lang, labels }) => {
   // office that admits one holder. They are listed rather than hidden: a reader
   // who cross-checks against BORME will find them there, and the difference is
   // the useful part.
-  const supersededRows = (data.company?.officers_resigned || [])
-    .filter(o => (o.status || '').toLowerCase() === 'superseded')
-    .map(o => ({
-      name: o.name || o.name_normalized || '-',
-      position: o.position_normalized || '-',
-      date: o.superseded_on ? formatDate(o.superseded_on, lang) : '-',
-      supersededBy: o.superseded_by || '-',
-    }));
+  const supersededSeats = (data.company?.officers_resigned || [])
+    .filter(o => (o.status || '').toLowerCase() === 'superseded');
+
+  // Split by kind: a re-inscription belongs under "name updated", never under
+  // "replaced by". Seats enriched before supersession_kind existed carry no
+  // kind and stay in the replacement table — the previous behaviour — rather
+  // than being upgraded to "same firm" on a guess.
+  const toSeatRow = (o, successorKey) => ({
+    name: o.name || o.name_normalized || '-',
+    position: o.position_normalized || '-',
+    date: o.superseded_on ? formatDate(o.superseded_on, lang) : '-',
+    [successorKey]: o.superseded_by || '-',
+  });
+
+  const supersededRows = supersededSeats
+    .filter(o => o.supersession_kind !== REINSCRIBED)
+    .map(o => toSeatRow(o, 'supersededBy'));
+
+  const reinscribedRows = supersededSeats
+    .filter(o => o.supersession_kind === REINSCRIBED)
+    .map(o => toSeatRow(o, 'reinscribedAs'));
 
   const datasets = [
     {
@@ -105,13 +141,14 @@ const buildCompanyDatasets = (data, { lang, labels }) => {
     {
       key: 'superseded',
       label: labels.supersededSeats || labels.cessations,
-      columns: [
-        { key: 'name', label: labels.name, width: '35%' },
-        { key: 'position', label: labels.role, width: '25%' },
-        { key: 'supersededBy', label: labels.supersededBy || labels.name, width: '25%' },
-        { key: 'date', label: labels.date, width: '15%' },
-      ],
+      columns: seatColumns(labels, 'supersededBy', labels.supersededBy || labels.name),
       rows: supersededRows,
+    },
+    {
+      key: 'reinscribed',
+      label: labels.reinscribedSeats || labels.supersededSeats || labels.cessations,
+      columns: seatColumns(labels, 'reinscribedAs', labels.reinscribedAs || labels.name),
+      rows: reinscribedRows,
     },
   ];
 
