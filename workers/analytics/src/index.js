@@ -1,0 +1,729 @@
+/**
+ * mapasocietario-analytics
+ *
+ * Weekly GA4 pull for mapasocietario.es.
+ *
+ * Why this exists as a Worker rather than inside a scheduled Claude session:
+ * neither the Cowork cloud sandbox nor the device sandbox has outbound network
+ * access to googleapis.com. Cloudflare does. So the data pull lives here, the
+ * result is persisted to D1, and the Friday Claude task reads it back over HTTP
+ * and writes the analysis.
+ *
+ * Endpoints (all require ?token=<REPORT_TOKEN>):
+ *   GET /discover          -> GA4 accounts + properties this service account can see
+ *   GET /run               -> pull now, persist, return JSON
+ *   GET /latest            -> most recent stored report (?format=md|json, default md)
+ *   GET /health            -> config sanity check, no Google call
+ *
+ * Cron: pulls and persists on schedule (see wrangler.toml).
+ */
+
+const GA_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
+const DATA_API = 'https://analyticsdata.googleapis.com/v1beta';
+const ADMIN_API = 'https://analyticsadmin.googleapis.com/v1beta';
+
+/* ------------------------------------------------------------------ auth */
+
+function b64url(buf) {
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64urlStr(s) {
+  return b64url(new TextEncoder().encode(s));
+}
+
+function pemToPkcs8(pem) {
+  const body = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\s+/g, '');
+  const bin = atob(body);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+async function getAccessToken(sa) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const claim = {
+    iss: sa.client_email,
+    scope: GA_SCOPE,
+    aud: sa.token_uri,
+    exp: now + 3600,
+    iat: now,
+  };
+  const unsigned = `${b64urlStr(JSON.stringify(header))}.${b64urlStr(JSON.stringify(claim))}`;
+
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    pemToPkcs8(sa.private_key),
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    new TextEncoder().encode(unsigned),
+  );
+
+  const res = await fetch(sa.token_uri, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: `${unsigned}.${b64url(sig)}`,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`token exchange failed (${res.status}): ${await res.text()}`);
+  }
+  return (await res.json()).access_token;
+}
+
+function loadServiceAccount(env) {
+  if (!env.GA_SA_KEY) throw new Error('GA_SA_KEY secret is not set');
+  let sa;
+  try {
+    sa = JSON.parse(env.GA_SA_KEY);
+  } catch {
+    throw new Error('GA_SA_KEY is not valid JSON — paste the whole key file');
+  }
+  if (!sa.private_key || !sa.client_email) {
+    throw new Error('GA_SA_KEY is missing private_key or client_email');
+  }
+  return sa;
+}
+
+/* ------------------------------------------------------------- ga4 calls */
+
+async function runReport(token, propertyId, body) {
+  const res = await fetch(`${DATA_API}/properties/${propertyId}:runReport`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    const err = new Error(`runReport ${res.status}: ${text}`);
+    err.status = res.status;
+    err.body = text;
+    throw err;
+  }
+  return res.json();
+}
+
+/**
+ * GA4 renamed `conversions` to `keyEvents`. Older properties still expect the
+ * old name. Try the modern one, fall back once on a 400 that names the metric.
+ */
+async function runReportCompat(token, propertyId, body) {
+  try {
+    return await runReport(token, propertyId, body);
+  } catch (e) {
+    const usesKeyEvents = JSON.stringify(body).includes('keyEvents');
+    if (e.status === 400 && usesKeyEvents) {
+      const swapped = JSON.parse(
+        JSON.stringify(body).replace(/"keyEvents"/g, '"conversions"'),
+      );
+      return runReport(token, propertyId, swapped);
+    }
+    throw e;
+  }
+}
+
+const num = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+function rowsToObjects(report, dimNames, metNames) {
+  return (report.rows || []).map((row) => {
+    const out = {};
+    dimNames.forEach((d, i) => {
+      out[d] = row.dimensionValues?.[i]?.value ?? '';
+    });
+    metNames.forEach((m, i) => {
+      out[m] = num(row.metricValues?.[i]?.value);
+    });
+    return out;
+  });
+}
+
+/**
+ * GA4 only populates `totals` when the request asks for metricAggregations.
+ * A dimensionless request instead returns the aggregate as a single row, so
+ * fall back to rows[0] — otherwise every total silently reads as zero.
+ */
+function totalsFrom(report, metNames) {
+  const out = {};
+  const vals =
+    report.totals?.[0]?.metricValues || report.rows?.[0]?.metricValues || [];
+  metNames.forEach((m, i) => {
+    out[m] = num(vals[i]?.value);
+  });
+  return out;
+}
+
+/* ------------------------------------------------------------ date logic */
+
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Two comparable 7-day windows, both ending on a complete day.
+ * current = the 7 days ending yesterday; prior = the 7 days before that.
+ * GA4 data for "today" is always partial, so today is never included.
+ */
+function periods(nowMs) {
+  const day = 86400000;
+  const end = new Date(nowMs - day);
+  const start = new Date(end.getTime() - 6 * day);
+  const priorEnd = new Date(start.getTime() - day);
+  const priorStart = new Date(priorEnd.getTime() - 6 * day);
+  return {
+    current: { start: isoDate(start), end: isoDate(end) },
+    prior: { start: isoDate(priorStart), end: isoDate(priorEnd) },
+  };
+}
+
+/* --------------------------------------------------------------- gather */
+
+const CORE_METRICS = [
+  'sessions',
+  'totalUsers',
+  'newUsers',
+  'screenPageViews',
+  'engagementRate',
+  'averageSessionDuration',
+  'keyEvents',
+];
+
+async function gather(env, token, propertyId, nowMs) {
+  const p = periods(nowMs);
+  const range = (r) => [{ startDate: r.start, endDate: r.end }];
+  const met = (names) => names.map((name) => ({ name }));
+  const dim = (names) => names.map((name) => ({ name }));
+
+  // Bind the compat helper to this token without threading it everywhere.
+  const call = (body) => runReportCompat(token, propertyId, body);
+  const coreTotals = async (r) =>
+    totalsFrom(
+      await call({ dateRanges: range(r), metrics: met(CORE_METRICS) }),
+      CORE_METRICS,
+    );
+
+  const [
+    curTotals,
+    priTotals,
+    dailyRep,
+    chanCur,
+    chanPri,
+    srcRep,
+    pageRep,
+    landRep,
+    countryRep,
+    eventRep,
+    deviceRep,
+  ] = await Promise.all([
+    coreTotals(p.current),
+    coreTotals(p.prior),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['date']),
+      metrics: met(['sessions', 'totalUsers', 'keyEvents']),
+      orderBys: [{ dimension: { dimensionName: 'date' } }],
+    }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['sessionDefaultChannelGroup']),
+      metrics: met(['sessions', 'totalUsers', 'engagementRate', 'keyEvents']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 12,
+    }),
+    call({
+      dateRanges: range(p.prior),
+      dimensions: dim(['sessionDefaultChannelGroup']),
+      metrics: met(['sessions']),
+      limit: 25,
+    }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['sessionSourceMedium']),
+      metrics: met(['sessions', 'engagementRate']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 15,
+    }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['pagePath']),
+      metrics: met(['screenPageViews', 'totalUsers', 'userEngagementDuration']),
+      orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+      limit: 25,
+    }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['landingPage']),
+      metrics: met(['sessions', 'bounceRate', 'keyEvents']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 15,
+    }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['country']),
+      metrics: met(['sessions', 'totalUsers']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 12,
+    }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['eventName']),
+      metrics: met(['eventCount', 'totalUsers']),
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: 25,
+    }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['deviceCategory']),
+      metrics: met(['sessions', 'engagementRate']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 5,
+    }),
+  ]);
+
+  const priorByChannel = Object.fromEntries(
+    rowsToObjects(chanPri, ['sessionDefaultChannelGroup'], ['sessions']).map(
+      (r) => [r.sessionDefaultChannelGroup, r.sessions],
+    ),
+  );
+
+  const channels = rowsToObjects(
+    chanCur,
+    ['sessionDefaultChannelGroup'],
+    ['sessions', 'totalUsers', 'engagementRate', 'keyEvents'],
+  ).map((r) => ({
+    channel: r.sessionDefaultChannelGroup,
+    sessions: r.sessions,
+    users: r.totalUsers,
+    engagementRate: r.engagementRate,
+    keyEvents: r.keyEvents,
+    priorSessions: priorByChannel[r.sessionDefaultChannelGroup] ?? 0,
+  }));
+
+  const pages = rowsToObjects(
+    pageRep,
+    ['pagePath'],
+    ['screenPageViews', 'totalUsers', 'userEngagementDuration'],
+  ).map((r) => ({
+    path: r.pagePath,
+    views: r.screenPageViews,
+    users: r.totalUsers,
+    avgEngagementSeconds:
+      r.totalUsers > 0 ? r.userEngagementDuration / r.totalUsers : 0,
+  }));
+
+  return {
+    generatedAt: new Date(nowMs).toISOString(),
+    propertyId,
+    period: p,
+    totals: { current: curTotals, prior: priTotals },
+    daily: rowsToObjects(dailyRep, ['date'], ['sessions', 'totalUsers', 'keyEvents']),
+    channels,
+    sources: rowsToObjects(
+      srcRep,
+      ['sessionSourceMedium'],
+      ['sessions', 'engagementRate'],
+    ),
+    pages,
+    landingPages: rowsToObjects(
+      landRep,
+      ['landingPage'],
+      ['sessions', 'bounceRate', 'keyEvents'],
+    ),
+    countries: rowsToObjects(countryRep, ['country'], ['sessions', 'totalUsers']),
+    events: rowsToObjects(eventRep, ['eventName'], ['eventCount', 'totalUsers']),
+    devices: rowsToObjects(deviceRep, ['deviceCategory'], ['sessions', 'engagementRate']),
+  };
+}
+
+/* -------------------------------------------------------------- storage */
+
+async function ensureTable(db) {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS analytics_weekly (
+         id INTEGER PRIMARY KEY AUTOINCREMENT,
+         generated_at TEXT NOT NULL,
+         period_start TEXT NOT NULL,
+         period_end   TEXT NOT NULL,
+         payload      TEXT NOT NULL
+       )`,
+    )
+    .run();
+  await db
+    .prepare(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_analytics_weekly_period
+         ON analytics_weekly(period_start, period_end)`,
+    )
+    .run();
+}
+
+async function persist(db, report) {
+  await ensureTable(db);
+  await db
+    .prepare(
+      `INSERT INTO analytics_weekly (generated_at, period_start, period_end, payload)
+       VALUES (?1, ?2, ?3, ?4)
+       ON CONFLICT(period_start, period_end)
+       DO UPDATE SET generated_at = excluded.generated_at, payload = excluded.payload`,
+    )
+    .bind(
+      report.generatedAt,
+      report.period.current.start,
+      report.period.current.end,
+      JSON.stringify(report),
+    )
+    .run();
+}
+
+async function loadLatest(db) {
+  await ensureTable(db);
+  const row = await db
+    .prepare(
+      `SELECT payload FROM analytics_weekly
+        ORDER BY period_end DESC, id DESC LIMIT 1`,
+    )
+    .first();
+  return row ? JSON.parse(row.payload) : null;
+}
+
+/* ------------------------------------------------------------- markdown */
+
+const fmt = (n, digits = 0) =>
+  Number(n).toLocaleString('en-US', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+
+function delta(cur, prior) {
+  if (!prior) return cur ? 'new' : '0%';
+  const pct = ((cur - prior) / prior) * 100;
+  const sign = pct >= 0 ? '+' : '';
+  return `${sign}${pct.toFixed(1)}%`;
+}
+
+function mdTable(headers, rows) {
+  const head = `| ${headers.join(' | ')} |`;
+  const sep = `| ${headers.map(() => '---').join(' | ')} |`;
+  const body = rows.map((r) => `| ${r.join(' | ')} |`).join('\n');
+  return [head, sep, body].join('\n');
+}
+
+/** GA4 returns the `date` dimension as YYYYMMDD; render it readably. */
+function gaDate(raw) {
+  const s = String(raw);
+  if (!/^\d{8}$/.test(s)) return s;
+  const iso = `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+  const weekday = new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', {
+    weekday: 'short',
+    timeZone: 'UTC',
+  });
+  return `${iso} (${weekday})`;
+}
+
+function duration(seconds) {
+  const s = Math.round(seconds);
+  return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+}
+
+/**
+ * Rendered server-side so the consuming Claude task receives exact numbers as
+ * text rather than re-deriving them from raw JSON.
+ */
+function toMarkdown(r) {
+  const c = r.totals.current;
+  const p = r.totals.prior;
+  const L = [];
+
+  L.push(`# GA4 weekly — mapasocietario.es`);
+  L.push('');
+  L.push(`Property: ${r.propertyId}`);
+  L.push(`Current window: ${r.period.current.start} to ${r.period.current.end}`);
+  L.push(`Prior window: ${r.period.prior.start} to ${r.period.prior.end}`);
+  L.push(`Generated: ${r.generatedAt}`);
+  L.push('');
+
+  L.push('## Totals vs prior week');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Metric', 'This week', 'Prior week', 'Change'],
+      [
+        ['Sessions', fmt(c.sessions), fmt(p.sessions), delta(c.sessions, p.sessions)],
+        ['Total users', fmt(c.totalUsers), fmt(p.totalUsers), delta(c.totalUsers, p.totalUsers)],
+        ['New users', fmt(c.newUsers), fmt(p.newUsers), delta(c.newUsers, p.newUsers)],
+        ['Page views', fmt(c.screenPageViews), fmt(p.screenPageViews), delta(c.screenPageViews, p.screenPageViews)],
+        ['Engagement rate', `${(c.engagementRate * 100).toFixed(1)}%`, `${(p.engagementRate * 100).toFixed(1)}%`, delta(c.engagementRate, p.engagementRate)],
+        ['Avg session', duration(c.averageSessionDuration), duration(p.averageSessionDuration), delta(c.averageSessionDuration, p.averageSessionDuration)],
+        ['Key events', fmt(c.keyEvents), fmt(p.keyEvents), delta(c.keyEvents, p.keyEvents)],
+      ],
+    ),
+  );
+  L.push('');
+
+  L.push('## Daily trend (current window)');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Date', 'Sessions', 'Users', 'Key events'],
+      r.daily.map((d) => [
+        gaDate(d.date),
+        fmt(d.sessions),
+        fmt(d.totalUsers),
+        fmt(d.keyEvents),
+      ]),
+    ),
+  );
+  L.push('');
+
+  L.push('## Acquisition channels');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Channel', 'Sessions', 'Prior', 'Change', 'Users', 'Engagement', 'Key events'],
+      r.channels.map((ch) => [
+        ch.channel,
+        fmt(ch.sessions),
+        fmt(ch.priorSessions),
+        delta(ch.sessions, ch.priorSessions),
+        fmt(ch.users),
+        `${(ch.engagementRate * 100).toFixed(1)}%`,
+        fmt(ch.keyEvents),
+      ]),
+    ),
+  );
+  L.push('');
+
+  L.push('## Top source / medium');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Source / medium', 'Sessions', 'Engagement'],
+      r.sources.map((s) => [
+        s.sessionSourceMedium,
+        fmt(s.sessions),
+        `${(s.engagementRate * 100).toFixed(1)}%`,
+      ]),
+    ),
+  );
+  L.push('');
+
+  L.push('## Top pages');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Path', 'Views', 'Users', 'Avg engagement'],
+      r.pages.map((pg) => [
+        pg.path,
+        fmt(pg.views),
+        fmt(pg.users),
+        duration(pg.avgEngagementSeconds),
+      ]),
+    ),
+  );
+  L.push('');
+
+  L.push('## Landing pages');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Landing page', 'Sessions', 'Bounce rate', 'Key events'],
+      r.landingPages.map((lp) => [
+        lp.landingPage,
+        fmt(lp.sessions),
+        `${(lp.bounceRate * 100).toFixed(1)}%`,
+        fmt(lp.keyEvents),
+      ]),
+    ),
+  );
+  L.push('');
+
+  L.push('## Events');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Event', 'Count', 'Users'],
+      r.events.map((e) => [e.eventName, fmt(e.eventCount), fmt(e.totalUsers)]),
+    ),
+  );
+  L.push('');
+
+  L.push('## Geography');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Country', 'Sessions', 'Users'],
+      r.countries.map((x) => [x.country, fmt(x.sessions), fmt(x.totalUsers)]),
+    ),
+  );
+  L.push('');
+
+  L.push('## Devices');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Device', 'Sessions', 'Engagement'],
+      r.devices.map((d) => [
+        d.deviceCategory,
+        fmt(d.sessions),
+        `${(d.engagementRate * 100).toFixed(1)}%`,
+      ]),
+    ),
+  );
+  L.push('');
+
+  return L.join('\n');
+}
+
+/* ---------------------------------------------------------------- http */
+
+function authorized(request, env) {
+  if (!env.REPORT_TOKEN) return false;
+  const supplied = new URL(request.url).searchParams.get('token') || '';
+  // Length-independent comparison; tokens are not secrets we can time-safe
+  // compare cheaply in Workers, but this avoids trivial early-exit leaks.
+  if (supplied.length !== env.REPORT_TOKEN.length) return false;
+  let diff = 0;
+  for (let i = 0; i < supplied.length; i++) {
+    diff |= supplied.charCodeAt(i) ^ env.REPORT_TOKEN.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+const json = (obj, status = 200) =>
+  new Response(JSON.stringify(obj, null, 2), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8' },
+  });
+
+const text = (body, status = 200) =>
+  new Response(body, {
+    status,
+    headers: { 'content-type': 'text/plain; charset=utf-8' },
+  });
+
+async function handleDiscover(env) {
+  const sa = loadServiceAccount(env);
+  const token = await getAccessToken(sa);
+  const res = await fetch(`${ADMIN_API}/accountSummaries`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  if (!res.ok) return json({ ok: false, status: res.status, body }, 502);
+
+  const summaries = (body.accountSummaries || []).flatMap((a) =>
+    (a.propertySummaries || []).map((ps) => ({
+      account: a.displayName,
+      property: ps.displayName,
+      // "properties/123456789" -> the numeric id the Data API wants
+      propertyId: (ps.property || '').split('/')[1] || null,
+    })),
+  );
+
+  return json({
+    ok: true,
+    serviceAccount: sa.client_email,
+    found: summaries.length,
+    properties: summaries,
+    hint:
+      summaries.length === 0
+        ? 'No properties visible. Add this service account email as a Viewer on the GA4 property (Admin > Property access management).'
+        : 'Set GA_PROPERTY_ID in wrangler.toml to the propertyId you want.',
+  });
+}
+
+async function doRun(env, nowMs) {
+  const sa = loadServiceAccount(env);
+  if (!env.GA_PROPERTY_ID) {
+    throw new Error('GA_PROPERTY_ID is not set — call /discover first');
+  }
+  const token = await getAccessToken(sa);
+  const report = await gather(env, token, env.GA_PROPERTY_ID, nowMs);
+  if (env.ANALYTICS_DB) await persist(env.ANALYTICS_DB, report);
+  return report;
+}
+
+// Named exports exist for offline unit tests; the Worker runtime only uses the
+// default export below.
+export { toMarkdown, periods, delta, duration };
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/\/+$/, '') || '/';
+
+    if (path === '/health') {
+      if (!authorized(request, env)) return text('unauthorized', 401);
+      let saOk = false;
+      let saEmail = null;
+      try {
+        const sa = loadServiceAccount(env);
+        saOk = true;
+        saEmail = sa.client_email;
+      } catch {
+        /* reported below */
+      }
+      return json({
+        ok: saOk && Boolean(env.GA_PROPERTY_ID),
+        serviceAccountLoaded: saOk,
+        serviceAccountEmail: saEmail,
+        propertyIdSet: Boolean(env.GA_PROPERTY_ID),
+        propertyId: env.GA_PROPERTY_ID || null,
+        d1Bound: Boolean(env.ANALYTICS_DB),
+      });
+    }
+
+    if (!authorized(request, env)) return text('unauthorized', 401);
+
+    try {
+      if (path === '/discover') return await handleDiscover(env);
+
+      if (path === '/run') {
+        const report = await doRun(env, Date.now());
+        return url.searchParams.get('format') === 'json'
+          ? json(report)
+          : text(toMarkdown(report));
+      }
+
+      if (path === '/latest') {
+        if (!env.ANALYTICS_DB) return text('D1 not bound', 500);
+        const report = await loadLatest(env.ANALYTICS_DB);
+        if (!report) return text('no report stored yet — call /run first', 404);
+        return url.searchParams.get('format') === 'json'
+          ? json(report)
+          : text(toMarkdown(report));
+      }
+
+      return text('not found', 404);
+    } catch (e) {
+      return json({ ok: false, error: String(e.message || e) }, 500);
+    }
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      doRun(env, event.scheduledTime).catch((e) => {
+        console.error('scheduled GA4 pull failed:', e.message || e);
+        throw e;
+      }),
+    );
+  },
+};

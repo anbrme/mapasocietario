@@ -1,0 +1,25 @@
+name = "mapasocietario-analytics"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+# Friday 14:30 UTC. That is 16:30 Madrid in summer (CEST) and 15:30 in winter
+# (CET) — cron is always UTC, it does not follow DST. The pull deliberately
+# runs ~30 min before the Claude task reads it.
+[triggers]
+crons = ["30 14 * * 5"]
+
+# Reuses the existing mapasocietario D1 instance; the worker creates and owns
+# its own `analytics_weekly` table and touches nothing else in there.
+[[d1_databases]]
+binding = "ANALYTICS_DB"
+database_name = "mapasocietario-seo"
+database_id = "2e471c22-6478-4d55-b3c6-9d0fc279e6ba"
+
+[vars]
+# Fill this in after running /discover. Numeric GA4 property id, NOT the
+# G-XXXXXXXX measurement id.
+GA_PROPERTY_ID = "530829482"
+
+# Secrets (set via `wrangler secret put`, never in this file):
+#   GA_SA_KEY     - the full service account JSON, pasted as one blob
+#   REPORT_TOKEN  - random string; required as ?token= on every endpoint
