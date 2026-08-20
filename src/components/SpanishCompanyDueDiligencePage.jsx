@@ -90,7 +90,7 @@ export default function SpanishCompanyDueDiligencePage() {
             ))}
           </Box>
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 4 }}>
-            <Button variant="contained" startIcon={<SearchIcon />} onClick={() => navigate('/app')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
+            <Button variant="contained" startIcon={<SearchIcon />} onClick={() => navigate('/app/')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
               Open the relationship graph
             </Button>
             <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate('/due-diligence')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, color: 'warning.light', borderColor: 'rgba(255,167,38,0.45)' }}>
@@ -174,7 +174,7 @@ export default function SpanishCompanyDueDiligencePage() {
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', pb: 2 }}>
-            <Button variant="contained" startIcon={<VerifiedIcon />} onClick={() => navigate('/app')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
+            <Button variant="contained" startIcon={<VerifiedIcon />} onClick={() => navigate('/app/')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
               Start with the free relationship graph
             </Button>
           </Box>

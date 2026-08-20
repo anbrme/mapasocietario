@@ -168,7 +168,7 @@ if (ddSessionId && /^cs_(test|live|free)_[A-Za-z0-9_]{10,}$/.test(ddSessionId)) 
 // page. Rewrite (not redirect) only at launch so in-app navigation to "/"
 // (graph breadcrumb) still reaches the landing page with the other options.
 if (isNativeApp() && window.location.pathname === '/') {
-  window.history.replaceState(null, '', '/app');
+  window.history.replaceState(null, '', '/app/');
 }
 
 // A lazily-imported route chunk (DueDiligence, Pricing, OrderStatus, …) can

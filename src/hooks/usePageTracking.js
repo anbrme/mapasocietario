@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { analyticsPagePath } from '../utils/analyticsPath';
 
 export default function usePageTracking() {
   const location = useLocation();
@@ -7,9 +8,9 @@ export default function usePageTracking() {
   useEffect(() => {
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'page_view', {
-        page_path: location.pathname + location.search,
+        page_path: analyticsPagePath(location.pathname, location.search),
         page_title: document.title,
       });
     }
-  }, [location]);
+  }, [location.pathname, location.search]);
 }

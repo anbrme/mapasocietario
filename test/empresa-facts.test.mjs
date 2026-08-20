@@ -82,6 +82,8 @@ test('standalone company pages report their own GA4 page view', () => {
 
   assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-HHWT6ZTKZD/);
   assert.match(html, /gtag\('event','page_view'/);
+  assert.match(html, /document\.querySelector\('link\[rel="canonical"\]'\)/);
+  assert.doesNotMatch(html, /page_path:location\.pathname\+location\.search/);
 });
 
 test('publication history is grouped by year, batched, and charted by change type', () => {

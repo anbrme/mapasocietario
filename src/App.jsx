@@ -197,7 +197,7 @@ export default function App() {
       <Helmet>
         <title>{copy.title}</title>
         <meta name="description" content={copy.description} />
-        <link rel="canonical" href="https://mapasocietario.es/app" />
+        <link rel="canonical" href="https://mapasocietario.es/app/" />
       </Helmet>
 
       {/* Slim home breadcrumb. Gives a way back to the homepage (the back gesture

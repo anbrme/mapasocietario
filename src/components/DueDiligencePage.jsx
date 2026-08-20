@@ -245,7 +245,7 @@ export default function DueDiligencePage() {
   const t = COPY[lang] || COPY.en;
   const nav = siteNav(lang);
   const canonical = lang === 'es' ? `${SITE_URL}/due-diligence?lang=es` : `${SITE_URL}/due-diligence`;
-  const appHref = lang === 'es' ? '/app?lang=es' : '/app';
+  const appHref = lang === 'es' ? '/app/?lang=es' : '/app/';
 
   // When arriving from the hero search box or an /empresa SEO page, the target
   // company is passed as ?company=. We show a company-scoped buy banner and let

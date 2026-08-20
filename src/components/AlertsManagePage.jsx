@@ -286,7 +286,7 @@ export default function AlertsManagePage({ lang = 'en' }) {
     setStoppedOne(true);
   }, []);
 
-  const appHref = lang === 'es' ? '/app?lang=es' : '/app';
+  const appHref = lang === 'es' ? '/app/?lang=es' : '/app/';
   const activeCount = alerts.filter((a) => a.active).length;
 
   return (

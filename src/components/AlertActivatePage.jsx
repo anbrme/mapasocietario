@@ -74,7 +74,7 @@ export default function AlertActivatePage({ lang = 'en' }) {
     return () => { cancelled = true; };
   }, [token, lang]);
 
-  const appHref = lang === 'es' ? '/app?lang=es' : '/app';
+  const appHref = lang === 'es' ? '/app/?lang=es' : '/app/';
 
   return (
     <>

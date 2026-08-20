@@ -250,7 +250,7 @@ export default function SpanishSeoPage({ pageKey: explicitPageKey }) {
           ))}
         </Box>
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-          <Button variant="contained" startIcon={<SearchIcon />} onClick={() => navigate('/app?lang=es')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
+          <Button variant="contained" startIcon={<SearchIcon />} onClick={() => navigate('/app/?lang=es')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
             Buscar en el grafo
           </Button>
           <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate('/due-diligence?lang=es')} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, color: 'warning.light', borderColor: 'rgba(255,167,38,0.45)' }}>

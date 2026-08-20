@@ -300,7 +300,9 @@ ${STYLE}
   function gtag(){dataLayer.push(arguments)}
   gtag('js',new Date());
   gtag('config','G-HHWT6ZTKZD',{send_page_view:false});
-  gtag('event','page_view',{page_path:location.pathname+location.search,page_title:document.title});
+  var canonical=document.querySelector('link[rel="canonical"]');
+  var pagePath=canonical?new URL(canonical.href,location.origin).pathname:(location.pathname.replace(/\/+$/,'')||'/');
+  gtag('event','page_view',{page_path:pagePath+location.search,page_title:document.title});
 </script>
 </head>
 <body>

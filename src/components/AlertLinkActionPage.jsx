@@ -97,7 +97,7 @@ export default function AlertLinkActionPage({ action = 'unsubscribe', lang = 'en
     return () => { cancelled = true; };
   }, [token, action]);
 
-  const appHref = lang === 'es' ? '/app?lang=es' : '/app';
+  const appHref = lang === 'es' ? '/app/?lang=es' : '/app/';
   // No token: the manage page will offer to mail a fresh one. The unsubscribe
   // token in this URL is bound to a single alert and is not a view token.
   const manageHref = lang === 'es' ? '/es/alerts/view' : '/alerts/view';

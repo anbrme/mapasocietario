@@ -125,7 +125,7 @@ export default function PricingPage() {
   const nav = siteNav(lang);
   const canonical = lang === 'es' ? `${SITE_URL}/pricing?lang=es` : `${SITE_URL}/pricing`;
   // Keep the current language when entering the graph.
-  const appHref = lang === 'es' ? '/app?lang=es' : '/app';
+  const appHref = lang === 'es' ? '/app/?lang=es' : '/app/';
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#0a0e1a', px: { xs: 2.25, sm: 4 }, py: { xs: 4, sm: 6 } }}>

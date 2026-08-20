@@ -257,7 +257,7 @@ export default function ConnectClaudePage({ lang = 'en' }) {
           </Box>
 
           {/* Back to app */}
-          <Link href={lang === 'es' ? '/app?lang=es' : '/app'} sx={{ display: 'inline-flex', alignItems: 'center', color: 'primary.light', fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+          <Link href={lang === 'es' ? '/app/?lang=es' : '/app/'} sx={{ display: 'inline-flex', alignItems: 'center', color: 'primary.light', fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
             {copy.tryFree}
           </Link>
         </Box>
