@@ -10,11 +10,14 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import HubIcon from '@mui/icons-material/Hub';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import StickyNote2Icon from '@mui/icons-material/StickyNote2';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
@@ -56,8 +59,16 @@ const fmtMillions = (n) => `${(Math.floor(n / 1e5) / 10).toFixed(1)}M`;
 // public/graph-demo.png so the click-through lands on the same graph.
 const DEMO_COMPANY = 'ACERINOX SA';
 
-const STEP_ICONS = [<SearchIcon />, <TouchAppIcon />, <PreviewIcon />];
+const STEP_ICONS = [<SearchIcon />, <TouchAppIcon />, <PreviewIcon />, <NotificationsActiveIcon />];
 const PROFESSIONAL_ICONS = [<FactCheckIcon />, <ManageSearchIcon />, <AccountBalanceIcon />];
+
+const navLinkSx = (link) => ({
+  color: link.highlight ? 'warning.light' : 'text.secondary',
+  fontWeight: 600,
+  fontSize: { xs: '0.88rem', sm: '1rem' },
+  textDecoration: 'none',
+  '&:hover': { color: 'primary.light', textDecoration: 'underline' },
+});
 
 const Section = ({ children, sx = {}, ...props }) => (
   <Box
@@ -82,6 +93,24 @@ const SectionHeading = ({ heading, sub }) => (
   </Box>
 );
 
+// Web body copy sits at 16px+; the workspace defaults (14px body2, 12px
+// caption) are too tight for a page people read rather than operate.
+const LANDING_TYPOGRAPHY = {
+  body1: { fontSize: '1.0625rem' },
+  body2: { fontSize: '1rem' },
+  caption: { fontSize: '0.875rem' },
+  h5: { fontSize: '1.75rem' },
+  h6: { fontSize: '1.3rem' },
+};
+
+function useLandingTheme() {
+  const outerTheme = useTheme();
+  return React.useMemo(
+    () => createTheme(outerTheme, { typography: LANDING_TYPOGRAPHY }),
+    [outerTheme],
+  );
+}
+
 // The homepage is a first-run how-to guide. It teaches search → graph →
 // reports and nudges the visitor to bookmark the real workspace at /app.
 const GUIDE_SEEN_KEY = 'ms_seen_guide';
@@ -103,6 +132,12 @@ export default function LandingPage({ lang = 'en' }) {
   const copy = LANDING_COPY[lang];
   const offer = FREE_FIRST_REPORT_COPY[lang] || FREE_FIRST_REPORT_COPY.en;
   const navigate = useNavigate();
+  const landingTheme = useLandingTheme();
+
+  // The language switcher renders outside the wrapping link group, so split it
+  // out rather than positioning it with ml:auto inside the flow.
+  const languageLink = copy.topLinks.find((link) => link.alignRight);
+  const mainLinks = copy.topLinks.filter((link) => !link.alignRight);
 
   // Returning visitors skip the first-run guide and land straight in /app.
   // First-timers (and crawlers, which have no localStorage) see the guide, so
@@ -154,7 +189,7 @@ export default function LandingPage({ lang = 'en' }) {
   if (redirecting) return null;
 
   return (
-    <>
+    <ThemeProvider theme={landingTheme}>
       <Helmet htmlAttributes={{ lang }}>
         <title>{copy.meta.title}</title>
         <meta name="description" content={copy.meta.description} />
@@ -174,32 +209,42 @@ export default function LandingPage({ lang = 'en' }) {
       </Helmet>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', bgcolor: '#0a0e1a' }}>
-        {/* ---- HEADER NAV ---- */}
+        {/* ---- HEADER NAV ----
+             The language switcher lives in its own column rather than in the
+             wrapping flow: with ml:auto it was the item that wrapped, stranding
+             it alone on a second row whenever the link set was wide (as in EN). */}
         <Box
           component="nav"
           aria-label="Site"
           sx={{
             width: '100%', maxWidth: 1200, mx: 'auto', px: { xs: 2.5, sm: 4 }, pt: { xs: 2, sm: 3 },
-            display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' },
-            flexWrap: 'wrap', gap: { xs: 1.5, sm: 3 },
+            display: 'flex', alignItems: 'flex-start', flexWrap: 'nowrap',
+            justifyContent: { xs: 'center', sm: 'space-between' }, gap: { xs: 1.5, sm: 3 },
           }}
         >
-          {copy.topLinks.map((link) => (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, gap: { xs: 1.5, sm: 2.5 } }}>
+            {mainLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                target={link.external ? '_blank' : undefined}
+                rel={link.external ? 'noopener' : undefined}
+                sx={navLinkSx(link)}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </Box>
+          {languageLink && (
             <Link
-              key={link.href}
-              href={link.href}
-              target={link.external ? '_blank' : undefined}
-              rel={link.external ? 'noopener' : undefined}
-              sx={{
-                color: link.href === '/spanish-company-due-diligence' ? 'warning.light' : 'text.secondary',
-                fontWeight: 600, fontSize: { xs: '0.82rem', sm: '0.95rem' }, textDecoration: 'none',
-                ...(link.alignRight && { ml: { sm: 'auto' } }),
-                '&:hover': { color: 'primary.light', textDecoration: 'underline' },
-              }}
+              href={languageLink.href}
+              target={languageLink.external ? '_blank' : undefined}
+              rel={languageLink.external ? 'noopener' : undefined}
+              sx={{ ...navLinkSx(languageLink), flexShrink: 0, whiteSpace: 'nowrap' }}
             >
-              {link.label}
+              {languageLink.label}
             </Link>
-          ))}
+          )}
         </Box>
 
         {/* ---- HERO ---- */}
@@ -208,19 +253,19 @@ export default function LandingPage({ lang = 'en' }) {
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1.15fr' }, gap: { xs: 4, md: 5 }, alignItems: 'center' }}>
             {/* Left: headline + CTA */}
             <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
-              <Typography variant="overline" sx={{ display: 'block', color: 'primary.light', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.68rem', mb: 1 }}>
+              <Typography variant="overline" sx={{ display: 'block', color: 'primary.light', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.72rem', mb: 1 }}>
                 {copy.hero.eyebrow}
               </Typography>
               <Typography 
                 variant="h3"
                 component="h1"
-                sx={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.12, mb: 2, fontSize: { xs: '1.9rem', sm: '2.6rem', md: '2.9rem' } }}
+                sx={{ fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.12, mb: 2, fontSize: { xs: '2rem', sm: '2.7rem', md: '3rem' } }}
               >
                 {copy.hero.h1}
               </Typography>
               <Typography
                 variant="body1"
-                sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: { xs: '0.95rem', sm: '1.1rem' }, mb: 1.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
+                sx={{ color: 'text.secondary', lineHeight: 1.6, fontSize: { xs: '1.05rem', sm: '1.2rem' }, mb: 1.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
               >
                 {copy.hero.subtitle}
               </Typography>
@@ -229,7 +274,7 @@ export default function LandingPage({ lang = 'en' }) {
                   step-by-step "How it works" text it currently lifts. */}
               <Typography
                 variant="body2"
-                sx={{ color: 'text.disabled', lineHeight: 1.55, fontSize: { xs: '0.85rem', sm: '0.9rem' }, mb: 3.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
+                sx={{ color: 'text.disabled', lineHeight: 1.6, fontSize: { xs: '0.95rem', sm: '1rem' }, mb: 3.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
               >
                 {copy.hero.intro}
               </Typography>
@@ -264,7 +309,7 @@ export default function LandingPage({ lang = 'en' }) {
                   component="button"
                   type="button"
                   onClick={() => openListedCompanies(lang)}
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.92rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '1rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                 >
                   <ApartmentIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.listed}
                 </Link>
@@ -273,7 +318,7 @@ export default function LandingPage({ lang = 'en' }) {
                   component="button"
                   type="button"
                   onClick={() => navigate(nav.dashboard)}
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.92rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '1rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                 >
                   <BarChartIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.dashboard}
                 </Link>
@@ -281,7 +326,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <Link
                   component="a"
                   href={lang === 'en' ? '/en/studies/ibex-35-interlocking-boards/' : '/estudios/consejos-cruzados-ibex-35/'}
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.92rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '1rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                 >
                   <HubIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.study}
                 </Link>
@@ -324,7 +369,7 @@ export default function LandingPage({ lang = 'en' }) {
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' }, gap: { xs: 2.5, sm: 2 } }}>
               {copy.stats.items.map((item) => (
                 <Box key={item.key} sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
-                  <Typography component="div" className="registry-ref" sx={{ fontWeight: 700, letterSpacing: '-0.01em', color: 'primary.light', fontSize: { xs: '1.85rem', sm: '2.25rem' }, lineHeight: 1.05 }}>
+                  <Typography component="div" className="registry-ref" sx={{ fontWeight: 700, letterSpacing: '-0.01em', color: 'primary.light', fontSize: { xs: '2rem', sm: '2.45rem' }, lineHeight: 1.05 }}>
                     {fmtMillions(stats[STAT_FIELD[item.key]] ?? STAT_FALLBACK[STAT_FIELD[item.key]])}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4, display: 'block', mt: 0.5 }}>
@@ -340,7 +385,9 @@ export default function LandingPage({ lang = 'en' }) {
           </Section>
         </Box>
 
-        {/* ---- PROFESSIONAL USE CASES ---- */}
+        {/* ---- WHO IT IS FOR + DATA QUALITY (one credibility band) ----
+             Left untinted on purpose: the stats band above and how-it-works
+             below are both tinted, so this keeps the bands alternating. */}
         <Section>
           <SectionHeading heading={copy.professional.heading} sub={copy.professional.sub} />
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
@@ -353,7 +400,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <Box sx={{ color: 'primary.light', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 25 } }}>
                   {PROFESSIONAL_ICONS[index]}
                 </Box>
-                <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 700, letterSpacing: '0.09em', fontSize: '0.62rem' }}>
+                <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 700, letterSpacing: '0.09em', fontSize: '0.68rem' }}>
                   {item.audience}
                 </Typography>
                 <Typography component="h3" variant="h6" sx={{ fontWeight: 700, mt: 0.25, mb: 1 }}>
@@ -373,51 +420,40 @@ export default function LandingPage({ lang = 'en' }) {
               </Paper>
             ))}
           </Box>
-        </Section>
 
-        {/* ---- DATA QUALITY ---- */}
-        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(20,184,166,0.035)' }}>
-          <Section>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '0.8fr 1.2fr' }, gap: { xs: 3, md: 6 }, alignItems: 'start' }}>
-              <Box>
-                <Typography variant="overline" sx={{ color: 'primary.light', fontWeight: 700, letterSpacing: '0.1em' }}>
-                  {copy.quality.eyebrow}
-                </Typography>
-                <Typography component="h2" variant="h5" sx={{ fontWeight: 700, mt: 0.5, mb: 1.25 }}>
-                  {copy.quality.heading}
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
-                  {copy.quality.sub}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                {copy.quality.items.map(item => (
-                  <Box key={item.title} sx={{ display: 'flex', gap: 1.25 }}>
-                    <CheckCircleOutlineIcon sx={{ color: 'primary.light', fontSize: 19, mt: 0.25, flexShrink: 0 }} />
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.35 }}>{item.title}</Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.55 }}>{item.desc}</Typography>
-                    </Box>
+          {/* Data quality reads as evidence for the cards above, so it stays
+              inside the same band instead of opening a second trust section. */}
+          <Box sx={{ mt: { xs: 4, sm: 5 }, pt: { xs: 3.5, sm: 4 }, borderTop: '1px solid rgba(255,255,255,0.09)' }}>
+            <Typography component="h3" variant="h6" sx={{ fontWeight: 700, letterSpacing: '-0.01em', mb: 3 }}>
+              {copy.quality.heading}
+            </Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: { xs: 2.5, md: 3 }, columnGap: { md: 6 } }}>
+              {copy.quality.items.map(item => (
+                <Box key={item.title} sx={{ display: 'flex', gap: 1.25 }}>
+                  <CheckCircleOutlineIcon sx={{ color: 'primary.light', fontSize: 19, mt: 0.25, flexShrink: 0 }} />
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>{item.title}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>{item.desc}</Typography>
                   </Box>
-                ))}
-              </Box>
+                </Box>
+              ))}
             </Box>
-          </Section>
-        </Box>
+          </Box>
+        </Section>
 
         {/* ---- HOW IT WORKS ---- */}
         <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(255,255,255,0.015)' }}>
           <Section>
             <SectionHeading heading={copy.howItWorks.heading} sub={copy.howItWorks.sub} />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
               {copy.howItWorks.steps.map((step, i) => (
                 <Box key={i} sx={{ p: 2.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.07)', bgcolor: 'rgba(255,255,255,0.02)' }}>
                   <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'rgba(20,184,166,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 19 } }}>
                     {STEP_ICONS[i]}
                   </Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>{step.title}</Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.55 }}>{step.desc}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.75 }}>{step.title}</Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>{step.desc}</Typography>
                 </Box>
               ))}
             </Box>
@@ -454,13 +490,13 @@ export default function LandingPage({ lang = 'en' }) {
                 </Box>
               </Box>
               <Box>
-                <Typography variant="overline" sx={{ color: 'primary.light', fontWeight: 700, letterSpacing: '0.1em', fontSize: '0.64rem' }}>
+                <Typography variant="overline" sx={{ color: 'primary.light', fontWeight: 700, letterSpacing: '0.1em', fontSize: '0.7rem' }}>
                   {copy.howItWorks.snapshot.eyebrow}
                 </Typography>
                 <Typography variant="body1" component="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
                   {copy.howItWorks.snapshot.title}
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.6, display: 'block', maxWidth: 720 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65, display: 'block', maxWidth: 720 }}>
                   {copy.howItWorks.snapshot.desc}
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 1.5 }}>
@@ -504,14 +540,14 @@ export default function LandingPage({ lang = 'en' }) {
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.dd.title}</Typography>
               </Box>
               <Chip label={copy.reports.dd.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(255,255,255,0.08)', color: 'text.primary', border: '1px solid rgba(255,255,255,0.15)', mb: 1.5 }} />
-              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.6, mb: 1.5 }}>
+              <Typography variant="body2" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.65, mb: 1.75 }}>
                 {copy.reports.dd.desc}
               </Typography>
               <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, mb: 2 }}>
                 {copy.reports.dd.bullets.map((b) => (
                   <Box component="li" key={b} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 0.75 }}>
                     <CheckCircleOutlineIcon sx={{ fontSize: 16, color: 'success.light', mt: '2px', flexShrink: 0 }} />
-                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>{b}</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.55 }}>{b}</Typography>
                   </Box>
                 ))}
               </Box>
@@ -565,7 +601,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.rel.title}</Typography>
               </Box>
               <Chip label={copy.reports.rel.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(255,255,255,0.08)', color: 'text.primary', border: '1px solid rgba(255,255,255,0.15)', mb: 1.5 }} />
-              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.6 }}>
+              <Typography variant="body2" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.65 }}>
                 {copy.reports.rel.desc}
               </Typography>
             </Paper>
@@ -578,6 +614,38 @@ export default function LandingPage({ lang = 'en' }) {
         {/* ---- FAQ ---- */}
         {/* Visible Q&A that backs the homepage FAQPage structured data (the schema
             text matches these answers), so it stays valid after React hydration. */}
+        {/* ---- WHAT THIS IS, AND WHAT IT ISN'T ----
+             The single home for every caveat. Disclosure used to be scattered
+             across the hero, the quality items, four FAQ answers and the
+             footer; stating it once, in full, is both honester and lighter. */}
+        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(255,255,255,0.015)' }}>
+          <Section>
+            <SectionHeading heading={copy.limits.heading} sub={copy.limits.sub} />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 3.5, md: 6 }, alignItems: 'start' }}>
+              {[
+                { title: copy.limits.isTitle, items: copy.limits.is, icon: 'yes' },
+                { title: copy.limits.isntTitle, items: copy.limits.isnt, icon: 'no' },
+              ].map(col => (
+                <Box key={col.title}>
+                  <Typography component="h3" variant="body1" sx={{ fontWeight: 700, mb: 1.75 }}>
+                    {col.title}
+                  </Typography>
+                  <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+                    {col.items.map(item => (
+                      <Box component="li" key={item} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, mb: 1.5 }}>
+                        {col.icon === 'yes'
+                          ? <CheckCircleOutlineIcon sx={{ color: 'primary.light', fontSize: 18, mt: '3px', flexShrink: 0 }} />
+                          : <RemoveCircleOutlineIcon sx={{ color: 'text.disabled', fontSize: 18, mt: '3px', flexShrink: 0 }} />}
+                        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>{item}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Section>
+        </Box>
+
         <Section>
           <SectionHeading heading={copy.faq.heading} />
           <Box sx={{ maxWidth: 820 }}>
@@ -594,7 +662,7 @@ export default function LandingPage({ lang = 'en' }) {
                 }}
               >
                 <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'text.secondary' }} />} sx={{ px: 0 }}>
-                  <Typography variant="body1" component="h3" sx={{ fontWeight: 600, fontSize: '1rem' }}>{item.q}</Typography>
+                  <Typography variant="body1" component="h3" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>{item.q}</Typography>
                 </AccordionSummary>
                 <AccordionDetails sx={{ px: 0, pt: 0 }}>
                   <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>{item.a}</Typography>
@@ -616,7 +684,7 @@ export default function LandingPage({ lang = 'en' }) {
             </Typography>
             <Chip
               label={copy.bookmark.url}
-              sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.85rem', bgcolor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', mb: 2.5 }}
+              sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.95rem', bgcolor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', mb: 2.5 }}
             />
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.25 }}>
               <Button
@@ -644,7 +712,7 @@ export default function LandingPage({ lang = 'en' }) {
                 key={item}
                 variant="caption"
                 sx={{
-                  color: 'text.secondary', fontWeight: 500, fontSize: '0.75rem', letterSpacing: '0.02em',
+                  color: 'text.secondary', fontWeight: 500, fontSize: '0.85rem', letterSpacing: '0.02em',
                   display: 'flex', alignItems: 'center', gap: 0.75,
                   '&::before': { content: '""', display: 'inline-block', width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', opacity: 0.5 },
                 }}
@@ -658,14 +726,14 @@ export default function LandingPage({ lang = 'en' }) {
 
         {/* ---- FOOTER ---- */}
         <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', py: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
-          <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem', lineHeight: 1.5 }}>
+          <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.78rem', lineHeight: 1.5 }}>
             &copy; {new Date().getFullYear()} Mapa Societario &middot; {copy.footer.productOf}{' '}
             <Link href="https://nurnbergconsulting.com" target="_blank" rel="noopener" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               Nurnberg Consulting SL
             </Link>
             {copy.footer.productOfSuffix}
           </Typography>
-          <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem', lineHeight: 1.5, maxWidth: 760, px: 2 }}>
+          <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.78rem', lineHeight: 1.5, maxWidth: 760, px: 2 }}>
             {copy.footer.basedOnPrefix}
             <Link href="https://www.boe.es" target="_blank" rel="noopener" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               Agencia Estatal Boletín Oficial del Estado
@@ -673,40 +741,40 @@ export default function LandingPage({ lang = 'en' }) {
             {copy.footer.basedOnSuffix}
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Link href={nav.reports} variant="caption" sx={{ fontSize: '0.65rem', color: 'warning.light', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.reports} variant="caption" sx={{ fontSize: '0.78rem', color: 'warning.light', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.ddReports}
             </Link>
-            <Link href={nav.dashboard} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.dashboard} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.dashboard}
             </Link>
-            <Link href={nav.about} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.about} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.about}
             </Link>
-            <Link href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href="https://github.com/anbrme/borme-public-api" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.apiDocs}
             </Link>
-            <Link href={nav.connectClaude} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.connectClaude} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.connectClaude}
             </Link>
-            <Link href={nav.glossary} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.glossary} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.glossary}
             </Link>
-            <Link href="https://ncdata.eu" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href="https://ncdata.eu" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.ncdata}
             </Link>
-            <Link href={nav.facebook} target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.facebook} target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.facebook}
             </Link>
-            <Link href={nav.privacy} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.privacy} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.privacy}
             </Link>
-            <Link href={nav.terms} variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.terms} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.terms}
             </Link>
           </Box>
         </Box>
       </Box>
       <FeedbackWidget lang={lang} />
-    </>
+    </ThemeProvider>
   );
 }

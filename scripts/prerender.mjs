@@ -48,7 +48,7 @@ const homepageFaqSchema = `    <script type="application/ld+json">
         {
           "@type": "Question",
           "name": "What is Mapa Societario?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications — covering 3.2 million companies and 9.5 million published records since 2009 — and generates optional due diligence reports from EUR 22.50. It is not a direct search of the live Registro Mercantil." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications — covering 3.2 million companies and 9.5 million published records since 2009 — and generates optional due diligence reports from EUR 22.50. Coverage is rebuilt from the official BORME every business day." }
         },
         {
           "@type": "Question",
@@ -63,7 +63,12 @@ const homepageFaqSchema = `    <script type="application/ld+json">
         {
           "@type": "Question",
           "name": "Is the data accurate and official?",
-          "acceptedAnswer": { "@type": "Answer", "text": "The data originates from official BORME publications and is extracted using automated parsers. The service is unofficial and provided as is; automated parsing can produce occasional errors. Always cross-reference the official BORME and, for critical decisions, obtain current information directly from the Registro Mercantil." }
+          "acceptedAnswer": { "@type": "Answer", "text": "The sources are official: the data comes from BORME publications, the authentic electronic edition of the commercial registry gazette since 2009. The service itself is independent — it is not the Registro Mercantil and is not endorsed by any government body. Notices are extracted with automated parsers, so occasional errors are possible; cross-reference the official BORME, and when you need a certified or current document request a nota simple or certificación from the Registro Mercantil." }
+        },
+        {
+          "@type": "Question",
+          "name": "How is this different from searching the Registro Mercantil?",
+          "acceptedAnswer": { "@type": "Answer", "text": "They answer different questions. The Registro Mercantil is authoritative for a company's current situation and issues certificates and nota simple documents, but it offers no public API and no open historical search: its online search is basic, fuller information requires registration and payment, and historical records must be requested from the relevant provincial registry, paid in advance, one filing per company, by email or in person, and typically delivered in two to five working days. Mapa Societario makes the published BORME history of 3.2 million companies searchable for free, with no account and no per-company request. Use it to explore and to understand relationships; use the Registro Mercantil when you need a certified or current document." }
         },
         {
           "@type": "Question",
@@ -100,7 +105,7 @@ const homepageFaqSchemaEs = `    <script type="application/ld+json">
         {
           "@type": "Question",
           "name": "¿Los datos son precisos y oficiales?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Los datos proceden de publicaciones oficiales del BORME y se extraen mediante analizadores automáticos. El servicio es no oficial y se ofrece tal cual; el análisis automático puede contener errores ocasionales. Contrasta siempre con el BORME oficial y, para decisiones importantes, obtén información actualizada directamente del Registro Mercantil." }
+          "acceptedAnswer": { "@type": "Answer", "text": "Las fuentes son oficiales: los datos proceden de publicaciones del BORME, edición electrónica auténtica del boletín de los Registros Mercantiles desde 2009. El servicio es independiente: no es el Registro Mercantil ni está avalado por ningún organismo público. Los anuncios se extraen mediante analizadores automáticos, por lo que puede haber errores ocasionales; contrasta con el BORME oficial y, cuando necesites un documento certificado o actualizado, solicita una nota simple o certificación al Registro Mercantil." }
         },
         {
           "@type": "Question",
@@ -193,7 +198,7 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa Societario &mdash; Spanish Company Search</h1>
-        <p>Search Spanish company and officer histories compiled from daily BORME (Boletín Oficial del Registro Mercantil) publications and see who is connected to whom. This is not a direct search of the live Registro Mercantil.</p>
+        <p>Search Spanish company and officer histories compiled from daily BORME (Boletín Oficial del Registro Mercantil) publications and see who is connected to whom. Rebuilt every business day, with continuous coverage since 2009.</p>
         ${disclaimerHtmlEn}
         <h2>Built for decisions where relationships matter</h2>
         <p>Start with public-source research, understand the network, and escalate to documented due diligence only when the decision requires it.</p>
@@ -248,13 +253,15 @@ const routes = [
         </ul>
         <h2>Frequently asked questions</h2>
         <h3>What is Mapa Societario?</h3>
-        <p>A relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications &mdash; 3.2 million companies and 9.5 million published records since 2009 &mdash; and generates optional due-diligence reports from &euro;22.50. It is not a direct search of the live Registro Mercantil.</p>
+        <p>A relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications &mdash; 3.2 million companies and 9.5 million published records since 2009 &mdash; and generates optional due-diligence reports from &euro;22.50. Coverage is rebuilt from the official BORME every business day.</p>
         <h3>Do I need an account?</h3>
         <p>No. Mapa Societario is completely free to use without registration or login. Due Diligence reports are an optional paid feature purchased per company. Only an email address is required to receive the report. The payment is processed securely through Stripe.</p>
         <h3>Can I search by officer name?</h3>
         <p>Yes. Toggle between company and officer search at the top of the search. Officer search finds a person and shows every company they are linked to across 6.3 million recorded officer changes.</p>
         <h3>Is the data official?</h3>
-        <p>The data originates from official BORME publications and is extracted with automated parsers. The service is unofficial and provided as is; always cross-reference the official BORME for critical decisions.</p>
+        <p>The sources are official: the data comes from BORME publications, the authentic electronic edition of the commercial registry gazette since 2009. The service itself is independent &mdash; not the Registro Mercantil, and not endorsed by any government body. Notices are extracted with automated parsers, so occasional errors are possible; cross-reference the official BORME for critical decisions.</p>
+        <h3>How is this different from searching the Registro Mercantil?</h3>
+        <p>They answer different questions. The Registro Mercantil is authoritative for a company&rsquo;s current situation and issues certificates and nota simple documents, but it offers no public API and no open historical search: its online search is basic, fuller information requires registration and payment, and historical records must be requested from the relevant provincial registry, paid in advance, one filing per company, by email or in person, and typically delivered in two to five working days. Mapa Societario makes the published BORME history of 3.2 million companies searchable for free, with no account and no per-company request. Use it to explore and to understand relationships; use the Registro Mercantil when you need a certified or current document.</p>
         <h3>Who built it?</h3>
         <p>Mapa Societario is built and operated by Nurnberg Consulting SL (NIF B86829538), a Madrid-based corporate intelligence consultancy active since 2013. It is independent and not endorsed by any government body. <a href="/faq">More questions &rarr;</a></p>
       </main>`,
@@ -268,7 +275,7 @@ const routes = [
     staticContent: `
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa Societario &mdash; Spanish Company Relationship Graph</h1>
-        <p>Search Spanish company and officer histories compiled from daily BORME publications and understand who is connected to whom. This is not a direct search of the live Registro Mercantil.</p>
+        <p>Search Spanish company and officer histories compiled from daily BORME publications and understand who is connected to whom. Rebuilt every business day, with continuous coverage since 2009.</p>
         ${disclaimerHtmlEn}
         <ul>
           <li>Search by company name (e.g. Inditex, Repsol)</li>
@@ -355,7 +362,7 @@ const routes = [
         ${disclaimerHtmlEn}
         <h2>What this search is—and is not</h2>
         <p>Mapa Societario searches a structured index of acts published in the daily BORME editions. Those publications report acts that Spain's provincial Commercial Registries have recorded, such as incorporations, appointments, resignations, capital changes and dissolutions.</p>
-        <p>This is not a direct search of the live Registro Mercantil, a company's registry sheet, or the Registro Mercantil Central. Mapa Societario does not issue certificates or current authoritative registry extracts. Use the relevant official registry when you need those documents.</p>
+        <p>The Registro Mercantil offers no public API and no open historical search: fuller information requires registration and payment, and historical records must be requested from the relevant provincial registry, paid in advance and typically delivered in two to five working days. Mapa Societario is not that registry &mdash; it issues no certificates or authoritative current extracts, and it does not read a company's registry sheet or the Registro Mercantil Central. Use the relevant official registry when you need those documents.</p>
         <h2>How Spanish company-register acts reach BORME</h2>
         <p>The Registro Mercantil records company acts. Notices of many of those acts are then published in the BORME (Boletín Oficial del Registro Mercantil), the official commercial-registry gazette distributed through Spain's BOE publication system.</p>
         <p>Mapa Societario structures those daily notices into searchable company histories and relationship graphs. Its coverage therefore reflects what was published in BORME; it is not a mirror of every field or document held by the Commercial Registry.</p>

@@ -110,7 +110,7 @@ const COPY = {
         title: 'What this search is—and is not',
         body: [
           'Mapa Societario searches a structured index of acts published in the daily BORME editions. Those publications report acts that Spain’s provincial Commercial Registries have recorded, such as incorporations, appointments, resignations, capital changes and dissolutions.',
-          'This is not a direct search of the live Registro Mercantil, a company’s registry sheet or the Registro Mercantil Central. Mapa Societario does not issue certificates or current authoritative registry extracts. Use the relevant official registry when you need those documents.',
+          'The Registro Mercantil offers no public API and no open historical search: its online search is basic, fuller information requires registration and payment, and historical records must be requested from the relevant provincial registry — paid in advance, one filing per company, and typically delivered in two to five working days. Mapa Societario is not that registry: it does not read a company’s registry sheet or the Registro Mercantil Central, and it issues no certificates or authoritative current extracts. Use the relevant official registry when you need those documents.',
         ],
       },
       {
@@ -151,7 +151,7 @@ const COPY = {
     ],
     limitsTitle: 'Practical limits',
     limits: [
-      'The underlying BORME notices are official publications. Mapa Societario searches and structures those notices; it does not search the live Registro Mercantil and does not issue certificates.',
+      'The underlying BORME notices are official publications. Mapa Societario searches and structures those notices; it is not the Registro Mercantil and issues no certificates.',
       'Automated parsing can occasionally miss or misclassify details. Verify important findings in official sources; BORME itself may also contain occasional errors or typographical mistakes.',
       'Public registry data does not replace legal, financial, tax or accounting advice.',
     ],

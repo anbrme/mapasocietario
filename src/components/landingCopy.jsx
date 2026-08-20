@@ -15,9 +15,7 @@ export const LANDING_COPY = {
       ogLocale: 'en_US',
     },
     topLinks: [
-      { label: 'Spanish company director search', href: '/company-director-search' },
-      { label: 'Spanish company register & BORME guide', href: '/spanish-company-register-search' },
-      { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence' },
+      { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence', highlight: true },
       { label: 'Pricing', href: '/pricing' },
       { label: 'About', href: '/about.html' },
       { label: 'Terms', href: '/terms.html' },
@@ -30,7 +28,7 @@ export const LANDING_COPY = {
       subtitle:
         'Search a company or officer and see who is connected to whom in an interactive BORME graph. Turn findings into due diligence reports when you need documentation.',
       intro:
-        'Mapa Societario is a free search and relationship graph built from daily BORME publications. It is not a direct search of the live Registro Mercantil and does not provide registry certificates.',
+        'Free to search, no account. Built from the BORME — the official gazette of Spain’s Commercial Registries — and rebuilt every business day, with continuous coverage since 2009.',
       openCta: 'Open the relationship graph',
       userGuidePdfCta: 'Download the 2-page guide (PDF)',
       bookmarkTip: 'Tip: bookmark the graph so you can jump straight into relationship analysis next time.',
@@ -68,9 +66,7 @@ export const LANDING_COPY = {
       ],
     },
     quality: {
-      eyebrow: 'Research-grade foundations',
       heading: 'Data quality you can understand, not a black box',
-      sub: 'Mapa Societario turns daily official publications into a connected history while keeping the source, the date and the limits visible. That makes the data useful for investigation without pretending it replaces certified registry information.',
       items: [
         {
           title: 'One corporate history',
@@ -112,7 +108,7 @@ export const LANDING_COPY = {
         },
         {
           title: '4 · Keep watching it',
-          desc: 'Right-click any Spanish company and choose “Monitor this company” to be emailed when BORME publishes a change to it — new officers, capital movements, insolvency filings, address or name changes. It is free, needs no account, and runs until you stop it: confirm your address once and that is the whole setup. “Your monitoring” in the menu lists everything you watch and turns any of it off.',
+          desc: 'Right-click a company and choose “Monitor this company” to be emailed whenever BORME publishes a change to it — officers, capital, insolvency, address or name. Free, no account, one confirmation.',
         },
       ],
       snapshot: {
@@ -174,12 +170,31 @@ export const LANDING_COPY = {
         { key: 'formations', label: 'Company formations' },
       ],
     },
+    limits: {
+      heading: 'What this is, and what it isn’t',
+      sub: 'Sources, strengths and limits in one place, so you know what still needs checking before you rely on it.',
+      isTitle: 'What you get',
+      is: [
+        'Built from the BORME — the official gazette of Spain’s Commercial Registries, authentic in its electronic edition since 2009.',
+        'Rebuilt every business day, keeping the whole published history since 2009, not just the current state.',
+        'Companies reconciled across name changes, mergers, spin-offs and registry transfers, with appointments and resignations dated.',
+        'Free to search, history included — no account and no per-company request.',
+      ],
+      isntTitle: 'What it doesn’t replace',
+      isnt: [
+        'It is not the Registro Mercantil: it issues no certificates or authoritative current extracts, and it is not endorsed by the AEBOE.',
+        'Notices are extracted by automated parsers, so occasional errors, omissions and delays are possible.',
+        'BORME publishes no identifier for officers, so people are matched by name and common names can produce false positives.',
+        'BORME publishes sole-shareholder declarations, not a full shareholder register.',
+        'For a certified or current document, request a nota simple or certificación from the relevant Registro Mercantil.',
+      ],
+    },
     faq: {
       heading: 'Frequently asked questions',
       items: [
         {
           q: 'What is Mapa Societario?',
-          a: 'Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications — covering 3.2 million companies and 9.5 million published records since 2009 — and generates optional due diligence reports from EUR 22.50.',
+          a: 'Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications — covering 3.2 million companies and 9.5 million published records since 2009 — and generates optional due diligence reports from EUR 22.50. Coverage is rebuilt from the official BORME every business day.',
         },
         {
           q: 'Do I need an account to use this?',
@@ -191,7 +206,11 @@ export const LANDING_COPY = {
         },
         {
           q: 'Is the data accurate and official?',
-          a: 'The data originates from official BORME publications and is extracted using automated parsers. The service is unofficial and provided as is; automated parsing can produce occasional errors. Always cross-reference the official BORME and, for critical decisions, obtain current information directly from the Registro Mercantil.',
+          a: 'The sources are official: the data comes from BORME publications, the authentic electronic edition of the commercial registry gazette since 2009. The service itself is independent — it is not the Registro Mercantil and is not endorsed by any government body. Notices are extracted with automated parsers, so occasional errors are possible; cross-reference the official BORME, and when you need a certified or current document request a nota simple or certificación from the Registro Mercantil.',
+        },
+        {
+          q: 'How is this different from searching the Registro Mercantil?',
+          a: 'They answer different questions. The Registro Mercantil is authoritative for a company’s current situation and issues certificates and nota simple documents, but it offers no public API and no open historical search: its online search is basic, fuller information requires registration and payment, and historical records must be requested from the relevant provincial registry — paid in advance, one filing per company, by email or in person, and typically delivered in two to five working days. Mapa Societario makes the published BORME history of 3.2 million companies searchable for free, with no account and no per-company request. Use it to explore and to understand relationships; use the Registro Mercantil when you need a certified or current document.',
         },
         {
           q: 'What if a company changes its name or merges with another? What if it has been dissolved or spun off?',
@@ -219,7 +238,7 @@ export const LANDING_COPY = {
         },
         {
           q: 'Can I use this data for commercial purposes?',
-          a: 'Yes, you can use the data for commercial purposes, but please note that the service is unofficial and not endorsed by any government body. Always verify critical information with official sources.',
+          a: 'Yes. Note that Mapa Societario is an independent service and is not endorsed by any government body, so verify critical information against the official BORME or the Registro Mercantil.',
         },
         {
           q: 'Is there an API available?',
@@ -231,7 +250,7 @@ export const LANDING_COPY = {
         },
       ],
     },
-    operatedBy: 'Operated by Nurnberg Consulting SL, Madrid, since 2013. Unofficial service built from public BOE/BORME publications; not a Registro Mercantil search.',
+    operatedBy: 'Operated by Nurnberg Consulting SL, Madrid, since 2013. Independent service built from public BOE/BORME publications.',
     proofItems: [
       'By Nurnberg Consulting SL (Madrid, since 2013)',
       'Based on official BORME publications',
@@ -242,7 +261,7 @@ export const LANDING_COPY = {
       productOf: 'A product of',
       productOfSuffix: ' (Madrid, Spain) · Powered by the NC Data platform · Data sourced from BORME (Boletín Oficial del Registro Mercantil)',
       basedOnPrefix: 'Based on data from the ',
-      basedOnSuffix: '. This service is unofficial and is not endorsed by the AEBOE.',
+      basedOnSuffix: '. This service is independent and is not endorsed by the AEBOE.',
       ddReports: 'Due Diligence Reports',
       dashboard: 'Dashboard',
       about: 'About',
@@ -268,7 +287,7 @@ export const LANDING_COPY = {
       ogLocale: 'es_ES',
     },
     topLinks: [
-      { label: 'Due diligence de empresas españolas', href: '/es/informes-due-diligence-empresas' },
+      { label: 'Due diligence de empresas españolas', href: '/es/informes-due-diligence-empresas', highlight: true },
       { label: 'Precios', href: '/pricing?lang=es' },
       { label: 'Acerca de', href: '/about-es.html' },
       { label: 'Términos', href: '/terms.html' },
@@ -281,7 +300,7 @@ export const LANDING_COPY = {
       subtitle:
         'Busca una empresa o administrador y entiende quién está conectado con quién en un grafo BORME interactivo. Convierte los hallazgos en informes due diligence cuando necesites documentación.',
       intro:
-        'Mapa Societario es un buscador gratuito de empresas españolas para investigar empresas, administradores, estructuras de propiedad, relaciones societarias, publicaciones del BORME y cambios históricos en la administración.',
+        'Búsqueda gratuita, sin cuenta. Construido a partir del BORME —el boletín oficial de los Registros Mercantiles— y reconstruido cada día hábil, con cobertura continua desde 2009.',
       openCta: 'Abrir el gráfico de relaciones',
       userGuidePdfCta: 'Descargar la guía de 2 páginas (PDF)',
       bookmarkTip: 'Consejo: guarda el gráfico en marcadores para entrar directamente al análisis de relaciones la próxima vez.',
@@ -319,9 +338,7 @@ export const LANDING_COPY = {
       ],
     },
     quality: {
-      eyebrow: 'Base sólida para investigar',
       heading: 'Calidad de datos comprensible, no una caja negra',
-      sub: 'Mapa Societario convierte publicaciones oficiales diarias en una historia conectada manteniendo visibles la fuente, la fecha y los límites. Así los datos sirven para investigar sin fingir que sustituyen a la información registral certificada.',
       items: [
         {
           title: 'Una sola historia societaria',
@@ -351,7 +368,7 @@ export const LANDING_COPY = {
       steps: [
         {
           title: '1 · Empieza con una empresa o administrador',
-          desc: 'Busca cualquier empresa o administrador español para explorar su propiedad, historial de administradores, relaciones societarias y publicaciones oficiales del BORME. Usa el conmutador para alternar entre búsqueda de empresas y de personas, y elige una sugerencia para abrirla en el grafo.',
+          desc: 'Busca cualquier empresa o administrador español para explorar su historial publicado y sus relaciones societarias a partir de los anuncios diarios del BORME. Elige una sugerencia de empresa o de persona para abrirla en el grafo.',
         },
         {
           title: '2 · Explora el grafo',
@@ -363,7 +380,7 @@ export const LANDING_COPY = {
         },
         {
           title: '4 · Mantenla vigilada',
-          desc: 'Haz clic derecho en cualquier empresa española y elige «Monitorizar esta empresa» para recibir un correo cuando el BORME publique un cambio: nuevos administradores, movimientos de capital, concurso de acreedores, cambios de domicilio o de denominación. Es gratis, no requiere cuenta y sigue activa hasta que la detengas: confirmas tu dirección una vez y eso es toda la configuración. «Tu monitorización», en el menú, lista todo lo que vigilas y permite desactivar lo que quieras.',
+          desc: 'Haz clic derecho en una empresa y elige «Monitorizar esta empresa» para recibir un correo cuando el BORME publique un cambio: administradores, capital, concurso, domicilio o denominación. Gratis, sin cuenta, una sola confirmación.',
         },
       ],
       snapshot: {
@@ -425,6 +442,25 @@ export const LANDING_COPY = {
         { key: 'formations', label: 'Constituciones de empresas' },
       ],
     },
+    limits: {
+      heading: 'Qué es esto y qué no es',
+      sub: 'Fuentes, fortalezas y límites en un solo sitio, para que sepas qué conviene verificar antes de apoyarte en el dato.',
+      isTitle: 'Lo que obtienes',
+      is: [
+        'Construido a partir del BORME, el boletín oficial de los Registros Mercantiles, auténtico en su edición electrónica desde 2009.',
+        'Se reconstruye cada día hábil y conserva todo el historial publicado desde 2009, no solo el estado actual.',
+        'Las empresas se reconcilian entre cambios de denominación, fusiones, escisiones y traslados registrales, con nombramientos y ceses fechados.',
+        'Búsqueda gratuita, con historial incluido: sin cuenta y sin solicitud por empresa.',
+      ],
+      isntTitle: 'Lo que no sustituye',
+      isnt: [
+        'No es el Registro Mercantil: no emite certificaciones ni extractos actuales con valor oficial, y no está avalado por la AEBOE.',
+        'Los anuncios se extraen mediante analizadores automáticos, por lo que puede haber errores, omisiones o retrasos ocasionales.',
+        'El BORME no publica un identificador de administradores: las personas se cotejan por nombre y los nombres comunes pueden generar falsos positivos.',
+        'El BORME publica declaraciones de socio único, no el libro registro de socios completo.',
+        'Para un documento certificado o actualizado, solicita una nota simple o certificación al Registro Mercantil correspondiente.',
+      ],
+    },
     faq: {
       heading: 'Preguntas frecuentes',
       items: [
@@ -442,7 +478,11 @@ export const LANDING_COPY = {
         },
         {
           q: '¿Los datos son precisos y oficiales?',
-          a: 'Los datos proceden de publicaciones oficiales del BORME y se extraen mediante analizadores automáticos. El servicio es no oficial y se ofrece tal cual; el análisis automático puede contener errores ocasionales. Contrasta siempre con el BORME oficial y, para decisiones importantes, obtén información actualizada directamente del Registro Mercantil.',
+          a: 'Las fuentes son oficiales: los datos proceden de publicaciones del BORME, edición electrónica auténtica del boletín de los Registros Mercantiles desde 2009. El servicio es independiente: no es el Registro Mercantil ni está avalado por ningún organismo público. Los anuncios se extraen mediante analizadores automáticos, por lo que puede haber errores ocasionales; contrasta con el BORME oficial y, cuando necesites un documento certificado o actualizado, solicita una nota simple o certificación al Registro Mercantil.',
+        },
+        {
+          q: '¿En qué se diferencia esto de buscar en el Registro Mercantil?',
+          a: 'Responden a preguntas distintas. El Registro Mercantil es la fuente con valor oficial sobre la situación actual de una empresa y emite certificaciones y notas simples, pero no ofrece API pública ni búsqueda histórica abierta: su buscador en línea es básico, la información completa exige registro y pago, y el historial debe solicitarse al registro provincial correspondiente —con pago por adelantado, una solicitud por empresa, por correo electrónico o presencialmente, y entrega habitual de dos a cinco días hábiles—. Mapa Societario hace consultable de forma gratuita el historial publicado en el BORME de 3,2 millones de empresas, sin cuenta y sin solicitud por empresa. Úsalo para explorar y entender relaciones; acude al Registro Mercantil cuando necesites un documento certificado o actualizado.',
         },
         {
           q: '¿Qué ocurre si una empresa cambia de nombre o se fusiona con otra? ¿Y si se ha disuelto o escindido?',
@@ -470,7 +510,7 @@ export const LANDING_COPY = {
         },
         {
           q: '¿Puedo usar estos datos con fines comerciales?',
-          a: 'Sí, puedes usar los datos con fines comerciales, pero ten en cuenta que el servicio es no oficial y no está avalado por ningún organismo público. Verifica siempre la información crítica con fuentes oficiales.',
+          a: 'Sí. Ten en cuenta que Mapa Societario es un servicio independiente y no está avalado por ningún organismo público, así que verifica la información crítica con el BORME oficial o el Registro Mercantil.',
         },
         {
           q: '¿Hay una API disponible?',
@@ -482,7 +522,7 @@ export const LANDING_COPY = {
         },
       ],
     },
-    operatedBy: 'Operado por Nurnberg Consulting SL, Madrid, desde 2013. Servicio no oficial basado en datos públicos del BOE/BORME.',
+    operatedBy: 'Operado por Nurnberg Consulting SL, Madrid, desde 2013. Servicio independiente basado en datos públicos del BOE/BORME.',
     proofItems: [
       'De Nurnberg Consulting SL (Madrid, desde 2013)',
       'Basado en publicaciones oficiales del BORME',
@@ -493,7 +533,7 @@ export const LANDING_COPY = {
       productOf: 'Un producto de',
       productOfSuffix: ' (Madrid, España) · Impulsado por la plataforma NC Data · Datos procedentes del BORME',
       basedOnPrefix: 'Basado en datos de la ',
-      basedOnSuffix: '. Este servicio no es oficial ni está avalado por la AEBOE.',
+      basedOnSuffix: '. Este servicio es independiente y no está avalado por la AEBOE.',
       ddReports: 'Informes due diligence',
       dashboard: 'Panel de estadísticas',
       about: 'Acerca de',
