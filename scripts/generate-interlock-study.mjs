@@ -13,10 +13,15 @@
  * and prerender generators. The two URLs are listed in the static
  * public/sitemap-pages.xml, so no build-ordering dependency on the sitemap.
  */
+import { registryScale } from '../src/copy/registryScale.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SEED } from '../functions/empresa/_ibex35.js';
+
+// Coverage figures come from one build-time source; never retype them here.
+const en = registryScale('en');
+const es = registryScale('es');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -152,7 +157,7 @@ const T = {
     ],
     disclaimer: 'Análisis independiente basado en publicaciones oficiales del BORME y elaborado mediante procesos automatizados. Puede contener errores u omisiones. Mapa Societario no es el Registro Mercantil y no emite certificaciones.',
     ctaTitle: 'Explora cualquier empresa española, no solo el IBEX',
-    ctaText: 'Este mapa cubre 35 empresas. La herramienta hace lo mismo con cualquiera de los 3,2 millones de sociedades españolas del BORME: busca una empresa o un administrador y explora sus vínculos en un grafo interactivo.',
+    ctaText: `Este mapa cubre 35 empresas. La herramienta hace lo mismo con cualquiera de los ${es.companies} millones de sociedades españolas del BORME: busca una empresa o un administrador y explora sus vínculos en un grafo interactivo.`,
     ctaBtn: 'Abrir el buscador →',
     crumbHome: 'Mapa Societario', crumbStudies: 'Estudios',
   },
@@ -183,7 +188,7 @@ const T = {
     ],
     disclaimer: 'Independent analysis based on official BORME publications and produced through automated processes. It may contain errors or omissions. Mapa Societario is not the Registro Mercantil and does not issue certificates.',
     ctaTitle: 'Explore any Spanish company, not just the IBEX',
-    ctaText: 'This map covers 35 companies. The tool does the same for any of the 3.2 million Spanish companies in BORME: search a company or a director and explore their links in an interactive graph.',
+    ctaText: `This map covers 35 companies. The tool does the same for any of the ${en.companies} million Spanish companies in BORME: search a company or a director and explore their links in an interactive graph.`,
     ctaBtn: 'Open the search →',
     crumbHome: 'Mapa Societario', crumbStudies: 'Studies',
   },

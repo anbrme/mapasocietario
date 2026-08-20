@@ -1,7 +1,7 @@
 # Mapa Societario
 
 > Spanish company-registry intelligence derived from the official BORME (Boletín
-> Oficial del Registro Mercantil): ~3.1M companies and ~9.4M filings published
+> Oficial del Registro Mercantil): ~3.2M companies and ~9.6M filings published
 > since 2009. Search companies and officers, map corporate relationships and
 > sole-shareholder ownership, and read per-company registry histories.
 > Unofficial, provided as-is, and free to consult.

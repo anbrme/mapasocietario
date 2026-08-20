@@ -2,6 +2,12 @@
 // The page teaches the basics (search → graph → reports) and points users to
 // bookmark the real workspace at /app. Detailed reference material still lives
 // on the dedicated pages (about.html, /due-diligence, /pricing, /es).
+import { registryScale } from '../copy/registryScale';
+
+// Coverage figures come from one build-time source; never retype them here.
+const en = registryScale('en');
+const es = registryScale('es');
+
 export const LANDING_COPY = {
   en: {
     meta: {
@@ -194,7 +200,7 @@ export const LANDING_COPY = {
       items: [
         {
           q: 'What is Mapa Societario?',
-          a: 'Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications — covering 3.2 million companies and 9.5 million published records since 2009 — and generates optional due diligence reports from EUR 22.50. Coverage is rebuilt from the official BORME every business day.',
+          a: `Mapa Societario is a relationship intelligence tool for Spanish companies and directors. It maps corporate relationships in an interactive graph built from daily BORME (Boletín Oficial del Registro Mercantil) publications — covering ${en.companies} million companies and ${en.filings} million published records since 2009 — and generates optional due diligence reports from EUR 22.50. Coverage is rebuilt from the official BORME every business day.`,
         },
         {
           q: 'Do I need an account to use this?',
@@ -202,7 +208,7 @@ export const LANDING_COPY = {
         },
         {
           q: 'Can I search by officer name?',
-          a: 'Yes. Officer search lets you find a person and see all the companies they are linked to across 6.3 million recorded officer changes. However, you have to be aware that the BORME does not provide an identifier for officers, so the search is based on name matching. For common names, this may lead to false positives (we use several techniques to limit this, and wrong relationships are not common, but we think it is important you are aware of this limitation).',
+          a: `Yes. Officer search lets you find a person and see all the companies they are linked to across ${en.officerChanges} million recorded officer changes. However, you have to be aware that the BORME does not provide an identifier for officers, so the search is based on name matching. For common names, this may lead to false positives (we use several techniques to limit this, and wrong relationships are not common, but we think it is important you are aware of this limitation).`,
         },
         {
           q: 'Is the data accurate and official?',
@@ -210,7 +216,7 @@ export const LANDING_COPY = {
         },
         {
           q: 'How is this different from searching the Registro Mercantil?',
-          a: 'They answer different questions. The Registro Mercantil is authoritative for a company’s current situation and issues certificates and nota simple documents, but it offers no public API and no open historical search: its online search is basic, fuller information requires registration and payment, and historical records must be requested from the relevant provincial registry — paid in advance, one filing per company, by email or in person, and typically delivered in two to five working days. Mapa Societario makes the published BORME history of 3.2 million companies searchable for free, with no account and no per-company request. Use it to explore and to understand relationships; use the Registro Mercantil when you need a certified or current document.',
+          a: `They answer different questions. The Registro Mercantil is authoritative for a company’s current situation and issues certificates and nota simple documents, but it offers no public API and no open historical search: its online search is basic, fuller information requires registration and payment, and historical records must be requested from the relevant provincial registry — paid in advance, one filing per company, by email or in person, and typically delivered in two to five working days. Mapa Societario makes the published BORME history of ${en.companies} million companies searchable for free, with no account and no per-company request. Use it to explore and to understand relationships; use the Registro Mercantil when you need a certified or current document.`,
         },
         {
           q: 'What if a company changes its name or merges with another? What if it has been dissolved or spun off?',
@@ -466,7 +472,7 @@ export const LANDING_COPY = {
       items: [
         {
           q: '¿Qué es Mapa Societario?',
-          a: 'Mapa Societario es una herramienta de inteligencia de relaciones societarias para empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca 3,1 millones de empresas y 9,5 millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales desde 22,50 EUR.',
+          a: `Mapa Societario es una herramienta de inteligencia de relaciones societarias para empresas y administradores españoles. Cartografía las relaciones societarias en un grafo interactivo construido con datos oficiales del BORME (Boletín Oficial del Registro Mercantil) —que abarca ${es.companies} millones de empresas y ${es.filings} millones de publicaciones registrales desde 2009— y genera informes due diligence opcionales desde 22,50 EUR.`,
         },
         {
           q: '¿Necesito una cuenta para usarlo?',
@@ -474,7 +480,7 @@ export const LANDING_COPY = {
         },
         {
           q: '¿Puedo buscar por nombre de administrador?',
-          a: 'Sí. El cuadro de búsqueda es el mismo para personas y para empresas. Para personas, te permite encontrar a alguien y ver todas las empresas a las que está vinculado, a partir de 6,3 millones de cambios de administradores registrados. Sin embargo, ten en cuenta que el BORME no ofrece un identificador para los administradores, por lo que la búsqueda se basa en la coincidencia de nombres. En el caso de nombres comunes, esto puede dar lugar a falsos positivos (usamos varias técnicas para limitarlo y las relaciones incorrectas no son habituales, pero creemos importante que conozcas esta limitación).',
+          a: `Sí. El cuadro de búsqueda es el mismo para personas y para empresas. Para personas, te permite encontrar a alguien y ver todas las empresas a las que está vinculado, a partir de ${es.officerChanges} millones de cambios de administradores registrados. Sin embargo, ten en cuenta que el BORME no ofrece un identificador para los administradores, por lo que la búsqueda se basa en la coincidencia de nombres. En el caso de nombres comunes, esto puede dar lugar a falsos positivos (usamos varias técnicas para limitarlo y las relaciones incorrectas no son habituales, pero creemos importante que conozcas esta limitación).`,
         },
         {
           q: '¿Los datos son precisos y oficiales?',
@@ -482,7 +488,7 @@ export const LANDING_COPY = {
         },
         {
           q: '¿En qué se diferencia esto de buscar en el Registro Mercantil?',
-          a: 'Responden a preguntas distintas. El Registro Mercantil es la fuente con valor oficial sobre la situación actual de una empresa y emite certificaciones y notas simples, pero no ofrece API pública ni búsqueda histórica abierta: su buscador en línea es básico, la información completa exige registro y pago, y el historial debe solicitarse al registro provincial correspondiente —con pago por adelantado, una solicitud por empresa, por correo electrónico o presencialmente, y entrega habitual de dos a cinco días hábiles—. Mapa Societario hace consultable de forma gratuita el historial publicado en el BORME de 3,2 millones de empresas, sin cuenta y sin solicitud por empresa. Úsalo para explorar y entender relaciones; acude al Registro Mercantil cuando necesites un documento certificado o actualizado.',
+          a: `Responden a preguntas distintas. El Registro Mercantil es la fuente con valor oficial sobre la situación actual de una empresa y emite certificaciones y notas simples, pero no ofrece API pública ni búsqueda histórica abierta: su buscador en línea es básico, la información completa exige registro y pago, y el historial debe solicitarse al registro provincial correspondiente —con pago por adelantado, una solicitud por empresa, por correo electrónico o presencialmente, y entrega habitual de dos a cinco días hábiles—. Mapa Societario hace consultable de forma gratuita el historial publicado en el BORME de ${es.companies} millones de empresas, sin cuenta y sin solicitud por empresa. Úsalo para explorar y entender relaciones; acude al Registro Mercantil cuando necesites un documento certificado o actualizado.`,
         },
         {
           q: '¿Qué ocurre si una empresa cambia de nombre o se fusiona con otra? ¿Y si se ha disuelto o escindido?',
