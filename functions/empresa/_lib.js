@@ -1061,12 +1061,13 @@ function hreflangTags(slug) {
 }
 
 export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false) {
-  // The aggregated doc lags the event log, so "Administradores y cargos
-  // vigentes" — and the JSON-LD employee list Google reads — described the last
-  // AGGREGATION rather than the last PUBLICATION. On the day SOTO DE TORRES, SL
-  // replaced a joint administrator, this page named the man who had resigned
-  // that morning, omitted his replacement, and printed both acts correctly a few
-  // centimetres below, in the history section fed by these same events.
+  // For the hours between a filing reaching the event log and the aggregation
+  // absorbing it, "Administradores y cargos vigentes" — and the JSON-LD employee
+  // list Google reads — described the last AGGREGATION rather than the last
+  // PUBLICATION. On the day SOTO DE TORRES, SL replaced a joint administrator,
+  // this page named the man who had resigned that morning, omitted his
+  // replacement, and printed both acts correctly a few centimetres below, in the
+  // history section fed by these same events.
   //
   // The caller has already dropped events belonging to other companies (the
   // name-match leak guard), so an act can never seat an officer here by mistake.

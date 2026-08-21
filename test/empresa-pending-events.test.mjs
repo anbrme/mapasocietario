@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { renderCompanyPage } from '../functions/empresa/_lib.js';
 
 // SOTO DE TORRES, SL, 2026-08-21. BORME published one joint administrator
-// resigning and another being appointed the same morning. The event log had
-// both acts; the aggregated company doc was nine months behind. The page read
-// the doc for "Administradores y cargos vigentes" and the events for the
-// history, so it named the man who had just resigned, omitted his replacement,
-// and printed both acts correctly a few centimetres below.
+// resigning and another being appointed the same morning. The event log carried
+// both acts hours before the aggregated doc absorbed them. The page read the doc
+// for "Administradores y cargos vigentes" and the events for the history, so it
+// named the man who had just resigned, omitted his replacement, and printed both
+// acts correctly a few centimetres below.
 const company = {
   company_name: 'SOTO DE TORRES, SL',
   company_type: 'SL',

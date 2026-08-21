@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { reconcileOfficersWithEvents } from './pendingOfficerEvents';
 
 // SOTO DE TORRES, SL on 2026-08-21: BORME published the replacement of one
-// joint administrator by another. The event log had both acts; the aggregated
-// company doc was still nine months behind, so every surface reading the doc
-// named the man who had just resigned and never named his replacement.
+// joint administrator by another. The event log carried both acts hours before
+// the aggregated doc absorbed them, and last_seen still read the company's
+// previous filing — so every surface reading the doc named the man who had just
+// resigned and never named his replacement.
 const sotoDoc = {
   company_name: 'SOTO DE TORRES, SL',
   last_seen: '2025-11-27',

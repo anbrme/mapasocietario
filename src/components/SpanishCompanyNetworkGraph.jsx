@@ -1292,11 +1292,11 @@ const summarizePathLinks = (links, language = 'es') => {
 /**
  * Bring a company doc up to what BORME published after it was last aggregated.
  *
- * The doc lags the event log — SOTO DE TORRES, SL was nine months behind on the
- * day the registry published one joint administrator resigning and another
- * being appointed. Nodes are built from the doc, so the newcomer had no node at
- * all, while the event overlay (enrichLinksWithEventDates) still turned the
- * leaver's edge red: the graph showed a departure and no arrival.
+ * The doc absorbs a filing hours after the event log does. Nodes are built from
+ * the doc, so on the morning SOTO DE TORRES, SL replaced a joint administrator
+ * the newcomer had no node at all, while the event overlay
+ * (enrichLinksWithEventDates) had already turned the leaver's edge red: the
+ * graph showed a departure and no arrival.
  *
  * Only the SUBJECT of a search or expansion is reconciled — the entity the user
  * asked about. The events request is the one enrichLinksWithEventDates makes

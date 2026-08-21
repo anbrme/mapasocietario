@@ -3,10 +3,16 @@
  *
  * Two stores answer "who runs this company", and they do not run at the same
  * speed. borme_events_v3 has each published act within hours; the aggregated
- * company doc in borme_companies_v3 is rebuilt later — for SOTO DE TORRES, SL
- * the doc was still nine months behind when the registry published, on
- * 2026-08-21, that AMADO GALLART JOSEP had resigned as joint administrator and
- * FABRICE BRUNO DUCCESCHI had been appointed in his place.
+ * company doc in borme_companies_v3 is rebuilt in a later step of the same run.
+ * On 2026-08-21 the registry published that AMADO GALLART JOSEP had resigned as
+ * joint administrator of SOTO DE TORRES, SL and that FABRICE BRUNO DUCCESCHI
+ * had been appointed in his place. The events carried both acts from 10:34; the
+ * doc absorbed them about two hours later.
+ *
+ * `last_seen` is the company's most recent PUBLICATION date, not a processing
+ * timestamp — a doc reading 2025-11-27 is not stale, it means nothing has been
+ * published since. Staleness is only ever `newest event_date > last_seen`, and
+ * that is exactly the boundary used below.
  *
  * Every surface reading the doc therefore named the man who had just resigned,
  * and never named his replacement — while the same page's history section, fed
