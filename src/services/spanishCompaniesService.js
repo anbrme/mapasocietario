@@ -12,6 +12,7 @@
 import { positionCategoryFor } from '../utils/positionCategories';
 import { canonLegalForm, entityNameKey, looksLikeGroupKey, selectGroupKeyId } from '../utils/companyName';
 import { API_URL } from '../config';
+import { createRequestCache } from '../utils/requestCache';
 
 const createApiError = (label, response, responseBody = '') => {
   const detail = responseBody ? ` - ${responseBody}` : '';
@@ -34,6 +35,20 @@ class SpanishCompaniesService {
     this.maxRetries = 3;
     this.baseRetryDelay = 1000; // 1 second
     this.maxRetryDelay = 10000; // 10 seconds
+
+    // In-memory read cache. Exploring the graph clicks the same nodes over and
+    // over — every click used to re-run the group_key resolve, the profile and
+    // the events request. See utils/requestCache for what it will and will not
+    // hold. Reads only; nothing that writes goes through it.
+    this.cache = createRequestCache();
+  }
+
+  /**
+   * Drop every cached read. Call after anything that changes what the backend
+   * would answer (a correction, a re-target of the API).
+   */
+  clearCache() {
+    this.cache.clear();
   }
 
   /**
@@ -43,6 +58,9 @@ class SpanishCompaniesService {
    * @param {string} config.apiKey - API key for authentication
    */
   configure(config) {
+    // Cached answers belong to the backend that gave them; a re-point invalidates
+    // all of them (keys carry the query, not the host).
+    if (config.baseUrl && config.baseUrl !== this.baseUrl) this.clearCache();
     if (config.baseUrl) this.baseUrl = config.baseUrl;
     if (config.apiKey) this.apiKey = config.apiKey;
   }
@@ -177,7 +195,7 @@ class SpanishCompaniesService {
       return { suggestions: [] };
     }
 
-    try {
+    return this.cache.fetch(`ac-companies|${query.trim().toUpperCase()}|${limit}`, async () => {
       // Normalize query: trim whitespace only (backend handles case normalization)
       const normalizedQuery = query.trim();
       // Use the directory autocomplete endpoint which queries borme_companies index
@@ -277,10 +295,13 @@ class SpanishCompaniesService {
         total: suggestions.length,
         success: result.success,
       };
-    } catch (error) {
+      // Caught outside the cache: a failure must not be stored, and callers
+      // (including the landing page, which does not catch) still get the empty
+      // shape they were written against.
+    }).catch(error => {
       console.error('Autocomplete failed:', error);
       return { suggestions: [] };
-    }
+    });
   }
 
   /**
@@ -294,7 +315,7 @@ class SpanishCompaniesService {
       return { suggestions: [] };
     }
 
-    try {
+    return this.cache.fetch(`ac-officers|${query.trim().toUpperCase()}|${limit}`, async () => {
       // Normalize query: trim whitespace only (backend handles case normalization)
       const normalizedQuery = query.trim();
       // Use the proper autocomplete endpoint (10-100x faster than /bormes/officers)
@@ -338,10 +359,11 @@ class SpanishCompaniesService {
         total: suggestions.length,
         success: result.success,
       };
-    } catch (error) {
+      // Caught outside the cache — see autocompleteCompanies.
+    }).catch(error => {
       console.error('Officers autocomplete failed:', error);
       return { suggestions: [] };
-    }
+    });
   }
 
   /**
@@ -485,6 +507,19 @@ class SpanishCompaniesService {
   async getCompanyProfileV3(companyName, options = {}) {
     const { groupKey = null, analyticsSource = null, fullOfficers = false } = options;
 
+    // A call carrying analyticsSource IS the user's search — it must reach the
+    // backend so the search is counted and alerted on. Everything else (the
+    // inspector, re-clicking a node already visited) can be served from memory.
+    return this.cache.fetch(
+      `company-v3|${groupKey || ''}|${groupKey ? '' : companyName}|${fullOfficers ? 'full' : 'capped'}`,
+      () => this._fetchCompanyProfileV3(companyName, { groupKey, analyticsSource, fullOfficers }),
+      { fresh: !!analyticsSource }
+    );
+  }
+
+  async _fetchCompanyProfileV3(companyName, options = {}) {
+    const { groupKey = null, analyticsSource = null, fullOfficers = false } = options;
+
     if (groupKey) {
       // The v3 search returns aggregate company docs carrying their group_key as
       // `id`. Query by the group_key and select the doc whose id matches exactly,
@@ -543,6 +578,15 @@ class SpanishCompaniesService {
    *              companies whose name embeds this one.
    */
   async getCompanyEventsV3(companyName, options = {}) {
+    const { size = 50, groupKey = null, fresh = false } = options;
+    return this.cache.fetch(
+      `events-v3|${groupKey || ''}|${groupKey ? '' : companyName}|${size}`,
+      () => this._fetchCompanyEventsV3(companyName, { size, groupKey }),
+      { fresh }
+    );
+  }
+
+  async _fetchCompanyEventsV3(companyName, options = {}) {
     const { size = 50, groupKey = null } = options;
     const params = new URLSearchParams({
       ...(groupKey ? { group_key: groupKey } : { company: companyName }),
@@ -570,6 +614,15 @@ class SpanishCompaniesService {
    * "what happened" view; use expandOfficerV3 for "what is held now".
    */
   async getOfficerEventsV3(officerName, options = {}) {
+    const { size = 200, fresh = false } = options;
+    return this.cache.fetch(
+      `officer-events-v3|${officerName}|${size}`,
+      () => this._fetchOfficerEventsV3(officerName, { size }),
+      { fresh }
+    );
+  }
+
+  async _fetchOfficerEventsV3(officerName, options = {}) {
     const { size = 200 } = options;
     const params = new URLSearchParams({ name: officerName, size: size.toString() });
     const response = await this.fetchWithRetry(
@@ -588,6 +641,19 @@ class SpanishCompaniesService {
    * officer appears in officers_active or officers_resigned with explicit status.
    */
   async expandOfficerV3(officerName, options = {}) {
+    const { size = 200, exactMatch = true, analyticsSource = null } = options;
+    // As with the company profile: the user's own search stays uncached so it is
+    // still counted; the preview and repeat clicks are served from memory. The
+    // key carries exactMatch because the client-side filter below is part of
+    // what gets stored.
+    return this.cache.fetch(
+      `expand-officer|${officerName}|${size}|${exactMatch ? 'exact' : 'loose'}`,
+      () => this._fetchExpandOfficerV3(officerName, { size, exactMatch, analyticsSource }),
+      { fresh: !!analyticsSource }
+    );
+  }
+
+  async _fetchExpandOfficerV3(officerName, options = {}) {
     const { size = 200, exactMatch = true, analyticsSource = null } = options;
     const params = new URLSearchParams({
       name: officerName,
@@ -2565,6 +2631,15 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
       return { success: true, companies: [], total: 0 };
     }
 
+    return this.cache.fetch(
+      `owned-by|${shareholderName.trim().toUpperCase()}|${limit}`,
+      () => this._fetchCompaniesOwnedByShareholder(shareholderName, { limit })
+    );
+  }
+
+  async _fetchCompaniesOwnedByShareholder(shareholderName, options = {}) {
+    const { limit = 100 } = options;
+
     try {
       const response = await this.fetchWithRetry(
         `${this.baseUrl}/bormes/sole-shareholder-companies`,
@@ -2657,6 +2732,15 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
       return { success: true, sole_shareholders: [], sole_shareholder_lost: false };
     }
 
+    // Called once per company in a search result, so a repeat search of the same
+    // neighbourhood re-asked for every one of them.
+    return this.cache.fetch(
+      `sole-shareholder-of|${companyName.trim().toUpperCase()}`,
+      () => this._fetchCompanySoleShareholderData(companyName)
+    );
+  }
+
+  async _fetchCompanySoleShareholderData(companyName) {
     try {
       const response = await this.fetchWithRetry(
         `${this.baseUrl}/bormes/company-sole-shareholder`,

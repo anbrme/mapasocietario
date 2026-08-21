@@ -7429,6 +7429,10 @@ const SpanishCompanyNetworkGraph = ({
       clearGraphAutosave().catch(() => setAutosaveStatus('error'));
     }
     setGraphData({ nodes: [], links: [] });
+    // Starting over means starting over: drop the cached reads too, so a
+    // re-search after a clear always talks to the backend. It is the one
+    // guaranteed escape hatch if anything ever looks stale.
+    spanishCompaniesService.clearCache();
     closeInspector();
     setSnapshotMode(false);
     setSnapshotSource(null);
