@@ -12,6 +12,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import SearchIcon from '@mui/icons-material/Search';
 import { spanishCompaniesService } from '../services/spanishCompaniesService';
 import { mergeEntitySuggestions } from '../utils/entitySuggestions';
+import { classifyEntitySelection } from '../utils/entitySelection';
 import { trackEvent } from '../utils/track';
 
 const COPY = {
@@ -52,8 +53,14 @@ function normalizeSuggestions(companyResults, officerResults) {
 
 export function buildLandingSearchHref(option, lang = 'en') {
   if (!option || typeof option !== 'object') return null;
-  const isOfficer = option.type === 'officer' || option.type === 'officer_sole_shareholder';
-  const entityType = isOfficer ? 'officer' : 'company';
+  // Same routing the graph's own dropdown uses, so a pick behaves identically
+  // whether it is made here or inside the app. In particular an entity the
+  // registry knows ONLY as an owner (a private individual, a foreign parent)
+  // has no company doc, and deep-linking it as a company searched the registry
+  // for a company by that name and landed the visitor on "no results".
+  const { route } = classifyEntitySelection(option);
+  const isOfficer = route === 'officer';
+  const entityType = route === 'company' ? 'company' : route === 'officer' ? 'officer' : 'shareholder';
   // Display the current/new name, exactly as the graph's own selection does
   // (applySelectedOption uses value.name for the search box).
   const searchValue = (isOfficer ? (option.value || option.name) : (option.name || option.value)) || '';
@@ -72,7 +79,9 @@ export function buildLandingSearchHref(option, lang = 'en') {
   // group key (they are searched by name across companies), so they never carry
   // one. Optional: /empresa deep links arrive without an id and keep the old
   // name-search behaviour.
-  if (!isOfficer && option.id) params.set('gk', String(option.id));
+  // Only a company doc has a group_key; an owner-only row's `id` is the bare
+  // name, which would bind the deep link to nothing.
+  if (entityType === 'company' && option.id) params.set('gk', String(option.id));
   if (lang === 'es') params.set('lang', 'es');
   return `/app/?${params.toString()}`;
 }
@@ -110,8 +119,8 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
   const openSelection = option => {
     const href = buildLandingSearchHref(option, lang);
     if (!href) return;
-    const isOfficer = option.type === 'officer' || option.type === 'officer_sole_shareholder';
-    const entityType = isOfficer ? 'officer' : 'company';
+    const { route } = classifyEntitySelection(option);
+    const entityType = route === 'company' ? 'company' : route === 'officer' ? 'officer' : 'shareholder';
 
     const selectionRank = options.findIndex(candidate => candidate === option) + 1;
     trackEvent('home_search_selection', {

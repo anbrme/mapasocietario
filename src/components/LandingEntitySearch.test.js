@@ -68,3 +68,65 @@ describe('buildLandingSearchHref — binding to the exact legal entity', () => {
     expect(href).not.toContain('gk=');
   });
 });
+
+describe('buildLandingSearchHref — owners the company index cannot answer for', () => {
+  // The directory lists an entity it knows only as a socio único with
+  // type "sole_shareholder" and no company doc behind it. Sending those to the
+  // company search was a dead end: /app searched the registry for a company by
+  // that name and reported no results. PICON OTERO ALBERTO (a man, sole
+  // shareholder and sole administrator of one company) is the live case.
+  const ownerWithCargos = {
+    type: 'sole_shareholder',
+    name: 'PICON OTERO ALBERTO',
+    value: 'PICON OTERO ALBERTO',
+    id: 'PICON OTERO ALBERTO',
+    company_count: 1,
+    has_officer_twin: true,
+    owns_total: 1,
+  };
+
+  it('sends a person who holds cargos to the officer search', () => {
+    const href = buildLandingSearchHref(ownerWithCargos, 'en');
+
+    expect(href).toContain('type=officer');
+  });
+
+  it('never passes a name off as a group key', () => {
+    // `id` on one of these rows is the bare name, not a group_key; forwarding it
+    // as gk would bind the deep link to nothing.
+    expect(buildLandingSearchHref(ownerWithCargos, 'en')).not.toContain('gk=');
+  });
+
+  it('sends an owner with no company doc and no cargos to the shareholder route', () => {
+    const href = buildLandingSearchHref(
+      {
+        type: 'sole_shareholder',
+        name: 'ROCHE HOLDING LTD',
+        value: 'ROCHE HOLDING LTD',
+        id: 'ROCHE HOLDING LTD',
+        owns_total: 4,
+      },
+      'en'
+    );
+
+    expect(href).toContain('type=shareholder');
+    expect(href).not.toContain('gk=');
+  });
+
+  it('leaves a company that merely owns things on the company route', () => {
+    const href = buildLandingSearchHref(
+      {
+        type: 'company',
+        name: 'SANITAS HOLDING SL',
+        value: 'SANITAS HOLDING SL',
+        id: 'H:M-584035',
+        is_sole_shareholder: true,
+        owns_total: 2,
+      },
+      'en'
+    );
+
+    expect(href).toContain('type=company');
+    expect(href).toContain('gk=H%3AM-584035');
+  });
+});

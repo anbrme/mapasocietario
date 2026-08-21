@@ -44,14 +44,22 @@ export const mergeEntitySuggestions = (companyItems, officerItems) => {
       continue;
     }
     const twin = companies[index];
-    if (twin.company_count == null && item && item.company_count != null) {
-      companies[index] = {
-        ...twin,
-        company_count: item.company_count,
-        // Carry the vigente/cesado split along with the count it qualifies.
-        company_count_active: item.company_count_active ?? null,
-      };
-    }
+    const inheritsCount = twin.company_count == null && item && item.company_count != null;
+    companies[index] = {
+      ...twin,
+      // The folded row is the only one the user can pick, so it has to remember
+      // that officers-autocomplete knew this entity — for an individual listed
+      // as a socio único, the officer search is the path that finds their
+      // companies, and the directory row alone gives no hint of it.
+      has_officer_twin: true,
+      ...(inheritsCount
+        ? {
+            company_count: item.company_count,
+            // Carry the vigente/cesado split along with the count it qualifies.
+            company_count_active: item.company_count_active ?? null,
+          }
+        : {}),
+    };
   }
 
   return { companies, officers };

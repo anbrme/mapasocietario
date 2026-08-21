@@ -116,6 +116,7 @@ import { isLegalEntityName } from '../utils/legalEntity';
 import { detectCargoPresence } from '../utils/cargoDetection';
 import { officerNodeKey, officerIdFor } from '../utils/officerNodeKey';
 import { mergeEntitySuggestions } from '../utils/entitySuggestions';
+import { classifyEntitySelection, ownedCompaniesFromHint } from '../utils/entitySelection';
 import { mergeCargoIntoCompanyNode, undoCargoUnify } from '../utils/graphUnify';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import {
@@ -1413,6 +1414,56 @@ const SpanishCompanyNetworkGraph = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const fgRef = useRef();
+  // Latest canvas size, for the fit maths below (kept in a ref so the fit
+  // callback stays stable across renders). Assigned where canvasDimensions is
+  // computed.
+  const canvasDimensionsRef = useRef({ width: 0, height: 0 });
+
+  // An automatic fit must never zoom past this. zoomToFit sizes the view from
+  // the graph's bounding box, so a graph holding one node — a lone officer, a
+  // staged sole shareholder — has a box the size of that node and zooms until
+  // it covers the whole canvas. Two nodes sitting close together do the same.
+  // The user's own zoom controls stay unbounded; only the automatic fit is
+  // capped.
+  const MAX_AUTO_ZOOM = 2.5;
+
+  // The fit is computed here rather than delegated to zoomToFit, so the cap is
+  // applied to the SAME transition instead of snapping back afterwards.
+  const fitGraphToView = useCallback((ms = 400, padding = 50) => {
+    const fg = fgRef.current;
+    if (!fg) return;
+
+    const { width, height } = canvasDimensionsRef.current;
+    let bbox = null;
+    try {
+      bbox = typeof fg.getGraphBbox === 'function' ? fg.getGraphBbox() : null;
+    } catch {
+      bbox = null;
+    }
+
+    if (!bbox || !(width > 0) || !(height > 0)) {
+      // No measurable box (ref not ready, empty graph): fall back to the
+      // library's own fit rather than leaving the camera untouched.
+      try {
+        fg.zoomToFit(ms, padding);
+      } catch {
+        /* ref not ready */
+      }
+      return;
+    }
+
+    const spanX = Math.max(bbox.x[1] - bbox.x[0], 1e-6);
+    const spanY = Math.max(bbox.y[1] - bbox.y[0], 1e-6);
+    const fitZoom = Math.min((width - padding * 2) / spanX, (height - padding * 2) / spanY);
+    const zoom = Math.min(Number.isFinite(fitZoom) && fitZoom > 0 ? fitZoom : 1, MAX_AUTO_ZOOM);
+
+    try {
+      fg.centerAt((bbox.x[0] + bbox.x[1]) / 2, (bbox.y[0] + bbox.y[1]) / 2, ms);
+      fg.zoom(zoom, ms);
+    } catch {
+      /* ref detached mid-transition */
+    }
+  }, []);
   const snapshotInputRef = useRef(null);
   const pendingSnapshotCameraRef = useRef(null);
   const [snapshotMode, setSnapshotMode] = useState(false);
@@ -1811,6 +1862,7 @@ const SpanishCompanyNetworkGraph = ({
     width: Math.max(MIN_CANVAS_WIDTH, containerDimensions.width - reservedInspectorWidth),
     height: Math.max(MIN_CANVAS_HEIGHT, containerDimensions.height - reservedDockHeight),
   }), [containerDimensions, reservedInspectorWidth, reservedDockHeight]);
+  canvasDimensionsRef.current = canvasDimensions;
   const graphPalette = theme.palette.graph;
 
   // Node colors and shapes
@@ -2133,6 +2185,13 @@ const SpanishCompanyNetworkGraph = ({
         setSearchType('officer');
       }
       setSearchQuery(initialCompanyName);
+      // An owner the company index cannot answer for: there is no company doc to
+      // search, so plot the owner and what it owns instead of running a company
+      // search that would report "no results" for a name the registry knows.
+      if (initialSearchType === 'shareholder') {
+        loadDeepLinkedShareholder(initialCompanyName);
+        return;
+      }
       // Pass the group key through as groupKeyOverride — the same argument
       // applySelectedOption supplies for an in-graph selection. Without it this
       // path fell back to a fuzzy name search, which is why a landing-page pick
@@ -2204,13 +2263,11 @@ const SpanishCompanyNetworkGraph = ({
       prevNodeCountRef.current = count;
       // Delay to let ForceGraph2D process new data and simulation settle
       const timer = setTimeout(() => {
-        if (fgRef.current) {
-          fgRef.current.zoomToFit(400, 50);
-        }
+        fitGraphToView(400, 50);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [graphData.nodes.length, snapshotMode]);
+  }, [graphData.nodes.length, snapshotMode, fitGraphToView]);
 
   // Re-fit graph when container dimensions change significantly (e.g. after table renders)
   const prevDimRef = useRef(canvasDimensions);
@@ -2221,11 +2278,11 @@ const SpanishCompanyNetworkGraph = ({
     const dh = Math.abs(prev.height - canvasDimensions.height);
     if (!snapshotMode && (dw > 50 || dh > 50) && graphData.nodes.length > 0 && fgRef.current) {
       const timer = setTimeout(() => {
-        fgRef.current?.zoomToFit(400, 50);
+        fitGraphToView(400, 50);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [canvasDimensions, graphData.nodes.length, snapshotMode]);
+  }, [canvasDimensions, graphData.nodes.length, snapshotMode, fitGraphToView]);
 
   // Imported snapshots carry their own camera. Apply it after ForceGraph has
   // attached to the canvas and consumed the restored graph data.
@@ -2463,8 +2520,14 @@ const SpanishCompanyNetworkGraph = ({
           });
         }
 
-        // Enrich officer options with Congreso deputy match in the background.
-        const officerOptions = results.filter(r => r.type === 'officer' && r.name);
+        // Enrich person options with the Congreso deputy match in the background.
+        // Not just `type === 'officer'`: when an individual is also a socio
+        // único the two rows fold into one typed `sole_shareholder`, and that
+        // row was silently losing the 🏛️ badge — precisely the politician-on-a-
+        // board case the badge exists for.
+        const officerOptions = results.filter(
+          r => r.name && classifyEntitySelection(r).entityKind === 'person'
+        );
         if (officerOptions.length > 0) {
           const matches = await Promise.all(
             officerOptions.map(o => findDeputyMatch(o.name).catch(() => null))
@@ -2831,15 +2894,25 @@ const SpanishCompanyNetworkGraph = ({
   // Fetch companies that this entity (company or person) is sole shareholder OF,
   // and append ownership nodes/links (entity → owned company). This is the OUTGOING
   // ownership direction — e.g. FASTIGHETSBYRAN → ALICANTE ESTATE GROUP.
-  const addOwnedCompaniesForEntity = useCallback(async (entityName, entityId, entityKind) => {
+  const addOwnedCompaniesForEntity = useCallback(async (entityName, entityId, entityKind, ownsHint = []) => {
     if (!entityName || !entityId) return;
     try {
-      const result = await spanishCompaniesService.getCompaniesOwnedByShareholder(entityName, {
-        limit: 50,
+      // The directory autocomplete already handed us the owned companies with
+      // their group_keys. Prefer that list: /bormes/sole-shareholder-companies
+      // answers 0 for names the directory answers with one (PICON OTERO
+      // ALBERTO → EQUILATERO SOLUCIONES ESTRATEGICAS SL), so re-asking would
+      // drop the very company the user selected the row for.
+      const hinted = Array.isArray(ownsHint) ? ownsHint.filter(o => o && o.name) : [];
+      const owned = hinted.length
+        ? hinted.map(o => ({ name: o.name, group_key: o.groupKey || null }))
+        : await spanishCompaniesService
+            .getCompaniesOwnedByShareholder(entityName, { limit: 50 })
+            .then(r => (r?.success ? r.companies || [] : []));
+      console.debug('[OwnsCompanies]', entityName, {
+        count: owned.length,
+        source: hinted.length ? 'autocomplete' : 'api',
       });
-      const owned = result?.companies || [];
-      console.debug('[OwnsCompanies]', entityName, { count: owned.length });
-      if (!result?.success || owned.length === 0) return;
+      if (owned.length === 0) return;
 
       // Resolve a STABLE group_key per owned company so the new node binds to the
       // correct legal entity when later expanded/previewed (the ownership payload
@@ -4089,8 +4162,11 @@ const SpanishCompanyNetworkGraph = ({
           : {
               id: entityId,
               name: cleanName,
+              // A corporate officer (an audit firm, a corporate administrador)
+              // must carry the same shape the officer search would give it, so
+              // that search finds this node instead of adding a second one.
               type: 'officer',
-              subtype: 'individual',
+              subtype: isCompanyOfficer(cleanName) ? 'company' : 'individual',
               companies: [],
               positions: [],
               data: { name: cleanName, kind: 'individual' },
@@ -4103,19 +4179,19 @@ const SpanishCompanyNetworkGraph = ({
       setPinnedNodeIds(prev => new Set([...prev, entityId]));
       return entityId;
     },
-    [viewportCenter]
+    [viewportCenter, isCompanyOfficer]
   );
 
   // Plot every company the shareholder owns as a bare node with an ownership link
   // back to the shareholder. Officers are NOT fetched — user can expand a
   // subsidiary node on demand later. Reuses addOwnedCompaniesForEntity.
   const loadSubsidiariesForShareholder = useCallback(
-    async (entityName, entityId, entityKind) => {
+    async (entityName, entityId, entityKind, ownsHint = []) => {
       if (!entityName || !entityId) return;
       setLoadingSubsidiaries(true);
       setError(null);
       try {
-        await addOwnedCompaniesForEntity(entityName, entityId, entityKind);
+        await addOwnedCompaniesForEntity(entityName, entityId, entityKind, ownsHint);
       } catch (err) {
         console.error('Load subsidiaries failed:', err);
         setError(text.loadSubsidiariesError(err.message));
@@ -4125,6 +4201,39 @@ const SpanishCompanyNetworkGraph = ({
       }
     },
     [addOwnedCompaniesForEntity, text]
+  );
+
+  // A landing-page pick for an entity the company index holds no doc for — a
+  // private individual, a foreign parent — arrives here as ?type=shareholder.
+  // A URL can only carry the name, so re-resolve the directory row to recover
+  // the companies it owns (with their group_keys) and plot them immediately:
+  // choosing the row on the landing page IS the confirmation the in-app pill
+  // asks for.
+  const loadDeepLinkedShareholder = useCallback(
+    async name => {
+      const cleanName = (name || '').trim();
+      if (!cleanName) return;
+
+      const entityKind = isLegalEntityName(cleanName) ? 'company' : 'person';
+      const entityId = plotBareShareholderNode(cleanName, entityKind);
+      if (!entityId) return;
+
+      let owns = [];
+      try {
+        const res = await spanishCompaniesService.autocompleteCompanies(cleanName, { limit: 5 });
+        const wanted = cleanName.toUpperCase();
+        const row = (res.suggestions || []).find(
+          s => (s.name || '').trim().toUpperCase() === wanted
+        );
+        owns = ownedCompaniesFromHint(row?.owns);
+      } catch (err) {
+        // The hint is an optimisation; the endpoint fallback still applies.
+        console.warn('[DeepLinkShareholder] directory lookup failed:', err.message);
+      }
+
+      await loadSubsidiariesForShareholder(cleanName, entityId, entityKind, owns);
+    },
+    [plotBareShareholderNode, loadSubsidiariesForShareholder]
   );
 
   // Expand officer node to show other companies
@@ -7306,9 +7415,7 @@ const SpanishCompanyNetworkGraph = ({
   };
 
   const centerGraph = () => {
-    if (fgRef.current) {
-      fgRef.current.zoomToFit(400, 50);
-    }
+    fitGraphToView(400, 50);
   };
 
   const clearGraph = () => {
@@ -7997,7 +8104,7 @@ const SpanishCompanyNetworkGraph = ({
     // to the new size once the layout has settled so it re-centers instead of sitting
     // off to one side.
     setTimeout(() => {
-      try { fgRef.current?.zoomToFit(400, 60); } catch { /* ref not ready */ }
+      fitGraphToView(400, 60);
     }, 300);
   }, [isFullscreen]);
 
@@ -8029,12 +8136,10 @@ const SpanishCompanyNetworkGraph = ({
       time_to_selection_ms: Date.now() - graphEnteredAtRef.current,
     });
 
-    // Sole shareholder selection: plot the shareholder node and stage its
-    // participadas behind a confirmation pill. Avoids N silent parallel v3
-    // lookups on every selection, and shows the true total.
-    const isSoleShareholderCorporate = value.type === 'sole_shareholder';
-    const isSoleShareholderIndividual =
-      value.type === 'officer_sole_shareholder' || value.is_sole_shareholder;
+    // How this row should be plotted. The backends type an owner the same way
+    // whether it is a holding company or a private individual, so the kind is
+    // read off the name — see classifyEntitySelection.
+    const selection = classifyEntitySelection(value);
 
     // The market sidebar follows whatever entity you select (non-sticky, unlike
     // the DD subject). We set the raw selection name and let matchIbexSeed
@@ -8045,20 +8150,26 @@ const SpanishCompanyNetworkGraph = ({
     setSelectedSidebarCompany(displayName);
     setIbexSidebarDismissed(false);
 
-    if (
-      (isSoleShareholderCorporate || isSoleShareholderIndividual) &&
-      (value.owns_total > 0 || (Array.isArray(value.owns) && value.owns.length > 0))
-    ) {
-      const entityKind = isSoleShareholderCorporate ? 'company' : 'person';
+    // An owner with no cargos of its own: the officer search would come back
+    // empty, so plot a bare node and stage the participadas behind the
+    // confirmation pill. Avoids N silent parallel v3 lookups on every
+    // selection, and shows the true total.
+    if (selection.route === 'shareholder') {
+      const { entityKind, ownsTotal } = selection;
       const entityId = plotBareShareholderNode(displayName, entityKind);
-      const total = value.owns_total || value.owns?.length || 0;
-      setPendingSubsidiaries({ entityName: displayName, entityId, entityKind, count: total });
+      setPendingSubsidiaries({
+        entityName: displayName,
+        entityId,
+        entityKind,
+        count: ownsTotal,
+        owns: selection.owns,
+      });
       trackEvent('graph_search_result', {
         entry_source: entrySource,
         search_origin: 'user_selection',
         entity_type: entityKind,
         result_state: 'success',
-        result_count: total,
+        result_count: ownsTotal,
       });
       lastSuccessfulSearchAtRef.current = Date.now();
       setSearchQuery('');
@@ -8066,10 +8177,30 @@ const SpanishCompanyNetworkGraph = ({
     }
 
     // Person selection → officer search (find every company they're linked to).
-    if (value.type === 'officer') {
+    // This is also the route for someone who is BOTH sole shareholder and an
+    // officer: the officer search is the one that fetches companies, and the
+    // ownership edges are drawn on top from the list the dropdown already
+    // carried — no extra request, and no dependence on the sole-shareholder
+    // endpoint, which returns nothing for some of these people.
+    if (selection.route === 'officer') {
       const officerName = value.value || value.name || displayName;
       setSearchQuery(displayName);
-      handleSearch(officerName, false, 'officer', null);
+      // Plot the entity first when the row carries participadas. The officer
+      // search can come back empty (a socio único whose cargo predates the
+      // indexed events) and the ownership we already hold must not vanish with
+      // it. The id is the one addOfficerToGraph uses, so that search fills this
+      // same node in rather than adding a second one.
+      const ownerId =
+        selection.owns.length > 0 ? plotBareShareholderNode(officerName, 'person') : null;
+      await handleSearch(officerName, false, 'officer', null);
+      if (ownerId) {
+        await addOwnedCompaniesForEntity(
+          officerName,
+          ownerId,
+          selection.entityKind,
+          selection.owns
+        );
+      }
       return;
     }
 
@@ -8299,9 +8430,11 @@ const SpanishCompanyNetworkGraph = ({
                       {option.cif}
                     </Typography>
                   )}
-                  {(option.type === 'officer' || option.type === 'officer_sole_shareholder' ||
-                    option.type === 'company') &&
-                    option.company_count != null && option.company_count > 0 && (
+                  {/* Every row that carries a cargo count shows it — including a
+                      `sole_shareholder` row that inherited one when its officer
+                      twin folded in. Excluding that type hid the directorship of
+                      an individual who is also a socio único. */}
+                  {option.company_count != null && option.company_count > 0 && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                         {uiLanguage === 'en'
                           ? `${option.company_count} compan${option.company_count === 1 ? 'y' : 'ies'} (${text.role.toLowerCase()})`
@@ -8822,7 +8955,8 @@ const SpanishCompanyNetworkGraph = ({
               loadSubsidiariesForShareholder(
                 pendingSubsidiaries.entityName,
                 pendingSubsidiaries.entityId,
-                pendingSubsidiaries.entityKind
+                pendingSubsidiaries.entityKind,
+                pendingSubsidiaries.owns
               )
             }
             startIcon={loadingSubsidiaries ? <CircularProgress size={14} color="inherit" /> : null}

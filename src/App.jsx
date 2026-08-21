@@ -152,7 +152,11 @@ export default function App() {
   }, []);
   const initialSearchType = React.useMemo(() => {
     const value = new URLSearchParams(window.location.search).get('type');
-    return value === 'officer' ? 'officer' : 'company';
+    // 'shareholder' arrives from a landing pick the company index cannot answer
+    // for — an entity registered only as a socio único (a private individual, a
+    // foreign parent). The graph plots it and loads what it owns.
+    if (value === 'officer' || value === 'shareholder') return value;
+    return 'company';
   }, []);
   // Stable group_key from the landing autocomplete, so a deep-linked company
   // binds to ONE legal entity instead of re-running a fuzzy name search on

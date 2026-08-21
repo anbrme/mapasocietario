@@ -82,3 +82,33 @@ describe('mergeEntitySuggestions', () => {
     expect(mergeEntitySuggestions(null, null)).toEqual({ companies: [], officers: [] });
   });
 });
+
+describe('mergeEntitySuggestions — officer twin flag', () => {
+  it('marks the surviving row so the caller knows an officer search will return something', () => {
+    // The directory lists PICON OTERO ALBERTO as a sole_shareholder; officers-
+    // autocomplete lists the same man with 1 cargo. Folding them hid the fact
+    // that the officer path is the one that finds his company.
+    const { companies } = mergeEntitySuggestions(
+      [company('PICON OTERO ALBERTO', { type: 'sole_shareholder' })],
+      [officer('PICON OTERO ALBERTO', 1)]
+    );
+
+    expect(companies[0].has_officer_twin).toBe(true);
+  });
+
+  it('flags the twin even when the company row already carries a cargo count', () => {
+    const { companies } = mergeEntitySuggestions(
+      [company('ACME SL', { company_count: 5 })],
+      [officer('ACME SOCIEDAD LIMITADA', 2)]
+    );
+
+    expect(companies[0].has_officer_twin).toBe(true);
+    expect(companies[0].company_count).toBe(5);
+  });
+
+  it('leaves rows with no twin unflagged', () => {
+    const { companies } = mergeEntitySuggestions([company('ACME SL')], []);
+
+    expect(companies[0].has_officer_twin).toBeUndefined();
+  });
+});
