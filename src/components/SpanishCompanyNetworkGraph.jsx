@@ -3689,6 +3689,10 @@ const SpanishCompanyNetworkGraph = ({
                   type: 'officer-company',
                   relationship: officer.specific_role || officer.position,
                   category: effectiveCategory,
+                  // When that category is a closure, this is the date it took
+                  // effect — so an older appointment event cannot reopen it.
+                  categoryDate:
+                    officerEffectiveCategory[posEffKey]?.date?.toISOString?.().slice(0, 10) || null,
                   date: officer.date || null,
                   ...(isFromPreviousName && { fromPreviousName: officer._sourceCompanyName }),
                 });

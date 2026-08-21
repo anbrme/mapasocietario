@@ -18,7 +18,7 @@ export const BORME_SECTION_NAMES = new Set([
 // is authoritative and is never overridden by events.
 export const getLinkEffectiveCategory = link => {
   if (!link || link.userAmended) return link?.category;
-  return effectiveCategoryFromEvents(link.events, link.category);
+  return effectiveCategoryFromEvents(link.events, link.category, link.categoryDate);
 };
 
 // A link is DIRECTIONAL (gets an arrowhead + particle flow) when it represents
