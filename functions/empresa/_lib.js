@@ -1715,9 +1715,15 @@ export async function handleCompany({ params, env }, lang = 'es') {
       status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
+        // One hour, not one day. The registry publishes daily and the officer
+        // tables above are rendered from it: a 24h edge cache could keep serving
+        // a board that changed this morning long after the backend knew. At this
+        // traffic a page re-renders at most 24 times a day, which is nothing.
+        // stale-while-revalidate is kept for origin trouble, but bounded to a
+        // day so a rarely-visited page cannot serve a week-old board.
         'cache-control': noindex
           ? 'public, max-age=0, s-maxage=600'
-          : 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800',
+          : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400',
       },
     });
   } catch {
