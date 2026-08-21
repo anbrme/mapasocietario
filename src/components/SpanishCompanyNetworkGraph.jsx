@@ -417,7 +417,7 @@ const SEARCH_COPY = {
     markResigned: 'Mark as ceased',
     markActive: 'Mark as active',
     buyDueDiligence: 'Buy Due Diligence',
-    buyDueDiligencePriced: 'Get the full report · EUR 22.50',
+    buyDueDiligencePriced: 'Get the full report',
     fullReportAdds: 'The full report adds an AI risk score, screening against the OFAC SDN and EU sanctions lists, adverse-media checks with every finding traced to its source, full officer history and red-flag analysis.',
     previewSeeSample: 'See a sample report (PDF)',
     previewGuarantee: 'Data-quality guarantee — if anything is wrong, we re-issue it free or refund you within 7 days.',
@@ -761,7 +761,7 @@ const SEARCH_COPY = {
     markResigned: 'Marcar como cesado',
     markActive: 'Marcar como activo',
     buyDueDiligence: 'Comprar Due Diligence',
-    buyDueDiligencePriced: 'Obtener el informe completo · 22,50 €',
+    buyDueDiligencePriced: 'Obtener el informe completo',
     fullReportAdds: 'El informe completo añade una puntuación de riesgo por IA, cribado contra las listas de sanciones OFAC SDN y de la UE, comprobación de prensa adversa con cada hallazgo trazado hasta su fuente, historial completo de administradores y análisis de señales de alerta.',
     previewSeeSample: 'Ver un informe de ejemplo (PDF)',
     previewGuarantee: 'Garantía de calidad de datos: si algo es incorrecto, lo reemitimos gratis o te reembolsamos en un plazo de 7 días.',
@@ -9785,6 +9785,10 @@ const SpanishCompanyNetworkGraph = ({
             setPreviewOpen(false);
             setDdCheckoutCompany(previewNodeName);
             setDdCheckoutOpen(true);
+          }}
+          onMonitorCompany={() => {
+            trackGraphToolbarAction('monitor_request');
+            setMonitorCompany(previewNodeName);
           }}
         />
 

@@ -19,6 +19,7 @@ import {
   Info as InfoIcon,
   PictureAsPdf as PictureAsPdfIcon,
   VerifiedUser as VerifiedUserIcon,
+  NotificationsActive as NotificationsActiveIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -65,6 +66,7 @@ const CompanyInspectorPanel = ({
   onOpenDataset,
   onOpenReport,
   onBuyDueDiligence,
+  onMonitorCompany,
   // Officer track record. The chart is prefetched alongside the profile so the
   // preview is populated by the time the panel paints, and so opening the full
   // dialog costs no second wait.
@@ -675,6 +677,17 @@ const CompanyInspectorPanel = ({
             >
               {text.buyDueDiligencePriced}
             </Button>
+            {onMonitorCompany && (
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<NotificationsActiveIcon />}
+                onClick={onMonitorCompany}
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              >
+                {text.monitorCompany}
+              </Button>
+            )}
             {/* Let buyers see exactly what they're paying for before they commit. */}
             <Button
               component="a"
