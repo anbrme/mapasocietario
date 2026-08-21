@@ -117,6 +117,7 @@ import { detectCargoPresence } from '../utils/cargoDetection';
 import { officerNodeKey, officerIdFor } from '../utils/officerNodeKey';
 import { mergeEntitySuggestions } from '../utils/entitySuggestions';
 import { classifyEntitySelection, ownedCompaniesFromHint } from '../utils/entitySelection';
+import { reconcileOfficersWithEvents } from '../utils/pendingOfficerEvents';
 import { mergeCargoIntoCompanyNode, undoCargoUnify } from '../utils/graphUnify';
 import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms';
 import {
@@ -1288,6 +1289,45 @@ const summarizePathLinks = (links, language = 'es') => {
 // (apoderados, auditors, unknown roles) are truncated newest-first using
 // appointed_date / resigned_date carried on each v3 officer object. Synchronous —
 // no extra network round-trips.
+/**
+ * Bring a company doc up to what BORME published after it was last aggregated.
+ *
+ * The doc lags the event log — SOTO DE TORRES, SL was nine months behind on the
+ * day the registry published one joint administrator resigning and another
+ * being appointed. Nodes are built from the doc, so the newcomer had no node at
+ * all, while the event overlay (enrichLinksWithEventDates) still turned the
+ * leaver's edge red: the graph showed a departure and no arrival.
+ *
+ * Only the SUBJECT of a search or expansion is reconciled — the entity the user
+ * asked about. The events request is the one enrichLinksWithEventDates makes
+ * moments later, so on the cache it costs nothing.
+ */
+const applyPendingOfficerEvents = async doc => {
+  if (!doc || !doc.last_seen) return doc;
+  // group_key only. The events endpoint falls back to name matching, which can
+  // return the acts of another company whose name embeds this one — harmless
+  // when it only re-labels an edge, but here it would seat a stranger on this
+  // company's board.
+  const groupKey = doc.group_key || doc._id || doc.id || null;
+  const name = doc.company_name || doc.company_name_normalized || '';
+  if (!groupKey) return doc;
+  try {
+    const resp = await spanishCompaniesService.getCompanyEventsV3(name, { groupKey, size: 50 });
+    const reconciled = reconcileOfficersWithEvents(doc, resp?.events || []);
+    if (reconciled.pendingActsApplied > 0) {
+      console.debug('[PendingEvents]', name, {
+        applied: reconciled.pendingActsApplied,
+        docThrough: doc.last_seen,
+      });
+    }
+    return reconciled;
+  } catch (err) {
+    // Freshness is a bonus; the doc alone is still a valid answer.
+    console.warn('[PendingEvents] events fetch failed for', name, err?.message || err);
+    return doc;
+  }
+};
+
 const v3DocsToCappedEntries = (docs, cap) => {
   if (!cap || cap <= 0) {
     return docs.flatMap(c => SpanishCompaniesService.v3CompanyToEntries(c));
@@ -2682,7 +2722,13 @@ const SpanishCompanyNetworkGraph = ({
           });
         }
 
-        const v3Results = v3Data.results || [];
+        const rawResults = v3Data.results || [];
+        // The first result is the entity the user asked for (with a group_key it
+        // is the only one). Bring it up to the latest published acts before it
+        // becomes nodes.
+        const v3Results = rawResults.length > 0
+          ? [await applyPendingOfficerEvents(rawResults[0]), ...rawResults.slice(1)]
+          : rawResults;
         if (v3Results.length > 0) {
           // Board roles always kept; apoderados/others capped per-company, newest first.
           const baseEntries = await v3DocsToCappedEntries(v3Results, officersPerCompany);
@@ -4448,7 +4494,8 @@ const SpanishCompanyNetworkGraph = ({
         );
         const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName, { groupKey });
         if (v3.company) {
-          const baseEntries = await v3DocsToCappedEntries([v3.company], officersPerCompany);
+          const company = await applyPendingOfficerEvents(v3.company);
+          const baseEntries = await v3DocsToCappedEntries([company], officersPerCompany);
           const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
           await addCompanyWithOfficersToGraph(entries, companyNode, aliasMap);
           // Stamp isDissolved on the company node so enrichLinksWithEventDates can

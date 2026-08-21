@@ -25,6 +25,7 @@ import { findPromotedCompanyBySlug } from './_demand.js';
 // instead of a local regex keeps the page and the in-app graph classifying
 // officers identically.
 import { positionCategoryFor } from '../../src/utils/positionCategories.js';
+import { reconcileOfficersWithEvents } from '../../src/utils/pendingOfficerEvents.js';
 
 const API_BASE = 'https://api.ncdata.eu';
 const SITE = 'https://mapasocietario.es';
@@ -1059,7 +1060,18 @@ function hreflangTags(slug) {
   ].join('\n');
 }
 
-export function renderCompanyPage(company, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false) {
+export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false) {
+  // The aggregated doc lags the event log, so "Administradores y cargos
+  // vigentes" — and the JSON-LD employee list Google reads — described the last
+  // AGGREGATION rather than the last PUBLICATION. On the day SOTO DE TORRES, SL
+  // replaced a joint administrator, this page named the man who had resigned
+  // that morning, omitted his replacement, and printed both acts correctly a few
+  // centimetres below, in the history section fed by these same events.
+  //
+  // The caller has already dropped events belonging to other companies (the
+  // name-match leak guard), so an act can never seat an officer here by mistake.
+  const company = reconcileOfficersWithEvents(rawCompany, events);
+
   // Does the record actually establish when this company was formed? Drives both
   // the label on the date fact and whether foundingDate is safe to publish.
   const isIncorporation = firstFilingIsIncorporation(company, events);
