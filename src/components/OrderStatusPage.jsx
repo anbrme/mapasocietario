@@ -431,18 +431,6 @@ export default function OrderStatusPage() {
         const ddReady = !!data.reportReady;
         setDdReportReady(ddReady);
 
-        if (ddReady) {
-          try {
-            const htmlRes = await fetch(
-              `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}&type=html`,
-              { method: 'HEAD' }
-            );
-            setHtmlEditionReady(htmlRes.ok);
-          } catch {
-            setHtmlEditionReady(false);
-          }
-        }
-
         // For financial statements, check if the supplementary file exists
         if (data.options?.financialStatements) {
           const fsRes = await fetch(
@@ -465,6 +453,40 @@ export default function OrderStatusPage() {
     const interval = setInterval(poll, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [status, sessionId]);
+
+  // The interactive edition gets its OWN effect rather than riding on the poll
+  // above, which returns immediately unless status === 'processing'. An order
+  // page opened after the report finished never enters that loop, so the check
+  // never ran and the button never appeared — which is exactly how it behaved
+  // on the first real order.
+  //
+  // The two artifacts are stored back to back but not atomically (measured 0.4s
+  // apart), so a first miss is retried a couple of times rather than treated as
+  // absent. It never gates the ready state: an order is complete without it.
+  React.useEffect(() => {
+    if (!sessionId || !ddReportReady) return undefined;
+    let cancelled = false;
+    let attempts = 0;
+    const check = async () => {
+      try {
+        const res = await fetch(
+          `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}&type=html`,
+          { method: 'HEAD' }
+        );
+        if (cancelled) return;
+        if (res.ok) {
+          setHtmlEditionReady(true);
+          return;
+        }
+      } catch {
+        // fall through to the retry below
+      }
+      attempts += 1;
+      if (!cancelled && attempts < 3) setTimeout(check, 4000);
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [sessionId, ddReportReady]);
 
   // Keep the ref in sync with the latest orderData so effects that should not
   // re-run on every poll can read the current value via the ref instead.
