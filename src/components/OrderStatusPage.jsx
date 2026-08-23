@@ -99,6 +99,7 @@ const ORDER_COPY = {
       title: 'Your report is ready!',
       sub: 'Download links are available for 7 days.',
       downloadDd: 'Download Due Diligence Report',
+      downloadHtml: 'Download interactive edition (HTML)',
       downloadFs: (year) => `Download Financial Statements (${year})`,
       searchAnother: 'Search another company',
       openAi: 'Open AI Investigation (2 days)',
@@ -178,6 +179,7 @@ const ORDER_COPY = {
       title: '¡Tu informe está listo!',
       sub: 'Los enlaces de descarga están disponibles durante 7 días.',
       downloadDd: 'Descargar informe de Due Diligence',
+      downloadHtml: 'Descargar edición interactiva (HTML)',
       downloadFs: (year) => `Descargar Cuentas Anuales (${year})`,
       searchAnother: 'Buscar otra empresa',
       openAi: 'Abrir Investigación por IA (2 días)',
@@ -236,6 +238,10 @@ export default function OrderStatusPage() {
   const [orderData, setOrderData] = useState(null); // verified payment data
   const [ddReportReady, setDdReportReady] = useState(false);
   const [financialStatementsReady, setFinancialStatementsReady] = useState(false);
+  // The interactive edition is stored beside the PDF but is secondary: an
+  // order is complete without it, so its absence hides the button and never
+  // holds back the 'ready' state.
+  const [htmlEditionReady, setHtmlEditionReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const generatingRef = React.useRef(false);
   const ga4FiredRef = React.useRef(false);
@@ -425,6 +431,18 @@ export default function OrderStatusPage() {
         const ddReady = !!data.reportReady;
         setDdReportReady(ddReady);
 
+        if (ddReady) {
+          try {
+            const htmlRes = await fetch(
+              `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}&type=html`,
+              { method: 'HEAD' }
+            );
+            setHtmlEditionReady(htmlRes.ok);
+          } catch {
+            setHtmlEditionReady(false);
+          }
+        }
+
         // For financial statements, check if the supplementary file exists
         if (data.options?.financialStatements) {
           const fsRes = await fetch(
@@ -533,7 +551,9 @@ export default function OrderStatusPage() {
   const downloadFile = useCallback(async (type) => {
     const baseUrl = type === 'financial-statements'
       ? `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}&type=financial-statements`
-      : `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}`;
+      : type === 'html'
+        ? `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}&type=html`
+        : `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}`;
 
     const safeName = (orderData?.companyName || orderData?.companyIdentifier || 'report')
       .replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
@@ -541,7 +561,9 @@ export default function OrderStatusPage() {
     const langPrefix = (orderData?.options?.language || orderData?.country || 'ES').toUpperCase();
     const fileName = type === 'financial-statements'
       ? `Financial_Statements_${safeName}_${date}.pdf`
-      : `${langPrefix}_DD_Report_${safeName}_${date}.pdf`;
+      : type === 'html'
+        ? `${langPrefix}_DD_Report_${safeName}_${date}.html`
+        : `${langPrefix}_DD_Report_${safeName}_${date}.pdf`;
 
     // Android WebView can't download blob: URLs or honour the <a download>
     // attribute, so the blob path below silently does nothing in the app.
@@ -835,6 +857,28 @@ export default function OrderStatusPage() {
                 >
                   {copy.ready.downloadDd}
                 </Button>
+
+                {htmlEditionReady && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<DownloadIcon />}
+                    onClick={() => downloadFile('html')}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      py: 1.25,
+                      borderRadius: 2,
+                      borderColor: 'rgba(255,167,38,0.5)',
+                      color: 'warning.light',
+                      '&:hover': {
+                        borderColor: '#f57c00',
+                        bgcolor: 'rgba(255,167,38,0.08)',
+                      },
+                    }}
+                  >
+                    {copy.ready.downloadHtml}
+                  </Button>
+                )}
 
                 {hasFinancialStatements && (
                   <Button
