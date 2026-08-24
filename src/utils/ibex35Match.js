@@ -1,4 +1,5 @@
 import { SEED, V3_TO_SLUG } from '../../functions/empresa/_ibex35.js';
+import { entityNameKey, stripRegistryOffice } from './companyName';
 
 // A trailing registry-office annotation ("(R.M. A CORUÑA)", "(RM MADRID)")
 // that live graph names carry but the SEED's v3Name never does — e.g.
@@ -28,6 +29,65 @@ export function matchIbexSeed(companyName) {
   const slug = KEY_TO_SLUG[nameKey(companyName)];
   if (!slug) return null;
   return SEED[slug] || null;
+}
+
+/**
+ * Every EXACT name under which one seed entity may be printed: its registered
+ * v3 name and its brand, both reduced to the shared entity key (legal form
+ * canonicalized, accents/punctuation folded). Deliberately a fixed set of
+ * WHOLE names — never a prefix, substring or token reordering.
+ *
+ * `nameKey(seed.name)` is kept alongside `entityNameKey(seed.name)` because the
+ * two agree for plain ASCII brands and the second is what rescues an accented
+ * brand ("Enagás" -> "ENAGAS"), which a raw nameKey could never match.
+ */
+const LISTED_KEY_TO_SLUG = (() => {
+  const map = {};
+  Object.entries(SEED).forEach(([slug, seed]) => {
+    [
+      entityNameKey(seed.v3Name),
+      nameKey(seed.name),
+      entityNameKey(seed.name),
+    ].forEach(key => {
+      if (key && !(key in map)) map[key] = slug;
+    });
+  });
+  return map;
+})();
+
+/**
+ * Resolve a raw registry name — a company name OR an officer/cargo spelling —
+ * to its curated IBEX 35 seed entry, by EXACT whole-name equality only.
+ *
+ * The reason this exists next to matchIbexSeed: BORME prints a corporate
+ * officer under whatever spelling the filing used, and a filing may omit the
+ * legal form entirely ("BANCO SANTANDER" as APODERADO of BANCO DE VASCONIA SA,
+ * 2009). matchIbexSeed only knows the registered v3 name, so that officer reads
+ * as a PERSON — person icon, no company affordances, its own graph node.
+ *
+ * SAFETY (binding): only the 35 curated entities can ever match, and only on a
+ * whole name. A person whose surname is a brand ("GRIFOLS ROURA VICTOR",
+ * "PUIG LOPEZ MARIA") keys differently and stays a person; an unrelated
+ * company and its founder ("LUIS SANCHEZ SL" / "LUIS SANCHEZ") are untouched
+ * because neither is in the seed. There is no lookup against the companies
+ * index, so no name outside this list can ever be reclassified.
+ *
+ * @param {string} name
+ * @returns {(object & {slug: string, groupKey: string}) | null} the seed entry,
+ *   plus its slug and the "H:<hoja>" group key of its canonical doc, or null.
+ */
+export function listedEntityForName(name) {
+  if (!name) return null;
+  // A live graph name can carry a trailing "(R.M. …)" office annotation that the
+  // seed's v3Name never does; strip it first (entityNameKey would otherwise fold
+  // the annotation into the key and never match).
+  const key = entityNameKey(stripRegistryOffice(String(name)));
+  if (!key) return null;
+  const slug = LISTED_KEY_TO_SLUG[key];
+  if (!slug) return null;
+  const seed = SEED[slug];
+  if (!seed) return null;
+  return { ...seed, slug, groupKey: `H:${seed.hoja.replace(/\s+/g, '-')}` };
 }
 
 // A query shorter than this never pins anything — short prefixes ("in", "a")
@@ -129,7 +189,10 @@ const LISTED_BADGE_LABEL = {
  * @returns {{label: string, ticker: string} | null}
  */
 export function listedBadgeFor(companyName, lang) {
-  const match = matchIbexSeed(companyName);
+  // listedEntityForName, not matchIbexSeed: the badge must also appear on the
+  // suffix-less officer spelling of a listed entity ("BANCO SANTANDER"), which
+  // the registered-name-only lookup does not recognize.
+  const match = listedEntityForName(companyName);
   if (!match) return null;
   return { label: LISTED_BADGE_LABEL[lang === 'en' ? 'en' : 'es'], ticker: match.ticker };
 }

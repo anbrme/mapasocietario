@@ -10,7 +10,8 @@
  */
 
 import { positionCategoryFor } from '../utils/positionCategories';
-import { canonLegalForm, entityNameKey, looksLikeGroupKey, selectGroupKeyId } from '../utils/companyName';
+import { canonLegalForm, looksLikeGroupKey, selectGroupKeyId } from '../utils/companyName';
+import { isSameUnifiableEntity } from '../utils/graphUnify';
 import { API_URL } from '../config';
 import { createRequestCache } from '../utils/requestCache';
 
@@ -692,16 +693,18 @@ class SpanishCompaniesService {
 
     // The API does substring matching — "PIÑEIRO GOMEZ JOSE" also returns
     // "PIÑEIRO GOMEZ JOSE MANUEL". Filter to exact name match client-side.
-    // Compare via entityNameKey (legal-form canonical AND punctuation-fold):
+    // Compare via isSameUnifiableEntity — entityNameKey (legal-form canonical
+    // AND punctuation-fold) plus the curated listed-entity equality that also
+    // catches a filing which printed a listed company with NO legal form
+    // ("BANCO SANTANDER" as APODERADO):
     // v3 stores corporate officers under the printed spelling ("BANCO
     // SANTANDER SA") while the canonical company name keeps the BORME comma
     // ("BANCO SANTANDER, SA") — the old canonLegalForm-only comparison
     // silently dropped all 95 of the bank's seats and unify no-opped.
     if (exactMatch && data.officers) {
-      const wanted = entityNameKey(officerName);
-      data.officers = data.officers.filter(entry => {
-        return entityNameKey(entry.officer_name || entry.name || '') === wanted;
-      });
+      data.officers = data.officers.filter(entry =>
+        isSameUnifiableEntity(entry.officer_name || entry.name || '', officerName)
+      );
     }
 
     return data;

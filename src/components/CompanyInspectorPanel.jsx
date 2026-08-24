@@ -79,6 +79,10 @@ const CompanyInspectorPanel = ({
   counts = [],
   isCorporateOfficer = false,
   onViewAsCompany,
+  // "Listed · IBEX 35" badge for the header, when this node IS one of the
+  // curated listed entities — including an officer node carrying the entity's
+  // suffix-less filing spelling ("BANCO SANTANDER").
+  listedBadge = null,
   activeDatasetKey = null,
   onOpenDataset,
   onOpenReport,
@@ -197,6 +201,14 @@ const CompanyInspectorPanel = ({
               color={nodeType === 'officer' ? 'warning' : 'primary'}
               variant="outlined"
             />
+            {listedBadge && nodeType === 'officer' && (
+              <Chip
+                label={listedBadge.label}
+                size="small"
+                color="success"
+                variant="outlined"
+              />
+            )}
             {userMerged && (
               <Tooltip title={text.userMergedTooltip}>
                 <Chip label={text.userMergedBadge} size="small" color="warning" variant="outlined" />

@@ -112,7 +112,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ForceGraph2D from 'react-force-graph-2d';
 import AIInvestigationGate from './AIInvestigationGate';
 import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
-import { isLegalEntityName } from '../utils/legalEntity';
+import { isLegalEntityName, isCorporateName } from '../utils/legalEntity';
 import { detectCargoPresence } from '../utils/cargoDetection';
 import { officerNodeKey, officerIdFor } from '../utils/officerNodeKey';
 import { mergeEntitySuggestions } from '../utils/entitySuggestions';
@@ -162,7 +162,7 @@ import {
 import { rebindLinksAfterNodeUpdate } from '../utils/graphLinkBinding';
 import { formatDate } from '../utils/formatDate';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
-import { matchIbexSeed, matchAllIbexNodes, listedBadgeFor, pinListedEntities } from '../utils/ibex35Match';
+import { matchIbexSeed, matchAllIbexNodes, listedBadgeFor, pinListedEntities, listedEntityForName } from '../utils/ibex35Match';
 import { getIbexCompanyData } from '../services/ibex35DashboardClient';
 import { isAndroidNativeApp } from '../services/playBillingService';
 
@@ -2486,11 +2486,14 @@ const SpanishCompanyNetworkGraph = ({
   );
 
   // Helper function to determine if an officer name represents a company or individual.
-  // Base check is the shared, pure isLegalEntityName (SL/SA/SGIIC/SCOOP/AIE/UTE/
-  // foreign forms/...); plus a few known-firm-name heuristics that aren't a legal
-  // form per se (audit/consulting houses commonly seen acting as officers).
+  // Base check is the shared, pure isCorporateName — the legal-form suffix rule
+  // (SL/SA/SGIIC/SCOOP/AIE/UTE/foreign forms/...) PLUS exact whole-name equality
+  // against the 35 curated listed entities, which is what recognizes a filing
+  // that printed a company with no legal form at all ("BANCO SANTANDER" as
+  // APODERADO). Plus a few known-firm-name heuristics that aren't a legal form
+  // per se (audit/consulting houses commonly seen acting as officers).
   const isCompanyOfficer = useCallback(officerName => {
-    if (isLegalEntityName(officerName)) return true;
+    if (isCorporateName(officerName)) return true;
 
     const knownFirmIndicators = [
       /\b(AUDIT|AUDITOR|CONSULTING|CONSULTORIA|ASESORES|GESTORIA|DESPACHO)\b/i, // Service companies
@@ -8407,7 +8410,7 @@ const SpanishCompanyNetworkGraph = ({
             // corporate administrador like "CAJAMAR GESTION SGIIC SA"), so fall
             // back to the name-based legal-entity check to pick the right icon.
             const isCompanyLike =
-              option.type === 'company' || isLegalEntityName(option.name || option.label);
+              option.type === 'company' || isCorporateName(option.name || option.label);
             const listedBadge = listedBadgeFor(option.name || option.label, uiLanguage);
             return (
             <Box component="li" {...props} key={option.label + (option.cif || '')}>
@@ -9816,11 +9819,24 @@ const SpanishCompanyNetworkGraph = ({
           isCorporateOfficer={
             previewNodeType === 'officer' && isCompanyOfficer(previewNodeName || '')
           }
-          onViewAsCompany={() => openDataPreview({ name: previewNodeName, type: 'spanish-company-group' })}
+          onViewAsCompany={() => {
+            // A listed entity printed as an officer has a canonical company doc
+            // that its officer spelling would not resolve to ("BANCO SANTANDER"
+            // -> "BANCO SANTANDER, SA"). Open it by GROUP KEY so the profile
+            // binds to the verified entity rather than to whatever the name
+            // search ranks first.
+            const listed = listedEntityForName(previewNodeName);
+            openDataPreview(
+              listed
+                ? { name: listed.v3Name, type: 'spanish-company-group', groupKey: listed.groupKey }
+                : { name: previewNodeName, type: 'spanish-company-group' }
+            );
+          }}
           activeDatasetKey={activeDatasetKey}
           onOpenDataset={key => setActiveDatasetKey(prev => (prev === key ? null : key))}
           nodeName={previewNodeName}
           nodeType={previewNodeType}
+          listedBadge={listedBadgeFor(previewNodeName || '', uiLanguage)}
           userMerged={previewUserMerged}
           data={previewData}
           loading={previewLoading}

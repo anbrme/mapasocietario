@@ -12,6 +12,8 @@
  * false-positives.
  */
 
+import { listedEntityForName } from './ibex35Match';
+
 // Known legal-form suffix tokens (normalized: uppercase, periods stripped).
 const LEGAL_FORM_TOKENS = new Set([
   // Spanish
@@ -80,6 +82,27 @@ export function isLegalEntityName(name) {
   }
 
   return false;
+}
+
+/**
+ * Does this name denote a COMPANY rather than an individual?
+ *
+ * `isLegalEntityName` alone answers by trailing legal form, which misses a
+ * filing that printed a company without one — BORME's "BANCO SANTANDER" as
+ * APODERADO of BANCO DE VASCONIA SA (2009) renders as a person under the
+ * suffix rule. The only additional signal admitted here is EXACT whole-name
+ * equality against the 35 curated IBEX 35 seed entities (registered name or
+ * brand); see listedEntityForName for the safety argument. Nothing else can
+ * promote a name, so a person whose surname is a brand stays a person.
+ *
+ * `isLegalEntityName` itself is left untouched: other callers (route selection
+ * in entitySelection.js) depend on the pure suffix rule.
+ *
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function isCorporateName(name) {
+  return isLegalEntityName(name) || !!listedEntityForName(name);
 }
 
 export default isLegalEntityName;

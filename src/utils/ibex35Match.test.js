@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchIbexSeed, listedBadgeFor, pinListedEntities } from './ibex35Match';
+import { matchIbexSeed, listedBadgeFor, pinListedEntities, listedEntityForName } from './ibex35Match';
 
 describe('matchIbexSeed', () => {
   it('matches a company name regardless of surrounding whitespace and case', () => {
@@ -323,5 +323,86 @@ describe('buildIbexCardViewModel', () => {
     const sonatrach = vm.shareholders.find(s => s.name === 'Sonatrach');
     expect(sonatrach.percentageLabel).toBe('3.85%');
     expect(sonatrach.asOfLabel).toBeNull();
+  });
+});
+
+describe('listedEntityForName', () => {
+  // BORME prints a corporate officer under whatever spelling the filing used —
+  // "BANCO SANTANDER" with no legal form is a real 2009 APODERADO entry of
+  // BANCO DE VASCONIA SA. Matching is EXACT WHOLE-NAME equality against the 35
+  // curated seed entries only (registered name or brand), never a prefix,
+  // substring or token reordering: a person whose surname is a brand must stay
+  // a person.
+  it('matches a suffix-less officer spelling of a listed entity (the brand)', () => {
+    const seed = listedEntityForName('BANCO SANTANDER');
+    expect(seed).not.toBeNull();
+    expect(seed.name).toBe('Banco Santander');
+  });
+
+  it('matches the registered name in either punctuation form', () => {
+    expect(listedEntityForName('BANCO SANTANDER, S.A.').name).toBe('Banco Santander');
+    expect(listedEntityForName('banco santander sa').name).toBe('Banco Santander');
+  });
+
+  it('carries the seed slug and the "H:<hoja>" group key of the canonical doc', () => {
+    const seed = listedEntityForName('BANCO SANTANDER');
+    expect(seed.slug).toBe('banco-santander');
+    expect(seed.groupKey).toBe('H:S-1960');
+    expect(seed.v3Name).toBe('BANCO SANTANDER, SA');
+  });
+
+  it('maps a brand name to its listed entity even when the registered name differs', () => {
+    // "INDITEX" as an officer spelling IS the listed Inditex, whose registered
+    // name is INDUSTRIA DE DISEÑO TEXTIL, S.A.
+    const seed = listedEntityForName('INDITEX');
+    expect(seed).not.toBeNull();
+    expect(seed.v3Name).toBe('INDUSTRIA DE DISEÑO TEXTIL, S.A.');
+  });
+
+  it('matches an accented brand written without accents', () => {
+    expect(listedEntityForName('ENAGAS').name).toBe('Enagás');
+  });
+
+  it('never matches a person whose surname is a listed brand', () => {
+    expect(listedEntityForName('GRIFOLS ROURA VICTOR')).toBeNull();
+    expect(listedEntityForName('PUIG LOPEZ MARIA')).toBeNull();
+  });
+
+  it('never matches a name that is not a whole seed name', () => {
+    // "SANTANDER" alone is the city/brand fragment, not the entity.
+    expect(listedEntityForName('SANTANDER')).toBeNull();
+    expect(listedEntityForName('BANCO SANTANDER TOTTA')).toBeNull();
+  });
+
+  it('leaves an unrelated small company and its founder alone', () => {
+    expect(listedEntityForName('LUIS SANCHEZ')).toBeNull();
+    expect(listedEntityForName('LUIS SANCHEZ SL')).toBeNull();
+  });
+
+  it('does not confuse the unlisted sibling that shares part of the name', () => {
+    // "INDITEX, SA" is the unlisted group entity, not the listed company.
+    expect(listedEntityForName('INDITEX, SA')).toBeNull();
+  });
+
+  it('returns null for empty, null, or undefined input', () => {
+    expect(listedEntityForName('')).toBeNull();
+    expect(listedEntityForName(null)).toBeNull();
+    expect(listedEntityForName(undefined)).toBeNull();
+  });
+});
+
+describe('listedBadgeFor with a suffix-less listed name', () => {
+  it('badges the officer spelling of a listed entity', () => {
+    const badge = listedBadgeFor('BANCO SANTANDER', 'es');
+    expect(badge).not.toBeNull();
+    expect(badge.ticker).toBe('BME:SAN');
+  });
+
+  it('still badges the canonical registered name', () => {
+    expect(listedBadgeFor('REPSOL SA', 'en').label).toBe('Listed · IBEX 35');
+  });
+
+  it('does not badge a person whose surname is a listed brand', () => {
+    expect(listedBadgeFor('GRIFOLS ROURA VICTOR', 'es')).toBeNull();
   });
 });
