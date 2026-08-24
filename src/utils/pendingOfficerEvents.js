@@ -44,7 +44,7 @@ const actKind = eventType => {
   return null; // capital, address, registry data: nothing to do with seats
 };
 
-const nameKey = name =>
+export const nameKey = name =>
   (name || '')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')

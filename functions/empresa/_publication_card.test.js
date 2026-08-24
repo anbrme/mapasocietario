@@ -3,6 +3,8 @@ import { publicationCard, eventsBlock, isBoeUrl } from './_lib.js';
 
 const T_ES = {
   registryAct: 'Acto registral',
+  historyFullText: 'Texto completo',
+  historyHideFull: 'Ocultar',
   historyViewSource: 'Ver en el BORME (PDF)',
   historyEntryNumber: (letter, n) => (letter ? `BORME-${letter} nº ${n}` : `nº ${n}`),
   historyUnknownYear: 'Sin fecha',
@@ -18,6 +20,8 @@ const T_ES = {
 
 const T_EN = {
   registryAct: 'Registry act',
+  historyFullText: 'Full text',
+  historyHideFull: 'Hide',
   historyViewSource: 'View in BORME (PDF)',
   historyEntryNumber: (letter, n) => (letter ? `BORME-${letter} No. ${n}` : `No. ${n}`),
   historyUnknownYear: 'Undated',
@@ -46,7 +50,33 @@ describe('publicationCard', () => {
     expect(html).toContain('<details class="entry-detail">');
     expect(LONG_ENTRY.length).toBeGreaterThan(180);
     const snippet = LONG_ENTRY.slice(0, 180);
-    expect(html).toContain(`<summary>${snippet}…</summary>`);
+    expect(html).toContain(`<span class="entry-preview">${snippet}…</span>`);
+    // The toggle carries both labels as data so CSS swaps them on open — the
+    // preview is hidden then, so the text is never shown twice.
+    expect(html).toContain('<span class="entry-toggle" data-closed="Texto completo" data-open="Ocultar"></span>');
+  });
+
+  it('bolds the act labels in the full text, as the BORME does', () => {
+    const fullEntry =
+      'Ceses/Dimisiones. Consejero: HAJJAJI ABDEL KARIM. Presidente: HAJJAJI ABDEL KARIM. ' +
+      'Nombramientos. Consejero: RUIZ SENA XAVIER ANTONI. Presidente: RUIZ SENA XAVIER ANTONI. ' +
+      'Datos registrales. S 8 , H M 182503, I/A 113 (26.05.26).';
+    const event = {
+      event_date: '2026-06-02',
+      event_types: [
+        { category: 'officers', type: 'Ceses/Dimisiones' },
+        { category: 'officers', type: 'Nombramientos' },
+        { category: 'administrative', type: 'Datos registrales' },
+      ],
+      full_entry: fullEntry,
+    };
+    const html = publicationCard(event, T_ES, 'es');
+
+    expect(html).toContain('<p class="entry-full"><b>Ceses/Dimisiones.</b> Consejero: HAJJAJI ABDEL KARIM.');
+    expect(html).toContain(' <b>Nombramientos.</b> Consejero: RUIZ SENA');
+    expect(html).toContain(' <b>Datos registrales.</b> S 8 , H M 182503, I/A 113 (26.05.26).</p>');
+    // Only act labels are bold — never a name or a registry reference.
+    expect((html.match(/<b>/g) || []).length).toBe(3);
   });
 
   it('escapes the full text and preserves whitespace via the entry-full class', () => {

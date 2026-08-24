@@ -26,6 +26,9 @@ import { findPromotedCompanyBySlug } from './_demand.js';
 // officers identically.
 import { positionCategoryFor } from '../../src/utils/positionCategories.js';
 import { reconcileOfficersWithEvents } from '../../src/utils/pendingOfficerEvents.js';
+// A cese BORME printed under a variant spelling of an active officer closes that
+// seat here (HAJJAJI ABDELKRIM / HAJJAJI ABDEL KARIM); see the module header.
+import { foldVariantSeats } from '../../src/utils/officerNameVariants.js';
 
 const API_BASE = 'https://api.ncdata.eu';
 const SITE = 'https://mapasocietario.es';
@@ -238,6 +241,7 @@ const T = {
     dissolvedSeatsNote: (date) =>
       `La sociedad figura disuelta en el BORME${date ? ` (${date})` : ''}. Estos cargos no fueron cesados individualmente en el registro: se extinguieron con la sociedad y no deben leerse como vigentes.`,
     formerOfficers: 'Cargos cesados o revocados',
+    ceasedAs: (name) => `cese inscrito como ${name}`,
     officerRoleNote: 'Cada cargo se sigue por su denominación exacta en el BORME. Cuando una persona cambia de tipo de cargo a lo largo del tiempo (p. ej. Consejero → Consejero Independiente → Consejero Externo), cada denominación se registra por separado, por lo que una misma persona puede figurar a la vez como cargo vigente bajo una denominación y como cargo cesado bajo otra.',
     thName: 'Nombre',
     thRole: 'Cargo',
@@ -281,6 +285,8 @@ const T = {
       other: 'Otros actos',
     },
     registryAct: 'Acto registral',
+    historyFullText: 'Texto completo',
+    historyHideFull: 'Ocultar',
     historyViewSource: 'Ver en el BORME (PDF)',
     historyEntryNumber: (letter, n) => (letter ? `BORME-${letter} nº ${n}` : `nº ${n}`),
     ctaTitle: 'Ver el mapa societario interactivo',
@@ -445,6 +451,7 @@ const T = {
     dissolvedSeatsNote: (date) =>
       `The company is recorded as dissolved in BORME${date ? ` (${date})` : ''}. These positions were never individually ceased in the registry: they ended with the company and should not be read as current.`,
     formerOfficers: 'Former / revoked officers',
+    ceasedAs: (name) => `cese recorded as ${name}`,
     officerRoleNote: 'Each role is tracked by its exact BORME title. When a person’s role type changes over time (e.g. Director → Independent Director → External Director), each title is recorded separately, so the same person may appear both as a current officer under one title and as a former officer under another.',
     thName: 'Name',
     thRole: 'Role',
@@ -488,6 +495,8 @@ const T = {
       other: 'Other acts',
     },
     registryAct: 'Registry act',
+    historyFullText: 'Full text',
+    historyHideFull: 'Hide',
     historyViewSource: 'View in BORME (PDF)',
     historyEntryNumber: (letter, n) => (letter ? `BORME-${letter} No. ${n}` : `No. ${n}`),
     ddCtaTitle: 'Full due diligence report',
@@ -645,7 +654,7 @@ function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = fals
   const renderRows = (officers) => officers
     .map(
       (o) => `<tr>
-        <td>${esc(o.name || o.name_normalized)}</td>
+        <td>${esc(o.name || o.name_normalized)}${o.ceased_as ? ` <span class="muted">(${esc(t.ceasedAs(o.ceased_as))})</span>` : ''}</td>
         <td>${esc(prettyPosition(o.position_normalized || o.position, t))}</td>
         <td>${esc(fmtDate(o[dateKey], lang))}</td>
       </tr>`,
@@ -814,13 +823,28 @@ function publicationSourceLine(event, t) {
  *
  * Exported so callers/tests can render and assert on a single card.
  */
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Bold the filing's own act labels ("Ceses/Dimisiones.", "Nombramientos.") in
+ * already-escaped entry text; only a label at the start or after ". " and
+ * followed by its period qualifies, so a name never bolds. */
+function boldActLabels(escapedText, eventTypes) {
+  const labels = [...new Set((eventTypes || []).map(eventTypeText).filter(Boolean))];
+  return labels.reduce(
+    (text, label) => text.replace(new RegExp(`(^|\\. )(${escapeRegExp(esc(label))})\\.`, 'g'), '$1<b>$2.</b>'),
+    escapedText,
+  );
+}
+
 export function publicationCard(event, t, lang) {
   const types = (event.event_types || []).map(eventTypeText).filter(Boolean).join(', ');
   const fullEntry = event.full_entry || '';
   const summary = fullEntry.slice(0, HISTORY_ENTRY_SNIPPET_LENGTH);
   const isLong = fullEntry.length > HISTORY_ENTRY_SNIPPET_LENGTH;
+  // Expanded, the card shows the full text once (CSS hides the preview) with
+  // the act labels in bold, as the BORME itself prints them.
   const entryBody = isLong
-    ? `<details class="entry-detail"><summary>${esc(summary)}…</summary><p class="entry-full">${esc(fullEntry)}</p></details>`
+    ? `<details class="entry-detail"><summary><span class="entry-preview">${esc(summary)}…</span><span class="entry-toggle" data-closed="${esc(t.historyFullText)}" data-open="${esc(t.historyHideFull)}"></span></summary><p class="entry-full">${boldActLabels(esc(fullEntry), event.event_types)}</p></details>`
     : `<p>${esc(summary)}</p>`;
   return `<li><span class="date">${esc(fmtDate(event.event_date, lang))}</span>
         <strong>${esc(types || t.registryAct)}</strong>
@@ -1039,6 +1063,11 @@ const STYLE = `<style>
   .timeline .date{display:inline-block;font-size:12px;color:var(--mut);margin-right:8px}
   .timeline p{margin:6px 0 0;font-size:13px;color:#334155}
   .entry-detail>summary{cursor:pointer;font-size:13px;color:#334155;margin:6px 0 0}
+  .entry-toggle{color:var(--brand);font-weight:600;margin-left:6px}
+  .entry-toggle::before{content:attr(data-closed)}
+  .entry-detail[open]>summary .entry-preview{display:none}
+  .entry-detail[open]>summary .entry-toggle{margin-left:0}
+  .entry-detail[open]>summary .entry-toggle::before{content:attr(data-open)}
   .entry-detail .entry-full{white-space:pre-wrap;margin:8px 0 0;font-size:13px;color:#334155}
   .entry-source{margin:8px 0 0;font-size:12px;color:var(--mut)}
   .entry-source a{color:var(--brand);font-weight:600}
@@ -1165,7 +1194,7 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   //
   // The caller has already dropped events belonging to other companies (the
   // name-match leak guard), so an act can never seat an officer here by mistake.
-  const company = reconcileOfficersWithEvents(rawCompany, events);
+  const company = foldVariantSeats(reconcileOfficersWithEvents(rawCompany, events), events);
 
   // Does the record actually establish when this company was formed? Drives both
   // the label on the date fact and whether foundingDate is safe to publish.
