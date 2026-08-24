@@ -14,6 +14,11 @@ const TONE_SX = {
   limitation: { borderLeft: '3px solid', borderColor: 'divider', pl: 1, color: 'text.secondary', fontStyle: 'italic' },
 };
 
+// Fire findings_visible once per company per session, not on every mount
+// (panel open/close, re-render) — a module-level set survives across
+// instances for the lifetime of the page.
+const seenFindings = new Set();
+
 export default function CompanyFindings({ groupKey, name, lang, onOpenReport, offerCta, onEvidence }) {
   const [state, setState] = useState({ status: 'loading', view: null });
 
@@ -25,7 +30,11 @@ export default function CompanyFindings({ groupKey, name, lang, onOpenReport, of
         if (cancelled) return;
         const view = findingsView(payload, lang);
         setState({ status: 'ready', view });
-        trackEvent('findings_visible', findingsVisibleParams(view));
+        const seenKey = `${groupKey || name}|${lang}`;
+        if (!seenFindings.has(seenKey)) {
+          seenFindings.add(seenKey);
+          trackEvent('findings_visible', findingsVisibleParams(view));
+        }
       })
       .catch(err => {
         if (cancelled) return;
@@ -54,7 +63,7 @@ export default function CompanyFindings({ groupKey, name, lang, onOpenReport, of
   const { header, changed, findings, verification, offer, labels } = state.view;
   const clickEvidence = f => {
     trackEvent('evidence_clicked', { kind: f.evidence.kind });
-    onEvidence(f.evidence);
+    onEvidence({ kind: f.kind, evidence: f.evidence });
   };
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
@@ -66,6 +75,7 @@ export default function CompanyFindings({ groupKey, name, lang, onOpenReport, of
             <> — <Link component="button" onClick={() => onOpenReport('nif', '')}>{labels.nifTellUs}</Link></>
           )}
           {header.province && ` · ${header.province}`}
+          {header.formerly && ` · ${header.formerly}`}
         </Typography>
       </Typography>
       {changed && (

@@ -20,7 +20,7 @@ const payload = {
 describe('findingsView', () => {
   it('builds the identity header with NIF and province', () => {
     expect(findingsView(payload, 'en').header)
-      .toEqual({ title: 'INDITEX, SA', nifLabel: 'NIF A15075062', nifMissing: false, province: 'A Coruña' });
+      .toEqual({ title: 'INDITEX, SA', nifLabel: 'NIF A15075062', nifMissing: false, province: 'A Coruña', formerly: null });
   });
 
   it('never leaves an empty NIF slot', () => {
@@ -30,16 +30,23 @@ describe('findingsView', () => {
     expect(v.header.province).toBeNull();
   });
 
+  it('names former names when the registry recorded any, omitting the line otherwise', () => {
+    expect(findingsView(payload, 'en').header.formerly).toBeNull();
+    const withFormer = { ...payload, company: { ...payload.company, previous_names: ['ZARA, SA', 'INDUSTRIAS TEXTILES, SA'] } };
+    expect(findingsView(withFormer, 'en').header.formerly).toBe('formerly ZARA, SA, INDUSTRIAS TEXTILES, SA');
+    expect(findingsView(withFormer, 'es').header.formerly).toBe('anteriormente ZARA, SA, INDUSTRIAS TEXTILES, SA');
+  });
+
   it('states the latest filing, and omits the line when unknown', () => {
     expect(findingsView(payload, 'en').changed).toBe('Latest BORME filing: 2026-06-12 — Nombramientos');
     expect(findingsView({ ...payload, company: { ...payload.company, last_filing: null } }, 'en').changed).toBeNull();
   });
 
-  it('maps findings to tone, evidence target and BORME url in payload order', () => {
+  it('maps findings to kind, tone, evidence target and BORME url in payload order', () => {
     const v = findingsView(payload, 'en');
-    expect(v.findings.map(f => [f.tone, f.date, f.evidence, f.bormeUrl])).toEqual([
-      ['concern', '2026-05-01', { kind: 'officer', ref: 'A' }, 'https://boe.es/n.pdf'],
-      ['limitation', null, null, null],
+    expect(v.findings.map(f => [f.kind, f.tone, f.date, f.evidence, f.bormeUrl])).toEqual([
+      ['governing_body_turnover', 'concern', '2026-05-01', { kind: 'officer', ref: 'A' }, 'https://boe.es/n.pdf'],
+      ['no_insolvency_notice', 'limitation', null, null, null],
     ]);
     expect(v.findings[0].key).toBe('governing_body_turnover:2026-05-01');
   });

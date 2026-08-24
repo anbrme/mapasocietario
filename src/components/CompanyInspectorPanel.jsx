@@ -40,8 +40,15 @@ import { formatDate } from '../utils/formatDate';
 // events/capital/ownership dataset (buildCompanyDatasets in
 // src/utils/inspectorDatasets.js has no generic "events" table), so only
 // officer-kind evidence gets a link — the component itself only renders the
-// link for that kind. 'current' is the only true officers table.
+// link for that kind. 'current' is the only true officers table, and is the
+// fallback for any other officer-evidence finding kind.
 const FINDINGS_OFFICERS_DATASET_KEY = 'current';
+
+// Finding kind -> the officer dataset key that actually backs it.
+const FINDINGS_EVIDENCE_DATASET_KEY = {
+  superseded_seats: 'superseded',
+  governing_body_turnover: 'nombramientos',
+};
 
 /**
  * Company / officer inspector for the network graph.
@@ -255,12 +262,12 @@ const CompanyInspectorPanel = ({
             <Box>
               {FINDINGS_PANEL_ENABLED && (
                 <CompanyFindings
-                  groupKey={data.company?.group_key || null}
+                  groupKey={data.company?.group_key || data.company?._id || null}
                   name={data.name}
                   lang={lang}
                   onOpenReport={onOpenReport}
                   offerCta={{ label: text.buyDueDiligencePriced, onClick: onBuyDueDiligence }}
-                  onEvidence={ev => onOpenDataset?.(FINDINGS_OFFICERS_DATASET_KEY)}
+                  onEvidence={ev => onOpenDataset?.(FINDINGS_EVIDENCE_DATASET_KEY[ev.kind] || FINDINGS_OFFICERS_DATASET_KEY)}
                 />
               )}
               <CurrencyConfirmationCard

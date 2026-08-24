@@ -9,6 +9,7 @@ export const FINDINGS_COPY = {
     nifMissing: 'NIF not published in BORME',
     nifTellUs: 'know it? tell us',
     changed: (date, type) => `Latest BORME filing: ${date}${type ? ` — ${type}` : ''}`,
+    formerly: names => `formerly ${names}`,
     standsOut: 'What stands out',
     verification: 'Needs verification',
     evidence: 'Show in table',
@@ -24,6 +25,7 @@ export const FINDINGS_COPY = {
     nifMissing: 'NIF no publicado en el BORME',
     nifTellUs: '¿lo conoces? dínoslo',
     changed: (date, type) => `Última inscripción en el BORME: ${date}${type ? ` — ${type}` : ''}`,
+    formerly: names => `anteriormente ${names}`,
     standsOut: 'Lo que destaca',
     verification: 'Pendiente de verificar',
     evidence: 'Ver en la tabla',
@@ -44,6 +46,7 @@ export function findingsView(payload, lang) {
   const lastFiling = company.last_filing;
   const findings = (Array.isArray(payload?.findings) ? payload.findings : []).map(f => ({
     key: `${f.kind}:${f.date || ''}`,
+    kind: f.kind,
     text: f.text,
     date: f.date || null,
     tone: f.cls,
@@ -51,12 +54,14 @@ export function findingsView(payload, lang) {
     bormeUrl: f.borme_ref?.url || null,
   }));
   const moreCount = Number(payload?.more) || 0;
+  const previousNames = Array.isArray(company.previous_names) ? company.previous_names.filter(Boolean) : [];
   return {
     header: {
       title: company.name || '',
       nifLabel: company.nif ? copy.nif(company.nif) : copy.nifMissing,
       nifMissing: !company.nif,
       province: company.province || null,
+      formerly: previousNames.length ? copy.formerly(previousNames.join(', ')) : null,
     },
     changed: lastFiling?.date ? copy.changed(lastFiling.date, lastFiling.type) : null,
     findings,
