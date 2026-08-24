@@ -4173,8 +4173,11 @@ const SpanishCompanyNetworkGraph = ({
         setGraphData(prev => mergeCargoIntoCompanyNode(prev, companyNodeId, officerNodeId));
         // Bring the new cargo nodes into view. In a restored layout every
         // existing node is pinned, so the additions spawn at the centroid and
-        // can sit outside the current viewport; fit once they have settled.
+        // can sit outside the current viewport. Fit once early, and again once
+        // the simulation has cooled: measured at 700ms the box still misses
+        // where the nodes end up (the edges ran off the top of the canvas).
         setTimeout(() => fitGraphToView(400, 50), 700);
+        setTimeout(() => fitGraphToView(400, 50), 2000);
         // The officer node (if it had been pinned) no longer exists — clean up.
         setPinnedNodeIds(prev => {
           if (!prev.has(officerNodeId)) return prev;
