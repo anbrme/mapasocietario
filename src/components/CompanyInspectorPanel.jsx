@@ -36,14 +36,12 @@ import { trackFullCompanyProfileClick } from '../utils/track';
 import { recordCompanyDemand } from '../utils/companyDemand';
 import { formatDate } from '../utils/formatDate';
 
-// Findings-block evidence links open the data dock on the closest matching
-// dataset from buildCompanyDatasets (src/utils/inspectorDatasets.js). That
-// keying is per event-category, not per {officer, event} — 'current' is the
-// only true officers table, so officer-kind evidence (a named appointee)
-// opens there; everything else (event/capital/ownership) opens the
-// cessations table, the one most likely to hold the cited change.
+// Findings-block evidence links open the data dock. The inspector has no
+// events/capital/ownership dataset (buildCompanyDatasets in
+// src/utils/inspectorDatasets.js has no generic "events" table), so only
+// officer-kind evidence gets a link — the component itself only renders the
+// link for that kind. 'current' is the only true officers table.
 const FINDINGS_OFFICERS_DATASET_KEY = 'current';
-const FINDINGS_EVENTS_DATASET_KEY = 'ceses_dimisiones';
 
 /**
  * Company / officer inspector for the network graph.
@@ -262,9 +260,7 @@ const CompanyInspectorPanel = ({
                   lang={lang}
                   onOpenReport={onOpenReport}
                   offerCta={{ label: text.buyDueDiligencePriced, onClick: onBuyDueDiligence }}
-                  onEvidence={ev => onOpenDataset?.(
-                    ev.kind === 'officer' ? FINDINGS_OFFICERS_DATASET_KEY : FINDINGS_EVENTS_DATASET_KEY
-                  )}
+                  onEvidence={ev => onOpenDataset?.(FINDINGS_OFFICERS_DATASET_KEY)}
                 />
               )}
               <CurrencyConfirmationCard

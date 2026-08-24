@@ -72,20 +72,24 @@ export default function CompanyFindings({ groupKey, name, lang, onOpenReport, of
         <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 1.5 }}>{changed}</Typography>
       )}
 
-      <Typography variant="overline" sx={{ display: 'block', fontWeight: 700, letterSpacing: '0.08em' }}>{labels.standsOut}</Typography>
-      {findings.map((f, index) => (
-        <Box key={`${f.key}:${index}`} sx={{ display: 'flex', alignItems: 'baseline', gap: 1, py: 0.5, ...TONE_SX[f.tone] }}>
-          <Typography variant="body2" sx={{ flex: 1 }}>{f.text}</Typography>
-          {f.date && <Typography variant="caption" sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>{f.date}</Typography>}
-          {f.evidence && onEvidence && (
-            <Link component="button" variant="caption" onClick={() => clickEvidence(f)}>{labels.evidence}</Link>
-          )}
-          {f.bormeUrl && (
-            <Link href={f.bormeUrl} target="_blank" rel="noopener" variant="caption"
-              onClick={() => trackEvent('evidence_clicked', { kind: 'borme' })}>{labels.borme}</Link>
-          )}
-        </Box>
-      ))}
+      {findings.length > 0 && (
+        <>
+          <Typography variant="overline" sx={{ display: 'block', fontWeight: 700, letterSpacing: '0.08em' }}>{labels.standsOut}</Typography>
+          {findings.map((f, index) => (
+            <Box key={`${f.key}:${index}`} sx={{ display: 'flex', alignItems: 'baseline', gap: 1, py: 0.5, ...TONE_SX[f.tone] }}>
+              <Typography variant="body2" sx={{ flex: 1 }}>{f.text}</Typography>
+              {f.date && <Typography variant="caption" sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>{f.date}</Typography>}
+              {f.evidence?.kind === 'officer' && onEvidence && (
+                <Link component="button" variant="caption" onClick={() => clickEvidence(f)}>{labels.evidence}</Link>
+              )}
+              {f.bormeUrl && (
+                <Link href={f.bormeUrl} target="_blank" rel="noopener" variant="caption"
+                  onClick={() => trackEvent('evidence_clicked', { kind: 'borme' })}>{labels.borme}</Link>
+              )}
+            </Box>
+          ))}
+        </>
+      )}
 
       {verification.length > 0 && (
         <>
