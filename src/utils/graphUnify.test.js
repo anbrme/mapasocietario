@@ -259,3 +259,19 @@ describe('undoCargoUnify', () => {
     expect(out.nodes.find((n) => n.id === 'company:acme').unified).toBeFalsy();
   });
 });
+
+describe('mergeCargoIntoCompanyNode — a dissolved holder', () => {
+  it('stamps holderDissolved on the relocated cargo edges when the company node is dissolved', () => {
+    const graph = baseGraph();
+    graph.nodes = graph.nodes.map((n) => (n.id === 'company:acme' ? { ...n, isDissolved: true } : n));
+    const result = mergeCargoIntoCompanyNode(graph, 'company:acme', 'officer-acme-sa');
+    const relocated = result.links.filter((l) => l.__cargoUnify === 'company:acme');
+    expect(relocated.length).toBeGreaterThan(0);
+    expect(relocated.every((l) => l.holderDissolved === true)).toBe(true);
+  });
+
+  it('leaves the edges of a live holder unstamped', () => {
+    const result = mergeCargoIntoCompanyNode(baseGraph(), 'company:acme', 'officer-acme-sa');
+    expect(result.links.some((l) => 'holderDissolved' in l)).toBe(false);
+  });
+});

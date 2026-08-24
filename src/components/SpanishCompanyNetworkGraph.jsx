@@ -126,7 +126,7 @@ import {
   sameRoleCategory,
   SIMPLIFIED_EXCLUDED_CATEGORIES,
 } from '../utils/positionCategories';
-import { isActiveCategory, effectiveCategoryFromEvents } from '../utils/officerLinkStatus';
+import { isActiveCategory, effectiveCategoryFromEvents, isDissolvedLink } from '../utils/officerLinkStatus';
 import { BORME_SECTION_NAMES, getLinkEffectiveCategory, isDirectionalLink } from '../utils/linkDirectionality';
 import { useTerms } from '../hooks/useTerms';
 import { spanishCompaniesService, SpanishCompaniesService } from '../services/spanishCompaniesService';
@@ -1157,12 +1157,13 @@ const isActiveLinkCategory = isActiveCategory;
 // active/ceased status logic resolve a link's category identically.
 
 // A dissolved company can't have current officers — a dissolution implies
-// cessation even if BORME never inscribed individual ceses. When
-// enrichLinksWithEventDates stamps link.companyDissolved = true (by reading
-// the company node's isDissolved flag), we treat the link as ceased regardless
-// of its event-derived category.
+// cessation even if BORME never inscribed individual ceses — and can hold no
+// seat elsewhere either. isDissolvedLink reads companyDissolved (target
+// dissolved), holderDissolved (source dissolved: a company unified with its
+// cargos) or the bound source node's own flag; any of them makes the link
+// ceased regardless of its event-derived category.
 const getOfficerLinkStatus = link => {
-  if (link.companyDissolved) return 'ceased';
+  if (isDissolvedLink(link)) return 'ceased';
   return isActiveLinkCategory(getLinkEffectiveCategory(link)) ? 'active' : 'ceased';
 };
 
@@ -3324,6 +3325,13 @@ const SpanishCompanyNetworkGraph = ({
         } else if (targetNode.type === 'officer') {
           officerNode = targetNode;
           companyNode = sourceNode;
+        } else if (link.type === 'officer-company' && link.unified) {
+          // A company unified with its own cargos: the source company IS the
+          // officer of this link. Without this branch the link was skipped
+          // whole — no events, no dissolution — and a seat held by an
+          // extinguished company stayed green.
+          officerNode = sourceNode;
+          companyNode = targetNode;
         } else {
           return link;
         }
@@ -3335,6 +3343,9 @@ const SpanishCompanyNetworkGraph = ({
         // for this company is implicitly ceased — dissolution implies cessation
         // even when individual cese events were never inscribed in BORME.
         const companyDissolved = !!companyNode.isDissolved;
+        // …and a dissolved HOLDER can hold no seat: a company unified with its
+        // cargos that has itself been extinguished.
+        const holderDissolved = officerNode.type !== 'officer' && !!officerNode.isDissolved;
 
         // Only attach events for THIS link's role. An officer can hold several
         // roles at one company with independent active/ceased status (e.g. an
@@ -3354,11 +3365,12 @@ const SpanishCompanyNetworkGraph = ({
           }
         });
 
-        if (events.length === 0 && !companyDissolved) return link;
+        if (events.length === 0 && !companyDissolved && !holderDissolved) return link;
         return {
           ...link,
           ...(events.length > 0 && { events }),
           ...(companyDissolved && { companyDissolved: true }),
+          ...(holderDissolved && { holderDissolved: true }),
         };
       });
       return { nodes: prev.nodes, links: newLinks };
@@ -7289,13 +7301,13 @@ const SpanishCompanyNetworkGraph = ({
         linkColor = PATH_HIGHLIGHT_COLOR;
       } else if (link.type === 'ownership') {
         linkColor =
-          cat === 'socio_anterior'
+          cat === 'socio_anterior' || isDissolvedLink(link) // a dissolved holder owns nothing any more
             ? graphPalette.link.ownershipPrevious // Slate — previous (superseded) sole shareholder
             : cat === 'socio_perdido'
               ? graphPalette.link.ownershipLost
               : graphPalette.link.ownership; // Amber — current sole shareholder
-      } else if (link.companyDissolved) {
-        linkColor = graphPalette.link.dissolved; // Red — officer link to a DISSOLVED company is not current
+      } else if (isDissolvedLink(link)) {
+        linkColor = graphPalette.link.dissolved; // Red — a seat at, or held by, a DISSOLVED company is not current
       } else if (cat.includes('nombramiento') || cat.includes('reeleccion') || cat.includes('reelección')) {
         linkColor = graphPalette.link.appointment; // Green — appointments and re-elections
       } else if (
@@ -9574,7 +9586,7 @@ const SpanishCompanyNetworkGraph = ({
               const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
               if (link.type === 'ownership' || cat.startsWith('socio')) return graphPalette.link.ownership;
               if (
-                link.companyDissolved ||
+                isDissolvedLink(link) ||
                 cat.includes('cese') || cat.includes('dimision') || cat.includes('dimisión') ||
                 cat.includes('revocacion') || cat.includes('revocación')
               ) return graphPalette.link.dissolved;

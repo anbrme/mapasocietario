@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isActiveCategory,
   effectiveCategoryFromEvents,
+  isDissolvedLink,
 } from '../src/utils/officerLinkStatus.js';
 
 test('isActiveCategory: appointments and re-elections are active, ceses/revocations are not', () => {
@@ -54,4 +55,19 @@ test('effectiveCategoryFromEvents: tie order is independent of input order', () 
   ];
   assert.equal(effectiveCategoryFromEvents(a, 'x'), 'nombramientos');
   assert.equal(effectiveCategoryFromEvents(b, 'x'), 'nombramientos');
+});
+
+// A dissolved company can hold nothing: not a seat on another board, not a
+// sole-shareholder stake. SANTANDER BACK-OFFICES GLOBALES MAYORISTAS SA
+// (extinguished 2026-08-18) unified its four apoderado seats and the graph drew
+// them green — `companyDissolved` is stamped from the TARGET company, and here
+// the dissolved company is the HOLDER (source) of the relocated links.
+test('isDissolvedLink: either endpoint being a dissolved company closes the link', () => {
+  assert.equal(isDissolvedLink({ companyDissolved: true }), true);
+  assert.equal(isDissolvedLink({ holderDissolved: true }), true);
+  // Read-time fallback once force-graph has bound the node object as source.
+  assert.equal(isDissolvedLink({ source: { type: 'spanish-company-group', isDissolved: true } }), true);
+  assert.equal(isDissolvedLink({ source: { type: 'officer', isDissolved: true } }), false, 'an officer node never carries the flag');
+  assert.equal(isDissolvedLink({ source: 'company:x', category: 'nombramientos' }), false);
+  assert.equal(isDissolvedLink(null), false);
 });

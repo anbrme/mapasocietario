@@ -71,6 +71,9 @@ export function mergeCargoIntoCompanyNode(graphData, companyNodeId, officerNodeI
     }
   });
 
+  // The company holds these seats; if it is dissolved, none of them is current.
+  const holderDissolved = !!companyNode.isDissolved;
+
   const relocated = [];
   officerCargoLinks.forEach((l) => {
     const targetId = idOf(l.target);
@@ -85,6 +88,7 @@ export function mergeCargoIntoCompanyNode(graphData, companyNodeId, officerNodeI
       source: companyNodeId,
       target: targetId,
       unified: true,
+      ...(holderDissolved && { holderDissolved: true }),
       // Tag so undoCargoUnify can find exactly what this pass added/relocated.
       __cargoUnify: companyNodeId,
     });

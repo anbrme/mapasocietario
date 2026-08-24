@@ -10,6 +10,20 @@ export const isActiveCategory = cat => {
   return c.includes('nombramiento') || c.includes('reeleccion') || c.includes('reelección');
 };
 
+// A dissolved company can hold nothing. `companyDissolved` is stamped when the
+// TARGET company is dissolved (its officers' seats ended with it);
+// `holderDissolved` when the SOURCE — a company unified with its own cargos,
+// or a sole shareholder — is. Once force-graph has bound the source node
+// object, the node's own isDissolved flag answers as well, so a link drawn
+// before any stamping pass ran still reads correctly. An officer node never
+// carries the flag.
+export const isDissolvedLink = link => {
+  if (!link) return false;
+  if (link.companyDissolved || link.holderDissolved) return true;
+  const holder = link.source;
+  return !!(holder && typeof holder === 'object' && holder.type !== 'officer' && holder.isDissolved);
+};
+
 const ts = date => {
   if (!date) return 0;
   const t = new Date(date).getTime();
