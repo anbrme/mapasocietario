@@ -21,4 +21,4 @@ export const AI_INVESTIGATION_API =
 
 // Company findings block at the top of the inspector. Ships dark; flipped to
 // true by the last task of docs/superpowers/plans/2026-08-24-company-findings-panel.md.
-export const FINDINGS_PANEL_ENABLED = false;
+export const FINDINGS_PANEL_ENABLED = true;
