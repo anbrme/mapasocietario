@@ -276,6 +276,8 @@ const T = {
       other: 'Otros actos',
     },
     registryAct: 'Acto registral',
+    historyViewSource: 'Ver en el BORME (PDF)',
+    historyEntryNumber: (n) => `BORME-A · nº ${n}`,
     ctaTitle: 'Ver el mapa societario interactivo',
     ctaText: (name) =>
       `Explora la red de participaciones, administradores compartidos y filiales de ${name}.`,
@@ -476,6 +478,8 @@ const T = {
       other: 'Other acts',
     },
     registryAct: 'Registry act',
+    historyViewSource: 'View in BORME (PDF)',
+    historyEntryNumber: (n) => `BORME-A · No. ${n}`,
     ddCtaTitle: 'Full due diligence report',
     ddCtaText: (name) =>
       `Download a PDF with AI analysis, sanctions screening, red flags and the full commercial-registry history of ${name}.`,
@@ -688,6 +692,9 @@ function listBlock(title, arr) {
 
 const HISTORY_BATCH_SIZE = 10;
 const HISTORY_CATEGORIES = ['appointments', 'departures', 'capital', 'ownership', 'company', 'other'];
+// Length of the always-visible snippet of `full_entry` shown before the reader
+// has to expand the <details> to read the rest.
+const HISTORY_ENTRY_SNIPPET_LENGTH = 180;
 
 function eventTypeText(value) {
   return typeof value === 'string' ? value : value && value.type ? value.type : '';
@@ -732,17 +739,47 @@ function eventYear(event, t) {
   return match ? match[1] : t.historyUnknownYear;
 }
 
-function eventRows(events, t, lang) {
-  return events
-    .map((event) => {
-      const types = (event.event_types || []).map(eventTypeText).filter(Boolean).join(', ');
-      const fullEntry = event.full_entry || '';
-      const summary = fullEntry.slice(0, 180);
-      return `<li><span class="date">${esc(fmtDate(event.event_date, lang))}</span>
+// Source line under a card's entry text: a link to the official PDF (when
+// known) plus the BORME entry number (when known). Never renders a dead
+// anchor — no pdf_url means no <a>, just the entry number text if present.
+function publicationSourceLine(event, t) {
+  const parts = [];
+  if (event.pdf_url) {
+    parts.push(
+      `<a href="${esc(event.pdf_url)}" target="_blank" rel="noopener">${esc(t.historyViewSource)}</a>`,
+    );
+  }
+  if (event.borme_entry_number) {
+    parts.push(esc(t.historyEntryNumber(event.borme_entry_number)));
+  }
+  return parts.length ? `<p class="entry-source">${parts.join(' · ')}</p>` : '';
+}
+
+/**
+ * Renders one BORME publication card: date, act types, and the registry
+ * entry text. Short entries render as plain text; entries longer than the
+ * snippet render inside a <details> whose <summary> is the existing ~180
+ * char snippet and whose body is the full, escaped, whitespace-preserved
+ * text — so the reader can expand without leaving the page. A source line
+ * (PDF link + entry number, each shown only when known) follows.
+ *
+ * Exported so callers/tests can render and assert on a single card.
+ */
+export function publicationCard(event, t, lang) {
+  const types = (event.event_types || []).map(eventTypeText).filter(Boolean).join(', ');
+  const fullEntry = event.full_entry || '';
+  const summary = fullEntry.slice(0, HISTORY_ENTRY_SNIPPET_LENGTH);
+  const isLong = fullEntry.length > HISTORY_ENTRY_SNIPPET_LENGTH;
+  const entryBody = isLong
+    ? `<details class="entry-detail"><summary>${esc(summary)}…</summary><p class="entry-full">${esc(fullEntry)}</p></details>`
+    : `<p>${esc(summary)}</p>`;
+  return `<li><span class="date">${esc(fmtDate(event.event_date, lang))}</span>
         <strong>${esc(types || t.registryAct)}</strong>
-        <p>${esc(summary)}${fullEntry.length > 180 ? '…' : ''}</p></li>`;
-    })
-    .join('');
+        ${entryBody}${publicationSourceLine(event, t)}</li>`;
+}
+
+function eventRows(events, t, lang) {
+  return events.map((event) => publicationCard(event, t, lang)).join('');
 }
 
 function historyYearCounts(yearEvents) {
@@ -797,7 +834,7 @@ function eventsHistoryChart(yearGroups, t) {
   </div>`;
 }
 
-function eventsBlock(events, t, lang, totalPublications = null) {
+export function eventsBlock(events, t, lang, totalPublications = null) {
   if (!events || !events.length) return '';
   const sortedEvents = [...events].sort((a, b) =>
     String(b.event_date || b.indexed_date || '').localeCompare(String(a.event_date || a.indexed_date || '')),
@@ -948,6 +985,10 @@ const STYLE = `<style>
   .timeline li{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:10px}
   .timeline .date{display:inline-block;font-size:12px;color:var(--mut);margin-right:8px}
   .timeline p{margin:6px 0 0;font-size:13px;color:#334155}
+  .entry-detail>summary{cursor:pointer;font-size:13px;color:#334155;margin:6px 0 0}
+  .entry-detail .entry-full{white-space:pre-wrap;margin:8px 0 0;font-size:13px;color:#334155}
+  .entry-source{margin:8px 0 0;font-size:12px;color:var(--mut)}
+  .entry-source a{color:var(--brand);font-weight:600}
   .history-chart{margin:20px 0 24px}
   .history-chart h3{margin-bottom:10px}
   .history-swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
