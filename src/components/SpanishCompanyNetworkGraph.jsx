@@ -8840,9 +8840,27 @@ const SpanishCompanyNetworkGraph = ({
               )}
               renderOption={(props, option) => {
                 const { key, ...restProps } = props;
+                const listedBadge = listedBadgeFor(option.name || option.label, uiLanguage);
                 return (
                   <Box key={option.id} component="li" {...restProps} sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
-                    <Typography variant="body2">{option.name || option.label}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                      <Typography variant="body2">{displayCompanyName(option.name || option.label)}</Typography>
+                      {listedBadge && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: '0.65rem',
+                            color: 'success.dark',
+                            bgcolor: 'success.light',
+                            px: 0.6,
+                            py: 0.1,
+                            borderRadius: 0.5,
+                          }}
+                        >
+                          {listedBadge.label}
+                        </Typography>
+                      )}
+                    </Box>
                     <Typography variant="caption" color="text.secondary">
                       {option.type === 'officer'
                         ? `👥 ${option.subtype === 'company' ? text.officerCompany : text.officerIndividual}`
