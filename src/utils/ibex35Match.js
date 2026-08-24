@@ -32,28 +32,62 @@ export function matchIbexSeed(companyName) {
 }
 
 /**
- * Every EXACT name under which one seed entity may be printed: its registered
- * v3 name and its brand, both reduced to the shared entity key (legal form
- * canonicalized, accents/punctuation folded). Deliberately a fixed set of
- * WHOLE names — never a prefix, substring or token reordering.
+ * Build the EXACT-name -> slug lookup behind listedEntityForName.
  *
- * `nameKey(seed.name)` is kept alongside `entityNameKey(seed.name)` because the
- * two agree for plain ASCII brands and the second is what rescues an accented
- * brand ("Enagás" -> "ENAGAS"), which a raw nameKey could never match.
+ * Every name under which one seed entity may be printed is registered: its
+ * registered v3 name and its brand, each under BOTH folding rules the app uses
+ * — `entityNameKey` (legal form canonicalized, accents folded, punctuation
+ * turned into separators) and `nameKey` (punctuation simply dropped). Both are
+ * needed: `entityNameKey` alone turns "AENA S.M.E. SA" into "AENA S M E SA" and
+ * so never matches the printed "AENA SME SA", while `nameKey` alone can never
+ * match an accent-folded input ("ENAGAS" for "Enagás").
+ *
+ * Deliberately a fixed set of WHOLE names — never a prefix, substring or token
+ * reordering.
+ *
+ * Throws if two different seeds ever claim the same key, so a future seed edit
+ * that makes two entities indistinguishable fails loudly instead of silently
+ * resolving to whichever was declared first.
+ *
+ * @param {Record<string, object>} seedMap
+ * @returns {Record<string, string>} key -> slug
  */
-const LISTED_KEY_TO_SLUG = (() => {
-  const map = {};
-  Object.entries(SEED).forEach(([slug, seed]) => {
+export function buildListedKeyIndex(seedMap) {
+  const index = {};
+  Object.entries(seedMap || {}).forEach(([slug, seed]) => {
+    if (!seed) return;
     [
       entityNameKey(seed.v3Name),
-      nameKey(seed.name),
+      nameKey(seed.v3Name),
       entityNameKey(seed.name),
+      nameKey(seed.name),
     ].forEach(key => {
-      if (key && !(key in map)) map[key] = slug;
+      if (!key) return;
+      const claimed = index[key];
+      if (claimed && claimed !== slug) {
+        throw new Error(
+          `IBEX seed key collision: "${key}" is claimed by both "${claimed}" and "${slug}"`,
+        );
+      }
+      index[key] = slug;
     });
   });
-  return map;
-})();
+  return index;
+}
+
+// Built on first lookup, not at module evaluation: companyName.js imports the
+// listed matcher (for isSameUnifiableEntity) and this module imports
+// entityNameKey back from it, so touching entityNameKey while THIS module's
+// body runs would hit the other module's uninitialized bindings depending on
+// which side of the cycle is entered first. Deferring to first call means both
+// modules are fully evaluated by then — and the collision check still fires the
+// first time any listed lookup happens, which is loud enough to catch a bad
+// seed edit immediately.
+let listedKeyIndex = null;
+const listedKeyToSlug = () => {
+  if (!listedKeyIndex) listedKeyIndex = buildListedKeyIndex(SEED);
+  return listedKeyIndex;
+};
 
 /**
  * Resolve a raw registry name — a company name OR an officer/cargo spelling —
@@ -78,16 +112,53 @@ const LISTED_KEY_TO_SLUG = (() => {
  */
 export function listedEntityForName(name) {
   if (!name) return null;
+  const index = listedKeyToSlug();
   // A live graph name can carry a trailing "(R.M. …)" office annotation that the
   // seed's v3Name never does; strip it first (entityNameKey would otherwise fold
-  // the annotation into the key and never match).
-  const key = entityNameKey(stripRegistryOffice(String(name)));
-  if (!key) return null;
-  const slug = LISTED_KEY_TO_SLUG[key];
+  // the annotation into the key and never match). nameKey strips it itself.
+  const slug =
+    index[entityNameKey(stripRegistryOffice(String(name)))] || index[nameKey(name)];
   if (!slug) return null;
   const seed = SEED[slug];
   if (!seed) return null;
   return { ...seed, slug, groupKey: `H:${seed.hoja.replace(/\s+/g, '-')}` };
+}
+
+/**
+ * The name spellings the expand-officer endpoint must be queried with to find
+ * every cargo row belonging to this entity.
+ *
+ * The endpoint matches by SUBSTRING, which only ever expands to LONGER names:
+ * asking for "BANCO SANTANDER, SA" can never return the row BORME printed as
+ * plain "BANCO SANTANDER", so unify on the company node came back empty in that
+ * direction. For a curated listed entity we therefore also ask under its
+ * registered name and its brand; the caller merges the pages and the existing
+ * exact-entity filter still decides what belongs.
+ *
+ * Any other name is queried exactly as given — one entry, unchanged behaviour.
+ *
+ * @param {string} name
+ * @returns {string[]} distinct spellings (by entityNameKey), the caller's own
+ *   name first.
+ */
+export function officerQueryVariants(name) {
+  const primary = String(name || '').trim();
+  if (!primary) return [];
+
+  const seed = listedEntityForName(primary);
+  const candidates = seed ? [primary, seed.v3Name, seed.name] : [primary];
+
+  const seen = new Set();
+  const variants = [];
+  candidates.forEach(candidate => {
+    const value = String(candidate || '').trim();
+    if (!value) return;
+    const key = entityNameKey(value);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    variants.push(value);
+  });
+  return variants;
 }
 
 // A query shorter than this never pins anything — short prefixes ("in", "a")

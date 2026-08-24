@@ -2,6 +2,8 @@
 // and the API service (directory → group_key resolution). Kept in one place so
 // name normalization can never drift between the two paths.
 
+import { listedEntityForName } from './ibex35Match';
+
 // Trailing legal-form spellings → dotless canonical code, longest first.
 // JS port of borme_v3_enricher/normalize.py::_LEGAL_FORM_DOTLESS (the
 // canonicalizer applied to STORED v3 officer/company names) — keep the two
@@ -69,6 +71,40 @@ export const entityNameKey = name =>
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, ' ')
     .trim();
+
+/**
+ * Are these two names the SAME entity?
+ *
+ * The base rule is entityNameKey equality, so "BANCO SANTANDER, SA" (a
+ * canonical company name) and "BANCO SANTANDER S.A." (an officer spelling) are
+ * one entity. This is the identity decision behind "Unificar cargos" and behind
+ * the expand-officer exact-match filter.
+ *
+ * A filing that printed a company with NO legal form at all keys differently
+ * from its own company node ("BANCO SANTANDER" vs "BANCO SANTANDER, SA") and
+ * used to be dropped, losing that seat. The second clause repairs exactly that,
+ * and only for the 35 curated listed entities matched by EXACT whole name (see
+ * listedEntityForName).
+ *
+ * SAFETY: no suffix is ever ignored in general. "LUIS SANCHEZ" (a person) and
+ * "LUIS SANCHEZ SL" (a company) key differently and neither is in the seed, so
+ * they stay two entities — as they did before this clause existed.
+ *
+ * @param {string} nameA
+ * @param {string} nameB
+ * @returns {boolean}
+ */
+export const isSameUnifiableEntity = (nameA, nameB) => {
+  const keyA = entityNameKey(nameA || '');
+  const keyB = entityNameKey(nameB || '');
+  if (!keyA || !keyB) return false;
+  if (keyA === keyB) return true;
+
+  const listedA = listedEntityForName(nameA);
+  if (!listedA) return false;
+  const listedB = listedEntityForName(nameB);
+  return !!listedB && listedA.slug === listedB.slug;
+};
 
 // A trailing registry-office annotation ("(R.M. A CORUÑA)", "(RM MADRID)")
 // that live BORME/v3 names can carry. Mirrors ibex35Match.js's own copy of

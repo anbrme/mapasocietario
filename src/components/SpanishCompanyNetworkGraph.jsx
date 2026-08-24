@@ -9836,7 +9836,6 @@ const SpanishCompanyNetworkGraph = ({
           onOpenDataset={key => setActiveDatasetKey(prev => (prev === key ? null : key))}
           nodeName={previewNodeName}
           nodeType={previewNodeType}
-          listedBadge={listedBadgeFor(previewNodeName || '', uiLanguage)}
           userMerged={previewUserMerged}
           data={previewData}
           loading={previewLoading}
@@ -10107,7 +10106,15 @@ const SpanishCompanyNetworkGraph = ({
           {contextNode
             && (contextNode.type !== 'officer' || isCompanyOfficer(contextNode.name || ''))
             && (() => {
-            const profileHref = fullCompanyPageHref(contextNode.name, uiLanguage);
+            // A listed entity printed without its legal form ("REDEIA
+            // CORPORACION") slugs to a page that does not exist; its curated
+            // /empresa page is keyed on the registered name, so resolve through
+            // that when the node IS one of the curated listed entities.
+            const listedProfile = listedEntityForName(contextNode.name);
+            const profileHref = fullCompanyPageHref(
+              listedProfile ? listedProfile.v3Name : contextNode.name,
+              uiLanguage,
+            );
             return profileHref ? (
               <MenuItem
                 component="a"

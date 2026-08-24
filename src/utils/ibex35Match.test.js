@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { matchIbexSeed, listedBadgeFor, pinListedEntities, listedEntityForName } from './ibex35Match';
+import {
+  matchIbexSeed,
+  listedBadgeFor,
+  pinListedEntities,
+  listedEntityForName,
+  officerQueryVariants,
+  buildListedKeyIndex,
+} from './ibex35Match';
+import { SEED } from '../../functions/empresa/_ibex35.js';
 
 describe('matchIbexSeed', () => {
   it('matches a company name regardless of surrounding whitespace and case', () => {
@@ -404,5 +412,98 @@ describe('listedBadgeFor with a suffix-less listed name', () => {
 
   it('does not badge a person whose surname is a listed brand', () => {
     expect(listedBadgeFor('GRIFOLS ROURA VICTOR', 'es')).toBeNull();
+  });
+});
+
+describe('listedEntityForName with dotted registered names', () => {
+  // entityNameKey turns the dots of "AENA S.M.E. SA" into separators
+  // ("AENA S M E SA"), so it alone can never match the printed "AENA SME SA".
+  // The index registers the nameKey folding too.
+  it('resolves AENA from both the dotted and the dotless spelling', () => {
+    expect(listedEntityForName('AENA S.M.E. SA').slug).toBe('aena');
+    expect(listedEntityForName('AENA SME SA').slug).toBe('aena');
+    expect(listedEntityForName('aena sme sa').slug).toBe('aena');
+  });
+
+  it('badges both spellings', () => {
+    expect(listedBadgeFor('AENA SME SA', 'es').ticker).toBe('BME:AENA');
+    expect(listedBadgeFor('AENA S.M.E. SA', 'es').ticker).toBe('BME:AENA');
+  });
+
+  it('resolves every curated seed from its own registered name', () => {
+    Object.entries(SEED).forEach(([slug, seed]) => {
+      const match = listedEntityForName(seed.v3Name);
+      expect(match, `seed ${slug} did not resolve from "${seed.v3Name}"`).not.toBeNull();
+      expect(match.slug).toBe(slug);
+    });
+  });
+
+  it('resolves every curated seed from its brand name', () => {
+    Object.entries(SEED).forEach(([slug, seed]) => {
+      const match = listedEntityForName(seed.name);
+      expect(match, `seed ${slug} did not resolve from brand "${seed.name}"`).not.toBeNull();
+      expect(match.slug).toBe(slug);
+    });
+  });
+});
+
+describe('buildListedKeyIndex', () => {
+  it('builds a key -> slug table for the real seed without collisions', () => {
+    const index = buildListedKeyIndex(SEED);
+    expect(index['BANCO SANTANDER']).toBe('banco-santander');
+    expect(index['BANCO SANTANDER SA']).toBe('banco-santander');
+    expect(index['AENA SME SA']).toBe('aena');
+  });
+
+  it('throws when two seeds claim the same key, instead of silently first-wins', () => {
+    const colliding = {
+      alpha: { name: 'Alpha', v3Name: 'ALPHA SA', hoja: 'M 1' },
+      beta: { name: 'Alpha', v3Name: 'BETA SA', hoja: 'M 2' },
+    };
+    expect(() => buildListedKeyIndex(colliding)).toThrow(/collision/i);
+  });
+
+  it('does not throw when one seed produces the same key twice', () => {
+    // entityNameKey and nameKey agree on a plain ASCII name — same slug, no clash.
+    expect(() => buildListedKeyIndex({ repsol: { name: 'Repsol', v3Name: 'REPSOL SA', hoja: 'M 65289' } })).not.toThrow();
+  });
+});
+
+describe('officerQueryVariants', () => {
+  // The expand-officer endpoint matches by SUBSTRING and so only ever expands to
+  // LONGER names: querying "BANCO SANTANDER, SA" can never return the row BORME
+  // printed as plain "BANCO SANTANDER".
+  it('adds the brand spelling for a listed company name', () => {
+    // The input already IS the seed's registered name, so only two spellings
+    // remain distinct once deduped by entityNameKey.
+    expect(officerQueryVariants('BANCO SANTANDER, SA')).toEqual([
+      'BANCO SANTANDER, SA',
+      'Banco Santander',
+    ]);
+  });
+
+  it('keeps the caller name first and adds the registered name for a brand input', () => {
+    expect(officerQueryVariants('BANCO SANTANDER')).toEqual([
+      'BANCO SANTANDER',
+      'BANCO SANTANDER, SA',
+    ]);
+  });
+
+  it('yields all three spellings when the input, the registered name and the brand all differ', () => {
+    expect(officerQueryVariants('AENA SME SA')).toEqual([
+      'AENA SME SA',
+      'AENA S.M.E. SA',
+      'AENA',
+    ]);
+  });
+
+  it('queries any other name exactly as given', () => {
+    expect(officerQueryVariants('LUIS SANCHEZ SL')).toEqual(['LUIS SANCHEZ SL']);
+    expect(officerQueryVariants('GRIFOLS ROURA VICTOR')).toEqual(['GRIFOLS ROURA VICTOR']);
+  });
+
+  it('is empty for a missing name', () => {
+    expect(officerQueryVariants('')).toEqual([]);
+    expect(officerQueryVariants(null)).toEqual([]);
   });
 });

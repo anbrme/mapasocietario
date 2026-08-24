@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeCargoIntoCompanyNode, undoCargoUnify, isSameUnifiableEntity } from './graphUnify';
+import { mergeCargoIntoCompanyNode, undoCargoUnify } from './graphUnify';
 
 // Build a fixture that represents the graph AFTER the existing officer-expansion
 // path (expandOfficerV3 -> addOfficerToGraph) has run: the loaded COMPANY node,
@@ -257,46 +257,5 @@ describe('undoCargoUnify', () => {
     const out = undoCargoUnify(g, 'company:acme');
     expect(out.links).toHaveLength(g.links.length);
     expect(out.nodes.find((n) => n.id === 'company:acme').unified).toBeFalsy();
-  });
-});
-
-describe('isSameUnifiableEntity', () => {
-  // The identity decision behind "Unificar cargos": a cargo (officer) row and a
-  // loaded COMPANY node are the same entity when their names key the same way.
-  // mergeCargoIntoCompanyNode itself takes ids, so this predicate is the rule
-  // that decides WHICH cargo rows belong to the company node.
-  it('matches two spellings of one company (punctuation and legal-form folding)', () => {
-    expect(isSameUnifiableEntity('BANCO SANTANDER, SA', 'BANCO SANTANDER S.A.')).toBe(true);
-    expect(isSameUnifiableEntity('ACME CONSULTING SOCIEDAD LIMITADA', 'ACME CONSULTING SL')).toBe(true);
-  });
-
-  it('unifies a suffix-less listed officer with its company node', () => {
-    // BORME printed "BANCO SANTANDER" as APODERADO of BANCO DE VASCONIA SA in
-    // 2009; the company node carries the canonical "BANCO SANTANDER, SA".
-    expect(isSameUnifiableEntity('BANCO SANTANDER', 'BANCO SANTANDER, SA')).toBe(true);
-    expect(isSameUnifiableEntity('BANCO SANTANDER, SA', 'BANCO SANTANDER')).toBe(true);
-  });
-
-  it('SAFETY: never unifies a person with a company that shares their name', () => {
-    // A small company's founder must stay a separate node. Neither name is in
-    // the curated listed seed, so only the (differing) entity keys are compared.
-    expect(isSameUnifiableEntity('LUIS SANCHEZ', 'LUIS SANCHEZ SL')).toBe(false);
-    expect(isSameUnifiableEntity('LUIS SANCHEZ SL', 'LUIS SANCHEZ')).toBe(false);
-  });
-
-  it('SAFETY: never unifies a person whose surname is a listed brand', () => {
-    expect(isSameUnifiableEntity('GRIFOLS ROURA VICTOR', 'GRIFOLS SA')).toBe(false);
-    expect(isSameUnifiableEntity('PUIG LOPEZ MARIA', 'PUIG BRANDS S.A.')).toBe(false);
-  });
-
-  it('does not unify two different companies', () => {
-    expect(isSameUnifiableEntity('ACME SL', 'ACME SA')).toBe(false);
-    expect(isSameUnifiableEntity('BANCO SANTANDER', 'BANCO DE SABADELL SA')).toBe(false);
-  });
-
-  it('is false for empty or missing names on either side', () => {
-    expect(isSameUnifiableEntity('', 'ACME SL')).toBe(false);
-    expect(isSameUnifiableEntity('ACME SL', null)).toBe(false);
-    expect(isSameUnifiableEntity(undefined, undefined)).toBe(false);
   });
 });

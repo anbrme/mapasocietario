@@ -10,9 +10,14 @@
  */
 
 import { positionCategoryFor } from '../utils/positionCategories';
-import { canonLegalForm, looksLikeGroupKey, selectGroupKeyId } from '../utils/companyName';
-import { isSameUnifiableEntity } from '../utils/graphUnify';
+import {
+  canonLegalForm,
+  isSameUnifiableEntity,
+  looksLikeGroupKey,
+  selectGroupKeyId,
+} from '../utils/companyName';
 import { API_URL } from '../config';
+import { officerQueryVariants } from '../utils/ibex35Match';
 import { createRequestCache } from '../utils/requestCache';
 
 const createApiError = (label, response, responseBody = '') => {
@@ -21,6 +26,41 @@ const createApiError = (label, response, responseBody = '') => {
   error.status = response.status;
   error.responseBody = responseBody;
   return error;
+};
+
+// One expand-officer row's identity: its own id when the index gave it one,
+// otherwise the seat it describes (company + position + date). Used to merge the
+// pages of a multi-spelling query without double-counting a row that came back
+// under more than one spelling.
+const officerRowKey = row => {
+  if (!row) return '';
+  const id = row.id || row._id;
+  if (id) return `id:${id}`;
+  const company = (row.company_name || row.company || '').toUpperCase();
+  const position = (row.specific_role || row.position || '').toUpperCase();
+  const date = row.date || row.event_date || '';
+  return `seat:${company}|${position}|${date}`;
+};
+
+// Merge expand-officer pages fetched under different spellings of one entity.
+// The first page carries the response shape (success/total/source); its rows
+// lead, and each further page contributes only rows not already present.
+const mergeExpandOfficerPages = pages => {
+  const list = Array.isArray(pages) ? pages.filter(Boolean) : [];
+  if (list.length === 0) return { success: false, officers: [] };
+  if (list.length === 1) return list[0];
+
+  const seen = new Set();
+  const officers = [];
+  list.forEach(page => {
+    (Array.isArray(page.officers) ? page.officers : []).forEach(row => {
+      const key = officerRowKey(row);
+      if (seen.has(key)) return;
+      seen.add(key);
+      officers.push(row);
+    });
+  });
+  return { ...list[0], officers };
 };
 
 class SpanishCompaniesService {
@@ -672,10 +712,10 @@ class SpanishCompaniesService {
     );
   }
 
-  async _fetchExpandOfficerV3(officerName, options = {}) {
-    const { size = 200, exactMatch = true, analyticsSource = null } = options;
+  async _fetchExpandOfficerPage(name, options = {}) {
+    const { size = 200, analyticsSource = null } = options;
     const params = new URLSearchParams({
-      name: officerName,
+      name,
       size: size.toString(),
     });
     const response = await this.fetchWithRetry(
@@ -689,7 +729,39 @@ class SpanishCompaniesService {
       const errorText = await response.text();
       throw createApiError('V3 officer expansion error', response, errorText);
     }
-    const data = await response.json();
+    return response.json();
+  }
+
+  async _fetchExpandOfficerV3(officerName, options = {}) {
+    const { size = 200, exactMatch = true, analyticsSource = null } = options;
+
+    // The endpoint matches by SUBSTRING, which only ever expands to LONGER
+    // names: asking for "BANCO SANTANDER, SA" can never return the row BORME
+    // printed as plain "BANCO SANTANDER", so unify on the company node came
+    // back empty in that direction. For a curated listed entity we ask under
+    // every spelling it may have been printed with and merge the pages here,
+    // BEFORE the exact-entity filter below. Any other name yields exactly one
+    // query — unchanged behaviour.
+    const queries = officerQueryVariants(officerName);
+    const names = queries.length > 0 ? queries : [officerName];
+
+    // The analytics header rides only on the primary query, so widening does
+    // not count one user search several times. A widening query that fails is
+    // non-fatal (best effort); a failing PRIMARY query still throws as before.
+    const settled = await Promise.allSettled(
+      names.map((name, index) =>
+        this._fetchExpandOfficerPage(name, {
+          size,
+          analyticsSource: index === 0 ? analyticsSource : null,
+        })
+      )
+    );
+    if (settled[0].status === 'rejected') throw settled[0].reason;
+
+    const pages = settled
+      .filter(result => result.status === 'fulfilled')
+      .map(result => result.value);
+    const data = mergeExpandOfficerPages(pages);
 
     // The API does substring matching — "PIÑEIRO GOMEZ JOSE" also returns
     // "PIÑEIRO GOMEZ JOSE MANUEL". Filter to exact name match client-side.

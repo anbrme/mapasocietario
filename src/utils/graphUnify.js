@@ -21,43 +21,10 @@
  * Pure & idempotent: applying it twice yields the same `{nodes, links}` (after the
  * first pass the officer node is gone, so the second pass is a no-op).
  */
-import { entityNameKey } from './companyName';
-import { listedEntityForName } from './ibex35Match';
-
-
-/**
- * Are these two names the SAME entity for the purpose of "Unificar cargos"?
- *
- * The base rule is the entity key both sides of the app already share
- * (`entityNameKey`: trailing legal form canonicalized, accents and punctuation
- * folded), so "BANCO SANTANDER, SA" (the canonical company name) and
- * "BANCO SANTANDER S.A." (an officer spelling) are one entity.
- *
- * A filing that printed a company with NO legal form at all keys differently
- * from its own company node ("BANCO SANTANDER" vs "BANCO SANTANDER, SA") and
- * used to be dropped, losing that seat from the unify. The second clause
- * repairs exactly that, and only for the 35 curated listed entities matched by
- * EXACT whole name (see listedEntityForName).
- *
- * SAFETY: no suffix is ever ignored in general. "LUIS SANCHEZ" (a person) and
- * "LUIS SANCHEZ SL" (a company) key differently and neither is in the seed, so
- * they stay two entities — as they did before this clause existed.
- *
- * @param {string} nameA
- * @param {string} nameB
- * @returns {boolean}
- */
-export function isSameUnifiableEntity(nameA, nameB) {
-  const keyA = entityNameKey(nameA || '');
-  const keyB = entityNameKey(nameB || '');
-  if (!keyA || !keyB) return false;
-  if (keyA === keyB) return true;
-
-  const listedA = listedEntityForName(nameA);
-  if (!listedA) return false;
-  const listedB = listedEntityForName(nameB);
-  return !!listedB && listedA.slug === listedB.slug;
-}
+// The identity rule that decides WHICH cargo rows belong to a company node —
+// isSameUnifiableEntity — lives in ./companyName next to entityNameKey: it is a
+// pure name predicate, and the API service needs it without pulling in this
+// graph-mutation module.
 
 const idOf = (endpoint) =>
   endpoint && typeof endpoint === 'object' ? endpoint.id : endpoint;
