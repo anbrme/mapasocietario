@@ -220,6 +220,7 @@ const T = {
     relationshipOverview: 'Relaciones societarias de un vistazo',
     relationshipOverviewLead: 'Resumen de las personas, sociedades y actos registrales conectados con esta empresa en los datos disponibles.',
     overviewCurrent: 'Cargos vigentes',
+    overviewAtDissolution: 'Cargos al cierre de la sociedad',
     overviewFormer: 'Cargos cesados',
     overviewOwners: 'Socios únicos conocidos',
     overviewFilings: 'Publicaciones BORME',
@@ -426,6 +427,7 @@ const T = {
     relationshipOverview: 'Company relationships at a glance',
     relationshipOverviewLead: 'A summary of the people, companies and registry filings connected to this company in the available data.',
     overviewCurrent: 'Current officers',
+    overviewAtDissolution: 'Positions at dissolution',
     overviewFormer: 'Former officers',
     overviewOwners: 'Known sole shareholders',
     overviewFilings: 'BORME filings',
@@ -1305,9 +1307,12 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
     ? `<div class="notice">${esc(t.dissolvedSeatsNote(dissolutionDate ? fmtDate(dissolutionDate, lang) : null))}</div>`
     : '';
   const resigned = officersRows(company.officers_resigned, 'resigned_date', t.thResigned, t, lang);
-  const openSeatCount = (company.officers_active || []).length;
-  const activeCount = isDissolved ? 0 : openSeatCount;
-  const formerCount = (company.officers_resigned || []).length + (isDissolved ? openSeatCount : 0);
+  // The stats mirror the sections below one-to-one: on a dissolved company the
+  // first stat counts the seats open at closure under that label, and "former"
+  // stays what the former-officers table lists — never a merged figure.
+  const activeCount = (company.officers_active || []).length;
+  const activeLabel = isDissolved ? t.overviewAtDissolution : t.overviewCurrent;
+  const formerCount = (company.officers_resigned || []).length;
   const ownerCount =
     (company.sole_shareholders || []).length +
     (company.sole_shareholder_individuals || []).length;
@@ -1316,7 +1321,7 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
     <h2>${t.relationshipOverview}</h2>
     <p class="more">${t.relationshipOverviewLead}</p>
     <div class="overview-grid">
-      <div class="overview-stat"><span class="overview-value">${esc(activeCount)}</span><span class="overview-label">${t.overviewCurrent}</span></div>
+      <div class="overview-stat"><span class="overview-value">${esc(activeCount)}</span><span class="overview-label">${activeLabel}</span></div>
       <div class="overview-stat"><span class="overview-value">${esc(formerCount)}</span><span class="overview-label">${t.overviewFormer}</span></div>
       <div class="overview-stat"><span class="overview-value">${esc(ownerCount)}</span><span class="overview-label">${t.overviewOwners}</span></div>
       <div class="overview-stat"><span class="overview-value">${esc(filingCount)}</span><span class="overview-label">${t.overviewFilings}</span></div>

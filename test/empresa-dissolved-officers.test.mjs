@@ -73,10 +73,11 @@ test('without a dated dissolution filing the note still explains the seats ended
   assert.doesNotMatch(html, /Administradores y cargos vigentes/);
 });
 
-test('the overview counts zero current officers and folds the open seats into former', () => {
+test('the overview stats mirror the sections: seats at closure, and former stays what its table lists', () => {
   const html = render(dissolvedCompany, [extinctionFiling]);
-  assert.equal(overviewValue(html, 'Cargos vigentes'), 0);
-  assert.equal(overviewValue(html, 'Cargos cesados'), 3);
+  assert.doesNotMatch(html, /overview-label">Cargos vigentes</);
+  assert.equal(overviewValue(html, 'Cargos al cierre de la sociedad'), 2);
+  assert.equal(overviewValue(html, 'Cargos cesados'), 1);
 });
 
 test('the registry facts show the dissolution date', () => {
