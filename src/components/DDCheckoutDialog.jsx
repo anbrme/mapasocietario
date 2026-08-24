@@ -37,6 +37,7 @@ import { API_URL, PAYMENTS_API } from '../config';
 import { getClientId } from '../utils/clientId';
 import { trackEvent } from '../utils/track';
 import { buildCheckoutIntake } from '../utils/checkoutIntake';
+import { checkoutPriceView } from './ddCheckoutPriceView';
 import { resolveGroupKey, listCorrections } from '../services/correctionsService';
 
 const DD_PRICE = 22.50;
@@ -145,7 +146,13 @@ const DD_COPY = {
     freeReportFollowUp: 'OK to email me one short question later',
     freeReportRequired: 'Please tell us who you are and what you needed it for.',
     freeReportConfirm: '✓ This report will be free',
-    freeReportConfirmHelp: 'The discount is applied automatically at checkout — your total will be €0.',
+    freeReportConfirmHelp: 'No card, no payment page — the total below is EUR 0.00.',
+    freeDiscount: 'First report — on us',
+    freeFsExcluded: 'Not included in the free report',
+    freeNoTax: 'Nothing to pay',
+    generateFree: 'Generate my free report',
+    placingFreeOrder: 'Placing your free order...',
+    freeDelivery: email => `No payment page. We generate the report now and email it to ${email}, usually within a few minutes.`,
     freeReportIneligible: 'This email has already used its free report.',
     freeReportProgramClosed: 'The free report offer is currently closed.',
     freeReportBlockedRetry: 'This email is not eligible for a free report. Please review and submit again to purchase.',
@@ -244,7 +251,13 @@ const DD_COPY = {
     freeReportFollowUp: 'De acuerdo en recibir una pregunta corta por email',
     freeReportRequired: 'Cuéntanos quién eres y para qué lo necesitabas.',
     freeReportConfirm: '✓ Este informe será gratuito',
-    freeReportConfirmHelp: 'El descuento se aplica automáticamente en el pago — tu total será 0 €.',
+    freeReportConfirmHelp: 'Sin tarjeta ni página de pago — el total de abajo es 0,00 EUR.',
+    freeDiscount: 'Primer informe — invitamos nosotros',
+    freeFsExcluded: 'No incluidas en el informe gratuito',
+    freeNoTax: 'Nada que pagar',
+    generateFree: 'Generar mi informe gratis',
+    placingFreeOrder: 'Creando tu pedido gratuito...',
+    freeDelivery: email => `Sin página de pago. Generamos el informe ahora y lo enviamos a ${email}, normalmente en pocos minutos.`,
     freeReportIneligible: 'Este correo ya ha usado su informe gratuito.',
     freeReportProgramClosed: 'La oferta de informe gratuito está cerrada por ahora.',
     freeReportBlockedRetry: 'Este correo no es elegible para un informe gratuito. Revisa y vuelve a enviar para comprarlo.',
@@ -301,6 +314,14 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
   const androidDisplayPrice = selectedAndroidProduct?.formattedPrice || `EUR ${subtotal.toFixed(2)}`;
   const financialStatementYearOptions = buildFinancialStatementYearOptions();
   const copy = DD_COPY[lang === 'es' ? 'es' : 'en'];
+  // Free-first-report path: only on the Stripe (web) flow, and only when the
+  // program is activated. Drives both the submit payload and every price
+  // string the user sees, so the two can never disagree.
+  const freeActive = !!FREE_FIRST_REPORT_CODE && useFreeReport && !isAndroidApp;
+  const priceView = checkoutPriceView({
+    freeActive, isAndroidApp, loading, ddPrice: DD_PRICE, fsPrice: FS_PRICE, includeFS, copy, email,
+    androidDisplayPrice, androidBillingEnabled: ANDROID_PLAY_BILLING_ENABLED,
+  });
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -515,9 +536,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
       setError(copy.emailRequired);
       return;
     }
-    // Free-first-report path: only on the Stripe (web) flow, and only when the
-    // program is activated. Intake is the gate — require who + why before we proceed.
-    const freeActive = !!FREE_FIRST_REPORT_CODE && useFreeReport && !isAndroidApp;
+    // Intake is the gate on the free path — require who + why before we proceed.
     if (freeActive && (!buyerRole || !needContext.trim())) {
       setError(copy.freeReportRequired);
       return;
@@ -1181,26 +1200,23 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
 
         {/* Price breakdown — inside scrollable content so it doesn't steal viewport on mobile */}
         <Box sx={{ mt: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {isAndroidApp ? copy.googlePlayPrice : copy.basePrice}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {isAndroidApp ? androidDisplayPrice : `EUR ${subtotal.toFixed(2)}`}
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>{copy.taxVat}</Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {isAndroidApp ? copy.includedGooglePlay : copy.calculatedStripe}
-            </Typography>
-          </Box>
+          {priceView.rows.map(row => (
+            <Box key={row.label} sx={{ display: 'flex', justifyContent: 'space-between', px: 1 }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{row.label}</Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{row.value}</Typography>
+            </Box>
+          ))}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 1, mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="body2" sx={{ fontWeight: 700 }}>{copy.total}</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>{priceView.total.label}</Typography>
             <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>
-              {isAndroidApp ? androidDisplayPrice : copy.shownAtStripe}
+              {priceView.total.value}
             </Typography>
           </Box>
+          {priceView.note && (
+            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 0.5, px: 1 }}>
+              {priceView.note}
+            </Typography>
+          )}
           <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 0.5, px: 1 }}>
             {copy.aiIncluded}
           </Typography>
@@ -1239,7 +1255,8 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
           }}
         >
           {copy.invoice}{' '}
-          {isAndroidApp ? copy.androidPayments : copy.stripePayments}{' '}
+          {/* A free order never touches a payment processor, so the Stripe sentence is dropped rather than contradicted. */}
+          {isAndroidApp ? copy.androidPayments : (freeActive ? '' : copy.stripePayments)}{' '}
           {copy.accept}{' '}
           <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{copy.terms}</a>{' '}
           {copy.and}{' '}
@@ -1282,11 +1299,7 @@ export default function DDCheckoutDialog({ open, onClose, companyName, country =
             '&:hover': { bgcolor: 'warning.dark' },
           }}
         >
-          {loading
-            ? (isAndroidApp ? copy.openingGooglePlay : copy.redirectingStripe)
-            : isAndroidApp
-              ? (ANDROID_PLAY_BILLING_ENABLED ? copy.payGooglePlay(androidDisplayPrice) : copy.googlePlaySoon)
-              : copy.continueStripe(subtotal)}
+          {priceView.cta}
         </Button>
         <Button
           variant="text"
