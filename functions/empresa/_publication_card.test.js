@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { publicationCard, eventsBlock } from './_lib.js';
+import { publicationCard, eventsBlock, isBoeUrl } from './_lib.js';
 
 const T_ES = {
   registryAct: 'Acto registral',
   historyViewSource: 'Ver en el BORME (PDF)',
-  historyEntryNumber: (n) => `BORME-A · nº ${n}`,
+  historyEntryNumber: (letter, n) => (letter ? `BORME-${letter} nº ${n}` : `nº ${n}`),
   historyUnknownYear: 'Sin fecha',
   historyYear: (year, count) => `${year} · ${count} publicaciones`,
   historyBatch: (from, to) => `Ver publicaciones ${from}–${to}`,
@@ -19,7 +19,7 @@ const T_ES = {
 const T_EN = {
   registryAct: 'Registry act',
   historyViewSource: 'View in BORME (PDF)',
-  historyEntryNumber: (n) => `BORME-A · No. ${n}`,
+  historyEntryNumber: (letter, n) => (letter ? `BORME-${letter} No. ${n}` : `No. ${n}`),
   historyUnknownYear: 'Undated',
   historyYear: (year, count) => `${year} · ${count} publications`,
   historyBatch: (from, to) => `View publications ${from}–${to}`,
@@ -106,7 +106,7 @@ describe('publicationCard', () => {
     expect(html).not.toContain('<a');
   });
 
-  it('renders the BORME entry number when present', () => {
+  it('renders just the number label when the entry number is known but no PDF url is', () => {
     const event = {
       event_date: '2026-08-24',
       event_types: ['Constitución'],
@@ -115,10 +115,42 @@ describe('publicationCard', () => {
     };
 
     const es = publicationCard(event, T_ES, 'es');
-    expect(es).toContain('BORME-A · nº 15');
+    expect(es).toContain('nº 15');
+    expect(es).not.toContain('BORME-');
 
     const en = publicationCard(event, T_EN, 'en');
-    expect(en).toContain('BORME-A · No. 15');
+    expect(en).toContain('No. 15');
+    expect(en).not.toContain('BORME-');
+  });
+
+  it('derives the BORME section letter from the pdf_url and combines it with the entry number', () => {
+    const sectionA = {
+      event_date: '2026-08-24',
+      event_types: ['Constitución'],
+      full_entry: 'Texto breve.',
+      pdf_url: 'https://www.boe.es/borme/dias/2026/08/24/pdfs/BORME-A-2026-162-15.pdf',
+      borme_entry_number: 15,
+    };
+    expect(publicationCard(sectionA, T_ES, 'es')).toContain('BORME-A nº 15');
+
+    const sectionB = {
+      event_date: '2026-08-24',
+      event_types: ['Constitución'],
+      full_entry: 'Texto breve.',
+      pdf_url: 'https://www.boe.es/borme/dias/2026/08/24/pdfs/BORME-B-2026-162-15.pdf',
+      borme_entry_number: 15,
+    };
+    expect(publicationCard(sectionB, T_ES, 'es')).toContain('BORME-B nº 15');
+
+    const noUrl = {
+      event_date: '2026-08-24',
+      event_types: ['Constitución'],
+      full_entry: 'Texto breve.',
+      borme_entry_number: 15,
+    };
+    const html = publicationCard(noUrl, T_ES, 'es');
+    expect(html).toContain('nº 15');
+    expect(html).not.toContain('BORME-');
   });
 
   it('omits the source line entirely when neither pdf_url nor entry number is known', () => {
@@ -130,6 +162,55 @@ describe('publicationCard', () => {
     const html = publicationCard(event, T_ES, 'es');
 
     expect(html).not.toContain('entry-source');
+  });
+
+  it('never renders an anchor for a non-boe.es pdf_url, even a javascript: scheme', () => {
+    const jsScheme = {
+      event_date: '2026-08-24',
+      event_types: ['Constitución'],
+      full_entry: 'Texto breve.',
+      pdf_url: 'javascript:alert(1)',
+    };
+    expect(publicationCard(jsScheme, T_ES, 'es')).not.toContain('<a');
+
+    const evilHost = {
+      event_date: '2026-08-24',
+      event_types: ['Constitución'],
+      full_entry: 'Texto breve.',
+      pdf_url: 'https://evil.example/x.pdf',
+    };
+    expect(publicationCard(evilHost, T_ES, 'es')).not.toContain('<a');
+  });
+
+  it('renders an anchor for a genuine boe.es pdf_url', () => {
+    const event = {
+      event_date: '2026-08-24',
+      event_types: ['Constitución'],
+      full_entry: 'Texto breve.',
+      pdf_url: 'https://www.boe.es/borme/dias/2026/08/24/pdfs/BORME-A-2026-162-15.pdf',
+    };
+    expect(publicationCard(event, T_ES, 'es')).toContain('<a href="https://www.boe.es/');
+  });
+});
+
+describe('isBoeUrl', () => {
+  it('accepts an absolute https URL under boe.es', () => {
+    expect(isBoeUrl('https://www.boe.es/borme/dias/2026/08/24/pdfs/BORME-A-2026-162-15.pdf')).toBe(true);
+  });
+
+  it('rejects a javascript: scheme', () => {
+    expect(isBoeUrl('javascript:alert(1)')).toBe(false);
+  });
+
+  it('rejects a different host, even one that resembles boe.es', () => {
+    expect(isBoeUrl('https://evil.example/x.pdf')).toBe(false);
+    expect(isBoeUrl('https://www.boe.es.evil.example/x.pdf')).toBe(false);
+  });
+
+  it('rejects null, undefined, and non-string values', () => {
+    expect(isBoeUrl(null)).toBe(false);
+    expect(isBoeUrl(undefined)).toBe(false);
+    expect(isBoeUrl(42)).toBe(false);
   });
 });
 

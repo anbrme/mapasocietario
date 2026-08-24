@@ -277,7 +277,7 @@ const T = {
     },
     registryAct: 'Acto registral',
     historyViewSource: 'Ver en el BORME (PDF)',
-    historyEntryNumber: (n) => `BORME-A · nº ${n}`,
+    historyEntryNumber: (letter, n) => (letter ? `BORME-${letter} nº ${n}` : `nº ${n}`),
     ctaTitle: 'Ver el mapa societario interactivo',
     ctaText: (name) =>
       `Explora la red de participaciones, administradores compartidos y filiales de ${name}.`,
@@ -479,7 +479,7 @@ const T = {
     },
     registryAct: 'Registry act',
     historyViewSource: 'View in BORME (PDF)',
-    historyEntryNumber: (n) => `BORME-A · No. ${n}`,
+    historyEntryNumber: (letter, n) => (letter ? `BORME-${letter} No. ${n}` : `No. ${n}`),
     ddCtaTitle: 'Full due diligence report',
     ddCtaText: (name) =>
       `Download a PDF with AI analysis, sanctions screening, red flags and the full commercial-registry history of ${name}.`,
@@ -739,18 +739,38 @@ function eventYear(event, t) {
   return match ? match[1] : t.historyUnknownYear;
 }
 
-// Source line under a card's entry text: a link to the official PDF (when
-// known) plus the BORME entry number (when known). Never renders a dead
-// anchor — no pdf_url means no <a>, just the entry number text if present.
+// The only host we're willing to link to for a source PDF — a scheme/host
+// allowlist, not just HTML-escaping, so a malformed or tampered `pdf_url`
+// (e.g. `javascript:...`, or a lookalike host) can never become a live
+// anchor. Exported so callers/tests can check it in isolation.
+export function isBoeUrl(url) {
+  return typeof url === 'string' && url.startsWith('https://www.boe.es/');
+}
+
+// The BORME section letter (A, B, ...) embedded in an official PDF filename,
+// e.g. ".../BORME-A-2026-162-15.pdf" → "A". Only trusted when the URL itself
+// is verified boe.es — an unverified pdf_url's embedded "BORME-X" claim is
+// not trusted either.
+function bormeSectionLetter(pdfUrl) {
+  if (!isBoeUrl(pdfUrl)) return null;
+  const match = /BORME-([A-Z])-/.exec(pdfUrl);
+  return match ? match[1] : null;
+}
+
+// Source line under a card's entry text: a link to the official PDF (only
+// when it's verified to be under boe.es) plus the BORME entry number (when
+// known, prefixed with its section letter when that's derivable from the
+// PDF url). Never renders a dead anchor.
 function publicationSourceLine(event, t) {
   const parts = [];
-  if (event.pdf_url) {
+  if (isBoeUrl(event.pdf_url)) {
     parts.push(
       `<a href="${esc(event.pdf_url)}" target="_blank" rel="noopener">${esc(t.historyViewSource)}</a>`,
     );
   }
   if (event.borme_entry_number) {
-    parts.push(esc(t.historyEntryNumber(event.borme_entry_number)));
+    const letter = bormeSectionLetter(event.pdf_url);
+    parts.push(esc(t.historyEntryNumber(letter, event.borme_entry_number)));
   }
   return parts.length ? `<p class="entry-source">${parts.join(' · ')}</p>` : '';
 }
