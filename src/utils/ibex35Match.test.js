@@ -201,6 +201,32 @@ describe('pinListedEntities', () => {
     const result = pinListedEntities('tander', []);
     expect(result.map(r => r.id)).not.toContain('H:S-1960');
   });
+
+  it('still pins Banco Santander when the only same-named suggestion is an OFFICER entry', () => {
+    // A corporate-officer autocomplete row can be named identically to a
+    // listed seed's registered name (e.g. Banco Santander appearing as an
+    // officer/apoderado of another company). That's a different record from
+    // the listed entity itself and must not suppress the pin — only a
+    // `type: 'company'` suggestion (or id/groupKey match) should dedup.
+    const suggestions = [
+      { id: 'O:1', name: 'BANCO SANTANDER, S.A.', type: 'officer', company_count: 1 },
+      { id: 'x', name: 'ACME SL', type: 'company' },
+    ];
+    const result = pinListedEntities('santander', suggestions);
+    expect(result[0]).toMatchObject({ id: 'H:S-1960', name: 'BANCO SANTANDER, SA', type: 'company' });
+  });
+
+  it('dedups when a COMPANY suggestion already carries the seed name as a punctuation variant', () => {
+    const suggestions = [{ id: 'some-hash-id', name: 'BANCO SANTANDER SA', type: 'company' }];
+    const result = pinListedEntities('santander', suggestions);
+    expect(result).toBe(suggestions);
+  });
+
+  it('dedups by id regardless of suggestion type', () => {
+    const suggestions = [{ id: 'H:S-1960', name: 'irrelevant name', type: 'officer' }];
+    const result = pinListedEntities('santander', suggestions);
+    expect(result).toBe(suggestions);
+  });
 });
 
 import { buildIbexCardViewModel } from './ibex35Match';

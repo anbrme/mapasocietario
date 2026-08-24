@@ -46,10 +46,19 @@ const foldForBrandMatch = (s) =>
     .trim();
 
 // True when `suggestion` already represents the given seed entity, either by
-// its stable id/groupKey or by its punctuation-insensitive name.
+// its stable id/groupKey (any suggestion type — an officer row can carry the
+// seed's own H: id when it IS that entity) or by its punctuation-insensitive
+// name (COMPANY suggestions only). A company and an officer/sole-shareholder
+// record can legitimately share a name (e.g. Banco Santander itself acting
+// as an apoderado of another company) — that officer row is a different
+// record from the listed entity and must never suppress the pin.
+// `suggestion.type` is optional: callers that only ever pass company rows
+// (as the existing fixtures below do) omit it, so a missing type is treated
+// as company for backwards compatibility.
 function suggestionMatchesSeedEntity(suggestion, id, brandNameKey) {
   if (!suggestion) return false;
   if (suggestion.id === id || suggestion.groupKey === id) return true;
+  if (suggestion.type != null && suggestion.type !== 'company') return false;
   const suggestionKey = nameKey(suggestion.name || suggestion.label || suggestion.display_name || '');
   return suggestionKey !== '' && suggestionKey === brandNameKey;
 }
