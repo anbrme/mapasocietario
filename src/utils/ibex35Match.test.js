@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchIbexSeed } from './ibex35Match';
+import { matchIbexSeed, listedBadgeFor } from './ibex35Match';
 
 describe('matchIbexSeed', () => {
   it('matches a company name regardless of surrounding whitespace and case', () => {
@@ -21,6 +21,49 @@ describe('matchIbexSeed', () => {
     expect(matchIbexSeed('')).toBeNull();
     expect(matchIbexSeed(null)).toBeNull();
     expect(matchIbexSeed(undefined)).toBeNull();
+  });
+
+  it('matches a live name carrying a trailing registry-office annotation', () => {
+    // The graph node can carry "INDUSTRIA DE DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)"
+    // while the SEED's v3Name has no suffix — the (R.M. …) office annotation
+    // must be stripped BEFORE punctuation, or the suffixed live name never
+    // matches the curated seed.
+    const match = matchIbexSeed('INDUSTRIA DE DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)');
+    expect(match).not.toBeNull();
+    expect(match.ticker).toBe('BME:ITX');
+  });
+
+  it('matches a registry-office annotation spelled without dots', () => {
+    const match = matchIbexSeed('INDUSTRIA DE DISEÑO TEXTIL, S.A. (RM A CORUÑA)');
+    expect(match).not.toBeNull();
+    expect(match.ticker).toBe('BME:ITX');
+  });
+});
+
+describe('listedBadgeFor', () => {
+  it('returns the IBEX badge for a name matching the seed, in English', () => {
+    expect(listedBadgeFor('REPSOL SA', 'en')).toEqual({ label: 'Listed · IBEX 35', ticker: 'BME:REP' });
+  });
+
+  it('returns the IBEX badge for a name matching the seed, in Spanish', () => {
+    expect(listedBadgeFor('REPSOL SA', 'es')).toEqual({ label: 'Cotizada · IBEX 35', ticker: 'BME:REP' });
+  });
+
+  it('matches the listed entity even with a trailing registry-office suffix (the INDITEX case)', () => {
+    const badge = listedBadgeFor('INDUSTRIA DE DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)', 'en');
+    expect(badge).toEqual({ label: 'Listed · IBEX 35', ticker: 'BME:ITX' });
+  });
+
+  it('returns null for the unlisted sibling entity that is not in the IBEX 35 seed', () => {
+    // "INDITEX, SA" (H:C-22299) is the unlisted group entity, distinct from
+    // "INDUSTRIA DE DISEÑO TEXTIL, S.A." (H:C-3342), the listed one.
+    expect(listedBadgeFor('INDITEX, SA', 'en')).toBeNull();
+  });
+
+  it('returns null for empty, null, or undefined input', () => {
+    expect(listedBadgeFor('', 'en')).toBeNull();
+    expect(listedBadgeFor(null, 'en')).toBeNull();
+    expect(listedBadgeFor(undefined, 'en')).toBeNull();
   });
 });
 

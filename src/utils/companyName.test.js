@@ -5,7 +5,40 @@ import {
   normalizeCompanyName,
   looksLikeGroupKey,
   selectGroupKeyId,
+  stripRegistryOffice,
+  displayCompanyName,
 } from './companyName';
+
+describe('stripRegistryOffice', () => {
+  it('strips a trailing (R.M. …) registry-office annotation', () => {
+    expect(stripRegistryOffice('INDUSTRIA DE DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)'))
+      .toBe('INDUSTRIA DE DISEÑO TEXTIL, S.A.');
+  });
+
+  it('strips a dotless (RM …) spelling', () => {
+    expect(stripRegistryOffice('ACME SL (RM MADRID)')).toBe('ACME SL');
+  });
+
+  it('leaves a name unchanged when there is no registry-office suffix', () => {
+    expect(stripRegistryOffice('INDITEX, SA')).toBe('INDITEX, SA');
+  });
+
+  it('is null-safe and trims', () => {
+    expect(stripRegistryOffice(null)).toBe('');
+    expect(stripRegistryOffice(undefined)).toBe('');
+  });
+});
+
+describe('displayCompanyName', () => {
+  it('returns the registry-office-stripped, trimmed name', () => {
+    expect(displayCompanyName('INDUSTRIA DE DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)  '))
+      .toBe('INDUSTRIA DE DISEÑO TEXTIL, S.A.');
+  });
+
+  it('is null-safe', () => {
+    expect(displayCompanyName(null)).toBe('');
+  });
+});
 
 describe('normalizeCompanyName', () => {
   it('strips a trailing period so registry variants compare equal', () => {

@@ -89,7 +89,7 @@ import { isMonitorableNode } from '../services/monitoringService';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
-import { normalizeCompanyName } from '../utils/companyName';
+import { normalizeCompanyName, displayCompanyName } from '../utils/companyName';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
 import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
 import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
@@ -162,7 +162,7 @@ import {
 import { rebindLinksAfterNodeUpdate } from '../utils/graphLinkBinding';
 import { formatDate } from '../utils/formatDate';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
-import { matchIbexSeed, matchAllIbexNodes } from '../utils/ibex35Match';
+import { matchIbexSeed, matchAllIbexNodes, listedBadgeFor } from '../utils/ibex35Match';
 import { getIbexCompanyData } from '../services/ibex35DashboardClient';
 import { isAndroidNativeApp } from '../services/playBillingService';
 
@@ -8404,6 +8404,7 @@ const SpanishCompanyNetworkGraph = ({
             // back to the name-based legal-entity check to pick the right icon.
             const isCompanyLike =
               option.type === 'company' || isLegalEntityName(option.name || option.label);
+            const listedBadge = listedBadgeFor(option.name || option.label, uiLanguage);
             return (
             <Box component="li" {...props} key={option.label + (option.cif || '')}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, width: '100%' }}>
@@ -8416,7 +8417,22 @@ const SpanishCompanyNetworkGraph = ({
                 )}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                    <Typography variant="body2">{option.name || option.label}</Typography>
+                    <Typography variant="body2">{displayCompanyName(option.name || option.label)}</Typography>
+                    {listedBadge && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontSize: '0.65rem',
+                          color: 'success.dark',
+                          bgcolor: 'success.light',
+                          px: 0.6,
+                          py: 0.1,
+                          borderRadius: 0.5,
+                        }}
+                      >
+                        {listedBadge.label}
+                      </Typography>
+                    )}
                     {option.type === 'sole_shareholder' && (
                       <Typography
                         variant="caption"
@@ -8777,9 +8793,27 @@ const SpanishCompanyNetworkGraph = ({
               )}
               renderOption={(props, option) => {
                 const { key, ...restProps } = props;
+                const listedBadge = listedBadgeFor(option.name || option.label, uiLanguage);
                 return (
                   <Box key={option.id} component="li" {...restProps} sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
-                    <Typography variant="body2">{option.name || option.label}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                      <Typography variant="body2">{displayCompanyName(option.name || option.label)}</Typography>
+                      {listedBadge && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: '0.65rem',
+                            color: 'success.dark',
+                            bgcolor: 'success.light',
+                            px: 0.6,
+                            py: 0.1,
+                            borderRadius: 0.5,
+                          }}
+                        >
+                          {listedBadge.label}
+                        </Typography>
+                      )}
+                    </Box>
                     <Typography variant="caption" color="text.secondary">
                       {option.type === 'officer'
                         ? `👥 ${option.subtype === 'company' ? text.officerCompany : text.officerIndividual}`

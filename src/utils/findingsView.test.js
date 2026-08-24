@@ -37,6 +37,22 @@ describe('findingsView', () => {
     expect(findingsView(withFormer, 'es').header.formerly).toBe('anteriormente ZARA, SA, INDUSTRIAS TEXTILES, SA');
   });
 
+  it('strips a trailing registry-office annotation from the header title (the INDITEX case)', () => {
+    const withSuffix = {
+      ...payload,
+      company: { ...payload.company, name: 'INDUSTRIA DE DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)' },
+    };
+    expect(findingsView(withSuffix, 'en').header.title).toBe('INDUSTRIA DE DISEÑO TEXTIL, S.A.');
+  });
+
+  it('strips a trailing registry-office annotation from each former name', () => {
+    const withSuffix = {
+      ...payload,
+      company: { ...payload.company, previous_names: ['ZARA, SA(R.M. A CORUÑA)', 'INDUSTRIAS TEXTILES, SA'] },
+    };
+    expect(findingsView(withSuffix, 'en').header.formerly).toBe('formerly ZARA, SA, INDUSTRIAS TEXTILES, SA');
+  });
+
   it('states the latest filing, and omits the line when unknown', () => {
     expect(findingsView(payload, 'en').changed).toBe('Latest BORME filing: 2026-06-12 — Nombramientos');
     expect(findingsView({ ...payload, company: { ...payload.company, last_filing: null } }, 'en').changed).toBeNull();

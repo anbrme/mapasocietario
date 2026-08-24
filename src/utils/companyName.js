@@ -70,6 +70,31 @@ export const entityNameKey = name =>
     .replace(/[^A-Z0-9]+/g, ' ')
     .trim();
 
+// A trailing registry-office annotation ("(R.M. A CORUÑA)", "(RM MADRID)")
+// that live BORME/v3 names can carry. Mirrors ibex35Match.js's own copy of
+// this regex (kept local there too, to avoid a cross-import for one pattern).
+const REGISTRY_OFFICE_SUFFIX = /\s*\(R\.?M\.?\s+[^)]*\)\s*$/i;
+
+/**
+ * Strip a trailing "(R.M. …)" / "(RM …)" registry-office annotation from a
+ * company name, e.g. "INDUSTRIA DE DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)" →
+ * "INDUSTRIA DE DISEÑO TEXTIL, S.A.".
+ * @param {string} name
+ * @returns {string}
+ */
+export const stripRegistryOffice = name =>
+  (name || '').replace(REGISTRY_OFFICE_SUFFIX, '').trim();
+
+/**
+ * Company name as shown to a user: registry-office annotation stripped,
+ * trimmed. Used anywhere a raw BORME/v3 name is rendered directly (search
+ * autocomplete options, the findings header) so the office suffix — internal
+ * bookkeeping, not part of the legal name — never leaks into the UI.
+ * @param {string} name
+ * @returns {string}
+ */
+export const displayCompanyName = name => stripRegistryOffice(name).trim();
+
 /**
  * Normalize a company display name for consistent matching / ID generation:
  * strips a trailing "(YYYY)" year suffix and a trailing period so that registry

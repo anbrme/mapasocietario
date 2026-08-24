@@ -3,6 +3,8 @@
 // is either in the API payload (finding texts, gap sentences — written once,
 // server-side, shared with the paid report) or in FINDINGS_COPY here.
 
+import { displayCompanyName } from './companyName';
+
 export const FINDINGS_COPY = {
   en: {
     nif: nif => `NIF ${nif}`,
@@ -57,11 +59,13 @@ export function findingsView(payload, lang) {
   const previousNames = Array.isArray(company.previous_names) ? company.previous_names.filter(Boolean) : [];
   return {
     header: {
-      title: company.name || '',
+      title: displayCompanyName(company.name || ''),
       nifLabel: company.nif ? copy.nif(company.nif) : copy.nifMissing,
       nifMissing: !company.nif,
       province: company.province || null,
-      formerly: previousNames.length ? copy.formerly(previousNames.join(', ')) : null,
+      formerly: previousNames.length
+        ? copy.formerly(previousNames.map(displayCompanyName).join(', '))
+        : null,
     },
     changed: lastFiling?.date ? copy.changed(lastFiling.date, lastFiling.type) : null,
     findings,

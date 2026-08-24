@@ -29,6 +29,7 @@ import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import OfficerInspectorBody from './OfficerInspectorBody.jsx';
 import CompanyFindings from './CompanyFindings';
 import { FINDINGS_PANEL_ENABLED } from '../config';
+import { listedBadgeFor } from '../utils/ibex35Match';
 import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
@@ -268,6 +269,7 @@ const CompanyInspectorPanel = ({
                   onOpenReport={onOpenReport}
                   offerCta={{ label: text.buyDueDiligencePriced, onClick: onBuyDueDiligence }}
                   onEvidence={ev => onOpenDataset?.(FINDINGS_EVIDENCE_DATASET_KEY[ev.kind] || FINDINGS_OFFICERS_DATASET_KEY)}
+                  listed={listedBadgeFor(data.name, lang)}
                 />
               )}
               <CurrencyConfirmationCard

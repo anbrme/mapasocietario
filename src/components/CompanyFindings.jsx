@@ -19,7 +19,7 @@ const TONE_SX = {
 // instances for the lifetime of the page.
 const seenFindings = new Set();
 
-export default function CompanyFindings({ groupKey, name, lang, onOpenReport, offerCta, onEvidence }) {
+export default function CompanyFindings({ groupKey, name, lang, onOpenReport, offerCta, onEvidence, listed }) {
   const [state, setState] = useState({ status: 'loading', view: null });
 
   useEffect(() => {
@@ -75,6 +75,7 @@ export default function CompanyFindings({ groupKey, name, lang, onOpenReport, of
             <> — <Link component="button" onClick={() => onOpenReport('nif', '')}>{labels.nifTellUs}</Link></>
           )}
           {header.province && ` · ${header.province}`}
+          {listed && ` · ${listed.label}${listed.ticker ? ` · ${listed.ticker}` : ''}`}
           {header.formerly && ` · ${header.formerly}`}
         </Typography>
       </Typography>
