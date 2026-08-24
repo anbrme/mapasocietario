@@ -30,6 +30,76 @@ export function matchIbexSeed(companyName) {
   return SEED[slug] || null;
 }
 
+// A query shorter than this never pins anything — short prefixes ("in", "a")
+// would otherwise match too many brands and dominate the dropdown.
+const MIN_BRAND_QUERY_LENGTH = 3;
+
+// Fold a raw string for brand-prefix matching: upper-case, strip diacritics,
+// trim. Deliberately looser than nameKey (which is for exact name comparison,
+// punctuation-insensitive) — this only needs to compare a typed query against
+// a brand name like "Inditex" or "Acciona Energía".
+const foldForBrandMatch = (s) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim();
+
+// True when `suggestion` already represents the given seed entity, either by
+// its stable id/groupKey or by its punctuation-insensitive name.
+function suggestionMatchesSeedEntity(suggestion, id, brandNameKey) {
+  if (!suggestion) return false;
+  if (suggestion.id === id || suggestion.groupKey === id) return true;
+  const suggestionKey = nameKey(suggestion.name || suggestion.label || suggestion.display_name || '');
+  return suggestionKey !== '' && suggestionKey === brandNameKey;
+}
+
+/**
+ * Prepend a synthetic suggestion for every curated IBEX 35 seed entity whose
+ * brand name (e.g. "Inditex") the query is a folded prefix of — the listed
+ * entity (e.g. "INDUSTRIA DE DISEÑO TEXTIL, S.A.") never surfaces on its own
+ * because its registered name doesn't contain the brand people search for.
+ * Skips a seed already represented in `suggestions` (same id/groupKey, or
+ * the same name once punctuation is ignored). Multiple brands can match one
+ * query (e.g. "banco" matches both Banco Santander and Banco Sabadell) — all
+ * are pinned, in seed declaration order. Pure: never mutates `suggestions`;
+ * returns the SAME array reference when nothing is pinned.
+ * @param {string} query
+ * @param {Array<object>} suggestions
+ * @returns {Array<object>}
+ */
+export function pinListedEntities(query, suggestions) {
+  const list = Array.isArray(suggestions) ? suggestions : [];
+  const folded = foldForBrandMatch(query);
+  if (folded.length < MIN_BRAND_QUERY_LENGTH) return list;
+
+  const pins = Object.values(SEED).reduce((acc, seed) => {
+    const brandFolded = foldForBrandMatch(seed.name);
+    if (!brandFolded.startsWith(folded)) return acc;
+
+    const id = `H:${seed.hoja.replace(/\s+/g, '-')}`;
+    const brandNameKey = nameKey(seed.v3Name);
+    const alreadyPresent = list.some(s => suggestionMatchesSeedEntity(s, id, brandNameKey));
+    if (alreadyPresent) return acc;
+
+    return [
+      ...acc,
+      {
+        name: seed.v3Name,
+        label: seed.v3Name,
+        display_name: seed.v3Name,
+        id,
+        groupKey: id,
+        type: 'company',
+        source: 'ibex_seed',
+        listed: true,
+      },
+    ];
+  }, []);
+
+  return pins.length > 0 ? [...pins, ...list] : list;
+}
+
 // "Listed company" badge copy for the autocomplete and findings header — see
 // listedBadgeFor below. Bilingual here (not in the graph's `text` dict)
 // because the badge is IBEX-35-specific and only ever needs these two forms.

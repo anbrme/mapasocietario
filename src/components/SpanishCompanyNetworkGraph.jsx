@@ -162,7 +162,7 @@ import {
 import { rebindLinksAfterNodeUpdate } from '../utils/graphLinkBinding';
 import { formatDate } from '../utils/formatDate';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
-import { matchIbexSeed, matchAllIbexNodes, listedBadgeFor } from '../utils/ibex35Match';
+import { matchIbexSeed, matchAllIbexNodes, listedBadgeFor, pinListedEntities } from '../utils/ibex35Match';
 import { getIbexCompanyData } from '../services/ibex35DashboardClient';
 import { isAndroidNativeApp } from '../services/playBillingService';
 
@@ -2520,7 +2520,11 @@ const SpanishCompanyNetworkGraph = ({
           spanishCompaniesService.autocompleteOfficers(value, { limit: 8 }).catch(() => ({ suggestions: [] })),
         ]);
 
-        const companySuggestions = companyResults.suggestions || [];
+        // Pin any curated IBEX 35 seed entity whose brand the query prefixes
+        // (e.g. "inditex") ahead of the raw API results — the listed entity's
+        // registered name (INDUSTRIA DE DISEÑO TEXTIL, S.A.) doesn't contain
+        // the brand, so it never surfaces from the API on its own.
+        const companySuggestions = pinListedEntities(value, companyResults.suggestions || []);
 
         const companyItems = companySuggestions.map(c => ({
           label: c.label || c.name || c.company_name,

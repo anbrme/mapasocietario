@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchIbexSeed, listedBadgeFor } from './ibex35Match';
+import { matchIbexSeed, listedBadgeFor, pinListedEntities } from './ibex35Match';
 
 describe('matchIbexSeed', () => {
   it('matches a company name regardless of surrounding whitespace and case', () => {
@@ -104,6 +104,75 @@ describe('matchAllIbexNodes', () => {
     const matches = matchAllIbexNodes(nodes);
     expect(matches).toHaveLength(2);
     expect(matches.map(m => m.name).sort()).toEqual(['Banco Santander', 'Repsol']);
+  });
+});
+
+describe('pinListedEntities', () => {
+  it('pins the listed Inditex entity first for "inditex"', () => {
+    const suggestions = [{ id: 'H:C-22299', name: 'INDITEX, SA' }];
+    const result = pinListedEntities('inditex', suggestions);
+    expect(result[0]).toMatchObject({
+      name: 'INDUSTRIA DE DISEÑO TEXTIL, S.A.',
+      label: 'INDUSTRIA DE DISEÑO TEXTIL, S.A.',
+      display_name: 'INDUSTRIA DE DISEÑO TEXTIL, S.A.',
+      id: 'H:C-3342',
+      groupKey: 'H:C-3342',
+      type: 'company',
+      source: 'ibex_seed',
+      listed: true,
+    });
+    expect(result[1]).toBe(suggestions[0]);
+  });
+
+  it('pins the listed entity for a 3-character prefix of the brand ("ind")', () => {
+    // "ind" also prefixes "Indra" — both are expected to pin.
+    const result = pinListedEntities('ind', []);
+    expect(result.map(r => r.id)).toContain('H:C-3342');
+  });
+
+  it('does not pin for a 2-character query, even if it is a brand prefix', () => {
+    const suggestions = [{ id: 'H:C-22299', name: 'INDITEX, SA' }];
+    const result = pinListedEntities('in', suggestions);
+    expect(result).toBe(suggestions);
+  });
+
+  it('adds nothing when the listed entity is already among the suggestions (matched by id)', () => {
+    const suggestions = [{ id: 'H:C-3342', name: 'INDUSTRIA DE DISEÑO TEXTIL, S.A.' }];
+    const result = pinListedEntities('inditex', suggestions);
+    expect(result).toBe(suggestions);
+  });
+
+  it('adds nothing when the listed entity is already present under a punctuation variant of its name', () => {
+    const suggestions = [{ id: 'some-hash-id', name: 'INDUSTRIA DE DISEÑO TEXTIL SA' }];
+    const result = pinListedEntities('inditex', suggestions);
+    expect(result).toBe(suggestions);
+  });
+
+  it('returns the same array reference when the query matches no seed brand', () => {
+    const suggestions = [{ id: 'x', name: 'ACME SL' }];
+    const result = pinListedEntities('acme corp', suggestions);
+    expect(result).toBe(suggestions);
+  });
+
+  it('ignores accents and case when matching the brand', () => {
+    const result = pinListedEntities('  ÍnDiTeX  ', []);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('H:C-3342');
+  });
+
+  it('pins every matching brand in seed order when multiple brands share the query prefix', () => {
+    const result = pinListedEntities('banco', []);
+    const ids = result.map(r => r.id);
+    expect(ids).toContain('H:B-1561'); // Banco Sabadell
+    expect(ids).toContain('H:S-1960'); // Banco Santander
+    expect(ids.indexOf('H:B-1561')).toBeLessThan(ids.indexOf('H:S-1960'));
+  });
+
+  it('never mutates the input suggestions array', () => {
+    const suggestions = [{ id: 'H:C-22299', name: 'INDITEX, SA' }];
+    const before = [...suggestions];
+    pinListedEntities('inditex', suggestions);
+    expect(suggestions).toEqual(before);
   });
 });
 
