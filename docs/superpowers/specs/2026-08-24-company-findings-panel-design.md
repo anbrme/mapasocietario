@@ -1,7 +1,7 @@
 # Company findings panel — design
 
 **Date:** 2026-08-24
-**Status:** draft for review
+**Status:** approved 2026-08-24; corrected after final review (client cache, sole-shareholder date, former names in header, `registry_status` finding, EN type labels, capital cap 2, 409 on namesake mismatch)
 **Repos touched:** `ncdata-bormes-impl` (endpoint + pure findings module), `local-rag/workers/api-proxy` (route), `mapasocietario` (panel)
 
 ## Summary
@@ -113,8 +113,9 @@ A `Finding` is:
 | `structural_event` | concern | `shape_events.events` | one per event, newest first, max 2: "{Type} published on {date}" using the BORME type label (merger, spin-off, transformation, change of name, registered-office move, reactivation) |
 | `insolvency_or_dissolution` | concern | `shape_events.events` where type ∈ {disolucion, liquidacion, concurso} | "{Type} notice published on {date}" — always shown when present, ahead of everything else |
 | `no_insolvency_notice` | limitation | absence of the above | "No dissolution, liquidation or insolvency notice found in indexed BORME publications since 2009. This is not a certificate of current status." |
-| `capital_movement` | concern if reduction, context if increase | `shape_events.capital` | "Share capital {reduced/increased} on {date}" — **omitted** if the summary carries no date; never "capital changed" without one |
-| `sole_shareholder_declared` | context | ownership layer detail | "Sole-shareholder declaration published {year}; any later change would appear as a new filing — none indexed" — no "not reconfirmed" wording: declarations are one-off filings |
+| `registry_status` | concern (deliberately undated) | `company.is_dissolved` / `is_in_concurso` (bool `True` only) | emitted INSTEAD of `no_insolvency_notice` when a flag is set but no dated notice was matched in the event window: "The registry marks this company as dissolved" / "…as in insolvency proceedings (concurso)"; sorts with the insolvency group |
+| `capital_movement` | concern if reduction, context if increase | `shape_events.capital_history` (dated, sorted by date) | "Share capital {reduced/increased} on {date}" — one finding per step, newest first, max 2; **omitted** if undated; never "capital changed" without one |
+| `sole_shareholder_declared` | context | `company.sole_shareholder_declarations` (latest) | "Sole-shareholder declaration published {date}; any later change would appear as a new filing — none indexed" — full `YYYY-MM-DD` date; no "not reconfirmed" wording: declarations are one-off filings |
 | `previous_name` | context | `identity_names.previous_names` | "Previously registered as {names}" |
 | `superseded_seats` | context | `authority_shape.superseded` | "N seats superseded by later appointments" — branch on `supersession_kind`: succession vs re-inscription wording, never "replaced by" for re-inscription |
 | `officer_elsewhere` | limitation | (gated) | "One officer name also appears at N other companies. BORME provides no person identifier, so these records may refer to different people." — **behind `OFFICER_IDENTITY_FINDINGS` flag, default off** |
@@ -146,7 +147,7 @@ Response:
 ```
 
 - **Cache:** 24 h in-process per `(group_key, lang)`, key includes the company's `last_filing_date` so a new filing invalidates it. Cold path calls `assemble_company_data`, which is the report's assembler (events + PG officers + companies-owned); budget p95 < 1.5 s warm-index. If it proves heavier than that in practice, the plan adds a lighter assembler that skips `companies_owned` — not decided here.
-- **Errors:** unknown company → 404 `{error:'not_found'}`; assembler failure → 502 with a logged stack, never a 200 with an empty list (an empty list means "nothing to report", which is a finding in itself).
+- **Errors:** unknown company → 404 `{error:'not_found'}`; lookup or assembler failure → 502 (`lookup_failed` / `assembly_failed`, no exception text in the body, stack in the log); the assembler re-resolving to a different company (live + dissolved namesake) → 409 `{error:'ambiguous_name'}` — never findings built from another company's events, never a 200 with an empty list on failure.
 - **CORS / proxy:** added in BOTH places in `local-rag/workers/api-proxy/src/index.js` — the `targetPath` dispatch in `handleSpanishCompaniesRequest` (unknown paths silently fall through to working-search) and the pathname allowlist (~line 1850). Deployed with `npx wrangler deploy` from `workers/api-proxy/src`. This has bitten twice; it is a checklist item in the plan.
 - Anonymous, same rate limits as the other `/bormes/v3/*` reads.
 
@@ -162,12 +163,12 @@ Response:
 
 - `src/components/CompanyFindings.jsx` — the block. Mounted as the **first** child of the inspector's company view in `CompanyInspectorPanel.jsx`, above the identity section it partly replaces (the identity header here supersedes the mid-panel name/NIF line; address/activity/capital stay where they are).
 - `src/utils/findingsView.js` (+ `.test.js`) — pure: takes the API payload and returns `{ header, changed, findings, verification, offer }` with display labels, class→colour token, and evidence targets. All copy lives here or in the payload; the component has no strings.
-- `src/services/spanishCompaniesService.js` — `getCompanyFindings(groupKey, lang)` via `fetchWithRetry`, 24 h client cache in the existing read-cache layer.
+- `src/services/spanishCompaniesService.js` — `getCompanyFindings({groupKey, name, lang})` via `fetchWithRetry`, cached in the existing shared request cache (10 min / LRU by design — BORME publishes daily and a session-outliving cache could show yesterday's registry as today's; the 24 h cache is server-side).
 - Feature flag `FINDINGS_PANEL_ENABLED` in `src/config.js` (default **off**). Ships dark, flipped on after a live check.
 
 ### Rendering rules
 
-- **Header:** `NAME · NIF … · Province`. NIF absent → `NIF not published in BORME` with the existing "know it? tell us" link (`onOpenReport('nif','')`). Never an empty slot.
+- **Header:** `NAME · NIF … · Province · formerly OLD NAME`. Former names come from `company.previous_names` and always show in the header, because the `previous_name` finding is `context` and can be dropped by the cap of 5 while the legacy legal-name block is hidden when the flag is on. NIF absent → `NIF not published in BORME` with the existing "know it? tell us" link (`onOpenReport('nif','')`). Never an empty slot.
 - **What changed:** `Latest BORME filing: {date} — {type}`. If `last_filing` is null the line is omitted, not dashed.
 - **Findings:** `concern` amber left rule, `context` neutral, `limitation` grey italic. Each with its date right-aligned and an evidence chevron that scrolls to / highlights the officer row or opens the events table at that event (reuse the panel's existing row handlers — no parallel navigation logic). `more > 0` → "and N more in the report" inside the offer.
 - **Needs verification:** gap sentences as plain text.
