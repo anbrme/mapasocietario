@@ -136,18 +136,6 @@ describe('pinListedEntities', () => {
     expect(result).toBe(suggestions);
   });
 
-  it('adds nothing when the listed entity is already among the suggestions (matched by id)', () => {
-    const suggestions = [{ id: 'H:C-3342', name: 'INDUSTRIA DE DISEÑO TEXTIL, S.A.' }];
-    const result = pinListedEntities('inditex', suggestions);
-    expect(result).toBe(suggestions);
-  });
-
-  it('adds nothing when the listed entity is already present under a punctuation variant of its name', () => {
-    const suggestions = [{ id: 'some-hash-id', name: 'INDUSTRIA DE DISEÑO TEXTIL SA' }];
-    const result = pinListedEntities('inditex', suggestions);
-    expect(result).toBe(suggestions);
-  });
-
   it('returns the same array reference when the query matches no seed brand', () => {
     const suggestions = [{ id: 'x', name: 'ACME SL' }];
     const result = pinListedEntities('acme corp', suggestions);
@@ -202,30 +190,61 @@ describe('pinListedEntities', () => {
     expect(result.map(r => r.id)).not.toContain('H:S-1960');
   });
 
-  it('still pins Banco Santander when the only same-named suggestion is an OFFICER entry', () => {
-    // A corporate-officer autocomplete row can be named identically to a
-    // listed seed's registered name (e.g. Banco Santander appearing as an
-    // officer/apoderado of another company). That's a different record from
-    // the listed entity itself and must not suppress the pin — only a
-    // `type: 'company'` suggestion (or id/groupKey match) should dedup.
-    const suggestions = [
-      { id: 'O:1', name: 'BANCO SANTANDER, S.A.', type: 'officer', company_count: 1 },
-      { id: 'x', name: 'ACME SL', type: 'company' },
-    ];
+  it('leads with the synthetic seed entry — never dedups by name — when the payload only has a name-keyed owner record, even past the graph\'s 14-item slice', () => {
+    // The live bug: the directory autocomplete payload for "santander"
+    // carries a NAME-keyed owner record (`id: 'BANCO SANTANDER SA'`, not the
+    // seed's `H:<hoja>` doc) at index 15. The graph then does
+    // `companyItems.slice(0, 14)` (SpanishCompanyNetworkGraph.jsx ~2551), so
+    // anything past index 13 is dropped. Name-based dedup used to see that
+    // owner record as "the seed already present" and skip pinning — cutting
+    // the bank from the dropdown entirely. Dedup is now id/groupKey ONLY, so
+    // a same-named-but-different-id record can never suppress the pin: the
+    // seed's own synthetic entry always leads at index 0, safely inside the
+    // slice, and the unrelated owner record is left untouched later on.
+    const unrelated = Array.from({ length: 15 }, (_, i) => ({
+      id: `c${i}`,
+      name: `SANTANDER FILIAL ${i} SA`,
+      type: 'company',
+    }));
+    const ownerRecord = { name: 'BANCO SANTANDER SA', id: 'BANCO SANTANDER SA', type: 'company' };
+    const suggestions = [...unrelated, ownerRecord];
+    expect(suggestions).toHaveLength(16);
+    expect(suggestions[15]).toBe(ownerRecord);
+
     const result = pinListedEntities('santander', suggestions);
-    expect(result[0]).toMatchObject({ id: 'H:S-1960', name: 'BANCO SANTANDER, SA', type: 'company' });
+
+    expect(result[0]).toMatchObject({
+      id: 'H:S-1960',
+      name: 'BANCO SANTANDER, SA',
+      type: 'company',
+      source: 'ibex_seed',
+      listed: true,
+    });
+    expect(result.some(r => r.id === 'BANCO SANTANDER SA')).toBe(true);
+    // The synthetic pin is a NEW entry, not a promotion of the owner record —
+    // both are present, with no dedup collapsing them into one.
+    expect(result).toHaveLength(17);
   });
 
-  it('dedups when a COMPANY suggestion already carries the seed name as a punctuation variant', () => {
-    const suggestions = [{ id: 'some-hash-id', name: 'BANCO SANTANDER SA', type: 'company' }];
+  it('promotes an existing suggestion carrying the seed\'s own id to the front, with listed: true added, instead of adding a synthetic twin', () => {
+    const unrelated = Array.from({ length: 9 }, (_, i) => ({ id: `c${i}`, name: `COMPANY ${i}`, type: 'company' }));
+    const seedSuggestion = { id: 'H:S-1960', name: 'BANCO SANTANDER, S.A.', type: 'company', cif: 'A-39000013' };
+    const suggestions = [...unrelated.slice(0, 5), seedSuggestion, ...unrelated.slice(5)];
+    expect(suggestions).toHaveLength(10);
+    expect(suggestions[5]).toBe(seedSuggestion);
+
     const result = pinListedEntities('santander', suggestions);
-    expect(result).toBe(suggestions);
+
+    expect(result).toHaveLength(10); // promoted, not duplicated — length unchanged
+    expect(result[0]).toEqual({ ...seedSuggestion, listed: true });
+    expect(result.filter(r => r.id === 'H:S-1960')).toHaveLength(1);
   });
 
-  it('dedups by id regardless of suggestion type', () => {
+  it('promotes by id/groupKey regardless of what the suggestion is named', () => {
     const suggestions = [{ id: 'H:S-1960', name: 'irrelevant name', type: 'officer' }];
     const result = pinListedEntities('santander', suggestions);
-    expect(result).toBe(suggestions);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({ ...suggestions[0], listed: true });
   });
 });
 

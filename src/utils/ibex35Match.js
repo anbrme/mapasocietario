@@ -45,38 +45,31 @@ const foldForBrandMatch = (s) =>
     .toUpperCase()
     .trim();
 
-// True when `suggestion` already represents the given seed entity, either by
-// its stable id/groupKey (any suggestion type — an officer row can carry the
-// seed's own H: id when it IS that entity) or by its punctuation-insensitive
-// name (COMPANY suggestions only). A company and an officer/sole-shareholder
-// record can legitimately share a name (e.g. Banco Santander itself acting
-// as an apoderado of another company) — that officer row is a different
-// record from the listed entity and must never suppress the pin.
-// `suggestion.type` is optional: callers that only ever pass company rows
-// (as the existing fixtures below do) omit it, so a missing type is treated
-// as company for backwards compatibility.
-function suggestionMatchesSeedEntity(suggestion, id, brandNameKey) {
-  if (!suggestion) return false;
-  if (suggestion.id === id || suggestion.groupKey === id) return true;
-  if (suggestion.type != null && suggestion.type !== 'company') return false;
-  const suggestionKey = nameKey(suggestion.name || suggestion.label || suggestion.display_name || '');
-  return suggestionKey !== '' && suggestionKey === brandNameKey;
-}
-
 /**
- * Prepend a synthetic suggestion for every curated IBEX 35 seed entity whose
- * brand name (e.g. "Inditex") the (folded) query is a prefix of — either of
- * the brand as a whole, or of any of its whitespace-separated words (e.g.
- * "santander" prefixes the second word of "Banco Santander") — the listed
- * entity (e.g. "INDUSTRIA DE DISEÑO TEXTIL, S.A.") never surfaces on its own
- * because its registered name doesn't contain the brand people search for. A
+ * Ensure every curated IBEX 35 seed entity whose brand name (e.g. "Inditex")
+ * the (folded) query is a prefix of — either of the brand as a whole, or of
+ * any of its whitespace-separated words (e.g. "santander" prefixes the
+ * second word of "Banco Santander") — appears FIRST in the returned list.
+ * The listed entity (e.g. "INDUSTRIA DE DISEÑO TEXTIL, S.A.") never surfaces
+ * on its own because its registered name doesn't contain the brand people
+ * search for, and a raw suggestion payload is capped downstream (the graph
+ * autocomplete slices to the first 14 company results) — so the seed's
+ * doc must lead, never just be *present somewhere* in the list. A
  * word-internal substring that is not a prefix of that word ("tander") does
- * not match. Skips a seed already represented in `suggestions` (same
- * id/groupKey, or the same name once punctuation is ignored). Multiple
- * brands can match one query (e.g. "banco" matches both Banco Santander and
- * Banco Sabadell) — all are pinned, in seed declaration order. Pure: never
- * mutates `suggestions`; returns the SAME array reference when nothing is
- * pinned.
+ * not match.
+ *
+ * Dedup is by id/groupKey ONLY — never by name. A suggestion whose name
+ * happens to match the seed's registered name but carries a different id
+ * (e.g. a name-keyed owner/officer record, as opposed to the seed's own
+ * `H:<hoja>` document) is a different record and is left in place, not
+ * treated as a stand-in for the listed entity. When a suggestion with the
+ * seed's own id/groupKey IS already present, it is PROMOTED to the front
+ * (a new object with `listed: true` added, original never mutated) instead
+ * of adding a synthetic twin; otherwise a synthetic entry is prepended, as
+ * before. Multiple brands can match one query (e.g. "banco" matches both
+ * Banco Santander and Banco Sabadell) — all are pinned/promoted, in seed
+ * declaration order. Pure: never mutates `suggestions`; returns the SAME
+ * array reference when no seed brand matches the query.
  * @param {string} query
  * @param {Array<object>} suggestions
  * @returns {Array<object>}
@@ -86,34 +79,35 @@ export function pinListedEntities(query, suggestions) {
   const folded = foldForBrandMatch(query);
   if (folded.length < MIN_BRAND_QUERY_LENGTH) return list;
 
-  const pins = Object.values(SEED).reduce((acc, seed) => {
+  const matchedSeeds = Object.values(SEED).filter(seed => {
     const brandFolded = foldForBrandMatch(seed.name);
     const brandWords = brandFolded.split(/\s+/).filter(Boolean);
-    const isBrandPrefixMatch = brandFolded.startsWith(folded)
-      || brandWords.some(word => word.startsWith(folded));
-    if (!isBrandPrefixMatch) return acc;
+    return brandFolded.startsWith(folded) || brandWords.some(word => word.startsWith(folded));
+  });
+  if (matchedSeeds.length === 0) return list;
 
+  const promotedIndices = new Set();
+  const fronts = matchedSeeds.map(seed => {
     const id = `H:${seed.hoja.replace(/\s+/g, '-')}`;
-    const brandNameKey = nameKey(seed.v3Name);
-    const alreadyPresent = list.some(s => suggestionMatchesSeedEntity(s, id, brandNameKey));
-    if (alreadyPresent) return acc;
+    const existingIndex = list.findIndex(s => s && (s.id === id || s.groupKey === id));
+    if (existingIndex !== -1) {
+      promotedIndices.add(existingIndex);
+      return { ...list[existingIndex], listed: true };
+    }
+    return {
+      name: seed.v3Name,
+      label: seed.v3Name,
+      display_name: seed.v3Name,
+      id,
+      groupKey: id,
+      type: 'company',
+      source: 'ibex_seed',
+      listed: true,
+    };
+  });
 
-    return [
-      ...acc,
-      {
-        name: seed.v3Name,
-        label: seed.v3Name,
-        display_name: seed.v3Name,
-        id,
-        groupKey: id,
-        type: 'company',
-        source: 'ibex_seed',
-        listed: true,
-      },
-    ];
-  }, []);
-
-  return pins.length > 0 ? [...pins, ...list] : list;
+  const rest = list.filter((_, idx) => !promotedIndices.has(idx));
+  return [...fronts, ...rest];
 }
 
 // "Listed company" badge copy for the autocomplete and findings header — see
