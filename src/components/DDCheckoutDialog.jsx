@@ -932,7 +932,10 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
               control={
                 <Checkbox
                   checked={useFreeReport}
-                  onChange={(e) => setUseFreeReport(e.target.checked)}
+                  onChange={(e) => {
+                    setUseFreeReport(e.target.checked);
+                    if (e.target.checked) trackEvent('free_report_selected', { company: companyName || '' });
+                  }}
                   sx={{ color: 'warning.main', '&.Mui-checked': { color: 'warning.main' }, py: 0.25 }}
                 />
               }

@@ -567,6 +567,24 @@ class SpanishCompaniesService {
   }
 
   /**
+   * Free findings block for the inspector (same engine as the paid report).
+   * Cached per (group_key|name, lang); the server invalidates on new filings.
+   */
+  async getCompanyFindings({ groupKey = null, name = '', lang = 'es' } = {}) {
+    const key = `findings|${groupKey || ''}|${groupKey ? '' : name}|${lang}`;
+    return this.cache.fetch(key, async () => {
+      const params = new URLSearchParams(groupKey ? { group_key: groupKey, lang } : { name, lang });
+      const response = await this.fetchWithRetry(`${this.baseUrl}/bormes/v3/company-findings?${params}`, { method: 'GET' });
+      if (!response.ok) {
+        const err = new Error(`findings ${response.status}`);
+        err.status = response.status;
+        throw err;
+      }
+      return response.json();
+    });
+  }
+
+  /**
    * Get events for a company from borme_events_v3.
    * Returns normalized event docs with clean officers per event.
    *

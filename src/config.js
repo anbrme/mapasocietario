@@ -18,3 +18,7 @@ export const PAYMENTS_API = import.meta.env.VITE_PAYMENTS_API ?? 'https://paymen
 // `AI_INVESTIGATION_API` → the ai-investigation worker (redeem + investigate).
 export const AI_INVESTIGATION_API =
   import.meta.env.VITE_AI_INVESTIGATION_API ?? 'https://ai-investigation.anurnberg.workers.dev';
+
+// Company findings block at the top of the inspector. Ships dark; flipped to
+// true by the last task of docs/superpowers/plans/2026-08-24-company-findings-panel.md.
+export const FINDINGS_PANEL_ENABLED = false;

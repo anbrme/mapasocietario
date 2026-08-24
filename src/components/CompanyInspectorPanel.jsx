@@ -27,12 +27,23 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import OfficerInspectorBody from './OfficerInspectorBody.jsx';
+import CompanyFindings from './CompanyFindings';
+import { FINDINGS_PANEL_ENABLED } from '../config';
 import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
 import { trackFullCompanyProfileClick } from '../utils/track';
 import { recordCompanyDemand } from '../utils/companyDemand';
 import { formatDate } from '../utils/formatDate';
+
+// Findings-block evidence links open the data dock on the closest matching
+// dataset from buildCompanyDatasets (src/utils/inspectorDatasets.js). That
+// keying is per event-category, not per {officer, event} — 'current' is the
+// only true officers table, so officer-kind evidence (a named appointee)
+// opens there; everything else (event/capital/ownership) opens the
+// cessations table, the one most likely to hold the cited change.
+const FINDINGS_OFFICERS_DATASET_KEY = 'current';
+const FINDINGS_EVENTS_DATASET_KEY = 'ceses_dimisiones';
 
 /**
  * Company / officer inspector for the network graph.
@@ -244,6 +255,18 @@ const CompanyInspectorPanel = ({
           const fullHref = fullCompanyPageHref(data.name, lang);
           return (
             <Box>
+              {FINDINGS_PANEL_ENABLED && (
+                <CompanyFindings
+                  groupKey={data.company?.group_key || null}
+                  name={data.name}
+                  lang={lang}
+                  onOpenReport={onOpenReport}
+                  offerCta={{ label: text.buyDueDiligencePriced, onClick: onBuyDueDiligence }}
+                  onEvidence={ev => onOpenDataset?.(
+                    ev.kind === 'officer' ? FINDINGS_OFFICERS_DATASET_KEY : FINDINGS_EVENTS_DATASET_KEY
+                  )}
+                />
+              )}
               <CurrencyConfirmationCard
                 rec={CONFIRMATIONS[nameToSlug(data.name)]}
                 lang={lang}
@@ -255,40 +278,42 @@ const CompanyInspectorPanel = ({
               </Typography>
               <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                  <Box sx={{ gridColumn: '1 / -1' }}>
-                    <Typography variant="caption" color="text.secondary">{text.legalName}</Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 600,
-                        textDecoration: e?.isDissolved ? 'line-through' : 'none',
-                        color: e?.isDissolved ? 'error.main' : 'inherit',
-                      }}
-                    >
-                      {data.name}
-                    </Typography>
-                    {e?.nameChanges?.length > 0 ? (
-                      <Box sx={{ mt: 0.25 }}>
-                        {e.nameChanges.map((nc, idx) => (
-                          <Typography
-                            key={idx}
-                            variant="caption"
-                            display="block"
-                            sx={{ color: 'warning.main', fontStyle: 'italic' }}
-                          >
-                            {nc.date ? `${formatDate(nc.date, lang)}: ` : ''}
-                            {nc.old_name} → {nc.new_name}
+                  {!FINDINGS_PANEL_ENABLED && (
+                    <Box sx={{ gridColumn: '1 / -1' }}>
+                      <Typography variant="caption" color="text.secondary">{text.legalName}</Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          textDecoration: e?.isDissolved ? 'line-through' : 'none',
+                          color: e?.isDissolved ? 'error.main' : 'inherit',
+                        }}
+                      >
+                        {data.name}
+                      </Typography>
+                      {e?.nameChanges?.length > 0 ? (
+                        <Box sx={{ mt: 0.25 }}>
+                          {e.nameChanges.map((nc, idx) => (
+                            <Typography
+                              key={idx}
+                              variant="caption"
+                              display="block"
+                              sx={{ color: 'warning.main', fontStyle: 'italic' }}
+                            >
+                              {nc.date ? `${formatDate(nc.date, lang)}: ` : ''}
+                              {nc.old_name} → {nc.new_name}
+                            </Typography>
+                          ))}
+                        </Box>
+                      ) : (
+                        e?.previousNames?.length > 0 && (
+                          <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
+                            {text.previous}: {e.previousNames.join(', ')}
                           </Typography>
-                        ))}
-                      </Box>
-                    ) : (
-                      e?.previousNames?.length > 0 && (
-                        <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
-                          {text.previous}: {e.previousNames.join(', ')}
-                        </Typography>
-                      )
-                    )}
-                  </Box>
+                        )
+                      )}
+                    </Box>
+                  )}
                   {(e?.isDissolved || e?.isInConcurso || e?.isUnipersonal) && (
                     <Box sx={{ gridColumn: '1 / -1' }}>
                       <Typography variant="caption" color="text.secondary">{text.status}</Typography>

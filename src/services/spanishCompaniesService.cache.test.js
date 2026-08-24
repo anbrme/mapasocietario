@@ -139,3 +139,30 @@ describe('spanishCompaniesService read cache', () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('getCompanyFindings', () => {
+  it('requests the free findings by group_key and caches per language', async () => {
+    const svc = new SpanishCompaniesService();
+    const calls = [];
+    svc.fetchWithRetry = async (url) => { calls.push(url); return { ok: true, json: async () => ({ tier: 'free', findings: [] }) }; };
+    await svc.getCompanyFindings({ groupKey: 'H:M-1', lang: 'en' });
+    await svc.getCompanyFindings({ groupKey: 'H:M-1', lang: 'en' });
+    await svc.getCompanyFindings({ groupKey: 'H:M-1', lang: 'es' });
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toContain('/bormes/v3/company-findings?group_key=H%3AM-1&lang=en');
+  });
+
+  it('falls back to the name when there is no group key', async () => {
+    const svc = new SpanishCompaniesService();
+    let url = '';
+    svc.fetchWithRetry = async (u) => { url = u; return { ok: true, json: async () => ({ tier: 'free', findings: [] }) }; };
+    await svc.getCompanyFindings({ name: 'X SL', lang: 'es' });
+    expect(url).toContain('/bormes/v3/company-findings?name=X+SL&lang=es');
+  });
+
+  it('throws with the status on a non-2xx so the panel can report it', async () => {
+    const svc = new SpanishCompaniesService();
+    svc.fetchWithRetry = async () => ({ ok: false, status: 502, json: async () => ({ error: 'assembly_failed' }) });
+    await expect(svc.getCompanyFindings({ groupKey: 'H:M-1', lang: 'en' })).rejects.toMatchObject({ status: 502 });
+  });
+});
