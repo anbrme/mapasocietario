@@ -174,6 +174,33 @@ describe('pinListedEntities', () => {
     pinListedEntities('inditex', suggestions);
     expect(suggestions).toEqual(before);
   });
+
+  it('pins Banco Santander for a query matching its second word ("santander")', () => {
+    const result = pinListedEntities('santander', []);
+    expect(result[0]).toMatchObject({ id: 'H:S-1960' }); // Banco Santander
+  });
+
+  it('pins Banco Sabadell for a query matching its second word ("sabadell")', () => {
+    const result = pinListedEntities('sabadell', []);
+    expect(result[0]).toMatchObject({ id: 'H:B-1561' }); // Banco Sabadell
+  });
+
+  it('still pins Inditex (and Indra) for a whole-brand prefix ("ind")', () => {
+    const result = pinListedEntities('ind', []);
+    const ids = result.map(r => r.id);
+    expect(ids).toContain('H:C-3342'); // Inditex
+    expect(ids).toContain('H:M-11339'); // Indra
+  });
+
+  it('pins Banco Santander for a 3-character prefix of its second word ("san")', () => {
+    const result = pinListedEntities('san', []);
+    expect(result.map(r => r.id)).toContain('H:S-1960');
+  });
+
+  it('does not pin for a word-internal substring that is not a prefix of any word ("tander")', () => {
+    const result = pinListedEntities('tander', []);
+    expect(result.map(r => r.id)).not.toContain('H:S-1960');
+  });
 });
 
 import { buildIbexCardViewModel } from './ibex35Match';

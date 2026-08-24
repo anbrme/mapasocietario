@@ -56,14 +56,18 @@ function suggestionMatchesSeedEntity(suggestion, id, brandNameKey) {
 
 /**
  * Prepend a synthetic suggestion for every curated IBEX 35 seed entity whose
- * brand name (e.g. "Inditex") the query is a folded prefix of — the listed
+ * brand name (e.g. "Inditex") the (folded) query is a prefix of — either of
+ * the brand as a whole, or of any of its whitespace-separated words (e.g.
+ * "santander" prefixes the second word of "Banco Santander") — the listed
  * entity (e.g. "INDUSTRIA DE DISEÑO TEXTIL, S.A.") never surfaces on its own
- * because its registered name doesn't contain the brand people search for.
- * Skips a seed already represented in `suggestions` (same id/groupKey, or
- * the same name once punctuation is ignored). Multiple brands can match one
- * query (e.g. "banco" matches both Banco Santander and Banco Sabadell) — all
- * are pinned, in seed declaration order. Pure: never mutates `suggestions`;
- * returns the SAME array reference when nothing is pinned.
+ * because its registered name doesn't contain the brand people search for. A
+ * word-internal substring that is not a prefix of that word ("tander") does
+ * not match. Skips a seed already represented in `suggestions` (same
+ * id/groupKey, or the same name once punctuation is ignored). Multiple
+ * brands can match one query (e.g. "banco" matches both Banco Santander and
+ * Banco Sabadell) — all are pinned, in seed declaration order. Pure: never
+ * mutates `suggestions`; returns the SAME array reference when nothing is
+ * pinned.
  * @param {string} query
  * @param {Array<object>} suggestions
  * @returns {Array<object>}
@@ -75,7 +79,10 @@ export function pinListedEntities(query, suggestions) {
 
   const pins = Object.values(SEED).reduce((acc, seed) => {
     const brandFolded = foldForBrandMatch(seed.name);
-    if (!brandFolded.startsWith(folded)) return acc;
+    const brandWords = brandFolded.split(/\s+/).filter(Boolean);
+    const isBrandPrefixMatch = brandFolded.startsWith(folded)
+      || brandWords.some(word => word.startsWith(folded));
+    if (!isBrandPrefixMatch) return acc;
 
     const id = `H:${seed.hoja.replace(/\s+/g, '-')}`;
     const brandNameKey = nameKey(seed.v3Name);

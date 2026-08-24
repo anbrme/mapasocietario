@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Paper, Skeleton, Link, Button } from '@mui/material';
-import DescriptionIcon from '@mui/icons-material/Description';
+import { Box, Typography, Paper, Skeleton, Link } from '@mui/material';
 import { spanishCompaniesService } from '../services/spanishCompaniesService';
 import { findingsView, findingsErrorView, findingsVisibleParams } from '../utils/findingsView';
 import { trackEvent } from '../utils/track';
@@ -19,7 +18,7 @@ const TONE_SX = {
 // instances for the lifetime of the page.
 const seenFindings = new Set();
 
-export default function CompanyFindings({ groupKey, name, lang, onOpenReport, offerCta, onEvidence, listed }) {
+export default function CompanyFindings({ groupKey, name, lang, onOpenReport, onEvidence, listed }) {
   const [state, setState] = useState({ status: 'loading', view: null });
 
   useEffect(() => {
@@ -111,16 +110,12 @@ export default function CompanyFindings({ groupKey, name, lang, onOpenReport, of
         </>
       )}
 
-      {onOpenReport && offerCta && (
+      {onOpenReport && (
         <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
           <Typography variant="body2" sx={{ fontWeight: 700 }}>{offer.title}</Typography>
           <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 1 }}>
             {offer.body}{offer.more ? ` — ${offer.more}` : ''}
           </Typography>
-          <Button size="small" variant="contained" color="warning" startIcon={<DescriptionIcon />}
-            onClick={offerCta.onClick} sx={{ textTransform: 'none', fontWeight: 700 }}>
-            {offerCta.label}
-          </Button>
         </Box>
       )}
     </Paper>

@@ -223,6 +223,21 @@ const CompanyInspectorPanel = ({
           <Alert severity="info" sx={{ mb: 2 }}>{text.snapshotPreviewNotice}</Alert>
         )}
 
+        {/* Findings — the on-ramp to the paid report. Sits first in the
+            scrollable body, above the Structure chips and the rest of the
+            fact sheet, so it is the first thing a reader hits after the
+            header. */}
+        {FINDINGS_PANEL_ENABLED && data?.type === 'company' && data.name && (
+          <CompanyFindings
+            groupKey={data.company?.group_key || data.company?._id || null}
+            name={data.name}
+            lang={lang}
+            onOpenReport={onOpenReport}
+            onEvidence={ev => onOpenDataset?.(FINDINGS_EVIDENCE_DATASET_KEY[ev.kind] || FINDINGS_OFFICERS_DATASET_KEY)}
+            listed={listedBadgeFor(data.name, lang)}
+          />
+        )}
+
         {/* Structure — the parts of the record the GRAPH already draws. Showing
             them as counts rather than tables keeps this panel a fixed height
             whatever the company's size: a bank with 30,000 registry officers
@@ -261,17 +276,6 @@ const CompanyInspectorPanel = ({
           const fullHref = fullCompanyPageHref(data.name, lang);
           return (
             <Box>
-              {FINDINGS_PANEL_ENABLED && (
-                <CompanyFindings
-                  groupKey={data.company?.group_key || data.company?._id || null}
-                  name={data.name}
-                  lang={lang}
-                  onOpenReport={onOpenReport}
-                  offerCta={{ label: text.buyDueDiligencePriced, onClick: onBuyDueDiligence }}
-                  onEvidence={ev => onOpenDataset?.(FINDINGS_EVIDENCE_DATASET_KEY[ev.kind] || FINDINGS_OFFICERS_DATASET_KEY)}
-                  listed={listedBadgeFor(data.name, lang)}
-                />
-              )}
               <CurrencyConfirmationCard
                 rec={CONFIRMATIONS[nameToSlug(data.name)]}
                 lang={lang}
