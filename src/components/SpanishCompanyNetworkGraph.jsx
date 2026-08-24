@@ -375,7 +375,8 @@ const SEARCH_COPY = {
     cargoBannerTitle: 'This entity also holds cargos',
     cargoBannerBody: (name, count) => `“${name}” also appears as an officer in ${count} other ${count === 1 ? 'company' : 'companies'}. Unify them onto this node?`,
     cargoUnify: 'Unify',
-    cargoUnifying: 'Unifying…',
+    cargoUnifying: 'Unifying positions…',
+    expanding: 'Expanding…',
     cargoDismiss: 'Dismiss',
     cargoUnified: 'Unified — cargos attached',
     cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
@@ -719,7 +720,8 @@ const SEARCH_COPY = {
     cargoBannerTitle: 'Esta entidad también figura como cargo',
     cargoBannerBody: (name, count) => `«${name}» también figura como cargo en ${count} ${count === 1 ? 'sociedad' : 'sociedades'}. ¿Unificarlas en este nodo?`,
     cargoUnify: 'Unificar',
-    cargoUnifying: 'Unificando…',
+    cargoUnifying: 'Unificando cargos…',
+    expanding: 'Ampliando…',
     cargoDismiss: 'Descartar',
     cargoUnified: 'Unificada — cargos añadidos',
     cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
@@ -4169,6 +4171,10 @@ const SpanishCompanyNetworkGraph = ({
         const officerNodeId = officerIdFor(companyName);
         // Relocate those cargo links onto the company node and drop the officer node.
         setGraphData(prev => mergeCargoIntoCompanyNode(prev, companyNodeId, officerNodeId));
+        // Bring the new cargo nodes into view. In a restored layout every
+        // existing node is pinned, so the additions spawn at the centroid and
+        // can sit outside the current viewport; fit once they have settled.
+        setTimeout(() => fitGraphToView(400, 50), 700);
         // The officer node (if it had been pinned) no longer exists — clean up.
         setPinnedNodeIds(prev => {
           if (!prev.has(officerNodeId)) return prev;
@@ -4184,7 +4190,7 @@ const SpanishCompanyNetworkGraph = ({
       setIsLoading(false);
       setIsUnifying(false);
     }
-  }, [addOfficerToGraph, text]);
+  }, [addOfficerToGraph, fitGraphToView, text]);
 
   // Reverse a unify: strip the relocated cargo edges + the cargo-only nodes and
   // restore the amber "+N cargos" affordance. Pure transform via undoCargoUnify.
@@ -9525,7 +9531,17 @@ const SpanishCompanyNetworkGraph = ({
             | {text.links}: {filteredGraphData.links.length}
             {filterTerms.length > 0 || hiddenNodeIds.size > 0 ? ` / ${graphData.links.length}` : ''}
           </Typography>
-          {isLoading && !isSearching && <CircularProgress size={16} />}
+          {/* Expanding a node or unifying positions can take seconds on a
+              bank-sized fan-out; a bare 16px spinner read as nothing happening. */}
+          {isLoading && !isSearching && (
+            <Chip
+              size="small"
+              color="info"
+              icon={<CircularProgress size={12} sx={{ color: 'inherit', ml: 0.5 }} />}
+              label={isUnifying ? text.cargoUnifying : text.expanding}
+              sx={{ fontWeight: 600 }}
+            />
+          )}
         </Box>
       </Box>
       <Snackbar
