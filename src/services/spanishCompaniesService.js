@@ -2894,5 +2894,5 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
 }
 
 // Export singleton instance
-export { SpanishCompaniesService };
+export { SpanishCompaniesService, officerRowKey, mergeExpandOfficerPages };
 export const spanishCompaniesService = new SpanishCompaniesService();

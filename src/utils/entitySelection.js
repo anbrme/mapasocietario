@@ -13,8 +13,9 @@
  *   - an OFFICER (officers-autocomplete): a person, or a corporate officer.
  *
  * Neither backend says whether an entity is a person or a company, so the KIND
- * is read off the name (isLegalEntityName) while the TYPE decides which search
- * can actually return something.
+ * is read off the name (isCorporateName: legal-form suffix, or exact equality
+ * with a curated listed entity — BORME prints "BANCO SANTANDER" with no form)
+ * while the TYPE decides which search can actually return something.
  *
  * Reading `type === 'sole_shareholder'` as "a company owns things" plotted
  * PICON OTERO ALBERTO — a man who is sole shareholder and sole administrator
@@ -24,7 +25,7 @@
  * row the same way did the mirror image: SANITAS HOLDING SL, a company with a
  * group_key and 96 current officers, became a lone person node.
  */
-import { isLegalEntityName } from './legalEntity';
+import { isCorporateName } from './legalEntity';
 
 /**
  * Normalize the directory's `owns` payload to `{ name, groupKey }`.
@@ -80,7 +81,7 @@ export const ownedCompaniesFromHint = owns => {
 export const classifyEntitySelection = suggestion => {
   const row = suggestion || {};
   const name = (row.name || row.value || row.label || '').trim();
-  const entityKind = isLegalEntityName(name) ? 'company' : 'person';
+  const entityKind = isCorporateName(name) ? 'company' : 'person';
 
   const owns = ownedCompaniesFromHint(row.owns);
   const ownsTotal = Number(row.owns_total) || owns.length;

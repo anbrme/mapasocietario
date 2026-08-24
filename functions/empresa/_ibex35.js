@@ -56,3 +56,12 @@ export const SEED = {
 export const V3_TO_SLUG = Object.fromEntries(
   Object.entries(SEED).map(([slug, v]) => [v.v3Name, slug]),
 );
+
+/**
+ * The `H:<hoja>` group key of a seed's canonical v3 doc ("S 1960" → "H:S-1960").
+ * The one builder shared by the listed-entity matcher, the autocomplete pin and
+ * the /empresa page lookup — keep them agreeing on the key's exact spelling.
+ * @param {string} hoja
+ * @returns {string}
+ */
+export const hojaGroupKey = (hoja) => `H:${String(hoja || '').trim().replace(/\s+/g, '-')}`;

@@ -11,7 +11,7 @@
  * Cloudflare Pages does not route this file directly.
  */
 
-import { SEED } from './_ibex35.js';
+import { SEED, hojaGroupKey } from './_ibex35.js';
 import { resolveSlug } from './_resolve.js';
 import { nameToSlug, pickSlugMatch } from './_slug.js';
 import { renderConfirmationBlock } from './_confirmation.js';
@@ -213,6 +213,7 @@ const T = {
     factFirstSeen: 'Primera inscripción (desde el 1/1/2009)',
     factIncorporation: 'Constitución (primera inscripción)',
     factLastSeen: 'Última actualización',
+    factDissolved: 'Disolución',
     factBormeIds: 'Identificadores BORME',
     factFilings: 'Publicaciones',
     registryData: 'Datos registrales',
@@ -232,6 +233,9 @@ const T = {
     cLei: 'LEI',
     cWeb: 'Web',
     currentOfficers: 'Administradores y cargos vigentes',
+    officersAtDissolution: 'Cargos vigentes al cierre de la sociedad',
+    dissolvedSeatsNote: (date) =>
+      `La sociedad figura disuelta en el BORME${date ? ` (${date})` : ''}. Estos cargos no fueron cesados individualmente en el registro: se extinguieron con la sociedad y no deben leerse como vigentes.`,
     formerOfficers: 'Cargos cesados o revocados',
     officerRoleNote: 'Cada cargo se sigue por su denominación exacta en el BORME. Cuando una persona cambia de tipo de cargo a lo largo del tiempo (p. ej. Consejero → Consejero Independiente → Consejero Externo), cada denominación se registra por separado, por lo que una misma persona puede figurar a la vez como cargo vigente bajo una denominación y como cargo cesado bajo otra.',
     thName: 'Nombre',
@@ -415,6 +419,7 @@ const T = {
     factFirstSeen: 'First filing (since 1 Jan 2009)',
     factIncorporation: 'Incorporation (first filing)',
     factLastSeen: 'Last updated',
+    factDissolved: 'Dissolved',
     factBormeIds: 'BORME IDs',
     factFilings: 'Filings',
     registryData: 'Registry data',
@@ -434,6 +439,9 @@ const T = {
     cLei: 'LEI',
     cWeb: 'Website',
     currentOfficers: 'Current directors & officers',
+    officersAtDissolution: 'Positions open at dissolution',
+    dissolvedSeatsNote: (date) =>
+      `The company is recorded as dissolved in BORME${date ? ` (${date})` : ''}. These positions were never individually ceased in the registry: they ended with the company and should not be read as current.`,
     formerOfficers: 'Former / revoked officers',
     officerRoleNote: 'Each role is tracked by its exact BORME title. When a person’s role type changes over time (e.g. Director → Independent Director → External Director), each title is recorded separately, so the same person may appear both as a current officer under one title and as a former officer under another.',
     thName: 'Name',
@@ -724,6 +732,25 @@ function firstFilingIsIncorporation(company, events) {
   });
 }
 
+/**
+ * The date BORME recorded the company's dissolution / extinction, read off the
+ * filings. The aggregated doc only carries the `is_dissolved` flag; the act
+ * itself (has_dissolution, or a lifecycle type "Disolución"/"Extinción") lives
+ * in the event log. Newest such filing wins; null when none is in the page's
+ * event window (the note then states the fact without a date).
+ */
+export function dissolutionDateFromEvents(events) {
+  const dates = (events || [])
+    .filter((event) => {
+      if (event?.has_dissolution) return true;
+      return (event?.event_types || []).some((type) => /DISOLU|EXTINCI/i.test(eventTypeText(type)));
+    })
+    .map((event) => String(event?.event_date || event?.indexed_date || '').slice(0, 10))
+    .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort();
+  return dates.length ? dates[dates.length - 1] : null;
+}
+
 function eventTypeCategory(value) {
   const type = eventTypeText(value).toUpperCase();
   if (/NOMBR|REELEC/.test(type)) return 'appointments';
@@ -898,8 +925,11 @@ export function eventsBlock(events, t, lang, totalPublications = null) {
   </section>`;
 }
 
-function jsonLd(company, slug, lang, t, seed, isIncorporation = false) {
-  const officers = (company.officers_active || []).map((o) => o.name || o.name_normalized).filter(Boolean);
+function jsonLd(company, slug, lang, t, seed, isIncorporation = false, { dissolutionDate = null } = {}) {
+  // A dissolved company employs nobody; its open seats are history, not staff.
+  const officers = company.is_dissolved
+    ? []
+    : (company.officers_active || []).map((o) => o.name || o.name_normalized).filter(Boolean);
 
   // Identifiers: for curated IBEX companies use the verified NIF/LEI/ISIN from the
   // seed \u2014 stable, globally-unique business identifiers \u2014 as schema.org PropertyValue.
@@ -935,6 +965,7 @@ function jsonLd(company, slug, lang, t, seed, isIncorporation = false) {
     ...(isIncorporation && company.first_seen
       ? { foundingDate: String(company.first_seen).slice(0, 10) }
       : {}),
+    ...(dissolutionDate ? { dissolutionDate } : {}),
     description: t.jsonLdDesc(company.company_name),
   };
   // foundingDate is emitted ONLY when the first BORME filing is the company's own
@@ -1137,6 +1168,12 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   // Does the record actually establish when this company was formed? Drives both
   // the label on the date fact and whether foundingDate is safe to publish.
   const isIncorporation = firstFilingIsIncorporation(company, events);
+  // A dissolved company has no current officers — the rule the graph applies
+  // (getOfficerLinkStatus). BORME inscribes an extinción without ceasing each
+  // apoderado or auditor, so the doc keeps them in officers_active; the page
+  // presents them as the seats open when the company closed, never as current.
+  const isDissolved = !!company.is_dissolved;
+  const dissolutionDate = isDissolved ? dissolutionDateFromEvents(events) : null;
   const t = T[lang] || T.es;
   const nameKey = (s) => (s || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
   const registeredName = company.company_name || company.company_name_normalized || '';
@@ -1224,6 +1261,7 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
     [t.factCapital, capitalVal],
     [isIncorporation ? t.factIncorporation : t.factFirstSeen, esc(fmtDate(company.first_seen, lang))],
     [t.factLastSeen, esc(fmtDate(company.last_seen, lang))],
+    [t.factDissolved, dissolutionDate ? esc(fmtDate(dissolutionDate, lang)) : ''],
     [t.factBormeIds, idsCell],
     [t.factFilings, esc(company.total_publications)],
   ]
@@ -1263,9 +1301,13 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
     : '';
 
   const active = officersRows(company.officers_active, 'appointed_date', t.thAppointed, t, lang, { noBoardNote: true });
+  const dissolvedSeatsNotice = isDissolved
+    ? `<div class="notice">${esc(t.dissolvedSeatsNote(dissolutionDate ? fmtDate(dissolutionDate, lang) : null))}</div>`
+    : '';
   const resigned = officersRows(company.officers_resigned, 'resigned_date', t.thResigned, t, lang);
-  const activeCount = (company.officers_active || []).length;
-  const formerCount = (company.officers_resigned || []).length;
+  const openSeatCount = (company.officers_active || []).length;
+  const activeCount = isDissolved ? 0 : openSeatCount;
+  const formerCount = (company.officers_resigned || []).length + (isDissolved ? openSeatCount : 0);
   const ownerCount =
     (company.sole_shareholders || []).length +
     (company.sole_shareholder_individuals || []).length;
@@ -1514,7 +1556,7 @@ ${hreflangTags(canonicalSlug)}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(t.ogTitle(seoName))}">
 <meta name="twitter:description" content="${esc(desc)}">
-${jsonLd(company, canonicalSlug, lang, t, seed, isIncorporation)}
+${jsonLd(company, canonicalSlug, lang, t, seed, isIncorporation, { dissolutionDate })}
 ${STYLE}
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
 <script>
@@ -1563,7 +1605,7 @@ ${STYLE}
 
   ${gleifBlock}
 
-  ${active ? `<h2>${t.currentOfficers}</h2>${active}` : ''}
+  ${active ? `<h2>${isDissolved ? t.officersAtDissolution : t.currentOfficers}</h2>${dissolvedSeatsNotice}${active}` : ''}
   ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
   ${active || resigned ? `<p class="more">${t.officerRoleNote}</p>` : ''}
 
@@ -1652,7 +1694,7 @@ export async function handleCompany({ params, env }, lang = 'es') {
   // DISEÑO TEXTIL, S.A.(R.M. A CORUÑA)" → "...S.A."), and by-name lookups can
   // collide with smaller same-named docs (BANKINTER SA exists on 3 hojas). The
   // hoja never changes, so these indexed pages survive both.
-  const groupKey = promoted?.group_key || (seed && seed.hoja ? `H:${seed.hoja.replace(/\s+/g, '-')}` : null);
+  const groupKey = promoted?.group_key || (seed && seed.hoja ? hojaGroupKey(seed.hoja) : null);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);

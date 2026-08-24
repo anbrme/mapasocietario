@@ -95,8 +95,9 @@ export function isLegalEntityName(name) {
  * brand); see listedEntityForName for the safety argument. Nothing else can
  * promote a name, so a person whose surname is a brand stays a person.
  *
- * `isLegalEntityName` itself is left untouched: other callers (route selection
- * in entitySelection.js) depend on the pure suffix rule.
+ * `isLegalEntityName` stays the pure suffix rule this builds on; every caller
+ * that decides how a name is DRAWN or ROUTED (entitySelection, the graph's
+ * deep-linked shareholder path, node typing) goes through isCorporateName.
  *
  * @param {string} name
  * @returns {boolean}

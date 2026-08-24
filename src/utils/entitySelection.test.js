@@ -200,3 +200,33 @@ describe('classifyEntitySelection — rows that own but also have a company doc'
     expect(route).toBe('company');
   });
 });
+
+describe('classifyEntitySelection — a listed entity printed without its legal form', () => {
+  // BORME prints "BANCO SANTANDER" (no "SA") as sole shareholder / apoderado.
+  // The suffix rule alone reads that as a person, so an owner-only row for the
+  // bank took the officer route and was drawn as a person node. The curated
+  // listed-entity match (isCorporateName) is the one extra signal admitted.
+  it('reads an owner-only row for the bank as a company and stages its participadas', () => {
+    const { entityKind, route } = classifyEntitySelection({
+      name: 'BANCO SANTANDER',
+      type: 'sole_shareholder',
+      owns_total: 3,
+      company_count: 2,
+    });
+
+    expect(entityKind).toBe('company');
+    expect(route).toBe('shareholder');
+  });
+
+  it('still reads a person whose surname is a listed brand as a person', () => {
+    const { entityKind, route } = classifyEntitySelection({
+      name: 'GRIFOLS ROURA VICTOR',
+      type: 'sole_shareholder',
+      owns_total: 1,
+      company_count: 2,
+    });
+
+    expect(entityKind).toBe('person');
+    expect(route).toBe('officer');
+  });
+});

@@ -1,4 +1,4 @@
-import { SEED, V3_TO_SLUG } from '../../functions/empresa/_ibex35.js';
+import { SEED, V3_TO_SLUG, hojaGroupKey } from '../../functions/empresa/_ibex35.js';
 import { entityNameKey, stripRegistryOffice } from './companyName';
 
 // A trailing registry-office annotation ("(R.M. A CORUÑA)", "(RM MADRID)")
@@ -121,7 +121,7 @@ export function listedEntityForName(name) {
   if (!slug) return null;
   const seed = SEED[slug];
   if (!seed) return null;
-  return { ...seed, slug, groupKey: `H:${seed.hoja.replace(/\s+/g, '-')}` };
+  return { ...seed, slug, groupKey: hojaGroupKey(seed.hoja) };
 }
 
 /**
@@ -219,7 +219,7 @@ export function pinListedEntities(query, suggestions) {
 
   const promotedIndices = new Set();
   const fronts = matchedSeeds.map(seed => {
-    const id = `H:${seed.hoja.replace(/\s+/g, '-')}`;
+    const id = hojaGroupKey(seed.hoja);
     const existingIndex = list.findIndex(s => s && (s.id === id || s.groupKey === id));
     if (existingIndex !== -1) {
       promotedIndices.add(existingIndex);

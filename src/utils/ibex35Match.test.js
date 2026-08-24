@@ -7,7 +7,7 @@ import {
   officerQueryVariants,
   buildListedKeyIndex,
 } from './ibex35Match';
-import { SEED } from '../../functions/empresa/_ibex35.js';
+import { SEED, hojaGroupKey } from '../../functions/empresa/_ibex35.js';
 
 describe('matchIbexSeed', () => {
   it('matches a company name regardless of surrounding whitespace and case', () => {
@@ -505,5 +505,20 @@ describe('officerQueryVariants', () => {
   it('is empty for a missing name', () => {
     expect(officerQueryVariants('')).toEqual([]);
     expect(officerQueryVariants(null)).toEqual([]);
+  });
+});
+
+describe('hojaGroupKey', () => {
+  it('turns a seed hoja into the H: group key of its canonical doc', () => {
+    expect(hojaGroupKey('S 1960')).toBe('H:S-1960');
+    expect(hojaGroupKey('M 182503')).toBe('H:M-182503');
+    expect(hojaGroupKey('M-182503')).toBe('H:M-182503');
+  });
+
+  it('is the one builder every listed-entity surface shares', () => {
+    const expected = hojaGroupKey(SEED['banco-santander'].hoja);
+    expect(listedEntityForName('BANCO SANTANDER').groupKey).toBe(expected);
+    const pinned = pinListedEntities('banco santander', []);
+    expect(pinned.map(s => s.id)).toContain(expected);
   });
 });

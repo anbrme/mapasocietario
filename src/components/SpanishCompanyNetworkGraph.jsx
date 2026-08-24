@@ -112,7 +112,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ForceGraph2D from 'react-force-graph-2d';
 import AIInvestigationGate from './AIInvestigationGate';
 import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
-import { isLegalEntityName, isCorporateName } from '../utils/legalEntity';
+import { isCorporateName } from '../utils/legalEntity';
 import { detectCargoPresence } from '../utils/cargoDetection';
 import { officerNodeKey, officerIdFor } from '../utils/officerNodeKey';
 import { mergeEntitySuggestions } from '../utils/entitySuggestions';
@@ -4267,7 +4267,7 @@ const SpanishCompanyNetworkGraph = ({
       const cleanName = (name || '').trim();
       if (!cleanName) return;
 
-      const entityKind = isLegalEntityName(cleanName) ? 'company' : 'person';
+      const entityKind = isCorporateName(cleanName) ? 'company' : 'person';
       const entityId = plotBareShareholderNode(cleanName, entityKind);
       if (!entityId) return;
 
