@@ -38,6 +38,7 @@ import { getClientId } from '../utils/clientId';
 import { trackEvent } from '../utils/track';
 import { buildCheckoutIntake } from '../utils/checkoutIntake';
 import { checkoutPriceView } from './ddCheckoutPriceView';
+import CheckoutErrorBoundary from './CheckoutErrorBoundary';
 import { resolveGroupKey, listCorrections } from '../services/correctionsService';
 
 const DD_PRICE = 22.50;
@@ -278,7 +279,19 @@ function buildFinancialStatementYearOptions() {
   return Array.from({ length: 6 }, (_, index) => String(latestClosedYear - index));
 }
 
-export default function DDCheckoutDialog({ open, onClose, companyName, country = 'es', language = 'en' }) {
+// The exported component wraps the real dialog in an error boundary so a
+// render crash here degrades to a small apology dialog instead of blanking
+// the whole /app and losing the user's graph. Wrapping at the export covers
+// every render site (graph toolbar, /due-diligence) in one place.
+export default function DDCheckoutDialog(props) {
+  return (
+    <CheckoutErrorBoundary onClose={props.onClose} lang={props.language}>
+      <DDCheckoutDialogInner {...props} />
+    </CheckoutErrorBoundary>
+  );
+}
+
+function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', language = 'en' }) {
   const [includeFS, setIncludeFS] = useState(false);
   const [financialStatementsYear, setFinancialStatementsYear] = useState('latest');
   const [financialStatementsFallback, setFinancialStatementsFallback] = useState(FS_FALLBACK_KEEP_DD);
