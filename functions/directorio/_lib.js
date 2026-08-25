@@ -16,6 +16,12 @@ import { HUB_STYLE } from '../empresa/_lib.js';
 
 const SITE = 'https://mapasocietario.es';
 
+// A one- or two-company province page is useful as crawl plumbing while the
+// promoted set grows, but too thin to present as a search result in its own
+// right. It remains crawlable (`follow`) and becomes indexable automatically
+// as soon as the next promotions take it over this threshold.
+export const MIN_INDEXABLE_PROVINCE_COMPANIES = 3;
+
 export function esc(value) {
   return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -55,7 +61,7 @@ function jsonLdScript(payload) {
   return `<script type="application/ld+json">${ld}</script>`;
 }
 
-function pageShell({ title, desc, canonical, breadcrumbName, ld, body }) {
+function pageShell({ title, desc, canonical, breadcrumbName, ld, body, indexable = true }) {
   const breadcrumb = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -73,7 +79,7 @@ function pageShell({ title, desc, canonical, breadcrumbName, ld, body }) {
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${canonical}">
-<meta name="robots" content="index, follow">
+<meta name="robots" content="${indexable ? 'index, follow' : 'noindex, follow'}">
 <meta property="og:type" content="website">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
@@ -107,7 +113,7 @@ export function renderDirectoryIndex(groups) {
   const ld = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'Directorio de empresas por provincia',
+    name: 'Selección de empresas por provincia',
     url: `${SITE}/directorio`,
     numberOfItems: groups.length,
     itemListElement: groups.map((g, i) => ({
@@ -118,12 +124,12 @@ export function renderDirectoryIndex(groups) {
     })),
   };
   return pageShell({
-    title: 'Directorio de empresas por provincia (Registro Mercantil) | Mapa Societario',
-    desc: `Directorio de ${total} empresas españolas por provincia: administradores, CIF, capital social e historial del Registro Mercantil (BORME). Consulta gratuita.`,
+    title: 'Selección de empresas por provincia | Mapa Societario',
+    desc: `Selección creciente de ${total} fichas societarias verificadas, organizadas por provincia. El buscador de Mapa Societario cubre más de 3 millones de sociedades.`,
     canonical: `${SITE}/directorio`,
     ld,
-    body: `  <h1>Directorio de empresas por provincia</h1>
-  <p class="lead">Fichas societarias elaboradas a partir del BORME: administradores, socios, CIF y capital social. Seleccione una provincia.</p>
+    body: `  <h1>Selección de empresas por provincia</h1>
+  <p class="lead">Incorporamos progresivamente fichas societarias verificadas para su navegación pública. Esta selección contiene ${total} empresas; el buscador completo cubre más de 3 millones de sociedades españolas.</p>
   <table><thead><tr><th>Provincia</th><th>Empresas</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="related">
     <h2>También en Mapa Societario</h2>
@@ -134,6 +140,7 @@ export function renderDirectoryIndex(groups) {
 }
 
 export function renderProvincePage(group, companies) {
+  const indexable = companies.length >= MIN_INDEXABLE_PROVINCE_COMPANIES;
   const rows = companies
     .map(
       (c) => `<tr>
@@ -156,13 +163,14 @@ export function renderProvincePage(group, companies) {
     })),
   };
   return pageShell({
-    title: `Empresas en ${group.name}: CIF, administradores y BORME | Mapa Societario`,
-    desc: `${companies.length} empresas de ${group.name} en el Registro Mercantil: CIF, administradores, capital social e historial BORME de cada sociedad. Consulta gratuita.`,
+    title: `Selección de empresas en ${group.name} | Mapa Societario`,
+    desc: `${companies.length} fichas societarias verificadas de ${group.name}: CIF, administradores, capital social e historial BORME. El directorio crece progresivamente.`,
     canonical: `${SITE}/directorio/${group.slug}`,
     breadcrumbName: group.name,
     ld,
-    body: `  <h1>Empresas en ${esc(group.name)}</h1>
-  <p class="lead">${companies.length} sociedades con domicilio en ${esc(group.name)}, con ficha del Registro Mercantil: CIF, administradores vigentes y cesados, capital social e historial BORME.</p>
+    indexable,
+    body: `  <h1>Empresas con ficha pública en ${esc(group.name)}</h1>
+  <p class="lead">Esta selección incorpora progresivamente fichas verificadas. Actualmente incluye ${companies.length} sociedades con domicilio en ${esc(group.name)}; utilice el buscador para consultar el conjunto completo.</p>
   <table><thead><tr><th>Empresa</th><th>NIF / CIF</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="related">
     <h2>¿No encuentra una empresa?</h2>

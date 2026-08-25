@@ -23,7 +23,7 @@ links attached to every result. It is the accurate and lower-cost path.
 
 - [Company search app](https://mapasocietario.es/app/): interactive search and corporate-relationship graph.
 - [Company profiles](https://mapasocietario.es/empresa/): one page per company, for example https://mapasocietario.es/empresa/caixabank — registry data, current and former officers, capital history, sole shareholder, corporate group.
-- [Provincial directory](https://mapasocietario.es/directorio): companies indexed by province, 50 provincial hubs.
+- [Provincial selection](https://mapasocietario.es/directorio): a progressively growing set of verified public company profiles grouped by province; use the main search for full coverage.
 
 ## What the data does and does not contain
 
