@@ -1,6 +1,13 @@
 name = "mapasocietario-analytics"
 main = "src/index.js"
-compatibility_date = "2024-12-01"
+compatibility_date = "2026-08-25"
+compatibility_flags = ["nodejs_compat"]
+
+# Persist fetch and scheduled-handler logs so a failed cron can be diagnosed
+# after the live tail has disconnected.
+[observability]
+enabled = true
+head_sampling_rate = 1
 
 # Friday 14:30 UTC. That is 16:30 Madrid in summer (CEST) and 15:30 in winter
 # (CET) — cron is always UTC, it does not follow DST. The pull deliberately

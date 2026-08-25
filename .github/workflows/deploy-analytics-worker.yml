@@ -1,0 +1,61 @@
+name: Deploy Analytics Worker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'workers/analytics/**'
+      - '.github/workflows/deploy-analytics-worker.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'workers/analytics/**'
+      - '.github/workflows/deploy-analytics-worker.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: mapasocietario-analytics-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check Worker syntax
+        run: node --check workers/analytics/src/index.js
+
+      - name: Run Worker unit tests
+        run: node --test test/analytics-worker.test.mjs
+
+      - name: Validate Worker bundle
+        working-directory: workers/analytics
+        run: npx --yes wrangler@4.81.0 deploy --dry-run
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Worker and apply cron trigger
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/analytics
+          wranglerVersion: '4.81.0'
+          command: deploy
