@@ -98,6 +98,8 @@ import OfficerTimelineDialog from './OfficerTimelineDialog';
 import ApoderadosSidebar from './ApoderadosSidebar';
 import CompanyInspectorPanel from './CompanyInspectorPanel';
 import CompanyDataDock from './CompanyDataDock';
+import GraphEmptyState from './GraphEmptyState';
+import { shouldShowGraphEmptyState } from './graphEmptyStateView';
 import GraphNodeHoverCard from './GraphNodeHoverCard';
 import FeedbackWidget from './FeedbackWidget';
 import FeedbackIcon from '@mui/icons-material/RateReviewOutlined';
@@ -256,6 +258,10 @@ const SEARCH_COPY = {
     searchOfficerPlaceholder: 'Search officer...',
     searchUnifiedPlaceholder: 'Search a company or person…',
     search: 'Search',
+    emptyTitle: 'Search a company or a person to begin',
+    emptyBody:
+      'Type a name in the search box above to draw its network of officers, subsidiaries and related companies.',
+    emptyExamplesLabel: 'Or start with one of these:',
     dueDiligence: 'Due Diligence',
     monitorCompany: 'Monitor this company (free)',
     relationshipReportTooltip: 'Relationship report for visible companies (free)',
@@ -601,6 +607,10 @@ const SEARCH_COPY = {
     searchOfficerPlaceholder: 'Buscar directivo...',
     searchUnifiedPlaceholder: 'Busca una empresa o persona…',
     search: 'Buscar',
+    emptyTitle: 'Busca una empresa o una persona para empezar',
+    emptyBody:
+      'Escribe un nombre en el buscador de arriba para dibujar su red de administradores, filiales y empresas relacionadas.',
+    emptyExamplesLabel: 'O empieza con una de estas:',
     dueDiligence: 'Due Diligence',
     monitorCompany: 'Monitorizar esta empresa (gratis)',
     relationshipReportTooltip: 'Informe de relaciones sobre las empresas visibles (gratis)',
@@ -9560,6 +9570,33 @@ const SpanishCompanyNetworkGraph = ({
         sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: 'graph.surface.canvas' }}
         onMouseMove={handleContainerPointerMove}
       >
+        {shouldShowGraphEmptyState({
+          nodeCount: graphData.nodes.length,
+          isSearching,
+          isLoading,
+          error,
+        }) && (
+          <GraphEmptyState
+            copy={text}
+            onPick={example =>
+              // Synthesized in the shape the unified autocomplete returns for a
+              // company row, so an example runs the EXACT selection path a typed
+              // search does: `id` is the group_key (pins the search to the right
+              // legal entity), `type: 'company'` routes it as a company doc.
+              // Reusing applySelectedOption also opens the inspector, which is
+              // where everything we sell lives.
+              applySelectedOption(
+                {
+                  id: example.groupKey,
+                  type: 'company',
+                  name: example.v3Name,
+                  value: example.v3Name,
+                },
+                'empty_state_example'
+              )
+            }
+          />
+        )}
         {containerReady && (
           <ForceGraph2D
             ref={fgRef}
