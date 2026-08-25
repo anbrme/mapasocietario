@@ -31,6 +31,7 @@ import { statsService } from '../services/statsService';
 import { millionsLabel, REGISTRY_SCALE_RAW } from '../copy/registryScale';
 import { openListedCompanies } from '../services/listedCompaniesNav';
 import { trackEvent, trackUserManualDownload } from '../utils/track';
+import { isReturningGuideVisit, markGuideSeen } from '../utils/firstRunGuide';
 
 const SITE_URL = 'https://mapasocietario.es';
 
@@ -110,19 +111,14 @@ function useLandingTheme() {
 
 // The homepage is a first-run how-to guide. It teaches search → graph →
 // reports and nudges the visitor to bookmark the real workspace at /app.
-const GUIDE_SEEN_KEY = 'ms_seen_guide';
-
+//
 // True when the visitor has seen the guide before AND isn't explicitly asking
 // for it via ?guide=1. Computed synchronously so we never flash the guide
-// before redirecting a returning visitor to the workspace.
+// before redirecting a returning visitor to the workspace. usePageTracking
+// asks the same question to keep the skipped view out of GA4.
 function shouldRedirectReturning() {
   if (typeof window === 'undefined') return false;
-  if (new URLSearchParams(window.location.search).get('guide') === '1') return false;
-  try {
-    return localStorage.getItem(GUIDE_SEEN_KEY) === '1';
-  } catch {
-    return false;
-  }
+  return isReturningGuideVisit({ search: window.location.search, storage: window.localStorage });
 }
 
 export default function LandingPage({ lang = 'en' }) {
@@ -153,11 +149,7 @@ export default function LandingPage({ lang = 'en' }) {
       );
       return;
     }
-    try {
-      localStorage.setItem(GUIDE_SEEN_KEY, '1');
-    } catch {
-      /* storage unavailable (private mode, etc.) — just show the guide */
-    }
+    markGuideSeen(typeof window === 'undefined' ? null : window.localStorage);
   }, [redirecting, navigate, lang]);
 
   // Live coverage figures — start from the static fallback (instant render, no
@@ -286,47 +278,6 @@ export default function LandingPage({ lang = 'en' }) {
                 >
                   {copy.hero.openCta}
                 </Button>
-                <Button
-                  component="a"
-                  href={nav.userGuidePdf}
-                  download="mapa-societario-user-guide-en-es.pdf"
-                  onClick={() => trackUserManualDownload('landing_page', lang)}
-                  variant="outlined"
-                  size="small"
-                  startIcon={<SaveAltIcon />}
-                  sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
-                >
-                  {copy.hero.userGuidePdfCta}
-                </Button>
-              </Box>
-              {/* Secondary destinations that the search-first redesign had buried —
-                  prominent under the CTA but not competing with it. */}
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, flexWrap: 'wrap', columnGap: 1.5, rowGap: 0.5, mt: 2.5 }}>
-                <Link
-                  component="button"
-                  type="button"
-                  onClick={() => openListedCompanies(lang)}
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '1rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                >
-                  <ApartmentIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.listed}
-                </Link>
-                <Box component="span" sx={{ color: 'text.disabled', display: { xs: 'none', sm: 'inline' } }}>·</Box>
-                <Link
-                  component="button"
-                  type="button"
-                  onClick={() => navigate(nav.dashboard)}
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '1rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                >
-                  <BarChartIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.dashboard}
-                </Link>
-                <Box component="span" sx={{ color: 'text.disabled', display: { xs: 'none', sm: 'inline' } }}>·</Box>
-                <Link
-                  component="a"
-                  href={lang === 'en' ? '/en/studies/ibex-35-interlocking-boards/' : '/estudios/consejos-cruzados-ibex-35/'}
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '1rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                >
-                  <HubIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.study}
-                </Link>
               </Box>
               <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, gap: 0.5, color: 'text.disabled', mt: 2 }}>
                 <BookmarkBorderIcon sx={{ fontSize: 15 }} /> {copy.hero.bookmarkTip}
@@ -374,6 +325,34 @@ export default function LandingPage({ lang = 'en' }) {
                   </Typography>
                 </Box>
               ))}
+            </Box>
+            {/* The three data destinations used to sit in the hero, where they
+                competed with the search box for the visitor's first action.
+                They belong with the coverage figures they let you explore. */}
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 2.5, rowGap: 1, mt: 3 }}>
+              <Link
+                component="button"
+                type="button"
+                onClick={() => openListedCompanies(lang)}
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+              >
+                <ApartmentIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.listed}
+              </Link>
+              <Link
+                component="button"
+                type="button"
+                onClick={() => navigate(nav.dashboard)}
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+              >
+                <BarChartIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.dashboard}
+              </Link>
+              <Link
+                component="a"
+                href={lang === 'en' ? '/en/studies/ibex-35-interlocking-boards/' : '/estudios/consejos-cruzados-ibex-35/'}
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+              >
+                <HubIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.study}
+              </Link>
             </Box>
             <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', mt: 3, letterSpacing: '0.02em' }}>
               {copy.stats.sinceLabel}{' '}
@@ -453,6 +432,24 @@ export default function LandingPage({ lang = 'en' }) {
                   <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>{step.desc}</Typography>
                 </Box>
               ))}
+            </Box>
+
+            {/* The printable version of exactly these steps. It sat in the hero
+                as an outlined button of equal weight to the product itself;
+                here it reads as "take this with you" once the steps are read. */}
+            <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' }, mt: 2.5 }}>
+              <Button
+                component="a"
+                href={nav.userGuidePdf}
+                download="mapa-societario-user-guide-en-es.pdf"
+                onClick={() => trackUserManualDownload('how_it_works', lang)}
+                variant="text"
+                size="small"
+                startIcon={<SaveAltIcon />}
+                sx={{ textTransform: 'none', fontWeight: 650, color: 'primary.light' }}
+              >
+                {copy.hero.userGuidePdfCta}
+              </Button>
             </Box>
 
             <Paper

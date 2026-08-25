@@ -134,7 +134,7 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
   };
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 560, mx: { xs: 'auto', md: 0 }, mb: 2 }}>
+    <Box sx={{ width: '100%', maxWidth: 600, mx: { xs: 'auto', md: 0 }, mb: 2 }}>
       <Autocomplete
         freeSolo
         autoHighlight
@@ -203,13 +203,22 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
               // Hardcoded for dark: themeMode.resolveThemeMode() returns the dark
               // default for every non-/app route, so the landing page is dark-only
               // by design and a light branch here would be dead code.
+              //
+              // Size is the second half of the same argument: the field is the
+              // one thing on the first screen the visitor is meant to touch, so
+              // it is drawn taller and larger than any surrounding control
+              // rather than at the same body size as the paragraphs above it.
               '& .MuiOutlinedInput-root': {
                 bgcolor: 'rgba(255,255,255,0.12)',
                 borderRadius: 2,
+                fontSize: { xs: '1.02rem', sm: '1.1rem' },
+                py: 0.85,
                 '& fieldset': { borderColor: 'rgba(255,255,255,0.72)', borderWidth: 1.5 },
                 '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.92)' },
                 '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 2 },
               },
+              '& .MuiOutlinedInput-root .MuiAutocomplete-input': { py: 0.6 },
+              '& .MuiInputBase-input::placeholder': { opacity: 0.75 },
               '& .MuiFormHelperText-root': { color: 'text.disabled', mx: 0.5 },
             }}
           />
