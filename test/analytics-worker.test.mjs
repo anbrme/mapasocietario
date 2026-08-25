@@ -267,6 +267,42 @@ test('warns that checkout_redirect cannot be read as lost revenue', () => {
   );
 });
 
+test('reads the destination split once GA4 starts populating it', () => {
+  // All free: zero purchases is the system working, not revenue lost.
+  const allFree = reportWarnings({
+    checkoutOutcomes: [
+      { event: 'checkout_redirect', eventCount: 13, users: 2 },
+      { event: 'purchase', eventCount: 0, users: 0 },
+    ],
+    checkoutDestinations: { available: true, rows: [{ destination: 'free_order', eventCount: 13, users: 2 }] },
+    checkoutFailureReasons: { available: true, rows: [] },
+    measurementQuality: { sessionSums: { core: 1, daily: 1, channels: 1, landingPages: 1 }, reconciled: true },
+  });
+  assert.ok(allFree.some((w) => /all .*free_order|no paid checkout/i.test(w)));
+  assert.equal(allFree.some((w) => /cannot be interpreted/i.test(w)), false);
+
+  // Paid redirects with no purchase IS the alarming case, and must escalate.
+  const paidStalled = reportWarnings({
+    checkoutOutcomes: [
+      { event: 'checkout_redirect', eventCount: 10, users: 4 },
+      { event: 'purchase', eventCount: 0, users: 0 },
+    ],
+    checkoutDestinations: {
+      available: true,
+      rows: [
+        { destination: 'stripe_new_tab', eventCount: 7, users: 3 },
+        { destination: 'free_order', eventCount: 3, users: 1 },
+      ],
+    },
+    checkoutFailureReasons: { available: true, rows: [] },
+    measurementQuality: { sessionSums: { core: 1, daily: 1, channels: 1, landingPages: 1 }, reconciled: true },
+  });
+  assert.ok(
+    paidStalled.some((w) => /7 paid checkout/i.test(w)),
+    `expected a paid-stall warning, got: ${JSON.stringify(paidStalled)}`,
+  );
+});
+
 test('does not raise the free-order caveat once purchases are recorded', () => {
   const warnings = reportWarnings({
     checkoutOutcomes: [

@@ -270,6 +270,19 @@ export function renderReportHtml(r) {
     ),
 
     section(
+      'Checkout redirects by destination',
+      table(
+        ['Destination', 'Events', 'Users'],
+        (r.checkoutDestinations?.rows || []).map((row) => [
+          row.destination,
+          { text: num(row.eventCount), bold: true },
+          num(row.users),
+        ]),
+      ),
+      'free_order is a waived report fulfilled without Stripe — it never emits a purchase event, by design. Only the stripe_* rows represent revenue that should have completed.',
+    ),
+
+    section(
       'Intent funnel (distinct users)',
       table(
         ['Stage', 'Users', 'Prior wk', 'Change', '% of arrivals'],

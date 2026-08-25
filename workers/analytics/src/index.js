@@ -765,6 +765,36 @@ async function gather(env, token, propertyId, nowMs) {
     devices: rowsToObjects(deviceRep, ['deviceCategory'], ['sessions', 'engagementRate']),
   };
 
+  // The destination split, now that the dimension exists. Best-effort: an
+  // unregistered dimension is a 400, and that must degrade one section rather
+  // than the whole pull.
+  const destinationRep = await call({
+    dateRanges: range(p.current),
+    dimensions: dim(['customEvent:destination']),
+    metrics: met(['eventCount', 'totalUsers']),
+    dimensionFilter: {
+      filter: {
+        fieldName: 'eventName',
+        stringFilter: { matchType: 'EXACT', value: 'checkout_redirect' },
+      },
+    },
+    limit: 20,
+  }).catch((error) => ({ optionalError: String(error.message || error).slice(0, 300) }));
+
+  report.checkoutDestinations = destinationRep.optionalError
+    ? { available: false, error: destinationRep.optionalError, rows: [] }
+    : {
+        available: true,
+        rows: rowsToObjects(destinationRep, ['customEvent:destination'], [
+          'eventCount',
+          'totalUsers',
+        ]).map((row) => ({
+          destination: row['customEvent:destination'] || '(not set)',
+          eventCount: row.eventCount,
+          users: row.totalUsers,
+        })),
+      };
+
   // Cloudflare edge traffic for the same window. GA4 sees only what ran
   // JavaScript; the edge sees everything. Best-effort — a missing token or a
   // Cloudflare outage degrades this one section, never the GA4 pull.
@@ -840,10 +870,27 @@ function reportWarnings(r) {
   // event-scoped custom dimension — this report made exactly that mistake.
   const redirects = outcome('checkout_redirect').eventCount || 0;
   const purchases = outcome('purchase').eventCount || 0;
+  const destinationRows = (r.checkoutDestinations?.rows || []).filter(
+    (row) => row.destination && row.destination !== '(not set)',
+  );
+  const paidRedirects = destinationRows
+    .filter((row) => String(row.destination).startsWith('stripe_'))
+    .reduce((sum, row) => sum + (row.eventCount || 0), 0);
+
   if (redirects > 0 && purchases === 0) {
-    warnings.push(
-      `${redirects} checkout redirect(s) and no purchases. This is NOT evidence of lost revenue: checkout_redirect also fires for free_order, a waived report that is fulfilled without Stripe and never emits a purchase event. Register "destination" as an event-scoped custom dimension to split free from paid; until then this pair cannot be interpreted.`,
-    );
+    if (!destinationRows.length) {
+      warnings.push(
+        `${redirects} checkout redirect(s) and no purchases. This is NOT evidence of lost revenue: checkout_redirect also fires for free_order, a waived report fulfilled without Stripe that never emits a purchase event. The "destination" dimension is registered but not retroactive, so this window cannot be split — future windows can.`,
+      );
+    } else if (paidRedirects === 0) {
+      warnings.push(
+        `${redirects} checkout redirect(s) and no purchases, but all of them were free_order — no paid checkout was started. Zero purchases is the expected outcome here, not lost revenue.`,
+      );
+    } else {
+      warnings.push(
+        `${paidRedirects} paid checkout redirect(s) reached Stripe and NONE completed. Unlike a free_order run, this is a real conversion failure — check Stripe for abandoned sessions and whether buyers returned to /order/:sessionId, where the purchase event fires.`,
+      );
+    }
   }
 
   // Every terminal path in the checkout dialog fires either a redirect or a
