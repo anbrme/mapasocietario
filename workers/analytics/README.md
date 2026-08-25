@@ -119,9 +119,15 @@ that. Today is never included, because GA4's current-day data is always partial.
 - **Daily trend** across the current window
 - **Acquisition**: channel groups with prior-week comparison, plus source/medium
 - **Content**: top pages by views with average engagement time, and landing
-  pages with bounce rate
-- **Conversions**: key events by channel and landing page, plus the full event
-  table
+  pages with bounce rate and an explicit low-sample warning
+- **Commercial outcomes**: explicit `view_item`, `begin_checkout`,
+  `checkout_failed`, `checkout_redirect`, and `purchase` counts, plus a closed,
+  ordered checkout funnel from GA4's funnel API. Failure reasons are included
+  when the `reason` event parameter is registered as a GA4 custom dimension.
+- **Measurement quality**: session-total reconciliation and a source/landing
+  page breakdown for Unassigned traffic before anyone changes UTMs
+- **Conversions**: key events by channel and landing page, plus the top event
+  table. Key events are treated as engagement depth, not purchases.
 - **Geography and devices**
 
 ## Notes
@@ -131,6 +137,11 @@ that. Today is never included, because GA4's current-day data is always partial.
   twice a year.
 - **`keyEvents` vs `conversions`**: GA4 renamed this metric. The Worker tries the
   modern name and retries once with the old one if the property rejects it.
+- **Ordered funnel API**: Google's funnel reporting endpoint is currently
+  v1alpha. If it changes or fails, the ordered-funnel section reports the error
+  but the rest of the weekly report still runs and persists.
+- **Bots**: GA4 is not the raw traffic source. Compare anomalies with Cloudflare
+  traffic before treating them as real users or diagnosing bot activity.
 - **D1**: reuses the existing `mapasocietario-seo` database but creates and owns
   its own `analytics_weekly` table. Nothing else in that database is touched.
 - Reports upsert on `(period_start, period_end)`, so re-running for the same

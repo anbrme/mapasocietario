@@ -20,6 +20,7 @@
 
 const GA_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
 const DATA_API = 'https://analyticsdata.googleapis.com/v1beta';
+const FUNNEL_DATA_API = 'https://analyticsdata.googleapis.com/v1alpha';
 const ADMIN_API = 'https://analyticsadmin.googleapis.com/v1beta';
 
 /* ------------------------------------------------------------------ auth */
@@ -116,6 +117,30 @@ async function runReport(token, propertyId, body) {
     err.status = res.status;
     err.body = text;
     throw err;
+  }
+  return res.json();
+}
+
+/**
+ * GA4's ordered funnel endpoint is currently v1alpha. Keep it isolated from the
+ * stable core-report path so an alpha API change can degrade one report section
+ * without preventing the weekly rollup from being stored.
+ */
+async function runFunnelReport(token, propertyId, body) {
+  const res = await fetch(
+    `${FUNNEL_DATA_API}/properties/${propertyId}:runFunnelReport`,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    const responseBody = await res.text();
+    throw new Error(`runFunnelReport ${res.status}: ${responseBody}`);
   }
   return res.json();
 }
@@ -218,6 +243,95 @@ const FUNNEL_STAGES = [
   { event: 'view_item', label: 'Viewed a paid item' },
 ];
 
+const CHECKOUT_EVENTS = [
+  { event: 'view_item', label: 'Viewed a paid item' },
+  { event: 'begin_checkout', label: 'Submitted checkout' },
+  { event: 'checkout_failed', label: 'Checkout failed before redirect' },
+  { event: 'checkout_redirect', label: 'Redirected to payment/order' },
+  { event: 'purchase', label: 'Purchase confirmed' },
+];
+
+const ORDERED_CHECKOUT_STAGES = CHECKOUT_EVENTS.filter(
+  (stage) => stage.event !== 'checkout_failed',
+);
+
+function funnelRows(report) {
+  const table = report?.funnelTable || {};
+  const dimensions = (table.dimensionHeaders || []).map((h) => h.name);
+  const metrics = (table.metricHeaders || []).map((h) => h.name);
+  return rowsToObjects(table, dimensions, metrics);
+}
+
+function cleanFunnelStepName(value) {
+  return String(value || '').replace(/^\d+\.\s*/, '');
+}
+
+function orderedFunnelFrom(currentReport, priorReport) {
+  const index = (report) =>
+    Object.fromEntries(
+      funnelRows(report).map((row) => [
+        cleanFunnelStepName(row.funnelStepName),
+        row,
+      ]),
+    );
+  const current = index(currentReport);
+  const prior = index(priorReport);
+  const firstUsers = current[ORDERED_CHECKOUT_STAGES[0].label]?.activeUsers || 0;
+
+  return ORDERED_CHECKOUT_STAGES.map((stage) => {
+    const currentRow = current[stage.label] || {};
+    const priorRow = prior[stage.label] || {};
+    const users = currentRow.activeUsers || 0;
+    return {
+      ...stage,
+      users,
+      priorUsers: priorRow.activeUsers || 0,
+      pctOfFirst: firstUsers > 0 ? users / firstUsers : 0,
+      abandonments: currentRow.abandonments || 0,
+      abandonmentRate: currentRow.abandonmentRate || 0,
+    };
+  });
+}
+
+async function gatherOrderedCheckout(token, propertyId, period) {
+  const request = (datePeriod) =>
+    runFunnelReport(token, propertyId, {
+      dateRanges: [{ startDate: datePeriod.start, endDate: datePeriod.end }],
+      funnel: {
+        isOpenFunnel: false,
+        steps: ORDERED_CHECKOUT_STAGES.map((stage) => ({
+          name: stage.label,
+          filterExpression: {
+            funnelEventFilter: { eventName: stage.event },
+          },
+        })),
+      },
+    });
+
+  try {
+    const [current, prior] = await Promise.all([
+      request(period.current),
+      request(period.prior),
+    ]);
+    return {
+      available: true,
+      apiStability: 'v1alpha',
+      sampled: Boolean(
+        current.funnelTable?.metadata?.samplingMetadatas?.length ||
+          prior.funnelTable?.metadata?.samplingMetadatas?.length,
+      ),
+      stages: orderedFunnelFrom(current, prior),
+    };
+  } catch (error) {
+    return {
+      available: false,
+      apiStability: 'v1alpha',
+      error: String(error.message || error).slice(0, 500),
+      stages: [],
+    };
+  }
+}
+
 const CORE_METRICS = [
   'sessions',
   'totalUsers',
@@ -242,21 +356,9 @@ async function gather(env, token, propertyId, nowMs) {
       CORE_METRICS,
     );
 
-  const [
-    curTotals,
-    priTotals,
-    dailyRep,
-    chanCur,
-    chanPri,
-    srcRep,
-    pageRep,
-    landRep,
-    countryRep,
-    eventRep,
-    deviceRep,
-    funnelCur,
-    funnelPri,
-  ] = await Promise.all([
+  // Standard GA4 properties allow at most 10 concurrent Core requests. Keep
+  // each wave below that ceiling; the ordered funnel has its own quota class.
+  const primaryResults = await Promise.all([
     coreTotals(p.current),
     coreTotals(p.prior),
     call({
@@ -270,7 +372,7 @@ async function gather(env, token, propertyId, nowMs) {
       dimensions: dim(['sessionDefaultChannelGroup']),
       metrics: met(['sessions', 'totalUsers', 'engagementRate', 'keyEvents']),
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-      limit: 12,
+      limit: 100,
     }),
     call({
       dateRanges: range(p.prior),
@@ -297,7 +399,7 @@ async function gather(env, token, propertyId, nowMs) {
       dimensions: dim(['landingPage']),
       metrics: met(['sessions', 'bounceRate', 'keyEvents']),
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-      limit: 15,
+      limit: 250,
     }),
     call({
       dateRanges: range(p.current),
@@ -313,6 +415,9 @@ async function gather(env, token, propertyId, nowMs) {
       orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
       limit: 25,
     }),
+  ]);
+
+  const secondaryResults = await Promise.all([
     call({
       dateRanges: range(p.current),
       dimensions: dim(['deviceCategory']),
@@ -345,7 +450,87 @@ async function gather(env, token, propertyId, nowMs) {
       },
       limit: 50,
     }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['eventName']),
+      metrics: met(['eventCount', 'totalUsers']),
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: CHECKOUT_EVENTS.map((s) => s.event) },
+        },
+      },
+      limit: 20,
+    }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim(['eventName', 'customEvent:reason']),
+      metrics: met(['eventCount', 'totalUsers']),
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'checkout_failed' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: 25,
+    }).catch((error) => ({
+      optionalError: String(error.message || error).slice(0, 500),
+    })),
+    call({
+      dateRanges: range(p.prior),
+      dimensions: dim(['eventName']),
+      metrics: met(['eventCount', 'totalUsers']),
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: CHECKOUT_EVENTS.map((s) => s.event) },
+        },
+      },
+      limit: 20,
+    }),
+    call({
+      dateRanges: range(p.current),
+      dimensions: dim([
+        'sessionDefaultChannelGroup',
+        'sessionSourceMedium',
+        'landingPage',
+      ]),
+      metrics: met(['sessions', 'totalUsers', 'engagementRate', 'keyEvents']),
+      dimensionFilter: {
+        filter: {
+          fieldName: 'sessionDefaultChannelGroup',
+          stringFilter: { matchType: 'EXACT', value: 'Unassigned' },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 100,
+    }).catch((error) => ({
+      optionalError: String(error.message || error).slice(0, 500),
+    })),
+    gatherOrderedCheckout(token, propertyId, p),
   ]);
+
+  const [
+    curTotals,
+    priTotals,
+    dailyRep,
+    chanCur,
+    chanPri,
+    srcRep,
+    pageRep,
+    landRep,
+    countryRep,
+    eventRep,
+    deviceRep,
+    funnelCur,
+    funnelPri,
+    checkoutCur,
+    checkoutPri,
+    checkoutFailureRep,
+    unassignedRep,
+    orderedCheckout,
+  ] = [...primaryResults, ...secondaryResults];
 
   const priorByChannel = Object.fromEntries(
     rowsToObjects(chanPri, ['sessionDefaultChannelGroup'], ['sessions']).map(
@@ -410,11 +595,98 @@ async function gather(env, token, propertyId, nowMs) {
     return row;
   });
 
+  const checkoutCurrent = Object.fromEntries(
+    rowsToObjects(checkoutCur, ['eventName'], ['eventCount', 'totalUsers']).map(
+      (row) => [row.eventName, row],
+    ),
+  );
+  const checkoutPrior = Object.fromEntries(
+    rowsToObjects(checkoutPri, ['eventName'], ['eventCount', 'totalUsers']).map(
+      (row) => [row.eventName, row],
+    ),
+  );
+  const checkoutOutcomes = CHECKOUT_EVENTS.map((stage) => {
+    const current = checkoutCurrent[stage.event] || {};
+    const prior = checkoutPrior[stage.event] || {};
+    const eventCount = current.eventCount || 0;
+    const users = current.totalUsers || 0;
+    return {
+      ...stage,
+      eventCount,
+      users,
+      attemptsPerUser: users > 0 ? eventCount / users : 0,
+      priorEventCount: prior.eventCount || 0,
+      priorUsers: prior.totalUsers || 0,
+    };
+  });
+  const checkoutFailureReasons = checkoutFailureRep.optionalError
+    ? {
+        available: false,
+        error: checkoutFailureRep.optionalError,
+        hint:
+          'Register event parameter "reason" as an event-scoped GA4 custom dimension; registration is not retroactive.',
+        rows: [],
+      }
+    : {
+        available: true,
+        rows: rowsToObjects(
+          checkoutFailureRep,
+          ['eventName', 'customEvent:reason'],
+          ['eventCount', 'totalUsers'],
+        ).map((row) => ({
+          reason: row['customEvent:reason'] || '(not set)',
+          eventCount: row.eventCount,
+          users: row.totalUsers,
+        })),
+      };
+
+  const landingPages = rowsToObjects(
+    landRep,
+    ['landingPage'],
+    ['sessions', 'bounceRate', 'keyEvents'],
+  );
+  const sessionSums = {
+    core: curTotals.sessions,
+    daily: rowsToObjects(dailyRep, ['date'], ['sessions']).reduce(
+      (sum, row) => sum + row.sessions,
+      0,
+    ),
+    channels: channels.reduce((sum, row) => sum + row.sessions, 0),
+    landingPages: landingPages.reduce((sum, row) => sum + row.sessions, 0),
+  };
+  const reconciled = Object.values(sessionSums).every(
+    (value) => value === sessionSums.core,
+  );
+  const unassignedBreakdown = unassignedRep.optionalError
+    ? {
+        available: false,
+        error: unassignedRep.optionalError,
+        rows: [],
+      }
+    : {
+        available: true,
+        rows: rowsToObjects(
+          unassignedRep,
+          ['sessionDefaultChannelGroup', 'sessionSourceMedium', 'landingPage'],
+          ['sessions', 'totalUsers', 'engagementRate', 'keyEvents'],
+        ),
+      };
+
   return {
     generatedAt: new Date(nowMs).toISOString(),
     propertyId,
     period: p,
     funnel,
+    checkoutOutcomes,
+    checkoutFailureReasons,
+    orderedCheckout,
+    measurementQuality: {
+      sessionSums,
+      reconciled,
+      unassignedBreakdown,
+      trafficScope:
+        'GA4-filtered traffic; compare with Cloudflare raw traffic before diagnosing bots.',
+    },
     totals: { current: curTotals, prior: priTotals },
     daily: rowsToObjects(dailyRep, ['date'], ['sessions', 'totalUsers', 'keyEvents']),
     channels,
@@ -424,11 +696,7 @@ async function gather(env, token, propertyId, nowMs) {
       ['sessions', 'engagementRate'],
     ),
     pages,
-    landingPages: rowsToObjects(
-      landRep,
-      ['landingPage'],
-      ['sessions', 'bounceRate', 'keyEvents'],
-    ),
+    landingPages,
     countries: rowsToObjects(countryRep, ['country'], ['sessions', 'totalUsers']),
     events: rowsToObjects(eventRep, ['eventName'], ['eventCount', 'totalUsers']),
     devices: rowsToObjects(deviceRep, ['deviceCategory'], ['sessions', 'engagementRate']),
@@ -719,6 +987,55 @@ function toMarkdown(r) {
   );
   L.push('');
 
+  const quality = r.measurementQuality;
+  if (quality) {
+    L.push('## Measurement quality');
+    L.push('');
+    L.push(
+      mdTable(
+        ['Session scope', 'Sessions', 'Matches core total'],
+        Object.entries(quality.sessionSums).map(([scope, sessions]) => [
+          scope,
+          fmt(sessions),
+          sessions === quality.sessionSums.core ? 'yes' : 'NO',
+        ]),
+      ),
+    );
+    L.push('');
+    L.push(
+      quality.reconciled
+        ? '_All complete session-scoped cuts reconcile to the core total._'
+        : '_Warning: the session-scoped cuts do not reconcile. Resolve the query/scope mismatch before changing attribution or UTMs._',
+    );
+    L.push('');
+    L.push(`_${quality.trafficScope}_`);
+    L.push('');
+
+    const unassigned = quality.unassignedBreakdown;
+    L.push('### Unassigned traffic detail');
+    L.push('');
+    if (unassigned?.available && unassigned.rows.length) {
+      L.push(
+        mdTable(
+          ['Source / medium', 'Landing page', 'Sessions', 'Users', 'Engagement', 'Key events'],
+          unassigned.rows.map((row) => [
+            row.sessionSourceMedium,
+            row.landingPage,
+            fmt(row.sessions),
+            fmt(row.totalUsers),
+            `${(row.engagementRate * 100).toFixed(1)}%`,
+            fmt(row.keyEvents),
+          ]),
+        ),
+      );
+    } else if (unassigned?.available) {
+      L.push('No Unassigned sessions in this window.');
+    } else {
+      L.push(`Unavailable: ${unassigned?.error || 'query failed'}`);
+    }
+    L.push('');
+  }
+
   L.push('## Daily trend (current window)');
   L.push('');
   L.push(
@@ -785,15 +1102,87 @@ function toMarkdown(r) {
   L.push('');
   L.push(
     mdTable(
-      ['Landing page', 'Sessions', 'Bounce rate', 'Key events'],
-      r.landingPages.map((lp) => [
+      ['Landing page', 'Sessions', 'Bounce rate', 'Key events', 'Evidence'],
+      r.landingPages.slice(0, 15).map((lp) => [
         lp.landingPage,
         fmt(lp.sessions),
         `${(lp.bounceRate * 100).toFixed(1)}%`,
         fmt(lp.keyEvents),
+        lp.sessions < 20 ? 'directional (<20 sessions)' : 'usable sample',
       ]),
     ),
   );
+  L.push('');
+
+  L.push('## Checkout outcomes (independent event counts)');
+  L.push('');
+  L.push(
+    mdTable(
+      ['Outcome', 'Events', 'Users', 'Events / user', 'Prior events', 'Change'],
+      (r.checkoutOutcomes || []).map((outcome) => [
+        outcome.label,
+        fmt(outcome.eventCount),
+        fmt(outcome.users),
+        fmt(outcome.attemptsPerUser, 1),
+        fmt(outcome.priorEventCount),
+        delta(outcome.eventCount, outcome.priorEventCount),
+      ]),
+    ),
+  );
+  L.push('');
+  L.push(
+    '_`begin_checkout` fires before the company pre-check and payment redirect, so repeated events are attempts—not proof of payment-gateway failures. Inspect `checkout_failed` first; inspect Stripe only for attempts that reached `checkout_redirect`._',
+  );
+  L.push('');
+
+  L.push('### Checkout failure reasons');
+  L.push('');
+  if (r.checkoutFailureReasons?.available) {
+    if (r.checkoutFailureReasons.rows.length) {
+      L.push(
+        mdTable(
+          ['Reason', 'Failures', 'Users'],
+          r.checkoutFailureReasons.rows.map((row) => [
+            row.reason,
+            fmt(row.eventCount),
+            fmt(row.users),
+          ]),
+        ),
+      );
+    } else {
+      L.push('No `checkout_failed` events in this window.');
+    }
+  } else {
+    L.push(`Unavailable: ${r.checkoutFailureReasons?.error || 'query failed'}`);
+    L.push('');
+    L.push(`_${r.checkoutFailureReasons?.hint || ''}_`);
+  }
+  L.push('');
+
+  L.push('## Ordered checkout funnel');
+  L.push('');
+  if (r.orderedCheckout?.available) {
+    L.push(
+      mdTable(
+        ['Sequential stage', 'Users', 'Prior wk', 'Change', '% of first stage'],
+        r.orderedCheckout.stages.map((stage) => [
+          stage.label,
+          fmt(stage.users),
+          fmt(stage.priorUsers),
+          delta(stage.users, stage.priorUsers),
+          `${(stage.pctOfFirst * 100).toFixed(1)}%`,
+        ]),
+      ),
+    );
+    L.push('');
+    L.push(
+      `_Closed, ordered GA4 user funnel (v1alpha). Users must complete the stages in the listed order. Sampled: ${r.orderedCheckout.sampled ? 'yes' : 'no'}._`,
+    );
+  } else {
+    L.push(
+      `Unavailable without blocking the weekly report: ${r.orderedCheckout?.error || 'GA4 funnel query failed'}`,
+    );
+  }
   L.push('');
 
   L.push('## Intent funnel (distinct users)');
@@ -937,7 +1326,14 @@ async function doRun(env, nowMs) {
 
 // Named exports exist for offline unit tests; the Worker runtime only uses the
 // default export below.
-export { toMarkdown, periods, delta, duration };
+export {
+  cleanFunnelStepName,
+  delta,
+  duration,
+  orderedFunnelFrom,
+  periods,
+  toMarkdown,
+};
 
 export default {
   async fetch(request, env) {
