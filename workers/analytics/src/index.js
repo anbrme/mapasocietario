@@ -435,6 +435,165 @@ async function gather(env, token, propertyId, nowMs) {
   };
 }
 
+/* ------------------------------------------------- interaction probing */
+
+/**
+ * Node-interaction questions that raw event counts cannot answer, because the
+ * distinguishing information lives in an event PARAMETER rather than the event
+ * name. GA4 only exposes a parameter to the reporting API once it is registered
+ * as an event-scoped custom dimension (Admin > Custom definitions), and
+ * registration is NOT retroactive — so an unregistered probe here is a
+ * permanent hole in history, not a transient error.
+ */
+const INTERACTION_PROBES = [
+  {
+    param: 'expand_origin',
+    event: 'graph_node_expand',
+    question:
+      'Did the expand come from a double-click or from the context menu? Without this, graph_node_expand conflates both.',
+  },
+  {
+    param: 'expand_result',
+    event: 'graph_node_expand',
+    question:
+      'Was the node already expanded? Re-expanding fires the event again, so raw counts overstate discovery.',
+  },
+  {
+    param: 'interaction_source',
+    event: 'graph_context_menu_open',
+    question:
+      'Right-click, touch long-press, or pointer? A "touch" source is a double-tap, not a right-click.',
+  },
+  {
+    param: 'click_action',
+    event: 'graph_node_click',
+    question: 'What did the single click actually do (select, select_and_inspect, ...)?',
+  },
+];
+
+const INTERACTION_EVENTS = [
+  'graph_node_expand',
+  'graph_context_menu_open',
+  'graph_node_click',
+];
+
+async function handleInteractions(env, url) {
+  const sa = loadServiceAccount(env);
+  if (!env.GA_PROPERTY_ID) throw new Error('GA_PROPERTY_ID is not set');
+  const token = await getAccessToken(sa);
+  const propertyId = env.GA_PROPERTY_ID;
+
+  const days = Math.min(
+    Math.max(parseInt(url.searchParams.get('days') || '28', 10) || 28, 1),
+    365,
+  );
+  const dateRanges = [{ startDate: `${days}daysAgo`, endDate: 'yesterday' }];
+
+  const probes = await Promise.all(
+    INTERACTION_PROBES.map(async (p) => {
+      const key = `customEvent:${p.param}`;
+      const base = { param: p.param, event: p.event, question: p.question };
+      try {
+        const rep = await runReport(token, propertyId, {
+          dateRanges,
+          dimensions: [{ name: 'eventName' }, { name: key }],
+          metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+          dimensionFilter: {
+            filter: {
+              fieldName: 'eventName',
+              stringFilter: { matchType: 'EXACT', value: p.event },
+            },
+          },
+          limit: 25,
+        });
+        const breakdown = rowsToObjects(rep, ['eventName', key], [
+          'eventCount',
+          'totalUsers',
+        ])
+          .map((r) => ({
+            value: r[key] || '(not set)',
+            eventCount: r.eventCount,
+            users: r.totalUsers,
+          }))
+          .sort((a, b) => b.eventCount - a.eventCount);
+
+        // A registered-but-never-populated dimension returns only "(not set)".
+        const onlyNotSet =
+          breakdown.length > 0 &&
+          breakdown.every((b) => b.value === '(not set)');
+
+        return {
+          ...base,
+          registered: true,
+          populated: !onlyNotSet,
+          breakdown,
+          note: onlyNotSet
+            ? 'Dimension is registered but every row is "(not set)" — registration likely postdates this window, or the parameter is not being sent.'
+            : undefined,
+        };
+      } catch (e) {
+        return {
+          ...base,
+          registered: false,
+          error: String(e.message || e).slice(0, 400),
+          hint: `Register "${p.param}" as an EVENT-scoped custom dimension in GA4: Admin > Custom definitions > Create custom dimension, event parameter "${p.param}". Not retroactive — data before registration is unrecoverable.`,
+        };
+      }
+    }),
+  );
+
+  // Device split matters for interpretation: on touch there is no
+  // double-tap-to-expand, so mobile users cannot double-click at all. A low
+  // double-click share is only meaningful against the desktop population.
+  let byDevice = null;
+  let deviceError = null;
+  try {
+    const rep = await runReport(token, propertyId, {
+      dateRanges,
+      dimensions: [{ name: 'eventName' }, { name: 'deviceCategory' }],
+      metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: INTERACTION_EVENTS },
+        },
+      },
+      limit: 50,
+    });
+    byDevice = rowsToObjects(rep, ['eventName', 'deviceCategory'], [
+      'eventCount',
+      'totalUsers',
+    ]).map((r) => ({
+      event: r.eventName,
+      device: r.deviceCategory,
+      eventCount: r.eventCount,
+      users: r.totalUsers,
+    }));
+  } catch (e) {
+    deviceError = String(e.message || e).slice(0, 300);
+  }
+
+  const unregistered = probes.filter((p) => !p.registered).map((p) => p.param);
+
+  return {
+    ok: true,
+    propertyId,
+    window: { days, startDate: `${days}daysAgo`, endDate: 'yesterday' },
+    probes,
+    byDevice,
+    deviceError,
+    unregistered,
+    summary: unregistered.length
+      ? `${unregistered.length} of ${probes.length} dimensions are not registered (${unregistered.join(', ')}). Those questions cannot be answered for any period before you register them.`
+      : 'All four dimensions are registered and queryable.',
+    readingNotes: [
+      'Count users, not events: re-expanding an already-expanded node fires graph_node_expand again (expand_result: already_expanded).',
+      'On touch devices the second tap opens the context menu, so mobile users cannot double-click to expand. Judge double-click discovery against desktop users only.',
+      'An interaction_source of "touch" is a double-tap, not a right-click.',
+    ],
+  };
+}
+
 /* -------------------------------------------------------------- storage */
 
 async function ensureTable(db) {
@@ -810,6 +969,8 @@ export default {
 
     try {
       if (path === '/discover') return await handleDiscover(env);
+
+      if (path === '/interactions') return json(await handleInteractions(env, url));
 
       if (path === '/run') {
         const report = await doRun(env, Date.now());
