@@ -248,6 +248,58 @@ test('checkout priors and failure reasons come from their own queries', async ()
   }
 });
 
+test('warns that checkout_redirect cannot be read as lost revenue', () => {
+  // checkout_redirect fires for free_order too, and a waived report never
+  // produces a purchase event by design. Reading "13 redirects, 0 purchases"
+  // as abandonment is therefore unsound unless `destination` is registered.
+  const warnings = reportWarnings({
+    checkoutOutcomes: [
+      { event: 'checkout_redirect', label: 'Redirected to payment/order', eventCount: 13, users: 2 },
+      { event: 'purchase', label: 'Purchase confirmed', eventCount: 0, users: 0 },
+    ],
+    checkoutFailureReasons: { available: true, rows: [] },
+    measurementQuality: { sessionSums: { core: 1, daily: 1, channels: 1, landingPages: 1 }, reconciled: true },
+  });
+
+  assert.ok(
+    warnings.some((w) => /free_order|free report/i.test(w) && /destination/i.test(w)),
+    `expected a free-order caveat, got: ${JSON.stringify(warnings)}`,
+  );
+});
+
+test('does not raise the free-order caveat once purchases are recorded', () => {
+  const warnings = reportWarnings({
+    checkoutOutcomes: [
+      { event: 'checkout_redirect', eventCount: 13, users: 2 },
+      { event: 'purchase', eventCount: 3, users: 3 },
+    ],
+    checkoutFailureReasons: { available: true, rows: [] },
+    measurementQuality: { sessionSums: { core: 1, daily: 1, channels: 1, landingPages: 1 }, reconciled: true },
+  });
+
+  assert.equal(warnings.some((w) => /free_order/i.test(w)), false);
+});
+
+test('flags checkout submissions that ended in neither a redirect nor a failure', () => {
+  // Every terminal path is instrumented, so begin_checkout should be matched
+  // by a redirect or a failure. A shortfall means attempts died silently.
+  const warnings = reportWarnings({
+    checkoutOutcomes: [
+      { event: 'begin_checkout', eventCount: 18, users: 3 },
+      { event: 'checkout_redirect', eventCount: 13, users: 2 },
+      { event: 'checkout_failed', eventCount: 0, users: 0 },
+      { event: 'purchase', eventCount: 0, users: 0 },
+    ],
+    checkoutFailureReasons: { available: true, rows: [] },
+    measurementQuality: { sessionSums: { core: 1, daily: 1, channels: 1, landingPages: 1 }, reconciled: true },
+  });
+
+  assert.ok(
+    warnings.some((w) => /5 checkout submission/i.test(w)),
+    `expected a silent-submission warning, got: ${JSON.stringify(warnings)}`,
+  );
+});
+
 test('report warns when independent measures of the same thing disagree', () => {
   const warnings = reportWarnings({
     orderedCheckout: { available: true, stages: [{ event: 'view_item', users: 0 }] },

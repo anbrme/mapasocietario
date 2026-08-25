@@ -20,6 +20,11 @@
 
 import { renderReportHtml } from './report-html.js';
 import { sendReportEmail } from './deliver.js';
+import {
+  buildCountryComparison,
+  fetchEdgeTraffic,
+  ga4CountryToRows,
+} from './cloudflare-edge.js';
 
 const GA_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
 const DATA_API = 'https://analyticsdata.googleapis.com/v1beta';
@@ -760,6 +765,23 @@ async function gather(env, token, propertyId, nowMs) {
     devices: rowsToObjects(deviceRep, ['deviceCategory'], ['sessions', 'engagementRate']),
   };
 
+  // Cloudflare edge traffic for the same window. GA4 sees only what ran
+  // JavaScript; the edge sees everything. Best-effort — a missing token or a
+  // Cloudflare outage degrades this one section, never the GA4 pull.
+  const edge = await fetchEdgeTraffic({
+    token: env?.CLOUDFLARE_ANALYTICS_TOKEN,
+    zoneName: env?.CF_ZONE_NAME || 'mapasocietario.es',
+    since: p.current.start,
+    until: p.current.end,
+  });
+  if (edge.available) {
+    edge.comparison = buildCountryComparison(
+      edge.countries,
+      ga4CountryToRows(report.countries),
+    );
+  }
+  report.edge = edge;
+
   // Computed last: it reads the assembled sections against each other.
   return { ...report, warnings: reportWarnings(report) };
 }
@@ -809,6 +831,40 @@ function reportWarnings(r) {
         'Every checkout failure reason reads "(not set)": register the "reason" event parameter as an event-scoped GA4 custom dimension. Registration is not retroactive.',
       );
     }
+  }
+
+  // checkout_redirect is three outcomes wearing one name: free_order (a waived
+  // report, fulfilled server-side, which by design never emits `purchase`),
+  // stripe_new_tab and stripe_same_tab. Reading redirects-without-purchases as
+  // abandoned revenue is unsound until `destination` is registered as an
+  // event-scoped custom dimension — this report made exactly that mistake.
+  const redirects = outcome('checkout_redirect').eventCount || 0;
+  const purchases = outcome('purchase').eventCount || 0;
+  if (redirects > 0 && purchases === 0) {
+    warnings.push(
+      `${redirects} checkout redirect(s) and no purchases. This is NOT evidence of lost revenue: checkout_redirect also fires for free_order, a waived report that is fulfilled without Stripe and never emits a purchase event. Register "destination" as an event-scoped custom dimension to split free from paid; until then this pair cannot be interpreted.`,
+    );
+  }
+
+  // Every terminal path in the checkout dialog fires either a redirect or a
+  // failure, so submissions that produce neither did not finish anywhere the
+  // instrumentation can see.
+  const submissions = outcome('begin_checkout').eventCount || 0;
+  const resolved = redirects + (outcome('checkout_failed').eventCount || 0);
+  if (submissions > resolved) {
+    warnings.push(
+      `${submissions - resolved} checkout submission(s) ended in neither a redirect nor a failure. Every terminal path is instrumented, so these attempts died somewhere unmeasured — check the Android fulfilment returns and whether "platform" is registered.`,
+    );
+  }
+
+  // GA4 is a sample of edge traffic, not a census. Quantify it rather than
+  // leaving the reader to assume the two describe the same population.
+  const edgeViews = r.edge?.totals?.pageViews || 0;
+  const ga4Views = r.totals?.current?.screenPageViews || 0;
+  if (edgeViews > 0 && ga4Views > 0 && edgeViews / ga4Views >= 5) {
+    warnings.push(
+      `Cloudflare served ${edgeViews.toLocaleString('en-US')} page views against GA4's ${ga4Views.toLocaleString('en-US')} (${Math.round(edgeViews / ga4Views)}x). GA4 counts only requests that ran JavaScript and were not filtered, so treat every figure in this report as a sample of human browser traffic, not a census of the site.`,
+    );
   }
 
   const sums = r.measurementQuality?.sessionSums;
@@ -1025,6 +1081,81 @@ async function handleDiagnose(env) {
         },
       },
       limit: 25,
+    }),
+  );
+
+  // Which checkout parameters are actually queryable. GA4 only exposes an
+  // event parameter once it is registered as a custom dimension, and
+  // registration is not retroactive — so an unregistered parameter is a
+  // permanent hole in history, not a transient error. Probing them by name is
+  // the only way to know what questions this property can still answer.
+  const CHECKOUT_PARAMS = ['destination', 'reason', 'platform', 'free_report', 'company'];
+  out.parameterAvailability = {};
+  for (const param of CHECKOUT_PARAMS) {
+    try {
+      const rep = await runReport(token, propertyId, {
+        dateRanges: [{ startDate: p.current.start, endDate: p.current.end }],
+        dimensions: [{ name: 'eventName' }, { name: `customEvent:${param}` }],
+        metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'eventName',
+            inListFilter: { values: CHECKOUT_EVENTS.map((stage) => stage.event) },
+          },
+        },
+        limit: 25,
+      });
+      out.parameterAvailability[param] = {
+        registered: true,
+        rows: (rep.rows || []).map((row) => ({
+          event: row.dimensionValues[0].value,
+          value: row.dimensionValues[1].value,
+          eventCount: Number(row.metricValues[0].value),
+          users: Number(row.metricValues[1].value),
+        })),
+      };
+    } catch (error) {
+      out.parameterAvailability[param] = {
+        registered: false,
+        error: String(error.message || error).slice(0, 160),
+      };
+    }
+  }
+
+  // checkout_redirect carries a `destination` parameter with three values:
+  // free_order (no Stripe, no purchase event by design), stripe_new_tab and
+  // stripe_same_tab. Without this split, "13 redirects, 0 purchases" cannot
+  // distinguish a lost sale from a free report working exactly as intended.
+  await capture('redirectByDestination', () =>
+    runReport(token, propertyId, {
+      dateRanges: [{ startDate: p.current.start, endDate: p.current.end }],
+      dimensions: [{ name: 'eventName' }, { name: 'customEvent:destination' }],
+      metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'checkout_redirect' },
+        },
+      },
+      limit: 25,
+    }),
+  );
+
+  // Daily shape of the whole checkout path. Thirteen redirects spread over a
+  // week reads very differently from thirteen inside one afternoon.
+  await capture('checkoutByDay', () =>
+    runReport(token, propertyId, {
+      dateRanges: [{ startDate: p.current.start, endDate: p.current.end }],
+      dimensions: [{ name: 'date' }, { name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: CHECKOUT_EVENTS.map((stage) => stage.event) },
+        },
+      },
+      orderBys: [{ dimension: { dimensionName: 'date' } }],
+      limit: 100,
     }),
   );
 

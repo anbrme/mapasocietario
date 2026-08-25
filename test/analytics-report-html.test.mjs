@@ -104,3 +104,32 @@ test('shows the prior-week purchase that the swapped queries used to erase', () 
   // 0 this week against 1 last week is the finding; it must be visible.
   assert.match(html, /-100(\.0)?%|1<\/td>/);
 });
+
+test('renders Cloudflare edge traffic beside the GA4 figures', () => {
+  const withEdge = baseReport();
+  withEdge.edge = {
+    available: true,
+    totals: { requests: 93126, pageViews: 52518, threats: 364, uniques: 7774 },
+    comparison: [
+      { country: 'US', requests: 67261, threats: 33, sessions: 19, requestsPerSession: 3540.1 },
+      { country: 'HK', requests: 3702, threats: 0, sessions: 0, requestsPerSession: null },
+    ],
+    browsers: { rows: [{ browser: 'Unknown', pageViews: 40908 }], unidentified: 0, totalPageViews: 52518 },
+  };
+  const html = renderReportHtml(withEdge);
+
+  assert.match(html, /Edge traffic/);
+  assert.match(html, /93,126/);
+  // A country GA4 never saw must read as absent, not as an infinite ratio.
+  assert.match(html, /no GA4 data/);
+  assert.equal(html.includes('Infinity'), false);
+});
+
+test('says why edge traffic is missing rather than omitting the section', () => {
+  const noEdge = baseReport();
+  noEdge.edge = { available: false, reason: 'not_configured', hint: 'Set the CLOUDFLARE_ANALYTICS_TOKEN secret' };
+  const html = renderReportHtml(noEdge);
+
+  assert.match(html, /Edge traffic/);
+  assert.match(html, /CLOUDFLARE_ANALYTICS_TOKEN/);
+});

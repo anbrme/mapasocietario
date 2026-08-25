@@ -164,6 +164,72 @@ function orderedFunnelSection(ordered) {
   );
 }
 
+/**
+ * Cloudflare edge traffic. Deliberately placed before "Measurement quality":
+ * it IS the measurement-quality section that matters most, because it sizes
+ * everything above it.
+ */
+function edgeSection(edge) {
+  if (!edge) return '';
+  if (!edge.available) {
+    return section(
+      'Edge traffic (Cloudflare)',
+      `<div style="background:${WARN_SOFT};border:1px solid #fcd34d;border-radius:8px;padding:12px 14px;font:400 13px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${INK};">Unavailable: ${escapeHtml(edge.error || edge.hint || edge.reason || 'not configured')}</div>`,
+    );
+  }
+
+  const t = edge.totals || {};
+  const totalsTable = table(
+    ['Cloudflare (every request that reached the edge)', 'Count'],
+    [
+      ['Requests', { text: num(t.requests), bold: true }],
+      ['Page views', { text: num(t.pageViews), bold: true }],
+      ['Unique visitors (by IP)', num(t.uniques)],
+      ['Threats blocked', num(t.threats)],
+    ],
+  );
+
+  const comparison = (edge.comparison || []).slice(0, 12);
+  const countryTable = table(
+    ['Country', 'CF requests', 'Threats', 'GA4 sessions', 'Requests / session'],
+    comparison.map((row) => [
+      row.country,
+      num(row.requests),
+      num(row.threats),
+      num(row.sessions),
+      {
+        // Null, never Infinity: "GA4 recorded nothing here" is a different
+        // statement from "the ratio is very large".
+        text: row.requestsPerSession === null ? 'no GA4 data' : row.requestsPerSession.toFixed(1),
+        color: row.requestsPerSession === null ? WARN : INK,
+        align: 'right',
+      },
+    ]),
+  );
+
+  const browsers = edge.browsers || {};
+  const totalViews = browsers.totalPageViews || 0;
+  const browserTable = table(
+    ['User agent', 'Page views', 'Share'],
+    [
+      ...(browsers.rows || []).slice(0, 8).map((row) => [
+        row.browser,
+        num(row.pageViews),
+        totalViews ? pct(row.pageViews / totalViews) : '—',
+      ]),
+      ...(browsers.unidentified > 0
+        ? [['(unmapped)', num(browsers.unidentified), totalViews ? pct(browsers.unidentified / totalViews) : '—']]
+        : []),
+    ],
+  );
+
+  return section(
+    'Edge traffic (Cloudflare)',
+    `${totalsTable}<div style="height:16px"></div>${countryTable}<div style="height:16px"></div>${browserTable}`,
+    'Compare each country\'s requests-per-session against the countries where GA4 records real sessions, not against zero — that ratio is what a human browser session costs. "Unknown" is Cloudflare\'s bucket for agents claiming no browser; named bot rows come from the user-agent string, which is trivially spoofed.',
+  );
+}
+
 export function renderReportHtml(r) {
   const c = r.totals?.current || {};
   const p = r.totals?.prior || {};
@@ -291,6 +357,8 @@ export function renderReportHtml(r) {
         (r.devices || []).map((d) => [d.deviceCategory, num(d.sessions), pct(d.engagementRate)]),
       )}`,
     ),
+
+    edgeSection(r.edge),
 
     section(
       'Measurement quality',

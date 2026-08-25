@@ -4,7 +4,7 @@ import {
   buildCountryComparison,
   countryMapToRows,
   ga4CountryToRows,
-} from './cf-zone-analytics.mjs';
+} from '../workers/analytics/src/cloudflare-edge.js';
 
 // Cloudflare's httpRequests1dGroups shape, trimmed to what we read.
 const cfGroups = [

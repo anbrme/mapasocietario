@@ -456,6 +456,17 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
     });
   };
 
+  // Terminal states only. Every path that leaves handleSubmit after
+  // begin_checkout must call one of these two, or the attempt disappears: the
+  // 18-24 Aug week showed 18 begin_checkout against 13 redirects and 0
+  // failures, and the five unaccounted submissions could not be explained
+  // because the Android returns below fired neither.
+  //
+  // `destination` distinguishes free_order (fulfilled server-side, no Stripe,
+  // no purchase event by design) from the paid Stripe paths and from Google
+  // Play. It is USELESS until registered as an event-scoped custom dimension
+  // in GA4 — unregistered parameters are invisible to reporting and cannot be
+  // backfilled.
   const trackCheckoutRedirect = (destination) => {
     trackEvent('checkout_redirect', { destination, company: companyName || '' });
   };
@@ -620,6 +631,7 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
       if (isAndroidApp) {
         if (!ANDROID_PLAY_BILLING_ENABLED) {
           setError(copy.googlePlayConnecting);
+          trackCheckoutFailure('android_billing_disabled');
           return;
         }
 
@@ -627,6 +639,7 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
         if (pendingPurchaseRaw) {
           try {
             await fulfillAndroidPurchase(JSON.parse(pendingPurchaseRaw));
+            trackCheckoutRedirect('android_pending_fulfilled');
             return;
           } catch (pendingErr) {
             console.warn('Pending Google Play fulfillment retry failed:', pendingErr);
@@ -651,6 +664,7 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
         };
         localStorage.setItem('dd_google_play_pending_purchase', JSON.stringify(pendingPurchase));
         await fulfillAndroidPurchase(pendingPurchase);
+        trackCheckoutRedirect('android_play_billing');
         return;
       }
 
