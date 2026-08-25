@@ -18,14 +18,19 @@ network access, so the split is:
 Cloudflare Worker (cron, Fri 14:30 UTC)
   -> signs a JWT with the service account key
   -> calls the GA4 Data API
+  -> cross-checks the sections against each other
   -> persists the weekly rollup into D1
+  -> renders the styled HTML report
+  -> emails it, and serves it at /report
                      |
                      v
-Claude scheduled task (Fri 17:00 Madrid)
-  -> fetches /latest
-  -> writes the analysis + styled HTML report
-  -> delivers it with a push notification
+Claude scheduled task (optional, Fri 17:00 Madrid)
+  -> fetches /latest for commentary on top of the numbers
 ```
+
+The styled report no longer depends on a Claude session being alive: the Worker
+renders it itself. Email is a notification layer over a report that is already
+persisted and readable at `/report`, so a mail failure never costs you the pull.
 
 The service account key lives only in Cloudflare's secret store. It is never in
 the repo, never in the Claude session, never on disk.
@@ -105,9 +110,53 @@ All require `?token=<REPORT_TOKEN>`.
 | `/discover` | Lists GA4 properties the service account can see. |
 | `/run` | Pulls now, persists to D1, returns the report. |
 | `/latest` | Returns the most recently stored report. |
+| `/report` | The stored report as styled HTML — the same document the cron emails. |
+| `/send-test` | Emails the stored report now and returns exactly what the Email API said. |
+| `/interactions` | Probes event-parameter custom dimensions (`?days=28`). |
+| `/diagnose` | Raw GA4 payloads for the two queries that have already drifted. |
 
 `/run` and `/latest` return markdown by default; add `&format=json` for the raw
 payload.
+
+## Email delivery
+
+The cron mails the styled report through the Cloudflare Email Sending REST API —
+the same mechanism `functions/feedback.js` already uses in production, from the
+same onboarded domain. It needs one secret:
+
+```bash
+cd workers/analytics
+npx wrangler secret put CLOUDFLARE_EMAIL_API_TOKEN   # same token the Pages project uses
+curl "https://mapasocietario-analytics.<subdomain>.workers.dev/send-test?token=$TOKEN"
+```
+
+This is the same secret name, account and endpoint as `functions/feedback.js`,
+so the existing feedback token can be reused verbatim rather than minted again.
+
+`/send-test` returns `{"sent": true}` or the API's own error, so delivery is
+confirmed in seconds rather than a week later. Without the secret the cron still
+pulls, persists, and serves `/report`; it logs that mail was skipped.
+
+Sender and recipient are `[vars]` in `wrangler.toml` (`REPORT_EMAIL_FROM`,
+`REPORT_EMAIL_TO`), not secrets.
+
+## Warnings
+
+Every report carries a `warnings[]` array, rendered at the top of both the
+markdown and the HTML. It holds contradictions between sections that are
+each internally consistent — the failure mode that produced three wrong
+sections in the 18–24 August report:
+
+- the ordered funnel reporting zero users at a stage the independent event
+  count says is populated
+- `checkout_failed` disagreeing with the sum of its own failure-reason rows
+- every failure reason reading `(not set)`, which means the `reason` event
+  parameter is not registered as a custom dimension
+- session totals that differ between dimensioned cuts
+
+An all-zero ordered funnel is now **withheld** rather than published: it is
+indistinguishable from zero conversion, and publishing it invites exactly the
+wrong decision.
 
 ## What it collects
 
@@ -139,7 +188,14 @@ that. Today is never included, because GA4's current-day data is always partial.
   modern name and retries once with the old one if the property rejects it.
 - **Ordered funnel API**: Google's funnel reporting endpoint is currently
   v1alpha. If it changes or fails, the ordered-funnel section reports the error
-  but the rest of the weekly report still runs and persists.
+  but the rest of the weekly report still runs and persists. It repeats its
+  metric header block (eight headers for four values per row) and prefixes its
+  metrics `funnelStep*`; both cost a silent all-zero funnel before 25 Aug 2026.
+  `/diagnose` returns the raw response — read it before touching the parser.
+- **Named results**: the GA4 requests in `gather()` are a named map, not an
+  array. They were positional once, two entries were transposed, and the report
+  erased a real purchase while inventing seven failures that never happened.
+  Keep them named.
 - **Bots**: GA4 is not the raw traffic source. Compare anomalies with Cloudflare
   traffic before treating them as real users or diagnosing bot activity.
 - **D1**: reuses the existing `mapasocietario-seo` database but creates and owns

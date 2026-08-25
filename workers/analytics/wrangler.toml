@@ -27,6 +27,17 @@ database_id = "2e471c22-6478-4d55-b3c6-9d0fc279e6ba"
 # G-XXXXXXXX measurement id.
 GA_PROPERTY_ID = "530829482"
 
+# Where the cron mails the styled weekly report. The FROM domain must be
+# onboarded onto Cloudflare Email Sending (ncdata.eu already is — the same
+# domain functions/feedback.js sends from in production).
+REPORT_EMAIL_FROM = "analytics@ncdata.eu"
+REPORT_EMAIL_TO = "mapasocietario@ncdata.eu"
+
 # Secrets (set via `wrangler secret put`, never in this file):
-#   GA_SA_KEY     - the full service account JSON, pasted as one blob
-#   REPORT_TOKEN  - random string; required as ?token= on every endpoint
+#   GA_SA_KEY        - the full service account JSON, pasted as one blob
+#   REPORT_TOKEN     - random string; required as ?token= on every endpoint
+#   CLOUDFLARE_EMAIL_API_TOKEN - Cloudflare API token with Email Sending write.
+#                      Same name and same token as the Pages project uses for
+#                      functions/feedback.js; one token serves both. OPTIONAL:
+#                      without it the cron still pulls, persists and serves the
+#                      styled report at /report, and logs that mail was skipped.

@@ -18,6 +18,9 @@
  * Cron: pulls and persists on schedule (see wrangler.toml).
  */
 
+import { renderReportHtml } from './report-html.js';
+import { sendReportEmail } from './deliver.js';
+
 const GA_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
 const DATA_API = 'https://analyticsdata.googleapis.com/v1beta';
 const FUNNEL_DATA_API = 'https://analyticsdata.googleapis.com/v1alpha';
@@ -255,11 +258,34 @@ const ORDERED_CHECKOUT_STAGES = CHECKOUT_EVENTS.filter(
   (stage) => stage.event !== 'checkout_failed',
 );
 
+/**
+ * GA4's funnel response repeats the whole metric header block (activeUsers,
+ * funnelStepCompletionRate, funnelStepAbandonments, funnelStepAbandonmentRate,
+ * and then the same four again) while each row carries only ONE copy of the
+ * values. Mapping the headers positionally therefore ran off the end of the row
+ * on the second pass and overwrote every real metric with 0 — which is why the
+ * live funnel published an all-zero conversion path while the same users were
+ * plainly visible in the independent event counts. Keep the first occurrence of
+ * each metric name only.
+ */
 function funnelRows(report) {
   const table = report?.funnelTable || {};
   const dimensions = (table.dimensionHeaders || []).map((h) => h.name);
-  const metrics = (table.metricHeaders || []).map((h) => h.name);
+  const metrics = [];
+  for (const header of table.metricHeaders || []) {
+    if (!metrics.includes(header.name)) metrics.push(header.name);
+  }
   return rowsToObjects(table, dimensions, metrics);
+}
+
+/**
+ * True when GA4 actually returned funnel rows. An empty funnelTable parses into
+ * a perfect zero at every stage, which reads as "nobody converted" rather than
+ * "the query returned nothing". A report people make decisions from must never
+ * confuse the two.
+ */
+function funnelHasRows(report) {
+  return (report?.funnelTable?.rows || []).length > 0;
 }
 
 function cleanFunnelStepName(value) {
@@ -287,8 +313,11 @@ function orderedFunnelFrom(currentReport, priorReport) {
       users,
       priorUsers: priorRow.activeUsers || 0,
       pctOfFirst: firstUsers > 0 ? users / firstUsers : 0,
-      abandonments: currentRow.abandonments || 0,
-      abandonmentRate: currentRow.abandonmentRate || 0,
+      // GA4 prefixes these with funnelStep. The unprefixed names read as
+      // undefined, so every abandonment silently rendered as zero.
+      completionRate: currentRow.funnelStepCompletionRate || 0,
+      abandonments: currentRow.funnelStepAbandonments || 0,
+      abandonmentRate: currentRow.funnelStepAbandonmentRate || 0,
     };
   });
 }
@@ -313,6 +342,16 @@ async function gatherOrderedCheckout(token, propertyId, period) {
       request(period.current),
       request(period.prior),
     ]);
+    if (!funnelHasRows(current)) {
+      return {
+        available: false,
+        apiStability: 'v1alpha',
+        error:
+          'funnel response contained no rows; an all-zero path is indistinguishable from zero conversion, so it is withheld rather than published',
+        responseKeys: Object.keys(current || {}),
+        stages: [],
+      };
+    }
     return {
       available: true,
       apiStability: 'v1alpha',
@@ -330,6 +369,17 @@ async function gatherOrderedCheckout(token, propertyId, period) {
       stages: [],
     };
   }
+}
+
+/**
+ * Promise.all over a named map. The object literal creates every request
+ * eagerly, so they still run concurrently — but each result stays bound to the
+ * name of the query that produced it.
+ */
+async function namedAll(requests) {
+  const names = Object.keys(requests);
+  const values = await Promise.all(names.map((name) => requests[name]));
+  return Object.fromEntries(names.map((name, i) => [name, values[i]]));
 }
 
 const CORE_METRICS = [
@@ -358,67 +408,75 @@ async function gather(env, token, propertyId, nowMs) {
 
   // Standard GA4 properties allow at most 10 concurrent Core requests. Keep
   // each wave below that ceiling; the ordered funnel has its own quota class.
-  const primaryResults = await Promise.all([
-    coreTotals(p.current),
-    coreTotals(p.prior),
-    call({
+  //
+  // Each request is NAMED rather than positional. The previous version built
+  // two arrays and destructured them by position, and entries five and six of
+  // the second wave were transposed: the failure-reason probe was read as the
+  // prior-week checkout totals and vice versa. That erased a real purchase from
+  // the prior week, relabelled every checkout row "new", and invented seven
+  // checkout failures that never happened. Naming the results makes that class
+  // of defect impossible to reintroduce.
+  const primaryResults = await namedAll({
+    curTotals: coreTotals(p.current),
+    priTotals: coreTotals(p.prior),
+    dailyRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['date']),
       metrics: met(['sessions', 'totalUsers', 'keyEvents']),
       orderBys: [{ dimension: { dimensionName: 'date' } }],
     }),
-    call({
+    chanCur: call({
       dateRanges: range(p.current),
       dimensions: dim(['sessionDefaultChannelGroup']),
       metrics: met(['sessions', 'totalUsers', 'engagementRate', 'keyEvents']),
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
       limit: 100,
     }),
-    call({
+    chanPri: call({
       dateRanges: range(p.prior),
       dimensions: dim(['sessionDefaultChannelGroup']),
       metrics: met(['sessions']),
       limit: 25,
     }),
-    call({
+    srcRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['sessionSourceMedium']),
       metrics: met(['sessions', 'engagementRate']),
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
       limit: 15,
     }),
-    call({
+    pageRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['pagePath']),
       metrics: met(['screenPageViews', 'totalUsers', 'userEngagementDuration']),
       orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
       limit: 25,
     }),
-    call({
+    landRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['landingPage']),
       metrics: met(['sessions', 'bounceRate', 'keyEvents']),
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
       limit: 250,
     }),
-    call({
+    countryRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['country']),
       metrics: met(['sessions', 'totalUsers']),
       orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
       limit: 12,
     }),
-    call({
+    eventRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['eventName']),
       metrics: met(['eventCount', 'totalUsers']),
       orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
       limit: 25,
     }),
-  ]);
+  });
 
-  const secondaryResults = await Promise.all([
-    call({
+  const secondaryResults = await namedAll({
+    deviceRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['deviceCategory']),
       metrics: met(['sessions', 'engagementRate']),
@@ -426,7 +484,7 @@ async function gather(env, token, propertyId, nowMs) {
       limit: 5,
     }),
     // Funnel stages, current and prior, restricted to the named events.
-    call({
+    funnelCur: call({
       dateRanges: range(p.current),
       dimensions: dim(['eventName']),
       metrics: met(['eventCount', 'totalUsers']),
@@ -438,7 +496,7 @@ async function gather(env, token, propertyId, nowMs) {
       },
       limit: 50,
     }),
-    call({
+    funnelPri: call({
       dateRanges: range(p.prior),
       dimensions: dim(['eventName']),
       metrics: met(['totalUsers']),
@@ -450,7 +508,7 @@ async function gather(env, token, propertyId, nowMs) {
       },
       limit: 50,
     }),
-    call({
+    checkoutCur: call({
       dateRanges: range(p.current),
       dimensions: dim(['eventName']),
       metrics: met(['eventCount', 'totalUsers']),
@@ -462,7 +520,7 @@ async function gather(env, token, propertyId, nowMs) {
       },
       limit: 20,
     }),
-    call({
+    checkoutFailureRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['eventName', 'customEvent:reason']),
       metrics: met(['eventCount', 'totalUsers']),
@@ -477,7 +535,7 @@ async function gather(env, token, propertyId, nowMs) {
     }).catch((error) => ({
       optionalError: String(error.message || error).slice(0, 500),
     })),
-    call({
+    checkoutPri: call({
       dateRanges: range(p.prior),
       dimensions: dim(['eventName']),
       metrics: met(['eventCount', 'totalUsers']),
@@ -489,7 +547,7 @@ async function gather(env, token, propertyId, nowMs) {
       },
       limit: 20,
     }),
-    call({
+    unassignedRep: call({
       dateRanges: range(p.current),
       dimensions: dim([
         'sessionDefaultChannelGroup',
@@ -508,10 +566,10 @@ async function gather(env, token, propertyId, nowMs) {
     }).catch((error) => ({
       optionalError: String(error.message || error).slice(0, 500),
     })),
-    gatherOrderedCheckout(token, propertyId, p),
-  ]);
+    orderedCheckout: gatherOrderedCheckout(token, propertyId, p),
+  });
 
-  const [
+  const {
     curTotals,
     priTotals,
     dailyRep,
@@ -530,7 +588,7 @@ async function gather(env, token, propertyId, nowMs) {
     checkoutFailureRep,
     unassignedRep,
     orderedCheckout,
-  ] = [...primaryResults, ...secondaryResults];
+  } = { ...primaryResults, ...secondaryResults };
 
   const priorByChannel = Object.fromEntries(
     rowsToObjects(chanPri, ['sessionDefaultChannelGroup'], ['sessions']).map(
@@ -672,7 +730,7 @@ async function gather(env, token, propertyId, nowMs) {
         ),
       };
 
-  return {
+  const report = {
     generatedAt: new Date(nowMs).toISOString(),
     propertyId,
     period: p,
@@ -701,6 +759,70 @@ async function gather(env, token, propertyId, nowMs) {
     events: rowsToObjects(eventRep, ['eventName'], ['eventCount', 'totalUsers']),
     devices: rowsToObjects(deviceRep, ['deviceCategory'], ['sessions', 'engagementRate']),
   };
+
+  // Computed last: it reads the assembled sections against each other.
+  return { ...report, warnings: reportWarnings(report) };
+}
+
+/* ------------------------------------------------------ cross-validation */
+
+/**
+ * Compare measures that come from DIFFERENT queries but must describe the same
+ * fact. Every defect found in this report so far was of exactly this shape: a
+ * section that was internally consistent, plausible, and wrong. A contradiction
+ * that reaches the reader as a warning costs a paragraph; one that does not
+ * costs a decision.
+ */
+function reportWarnings(r) {
+  const warnings = [];
+
+  const outcome = (event) =>
+    (r.checkoutOutcomes || []).find((o) => o.event === event) || {};
+
+  const ordered = r.orderedCheckout;
+  if (ordered && ordered.available) {
+    const firstStage = ordered.stages?.[0];
+    const independentUsers = outcome(firstStage?.event).users || 0;
+    if (firstStage && firstStage.users === 0 && independentUsers > 0) {
+      warnings.push(
+        `The ordered funnel reports 0 users at "${firstStage.label}" while the independent event count reports ${independentUsers}. The funnel query is wrong, not the behaviour — do not read the funnel as zero conversion.`,
+      );
+    }
+  } else if (ordered && ordered.error) {
+    warnings.push(`Ordered checkout funnel withheld: ${ordered.error}`);
+  }
+
+  const failedCount = outcome('checkout_failed').eventCount || 0;
+  const reasons = r.checkoutFailureReasons;
+  if (reasons?.available) {
+    const reasonTotal = reasons.rows.reduce(
+      (sum, row) => sum + (row.eventCount || 0),
+      0,
+    );
+    if (reasonTotal !== failedCount) {
+      warnings.push(
+        `checkout_failed is counted ${failedCount} time(s) in the outcomes table but the failure-reason breakdown totals ${reasonTotal}. The two come from different queries; one of them is misattributed.`,
+      );
+    }
+    if (reasons.rows.length && reasons.rows.every((row) => row.reason === '(not set)')) {
+      warnings.push(
+        'Every checkout failure reason reads "(not set)": register the "reason" event parameter as an event-scoped GA4 custom dimension. Registration is not retroactive.',
+      );
+    }
+  }
+
+  const sums = r.measurementQuality?.sessionSums;
+  if (sums && !r.measurementQuality.reconciled) {
+    const off = Object.entries(sums)
+      .filter(([, value]) => value !== sums.core)
+      .map(([scope, value]) => `${scope} ${value}`)
+      .join(', ');
+    warnings.push(
+      `Session totals differ by cut (core ${sums.core}; ${off}). Session-scoped dimensions split a session across values, so treat dimensioned session shares as directional and quote the core total for anything absolute.`,
+    );
+  }
+
+  return warnings;
 }
 
 /* ------------------------------------------------- interaction probing */
@@ -862,6 +984,68 @@ async function handleInteractions(env, url) {
   };
 }
 
+async function handleDiagnose(env) {
+  const sa = loadServiceAccount(env);
+  if (!env.GA_PROPERTY_ID) throw new Error('GA_PROPERTY_ID is not set');
+  const token = await getAccessToken(sa);
+  const propertyId = env.GA_PROPERTY_ID;
+  const p = periods(Date.now());
+  const out = { period: p, propertyId };
+
+  const capture = async (key, fn) => {
+    try {
+      out[key] = await fn();
+    } catch (error) {
+      out[`${key}Error`] = String(error.message || error).slice(0, 800);
+    }
+  };
+
+  await capture('funnelRaw', () =>
+    runFunnelReport(token, propertyId, {
+      dateRanges: [{ startDate: p.current.start, endDate: p.current.end }],
+      funnel: {
+        isOpenFunnel: false,
+        steps: ORDERED_CHECKOUT_STAGES.map((stage) => ({
+          name: stage.label,
+          filterExpression: { funnelEventFilter: { eventName: stage.event } },
+        })),
+      },
+    }),
+  );
+
+  await capture('checkoutFailureRaw', () =>
+    runReport(token, propertyId, {
+      dateRanges: [{ startDate: p.current.start, endDate: p.current.end }],
+      dimensions: [{ name: 'eventName' }, { name: 'customEvent:reason' }],
+      metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: { matchType: 'EXACT', value: 'checkout_failed' },
+        },
+      },
+      limit: 25,
+    }),
+  );
+
+  await capture('priorCheckoutRaw', () =>
+    runReport(token, propertyId, {
+      dateRanges: [{ startDate: p.prior.start, endDate: p.prior.end }],
+      dimensions: [{ name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: CHECKOUT_EVENTS.map((stage) => stage.event) },
+        },
+      },
+      limit: 20,
+    }),
+  );
+
+  return out;
+}
+
 /* -------------------------------------------------------------- storage */
 
 async function ensureTable(db) {
@@ -968,6 +1152,15 @@ function toMarkdown(r) {
   L.push(`Prior window: ${r.period.prior.start} to ${r.period.prior.end}`);
   L.push(`Generated: ${r.generatedAt}`);
   L.push('');
+
+  // Warnings lead. A contradiction discovered after the reader has already
+  // formed a view has arrived too late to be useful.
+  if (r.warnings?.length) {
+    L.push('## Read this first');
+    L.push('');
+    r.warnings.forEach((w) => L.push(`- **${w}**`));
+    L.push('');
+  }
 
   L.push('## Totals vs prior week');
   L.push('');
@@ -1283,6 +1476,17 @@ const text = (body, status = 200) =>
     headers: { 'content-type': 'text/plain; charset=utf-8' },
   });
 
+/** Styled HTML response for the browser view of a stored report. */
+const htmlResponse = (body, status = 200) =>
+  new Response(body, {
+    status,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      // A weekly report is a snapshot; never let an intermediary serve a stale one.
+      'cache-control': 'no-store',
+    },
+  });
+
 async function handleDiscover(env) {
   const sa = loadServiceAccount(env);
   const token = await getAccessToken(sa);
@@ -1330,8 +1534,11 @@ export {
   cleanFunnelStepName,
   delta,
   duration,
+  funnelHasRows,
+  gather,
   orderedFunnelFrom,
   periods,
+  reportWarnings,
   toMarkdown,
 };
 
@@ -1368,11 +1575,40 @@ export default {
 
       if (path === '/interactions') return json(await handleInteractions(env, url));
 
+      // Raw GA4 payloads for the two fragile queries: the v1alpha funnel and
+      // the custom-dimension failure probe. Both have already drifted once —
+      // the funnel by repeating its metric headers, the probe by depending on a
+      // dimension registration that may not exist. When a section looks wrong,
+      // read the response Google actually sent before changing the parser.
+      if (path === '/diagnose') return json(await handleDiagnose(env));
+
+
       if (path === '/run') {
         const report = await doRun(env, Date.now());
         return url.searchParams.get('format') === 'json'
           ? json(report)
           : text(toMarkdown(report));
+      }
+
+      // The styled report the cron renders and mails. Reads the stored payload
+      // rather than re-pulling, so the link in an email always resolves to the
+      // exact numbers that email was built from.
+      if (path === '/report') {
+        if (!env.ANALYTICS_DB) return text('D1 not bound', 500);
+        const stored = await loadLatest(env.ANALYTICS_DB);
+        if (!stored) return text('no report stored yet — call /run first', 404);
+        return htmlResponse(renderReportHtml(stored));
+      }
+
+      // Sends the stored report by email now, and reports exactly what the
+      // Email API said. Use it to confirm delivery the moment the token
+      // is set, rather than waiting a week to find out from a silent cron.
+      if (path === '/send-test') {
+        if (!env.ANALYTICS_DB) return text('D1 not bound', 500);
+        const stored = await loadLatest(env.ANALYTICS_DB);
+        if (!stored) return text('no report stored yet — call /run first', 404);
+        const delivery = await sendReportEmail(env, stored);
+        return json(delivery, delivery.sent ? 200 : 502);
       }
 
       if (path === '/latest') {
@@ -1392,10 +1628,35 @@ export default {
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
-      doRun(env, event.scheduledTime).catch((e) => {
-        console.error('scheduled GA4 pull failed:', e.message || e);
-        throw e;
-      }),
+      (async () => {
+        let report;
+        try {
+          report = await doRun(env, event.scheduledTime);
+        } catch (e) {
+          console.error('scheduled GA4 pull failed:', e.message || e);
+          throw e;
+        }
+
+        // Delivery is separate from the pull on purpose: the report is already
+        // persisted and served at /report by this point, so a mail problem is
+        // logged rather than allowed to look like a failed pull.
+        const delivery = await sendReportEmail(env, report);
+        if (delivery.sent) {
+          console.log(`weekly report emailed to ${delivery.to}`);
+        } else if (delivery.reason === 'not_configured') {
+          console.warn(`weekly report not emailed: ${delivery.hint}`);
+        } else {
+          console.error(
+            `weekly report email failed (${delivery.status || 'no status'}): ${delivery.error}`,
+          );
+        }
+
+        if (report.warnings?.length) {
+          console.warn(
+            `weekly report carries ${report.warnings.length} measurement warning(s): ${report.warnings.join(' | ')}`,
+          );
+        }
+      })(),
     );
   },
 };
