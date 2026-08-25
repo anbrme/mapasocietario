@@ -5262,7 +5262,7 @@ const SpanishCompanyNetworkGraph = ({
             clientY: event?.clientY ?? 0,
             preventDefault: () => {},
           };
-          handleNodeRightClick(node, syntheticEvent);
+          handleNodeRightClick(node, syntheticEvent, { interactionSource: 'touch' });
         } else {
           // First tap — just select/highlight the node
           lastClickRef.current = { nodeId, time: now };
@@ -9620,7 +9620,8 @@ const SpanishCompanyNetworkGraph = ({
             nodeLabel={() => ''}
             onNodeClick={handleNodeClick}
             onNodeHover={handleNodeHover}
-            onNodeRightClick={handleNodeRightClick}
+            onNodeRightClick={(node, event) =>
+              handleNodeRightClick(node, event, { interactionSource: 'right_click' })}
             onBackgroundClick={handleBackgroundClick}
             onNodeDrag={handleNodeDrag}
             onNodeDragEnd={handleNodeDragEnd}
