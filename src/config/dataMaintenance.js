@@ -1,5 +1,5 @@
 export const DATA_MAINTENANCE = Object.freeze({
-  enabled: true,
+  enabled: false,
   title: 'A server migration is in progress and is expected to last for a few minutes. We recommend you do not buy a due diligence in this time window - we strongly recommend waiting until this notice disappears.',
   message:
     'Company and officer search may be unavailable while we migrate the server. Some results may be incomplete or briefly delayed during the upgrade.',
