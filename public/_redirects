@@ -1,4 +1,25 @@
-# SPA fallback — Cloudflare Pages serves static files first, so prerendered
-# routes (due-diligence/index.html, dashboard/index.html, etc.) are served
-# directly. This catch-all only handles routes with no static file.
-/*  /index.html  200
+# Cloudflare Pages serving order, for reference:
+#   1. Pages Functions (functions/) -- _redirects is never consulted for those
+#   2. a matching static file, which includes every prerendered route
+#   3. the rewrites below
+#   4. 404.html, served with a real 404 status
+#
+# There is deliberately NO "/*  /index.html  200" catch-all. With one, every
+# path on the domain answered 200 with the 20kB app shell -- /.git/config,
+# /root/.git-credentials, /application-prod.properties and ~40 other probes
+# from one scanner all got HTTP 200 (97.5% of its 4,759 requests in the three
+# days to 26 Aug 2026). Nothing leaked; it is the shell, not the file. But a
+# domain that answers 200 to everything reports no 404s, which is a soft-404
+# farm for Google and a green light for the scanners.
+#
+# So the rewrites are enumerated instead. Prerendered routes
+# (scripts/prerender.mjs) need no entry -- they are real files on disk. Only
+# client-only routes do. Add a route to src/main.jsx that is not prerendered
+# and you must add it here; test/spa-routing.test.mjs fails if you forget.
+# The target is /app-shell (dist/app-shell.html, written by prerender.mjs) and
+# NOT /index.html: Pages normalises "/index.html" to "/" and a rewrite whose
+# destination is itself redirected answers with that 308 instead of the page.
+/admin         /app-shell  200
+/order/*       /app-shell  200
+/alerts/*      /app-shell  200
+/es/alerts/*   /app-shell  200

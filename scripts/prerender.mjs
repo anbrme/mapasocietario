@@ -908,4 +908,29 @@ for (const route of routes) {
   console.log(`  Prerendered: ${route.path}/index.html`);
 }
 
+// ---------------------------------------------------------------------------
+// App shell for the client-only routes
+// ---------------------------------------------------------------------------
+//
+// /order/:sessionId, /admin and the /alerts pages render entirely client-side,
+// so they have no file of their own -- and public/_redirects deliberately has
+// no SPA catch-all, so they need a concrete target to be rewritten to. This is
+// it.
+//
+// The target must be referenced WITHOUT the extension. Cloudflare Pages
+// normalises "/app-shell.html" to "/app-shell" with a 308, and a rewrite whose
+// destination is itself redirected returns that 308 instead of the page -- so
+// the rules in _redirects point at "/app-shell", which resolves to this file.
+//
+// noindex: every route it serves is private or single-use, and the shell must
+// never compete with the homepage for the same content in the index.
+const appShellHtml = replaceMetaTag(
+  replaceTag(removeHreflangLinks(removeNoscriptFallback(baseHtml)), 'title', 'Mapa Societario'),
+  'name',
+  'robots',
+  'noindex,follow',
+);
+writeFileSync(path.join(distDir, 'app-shell.html'), appShellHtml, 'utf8');
+console.log('  Prerendered: /app-shell.html (target for client-only routes)');
+
 console.log(`Prerendering complete (${routes.length} routes).`);
