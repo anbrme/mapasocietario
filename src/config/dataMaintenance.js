@@ -1,8 +1,8 @@
 export const DATA_MAINTENANCE = Object.freeze({
-  enabled: false,
-  title: 'An index upgrade is in progress and is expected to last for 6 hours. We recommend you do not buy a due diligence in this time window - we strongly recommend waiting until this notice disappears.',
+  enabled: true,
+  title: 'A server migration is in progress and is expected to last for a few minutes. We recommend you do not buy a due diligence in this time window - we strongly recommend waiting until this notice disappears.',
   message:
-    'Company and officer search remains available while we upgrade the index in the background. Some results may be incomplete or briefly delayed during the upgrade.',
+    'Company and officer search may be unavailable while we migrate the server. Some results may be incomplete or briefly delayed during the upgrade.',
 });
 
 const INDEX_UNAVAILABLE_PATTERNS = [
