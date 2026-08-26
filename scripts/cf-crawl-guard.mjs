@@ -17,10 +17,12 @@
  * a visibility one.
  *
  * Usage:
- *   CLOUDFLARE_WAF_TOKEN=... node scripts/cf-crawl-guard.mjs           # dry run
- *   CLOUDFLARE_WAF_TOKEN=... node scripts/cf-crawl-guard.mjs --apply
+ *   set -a && . ./.env.analytics.local && set +a
+ *   node scripts/cf-crawl-guard.mjs           # dry run
+ *   node scripts/cf-crawl-guard.mjs --apply
  *
- * The token needs Zone:Read plus Zone WAF:Edit on the zone. The analytics
+ * The token needs Zone WAF:Edit on the zone, plus either Zone:Read or
+ * CF_ZONE_ID set so the zone does not have to be looked up by name. The analytics
  * token cannot do this -- it is read-only by design, keep it that way.
  */
 
@@ -65,24 +67,39 @@ async function cf(path, token, init = {}) {
 
 async function main() {
   const apply = process.argv.includes('--apply');
-  const token = process.env.CLOUDFLARE_WAF_TOKEN || process.env.CLOUDFLARE_API_TOKEN;
+  const token =
+    process.env.WAF_CLOUDFLARE_TOKEN ||
+    process.env.CLOUDFLARE_WAF_TOKEN ||
+    process.env.CLOUDFLARE_API_TOKEN;
 
   console.log(`\nRule: ${RULE.action.toUpperCase()} — ${RULE_DESCRIPTION}`);
   console.log(`  ${RULE.expression}\n`);
 
   if (!token) {
     console.error(
-      'CLOUDFLARE_WAF_TOKEN is not set. Create a token at\n' +
+      'WAF_CLOUDFLARE_TOKEN is not set. Create a token at\n' +
         '  https://dash.cloudflare.com/profile/api-tokens\n' +
         `with Zone:Read and Zone WAF:Edit on ${ZONE_NAME}, then:\n` +
-        `  CLOUDFLARE_WAF_TOKEN=... node scripts/cf-crawl-guard.mjs --apply`,
+        `  add it to .env.analytics.local as WAF_CLOUDFLARE_TOKEN, then:\n` +
+        `  set -a && . ./.env.analytics.local && set +a && node scripts/cf-crawl-guard.mjs --apply`,
     );
     process.exit(1);
   }
 
-  const zones = await cf(`/zones?name=${encodeURIComponent(ZONE_NAME)}`, token);
-  if (!zones?.length) throw new Error(`zone ${ZONE_NAME} not visible to this token`);
-  const zoneId = zones[0].id;
+  // A token scoped to WAF alone often cannot list zones, so CF_ZONE_ID skips
+  // the lookup. Resolving by name stays the default because it is the form
+  // that fails loudly when pointed at the wrong account.
+  let zoneId = process.env.CF_ZONE_ID;
+  if (!zoneId) {
+    const zones = await cf(`/zones?name=${encodeURIComponent(ZONE_NAME)}`, token);
+    if (!zones?.length) {
+      throw new Error(
+        `zone ${ZONE_NAME} not visible to this token — it needs Zone:Read, ` +
+          'or set CF_ZONE_ID to skip the lookup',
+      );
+    }
+    zoneId = zones[0].id;
+  }
 
   // The entrypoint ruleset holds every custom rule on the zone, and a PUT
   // replaces the whole list -- so read what is there and upsert into a copy.
