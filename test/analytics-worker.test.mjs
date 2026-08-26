@@ -7,6 +7,7 @@ import worker, {
   duration,
   funnelHasRows,
   gather,
+  gatherToday,
   orderedFunnelFrom,
   periods,
   reportWarnings,
@@ -19,6 +20,66 @@ test('periods uses two adjacent complete seven-day windows', () => {
     current: { start: '2026-08-18', end: '2026-08-24' },
     prior: { start: '2026-08-11', end: '2026-08-17' },
   });
+});
+
+test('today snapshot queries only today and reads newly registered interaction dimensions', async () => {
+  const originalFetch = globalThis.fetch;
+  const seenRanges = [];
+
+  globalThis.fetch = async (_url, init) => {
+    const body = JSON.parse(init.body);
+    seenRanges.push(body.dateRanges);
+    const dimensions = (body.dimensions || []).map((dimension) => dimension.name);
+    const metrics = (body.metrics || []).map((metric) => metric.name);
+    const customDimension = dimensions.find((name) => name.startsWith('customEvent:'));
+    const eventName = body.dimensionFilter?.filter?.stringFilter?.value;
+
+    if (customDimension) {
+      return {
+        ok: true,
+        json: async () => ({
+          rows: [{
+            dimensionValues: [{ value: eventName }, { value: 'double_click' }],
+            metricValues: [{ value: '3' }, { value: '2' }],
+          }],
+        }),
+      };
+    }
+
+    if (dimensions.length === 0) {
+      return {
+        ok: true,
+        json: async () => ({
+          rows: [{ metricValues: metrics.map((name) => ({
+            value: name === 'totalUsers' ? '20' : '1',
+          })) }],
+        }),
+      };
+    }
+
+    return { ok: true, json: async () => ({ rows: [] }) };
+  };
+
+  try {
+    const report = await gatherToday(
+      'test-token',
+      '530829482',
+      Date.parse('2026-08-26T12:00:00Z'),
+    );
+
+    assert.equal(report.window.partial, true);
+    assert.equal(report.totals.totalUsers, 20);
+    assert.equal(report.interactionProbes.length, 4);
+    assert.equal(report.interactionProbes[0].populated, true);
+    assert.equal(report.interactionProbes[0].breakdown[0].value, 'double_click');
+    assert.ok(
+      seenRanges.every(
+        (ranges) => ranges[0].startDate === 'today' && ranges[0].endDate === 'today',
+      ),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('formatters handle report values', () => {

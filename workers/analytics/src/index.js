@@ -12,6 +12,7 @@
  * Endpoints (all require ?token=<REPORT_TOKEN>):
  *   GET /discover          -> GA4 accounts + properties this service account can see
  *   GET /run               -> pull now, persist, return JSON
+ *   GET /today             -> partial current-day behavior + interaction dimensions
  *   GET /latest            -> most recent stored report (?format=md|json, default md)
  *   GET /health            -> config sanity check, no Google call
  *
@@ -970,6 +971,289 @@ const INTERACTION_EVENTS = [
   'graph_node_click',
 ];
 
+/**
+ * A deliberately partial, aggregate view of the property-local current day.
+ * This is for fast product feedback, not weekly comparisons or durable storage.
+ * GA4 can revise intraday numbers, so every response carries that caveat.
+ */
+async function gatherToday(token, propertyId, nowMs = Date.now()) {
+  const dateRanges = [{ startDate: 'today', endDate: 'today' }];
+  const met = (names) => names.map((name) => ({ name }));
+  const dim = (names) => names.map((name) => ({ name }));
+  const call = (body) => runReportCompat(token, propertyId, body);
+
+  const results = await namedAll({
+    totals: call({ dateRanges, metrics: met(CORE_METRICS) }),
+    channels: call({
+      dateRanges,
+      dimensions: dim(['sessionDefaultChannelGroup']),
+      metrics: met(['sessions', 'totalUsers', 'engagementRate']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 25,
+    }),
+    sources: call({
+      dateRanges,
+      dimensions: dim(['sessionSourceMedium']),
+      metrics: met(['sessions', 'totalUsers', 'engagementRate']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 25,
+    }),
+    pages: call({
+      dateRanges,
+      dimensions: dim(['pagePath']),
+      metrics: met(['screenPageViews', 'totalUsers', 'userEngagementDuration']),
+      orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+      limit: 50,
+    }),
+    landingPages: call({
+      dateRanges,
+      dimensions: dim(['landingPage']),
+      metrics: met(['sessions', 'totalUsers', 'bounceRate']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 50,
+    }),
+    countries: call({
+      dateRanges,
+      dimensions: dim(['country']),
+      metrics: met(['sessions', 'totalUsers']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 25,
+    }),
+    devices: call({
+      dateRanges,
+      dimensions: dim(['deviceCategory']),
+      metrics: met(['sessions', 'totalUsers', 'engagementRate']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 10,
+    }),
+    events: call({
+      dateRanges,
+      dimensions: dim(['eventName']),
+      metrics: met(['eventCount', 'totalUsers']),
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: 100,
+    }),
+    funnel: call({
+      dateRanges,
+      dimensions: dim(['eventName']),
+      metrics: met(['eventCount', 'totalUsers']),
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: {
+            values: [...new Set([...FUNNEL_STAGES, ...CHECKOUT_EVENTS].map((s) => s.event))],
+          },
+        },
+      },
+      limit: 50,
+    }),
+  });
+
+  // Keep this as a second wave: a standard property permits ten concurrent
+  // Core requests and the aggregate wave above already uses nine.
+  const interactionProbes = await Promise.all(
+    INTERACTION_PROBES.map(async (probe) => {
+      const key = `customEvent:${probe.param}`;
+      try {
+        const rep = await runReport(token, propertyId, {
+          dateRanges,
+          dimensions: dim(['eventName', key]),
+          metrics: met(['eventCount', 'totalUsers']),
+          dimensionFilter: {
+            filter: {
+              fieldName: 'eventName',
+              stringFilter: { matchType: 'EXACT', value: probe.event },
+            },
+          },
+          limit: 25,
+        });
+        const breakdown = rowsToObjects(rep, ['eventName', key], [
+          'eventCount',
+          'totalUsers',
+        ])
+          .map((row) => ({
+            value: row[key] || '(not set)',
+            eventCount: row.eventCount,
+            users: row.totalUsers,
+          }))
+          .sort((a, b) => b.eventCount - a.eventCount);
+        const onlyNotSet =
+          breakdown.length > 0 && breakdown.every((row) => row.value === '(not set)');
+        return {
+          ...probe,
+          registered: true,
+          populated: breakdown.length > 0 && !onlyNotSet,
+          breakdown,
+          note: onlyNotSet
+            ? 'Dimension is registered but every row is "(not set)" — registration likely postdates these events, or the parameter is not being sent.'
+            : undefined,
+        };
+      } catch (error) {
+        return {
+          ...probe,
+          registered: false,
+          error: String(error.message || error).slice(0, 400),
+        };
+      }
+    }),
+  );
+
+  // Diagnose blank landing pages without exposing a generic GA4 query proxy.
+  // Landing page is session-scoped, while eventName/pagePath are event-scoped;
+  // user counts in these cuts can overlap and are evidence about composition,
+  // not additive cohort totals.
+  const diagnosticResults = await namedAll({
+    landingContext: call({
+      dateRanges,
+      dimensions: dim([
+        'landingPage',
+        'sessionSourceMedium',
+        'platformDeviceCategory',
+        'country',
+      ]),
+      metrics: met(['sessions', 'totalUsers', 'engagementRate', 'bounceRate']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 250,
+    }).catch((error) => ({ optionalError: String(error.message || error).slice(0, 400) })),
+    landingHosts: call({
+      dateRanges,
+      dimensions: dim(['landingPage', 'hostName', 'streamName']),
+      metrics: met(['sessions', 'totalUsers']),
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 100,
+    }).catch((error) => ({ optionalError: String(error.message || error).slice(0, 400) })),
+    landingEvents: call({
+      dateRanges,
+      dimensions: dim(['landingPage', 'eventName']),
+      metrics: met(['eventCount', 'totalUsers']),
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: 500,
+    }).catch((error) => ({ optionalError: String(error.message || error).slice(0, 400) })),
+    journeyByPage: call({
+      dateRanges,
+      dimensions: dim(['eventName', 'pagePath']),
+      metrics: met(['eventCount', 'totalUsers']),
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: {
+            values: [
+              'graph_view',
+              'graph_activation',
+              'graph_search_typing_started',
+              'graph_search_selection',
+              'graph_node_click',
+              'findings_visible',
+              'company_full_profile_click',
+              'company_profile_cta_click',
+              'view_item',
+              'free_report_selected',
+              'file_download',
+              'begin_checkout',
+              'checkout_failed',
+              'checkout_redirect',
+              'purchase',
+            ],
+          },
+        },
+      },
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: 250,
+    }).catch((error) => ({ optionalError: String(error.message || error).slice(0, 400) })),
+  });
+
+  const optionalRows = (report, dimensions, metrics) =>
+    report.optionalError
+      ? { available: false, error: report.optionalError, rows: [] }
+      : { available: true, rows: rowsToObjects(report, dimensions, metrics) };
+  const blankLanding = (row) => row.landingPage === '' || row.landingPage === '(not set)';
+  const landingContext = optionalRows(
+    diagnosticResults.landingContext,
+    ['landingPage', 'sessionSourceMedium', 'platformDeviceCategory', 'country'],
+    ['sessions', 'totalUsers', 'engagementRate', 'bounceRate'],
+  );
+  const landingHosts = optionalRows(
+    diagnosticResults.landingHosts,
+    ['landingPage', 'hostName', 'streamName'],
+    ['sessions', 'totalUsers'],
+  );
+  const landingEvents = optionalRows(
+    diagnosticResults.landingEvents,
+    ['landingPage', 'eventName'],
+    ['eventCount', 'totalUsers'],
+  );
+  const journeyByPage = optionalRows(
+    diagnosticResults.journeyByPage,
+    ['eventName', 'pagePath'],
+    ['eventCount', 'totalUsers'],
+  );
+
+  const rawFunnel = rowsToObjects(results.funnel, ['eventName'], [
+    'eventCount',
+    'totalUsers',
+  ]);
+  const funnelIndex = Object.fromEntries(rawFunnel.map((row) => [row.eventName, row]));
+
+  return {
+    ok: true,
+    generatedAt: new Date(nowMs).toISOString(),
+    propertyId,
+    window: { startDate: 'today', endDate: 'today', partial: true },
+    caveat:
+      'GA4 current-day data is partial and can be revised. Counts are aggregate; they do not identify individual users or reconstruct exact per-user paths.',
+    totals: totalsFrom(results.totals, CORE_METRICS),
+    channels: rowsToObjects(
+      results.channels,
+      ['sessionDefaultChannelGroup'],
+      ['sessions', 'totalUsers', 'engagementRate'],
+    ),
+    sources: rowsToObjects(
+      results.sources,
+      ['sessionSourceMedium'],
+      ['sessions', 'totalUsers', 'engagementRate'],
+    ),
+    pages: rowsToObjects(
+      results.pages,
+      ['pagePath'],
+      ['screenPageViews', 'totalUsers', 'userEngagementDuration'],
+    ),
+    landingPages: rowsToObjects(
+      results.landingPages,
+      ['landingPage'],
+      ['sessions', 'totalUsers', 'bounceRate'],
+    ),
+    countries: rowsToObjects(results.countries, ['country'], ['sessions', 'totalUsers']),
+    devices: rowsToObjects(
+      results.devices,
+      ['deviceCategory'],
+      ['sessions', 'totalUsers', 'engagementRate'],
+    ),
+    events: rowsToObjects(results.events, ['eventName'], ['eventCount', 'totalUsers']),
+    funnel: [...FUNNEL_STAGES, ...CHECKOUT_EVENTS]
+      .filter((stage, index, stages) => stages.findIndex((s) => s.event === stage.event) === index)
+      .map((stage) => ({
+        ...stage,
+        eventCount: funnelIndex[stage.event]?.eventCount || 0,
+        users: funnelIndex[stage.event]?.totalUsers || 0,
+      })),
+    interactionProbes,
+    diagnostics: {
+      blankLanding: {
+        context: landingContext.available
+          ? { available: true, rows: landingContext.rows.filter(blankLanding) }
+          : landingContext,
+        hosts: landingHosts.available
+          ? { available: true, rows: landingHosts.rows.filter(blankLanding) }
+          : landingHosts,
+        events: landingEvents.available
+          ? { available: true, rows: landingEvents.rows.filter(blankLanding) }
+          : landingEvents,
+      },
+      journeyByPage,
+    },
+  };
+}
+
 async function handleInteractions(env, url) {
   const sa = loadServiceAccount(env);
   if (!env.GA_PROPERTY_ID) throw new Error('GA_PROPERTY_ID is not set');
@@ -1714,6 +1998,7 @@ export {
   duration,
   funnelHasRows,
   gather,
+  gatherToday,
   orderedFunnelFrom,
   periods,
   reportWarnings,
@@ -1752,6 +2037,13 @@ export default {
       if (path === '/discover') return await handleDiscover(env);
 
       if (path === '/interactions') return json(await handleInteractions(env, url));
+
+      if (path === '/today') {
+        const sa = loadServiceAccount(env);
+        if (!env.GA_PROPERTY_ID) throw new Error('GA_PROPERTY_ID is not set');
+        const token = await getAccessToken(sa);
+        return json(await gatherToday(token, env.GA_PROPERTY_ID));
+      }
 
       // Raw GA4 payloads for the two fragile queries: the v1alpha funnel and
       // the custom-dimension failure probe. Both have already drifted once —

@@ -109,6 +109,7 @@ All require `?token=<REPORT_TOKEN>`.
 | `/health` | Config check. Does not call Google. |
 | `/discover` | Lists GA4 properties the service account can see. |
 | `/run` | Pulls now, persists to D1, returns the report. |
+| `/today` | Pulls a partial current-day behavior snapshot, including the four graph-interaction custom dimensions. It is not persisted. |
 | `/latest` | Returns the most recently stored report. |
 | `/report` | The stored report as styled HTML — the same document the cron emails. |
 | `/send-test` | Emails the stored report now and returns exactly what the Email API said. |
