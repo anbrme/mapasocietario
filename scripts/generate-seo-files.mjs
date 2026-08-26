@@ -26,44 +26,54 @@ const buildDate = new Date().toISOString().split('T')[0];
 // personal data. Inclusion in a training corpus is effectively irreversible, so
 // a later erasure request could not be honoured downstream. Company pages stay
 // fully open to search and to AI answers -- only training is withheld.
+// The parameter traps below have to be repeated inside every per-crawler group.
+// Under the robots standard (RFC 9309 s2.2.1) a crawler obeys exactly ONE
+// group -- the most specific one matching its own name -- and inherits nothing
+// from "User-agent: *". Giving meta-externalagent a group of its own therefore
+// exempted it from these traps, which is how it came to fetch /app/ and
+// /due-diligence/ 56,916 times in the three days to 26 Aug 2026 (~19k/day,
+// against ~12 real visitors/day). Add a crawler group and you must carry the
+// traps into it.
+//
+// /app and /due-diligence are single-page shells: every query-string combination
+// serves byte-identical HTML and already canonicalises back to the bare path.
+// Each /empresa page links out with ?search=<name> and ?company=<name>, so the
+// ~4k companies in sitemap-demand generate ~16k crawlable duplicates of two
+// pages -- crawl budget spent there is crawl budget not spent on /empresa.
+// Google folds them anyway ("Duplicate without user-selected canonical"), so
+// nothing is lost by never fetching them.
+//
+// Only the unbounded parameters are blocked. ?lang and ?source take a handful of
+// values and are real nav destinations, so they stay crawlable -- blocking those
+// too would just trade "Duplicate without user-selected canonical" for "Blocked
+// by robots.txt" on pages that ought to be reachable. The bare /app/ and
+// /due-diligence/ are unaffected and remain indexable by everyone.
+const crawlTrapDisallows = [
+  'Disallow: /app/?*search=',
+  'Disallow: /app/?*gk=',
+  'Disallow: /due-diligence/?*company=',
+].join('\n');
+
+// Crawlers that get a group of their own, because /empresa/ is withheld from
+// them. Everything else falls under "User-agent: *".
+const namedCrawlers = ['GPTBot', 'ClaudeBot', 'CCBot', 'Applebot-Extended', 'meta-externalagent'];
+
+const namedCrawlerGroups = namedCrawlers
+  .map((agent) => `User-agent: ${agent}
+${crawlTrapDisallows}
+Disallow: /empresa/`)
+  .join('\n\n');
+
 const robotsTxt = `# Content signals: https://contentsignals.org/
 User-agent: *
 Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
-
-# /app and /due-diligence are single-page shells: every query-string combination
-# serves byte-identical HTML and already canonicalises back to the bare path.
-# Each /empresa page links out with ?search=<name> and ?company=<name>, so the
-# ~4k companies in sitemap-demand generate ~16k crawlable duplicates of two
-# pages -- crawl budget spent there is crawl budget not spent on /empresa.
-# Google folds them anyway ("Duplicate without user-selected canonical"), so
-# nothing is lost by never fetching them.
-#
-# Only the unbounded parameters are blocked. ?lang and ?source take a handful of
-# values and are real nav destinations, so they stay crawlable -- blocking those
-# too would just trade "Duplicate without user-selected canonical" for "Blocked
-# by robots.txt" on pages that ought to be reachable. The bare /app/ and
-# /due-diligence/ are unaffected and remain indexable.
-Disallow: /app/?*search=
-Disallow: /app/?*gk=
-Disallow: /due-diligence/?*company=
+${crawlTrapDisallows}
 
 # Officer names on company pages are personal data: open to search and AI
-# answers, withheld from model training.
-User-agent: GPTBot
-Disallow: /empresa/
-
-User-agent: ClaudeBot
-Disallow: /empresa/
-
-User-agent: CCBot
-Disallow: /empresa/
-
-User-agent: Applebot-Extended
-Disallow: /empresa/
-
-User-agent: meta-externalagent
-Disallow: /empresa/
+# answers, withheld from model training. Each group repeats the parameter traps
+# above -- robots.txt groups do not inherit.
+${namedCrawlerGroups}
 
 Sitemap: ${siteUrl}/sitemap.xml
 `;
