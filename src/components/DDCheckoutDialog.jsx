@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -43,6 +43,7 @@ import { resolveGroupKey, listCorrections } from '../services/correctionsService
 
 const DD_PRICE = 22.50;
 const FS_PRICE = 17.50;
+import { furthestCheckoutStage } from '../utils/checkoutAbandon';
 // Product Hunt launch promo. Set to null after the launch to hide the banner.
 //const LAUNCH_PROMO_CODE = 'PRODUCTHUNT50';
 // Free-first-report insight program (intake-gated). Ship DORMANT: keep null
@@ -356,6 +357,39 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
     });
   }, [open, companyName, country]);
 
+  // Funnel stage 1b: the dialog closed without a submitted order. view_item and
+  // begin_checkout bracket the step but say nothing about the drop-offs in
+  // between, which is where the interesting failure lives.
+  //
+  // The cleanup below runs one commit after the values it reports change, so it
+  // reads them from a ref rather than the effect's own closure — a dependency
+  // array wide enough to keep the closure fresh would re-run the effect on
+  // every keystroke and fire an abandon per character typed.
+  const submittedRef = useRef(false);
+  const abandonStateRef = useRef({});
+  abandonStateRef.current = {
+    email,
+    useFreeReport,
+    buyerRole,
+    needContext,
+    company: companyName || '',
+    hadError: !!error,
+  };
+  useEffect(() => {
+    if (!open) return undefined;
+    submittedRef.current = false;
+    return () => {
+      if (submittedRef.current) return;
+      const state = abandonStateRef.current;
+      trackEvent('dd_checkout_abandoned', {
+        furthest_stage: furthestCheckoutStage(state),
+        company: state.company,
+        had_error: state.hadError,
+        platform: isAndroidApp ? 'android' : 'web',
+      });
+    };
+  }, [open, isAndroidApp]);
+
   useEffect(() => {
     if (!open || !isAndroidApp || !ANDROID_PLAY_BILLING_ENABLED) return;
     let cancelled = false;
@@ -575,6 +609,7 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
     setLoading(true);
     // Funnel stage 2: user submitted the checkout form (pre-redirect). The
     // matching purchase event fires on OrderStatusPage after payment.
+    submittedRef.current = true;
     trackEvent('begin_checkout', {
       currency: 'EUR',
       value: freeActive ? 0 : subtotal,
