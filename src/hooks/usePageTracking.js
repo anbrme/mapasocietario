@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { analyticsPagePath } from '../utils/analyticsPath';
+import { analyticsPageLocation } from '../utils/analyticsPath';
 import { isReturningGuideVisit, shouldTrackPageView } from '../utils/firstRunGuide';
 
 // Snapshot taken at module load, which is the only point that reliably beats
@@ -21,7 +21,7 @@ export default function usePageTracking() {
     })) return;
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'page_view', {
-        page_path: analyticsPagePath(location.pathname, location.search),
+        page_location: analyticsPageLocation(location.pathname, location.search),
         page_title: document.title,
       });
     }

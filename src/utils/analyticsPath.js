@@ -14,3 +14,19 @@ export function normalizeAnalyticsPathname(pathname) {
 export function analyticsPagePath(pathname, search = '') {
   return `${normalizeAnalyticsPathname(pathname)}${search || ''}`;
 }
+
+/**
+ * Return the absolute URL to send as GA4's `page_location`.
+ *
+ * GA4 has no `page_path` parameter — that is Universal Analytics, and gtag
+ * drops it. It builds every page dimension from `page_location`, defaulting to
+ * the browser's raw URL when we omit it, which is how the normalisation above
+ * ended up doing nothing. Sending it explicitly is what makes it apply.
+ */
+export function analyticsPageLocation(pathname, search = '', origin) {
+  const resolved = origin === undefined && typeof window !== 'undefined'
+    ? window.location.origin
+    : origin;
+  const base = String(resolved || '').replace(/\/+$/, '');
+  return `${base}${analyticsPagePath(pathname, search)}`;
+}

@@ -1032,6 +1032,22 @@ function jsonLd(company, slug, lang, t, seed, isIncorporation = false, { dissolu
     .join('');
 }
 
+// GA4 for the server-rendered pages. send_page_view is off so the view can
+// carry the canonical URL rather than whatever the visitor's address bar holds
+// (tracking params, a missing trailing slash). It has to travel as
+// page_location: GA4 has no page_path parameter — that is Universal Analytics,
+// and gtag drops it — so the canonicalisation only lands via page_location.
+const GA_SNIPPET = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
+<script>
+  window.dataLayer=window.dataLayer||[];
+  function gtag(){dataLayer.push(arguments)}
+  gtag('js',new Date());
+  gtag('config','G-HHWT6ZTKZD',{send_page_view:false});
+  var canonical=document.querySelector('link[rel="canonical"]');
+  var pageUrl=canonical?new URL(canonical.href,location.origin):new URL((location.pathname.replace(/\\/+$/,'')||'/'),location.origin);
+  gtag('event','page_view',{page_location:pageUrl.origin+pageUrl.pathname+location.search,page_title:document.title});
+</script>`;
+
 const STYLE = `<style>
   :root{--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--bg:#f8fafc;--brand:#2563eb}
   *{box-sizing:border-box}
@@ -1592,16 +1608,7 @@ ${hreflangTags(canonicalSlug)}
 <meta name="twitter:description" content="${esc(desc)}">
 ${jsonLd(company, canonicalSlug, lang, t, seed, isIncorporation, { dissolutionDate })}
 ${STYLE}
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
-<script>
-  window.dataLayer=window.dataLayer||[];
-  function gtag(){dataLayer.push(arguments)}
-  gtag('js',new Date());
-  gtag('config','G-HHWT6ZTKZD',{send_page_view:false});
-  var canonical=document.querySelector('link[rel="canonical"]');
-  var pagePath=canonical?new URL(canonical.href,location.origin).pathname:(location.pathname.replace(/\/+$/,'')||'/');
-  gtag('event','page_view',{page_path:pagePath+location.search,page_title:document.title});
-</script>
+${GA_SNIPPET}
 </head>
 <body>
 <div class="wrap">
@@ -1971,16 +1978,7 @@ export function renderHub(lang = 'es') {
 <meta property="og:image" content="${SITE}/og-image.svg">
 <script type="application/ld+json">${ld}</script>
 ${HUB_STYLE}
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
-<script>
-  window.dataLayer=window.dataLayer||[];
-  function gtag(){dataLayer.push(arguments)}
-  gtag('js',new Date());
-  gtag('config','G-HHWT6ZTKZD',{send_page_view:false});
-  var canonical=document.querySelector('link[rel="canonical"]');
-  var pagePath=canonical?new URL(canonical.href,location.origin).pathname:(location.pathname.replace(/\/+$/,'')||'/');
-  gtag('event','page_view',{page_path:pagePath+location.search,page_title:document.title});
-</script>
+${GA_SNIPPET}
 </head>
 <body>
 <div class="wrap">
