@@ -1,3 +1,8 @@
+/*
+ * Mapa Societario — Programa de ordenador
+ * Autor: Alessandro Nurnberg
+ * Todos los derechos reservados.
+ */
 import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { CssBaseline, Box, Button } from '@mui/material';

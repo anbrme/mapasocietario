@@ -1,3 +1,8 @@
+/*
+ * Mapa Societario — Programa de ordenador
+ * Autor: Alessandro Nurnberg
+ * Todos los derechos reservados.
+ */
 import { execFileSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';

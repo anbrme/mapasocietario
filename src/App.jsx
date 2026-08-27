@@ -1,3 +1,8 @@
+/*
+ * Mapa Societario — Programa de ordenador
+ * Autor: Alessandro Nurnberg
+ * Todos los derechos reservados.
+ */
 import React from 'react';
 import { Box, ToggleButton, ToggleButtonGroup, Typography, IconButton, Tooltip, Menu, MenuItem, Divider } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';

@@ -1,3 +1,8 @@
+/*
+ * Mapa Societario — Programa de ordenador
+ * Autor: Alessandro Nurnberg
+ * Todos los derechos reservados.
+ */
 // Central API base URLs.
 //
 // Production defaults are baked in and used by the deployed build (which sets
