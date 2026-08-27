@@ -1944,6 +1944,64 @@ function toMarkdown(r) {
   );
   L.push('');
 
+  // Search Console. Present in the markdown as well as the HTML because a
+  // Claude task reads THIS, and a report where the two views disagree about
+  // what the data said is worse than one that omits a section outright.
+  const sc = r.searchConsole;
+  if (sc && sc.available) {
+    const pos = (v) => (v == null ? '—' : v.toFixed(1));
+    const pc = (v) => `${((v || 0) * 100).toFixed(2)}%`;
+    L.push('## Search Console');
+    L.push('');
+    L.push(
+      `Google data through **${sc.dataThrough}**${sc.lagDays ? ` (${sc.lagDays} day(s) behind the rest of this report — normal, GSC lags 2-3 days)` : ''}, compared with ${sc.comparedWith}, the same weekday a week earlier.`,
+    );
+    L.push('');
+    L.push(
+      mdTable(
+        ['Surface', 'Clicks', 'Impressions', 'CTR', 'Position'],
+        [
+          ['Whole site', sc.day.clicks, sc.day.impressions, pc(sc.day.ctr), pos(sc.day.position)],
+          ['Whole site, a week earlier', sc.priorDay.clicks, sc.priorDay.impressions, pc(sc.priorDay.ctr), pos(sc.priorDay.position)],
+          ['/empresa', sc.empresaDay.clicks, sc.empresaDay.impressions, pc(sc.empresaDay.ctr), pos(sc.empresaDay.position)],
+          ['/empresa, a week earlier', sc.empresaPriorDay.clicks, sc.empresaPriorDay.impressions, pc(sc.empresaPriorDay.ctr), pos(sc.empresaPriorDay.position)],
+        ],
+      ),
+    );
+    L.push('');
+    if (sc.topQueries?.length) {
+      L.push('## Top search queries');
+      L.push('');
+      L.push(mdTable(['Query', 'Clicks', 'Impressions', 'CTR', 'Position'],
+        sc.topQueries.map((q) => [q.query, q.clicks, q.impressions, pc(q.ctr), pos(q.position)])));
+      L.push('');
+    }
+    if (sc.strikingDistance?.length) {
+      L.push('## Ranking but not clicked');
+      L.push('');
+      L.push(mdTable(['Page', 'Clicks', 'Impressions', 'CTR', 'Position'],
+        sc.strikingDistance.map((p) => [p.page, p.clicks, p.impressions, pc(p.ctr), pos(p.position)])));
+      L.push('');
+    }
+    const ex = sc.experiment;
+    if (ex && (ex.variant.impressions || ex.control.impressions)) {
+      L.push('## Title A/B test');
+      L.push('');
+      L.push(mdTable(['Arm', 'Pages', 'Clicks', 'Impressions', 'CTR', 'Position'], [
+        ['Variant (counts-first)', ex.variant.pages, ex.variant.clicks, ex.variant.impressions, pc(ex.variant.ctr), pos(ex.variant.position)],
+        ['Control (CIF-first)', ex.control.pages, ex.control.clicks, ex.control.impressions, pc(ex.control.ctr), pos(ex.control.position)],
+      ]));
+      L.push('');
+      L.push('A CTR win that came with a WORSE position is a loss, not a win: it means the CIF leaving the title head cost the exact-match ranking.');
+      L.push('');
+    }
+  } else if (sc) {
+    L.push('## Search Console');
+    L.push('');
+    L.push(`Not available this run — ${sc.reason || 'unknown reason'}. GA4 and edge figures are unaffected.`);
+    L.push('');
+  }
+
   L.push('## Geography');
   L.push('');
   L.push(
