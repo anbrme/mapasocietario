@@ -65,7 +65,6 @@ const COPY = {
       from: 'From EUR 22.50',
       instant: 'Instant delivery',
       noAccount: 'No account needed',
-      monitoring: '+ Free monitoring',
       sample: 'See a sample report (PDF)',
     },
     ctaSearch: 'Start with the relationship graph',
@@ -79,8 +78,8 @@ const COPY = {
       { title: 'PDF Report', desc: 'Professional, downloadable PDF ready for compliance files, investor reviews, or internal records.' },
     ],
     monitoring: {
-      title: 'Free monitoring included',
-      body: 'Every Due Diligence report includes free monitoring of the company. You will receive email alerts when new BORME filings are published (appointments, resignations, capital changes, dissolutions) or when an international regulator issues a warning through IOSCO.',
+      title: 'Free monitoring — no purchase needed',
+      body: 'Monitoring is free for everyone, with or without a report. Ask us to follow any Spanish company and you will receive email alerts when new BORME filings are published (appointments, resignations, capital changes, dissolutions) or when an international regulator issues a warning through IOSCO.',
       chips: ['BORME alerts', 'IOSCO alerts (90+ regulators)', 'Automatic email'],
     },
     fs: {
@@ -100,7 +99,7 @@ const COPY = {
     ladder: {
       heading: 'Choose the right level of work',
       items: [
-        { title: 'Self-serve report', text: 'Instant Spanish company due diligence PDF with graph context, BORME history, BOE sanctions checks, and monitoring.', action: 'Start with the graph' },
+        { title: 'Self-serve report', text: 'Instant Spanish company due diligence PDF with graph context, BORME history, and BOE sanctions checks.', action: 'Start with the graph' },
         { title: 'NC Data API', text: 'Spanish registry intelligence for third-party platforms, compliance products, and data integrations through NC Data.', action: 'Discuss API access' },
         { title: 'Human-led investigation', text: 'For higher-stakes cases, Nurnberg Consulting adds analyst work, source retrieval, document review, and bespoke conclusions.', action: 'Visit Nurnberg Consulting' },
         { title: 'Multi-country platform', text: 'NC Data supports broader investigations beyond Spain, including other European jurisdictions and advanced document workflows.', action: 'Visit NC Data' },
@@ -163,7 +162,6 @@ const COPY = {
       from: 'Desde 22,50 €',
       instant: 'Entrega instantánea',
       noAccount: 'Sin necesidad de cuenta',
-      monitoring: '+ Monitorización gratis',
       sample: 'Ver un informe de ejemplo (PDF)',
     },
     ctaSearch: 'Empieza por el grafo de relaciones',
@@ -177,8 +175,8 @@ const COPY = {
       { title: 'Informe en PDF', desc: 'PDF profesional y descargable, listo para expedientes de compliance, revisiones de inversores o archivo interno.' },
     ],
     monitoring: {
-      title: 'Monitorización gratuita incluida',
-      body: 'Cada informe due diligence incluye monitorización gratuita de la empresa. Recibirás alertas por correo cuando se publiquen nuevas inscripciones en el BORME (nombramientos, ceses, cambios de capital, disoluciones) o cuando un regulador internacional emita una advertencia a través de IOSCO.',
+      title: 'Monitorización gratuita — sin necesidad de comprar',
+      body: 'La monitorización es gratuita para todo el mundo, con informe o sin él. Pídenos seguir cualquier empresa española y recibirás alertas por correo cuando se publiquen nuevas inscripciones en el BORME (nombramientos, ceses, cambios de capital, disoluciones) o cuando un regulador internacional emita una advertencia a través de IOSCO.',
       chips: ['Alertas BORME', 'Alertas IOSCO (90+ reguladores)', 'Correo automático'],
     },
     fs: {
@@ -198,7 +196,7 @@ const COPY = {
     ladder: {
       heading: 'Elige el nivel de trabajo adecuado',
       items: [
-        { title: 'Informe autoservicio', text: 'PDF de due diligence de empresa española al instante, con contexto del grafo, historial BORME, comprobación de sanciones del BOE y monitorización.', action: 'Empezar por el grafo' },
+        { title: 'Informe autoservicio', text: 'PDF de due diligence de empresa española al instante, con contexto del grafo, historial BORME y comprobación de sanciones del BOE.', action: 'Empezar por el grafo' },
         { title: 'API NC Data', text: 'Inteligencia del registro español para plataformas de terceros, productos de compliance e integraciones de datos a través de NC Data.', action: 'Consultar acceso a la API' },
         { title: 'Investigación con analistas', text: 'Para casos de mayor exigencia, Nurnberg Consulting añade trabajo de analista, obtención de fuentes, revisión documental y conclusiones a medida.', action: 'Visitar Nurnberg Consulting' },
         { title: 'Plataforma multipaís', text: 'NC Data permite investigaciones más amplias más allá de España, incluidas otras jurisdicciones europeas y flujos documentales avanzados.', action: 'Visitar NC Data' },
@@ -375,7 +373,6 @@ export default function DueDiligencePage() {
             <Chip label={t.chips.from} color="warning" size="small" sx={{ fontWeight: 600 }} />
             <Chip label={t.chips.instant} variant="outlined" size="small" />
             <Chip label={t.chips.noAccount} variant="outlined" size="small" />
-            <Chip label={t.chips.monitoring} size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(22,163,74,0.15)', color: '#16a34a' }} />
             <Chip
               label={t.chips.sample}
               size="small"
