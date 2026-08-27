@@ -117,6 +117,13 @@ const esc = (s) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
+// A value embedded in an inline <script>. JSON.stringify handles quoting; the
+// `<` escape stops a company name containing "</script>" from closing the tag.
+// Never hand-roll string escapes into inline JS — a `\/` inside a template
+// literal collapses to `/`, which is how the GA snippet on these very pages
+// silently died for six days (see the GA_SNIPPET comment below).
+export const jsVal = (v) => JSON.stringify(v == null ? '' : v).replace(/</g, '\\u003c');
+
 const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function fmtDate(d, lang) {
   if (!d) return '';
@@ -297,6 +304,15 @@ const T = {
     ddCtaText: (name) =>
       `Descarga un PDF con análisis por IA, comprobación de sanciones, señales de alerta e historial mercantil completo de ${name}.`,
     ddCtaBtn: 'Descargar informe · 22,50 €',
+    monitorTitle: 'Sigue esta empresa',
+    monitorText: (name) =>
+      `Recibe un aviso por correo cuando ${name} publique una nueva inscripción en el BORME. Gratis, sin cuenta y sin comprar nada.`,
+    monitorPlaceholder: 'tu@correo.com',
+    monitorBtn: 'Activar avisos',
+    monitorNote: 'Te enviaremos un solo correo para confirmar. Puedes darte de baja cuando quieras.',
+    monitorOk: 'Revisa tu correo: te hemos enviado un enlace para confirmar el aviso.',
+    monitorBadEmail: 'Introduce una dirección de correo válida.',
+    monitorFail: 'No hemos podido registrar el aviso. Vuelve a intentarlo en un momento.',
     footer: (d) =>
       `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial.`,
     renamedTo: (href, name) =>
@@ -503,6 +519,15 @@ const T = {
     ddCtaText: (name) =>
       `Download a PDF with AI analysis, sanctions screening, red flags and the full commercial-registry history of ${name}.`,
     ddCtaBtn: 'Download report · €22.50',
+    monitorTitle: 'Follow this company',
+    monitorText: (name) =>
+      `Get an email when ${name} files something new at the BORME. Free, no account, nothing to buy.`,
+    monitorPlaceholder: 'you@email.com',
+    monitorBtn: 'Enable alerts',
+    monitorNote: 'We will send one email to confirm. Unsubscribe whenever you like.',
+    monitorOk: 'Check your inbox — we have sent you a link to confirm the alert.',
+    monitorBadEmail: 'Please enter a valid email address.',
+    monitorFail: 'We could not register the alert. Please try again in a moment.',
     ctaTitle: 'View the interactive ownership map',
     ctaText: (name) =>
       `Explore the ownership network, shared directors and subsidiaries of ${name}.`,
@@ -1145,6 +1170,17 @@ const STYLE = `<style>
   .cta a{display:inline-block;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:10px}
   .cta-primary{background:#fff;color:#1e3a8a}
   .cta-secondary{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.55)}
+  .mon{margin:20px 0 0;border:1px solid #cbd5e1;border-radius:14px;padding:22px;background:#f8fafc}
+  .mon h2{border:0;margin:0 0 6px;padding:0;font-size:1.15rem;color:#0f172a}
+  .mon>p{margin:0 0 14px;color:#475569}
+  .mon form{display:flex;gap:10px;flex-wrap:wrap}
+  .mon input{flex:1 1 240px;min-width:0;padding:11px 14px;border:1px solid #cbd5e1;border-radius:9px;font-size:1rem;font-family:inherit;color:#0f172a;background:#fff}
+  .mon button{padding:11px 22px;border:0;border-radius:9px;background:#0f766e;color:#fff;font-weight:700;font-size:1rem;font-family:inherit;cursor:pointer}
+  .mon button:disabled{opacity:.6;cursor:default}
+  .mon .note{margin:12px 0 0;font-size:.85rem;color:#64748b}
+  .mon .msg{margin:12px 0 0;font-size:.92rem;font-weight:600}
+  .mon .msg.ok{color:#15803d}
+  .mon .msg.err{color:#b91c1c}
   footer{margin-top:48px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
   section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:18px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
   section h2{margin-top:0;border-top:0;padding-top:0}
@@ -1678,6 +1714,18 @@ ${GA_SNIPPET}
     </div>
   </div>
 
+  <div class="mon">
+    <h2>${t.monitorTitle}</h2>
+    <p>${esc(t.monitorText(name))}</p>
+    <form id="mon-form" novalidate>
+      <input id="mon-email" type="email" autocomplete="email" required
+             placeholder="${esc(t.monitorPlaceholder)}" aria-label="${esc(t.monitorPlaceholder)}">
+      <button id="mon-btn" type="submit">${esc(t.monitorBtn)}</button>
+    </form>
+    <p class="note">${esc(t.monitorNote)}</p>
+    <p class="msg" id="mon-msg" role="status" aria-live="polite"></p>
+  </div>
+
   <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}</footer>
 </div>
 <script>
@@ -1691,6 +1739,56 @@ ${GA_SNIPPET}
         language:${JSON.stringify(lang)},
         link_url:link.getAttribute('href')||''
       });
+    });
+  });
+})();
+</script>
+<script>
+(function(){
+  var form=document.getElementById('mon-form');
+  if(!form)return;
+  var input=document.getElementById('mon-email');
+  var btn=document.getElementById('mon-btn');
+  var msg=document.getElementById('mon-msg');
+  var API=${jsVal(API_BASE)};
+  var NAME=${jsVal(name)};
+  var SLUG=${jsVal(canonicalSlug)};
+  var LANG=${jsVal(lang)};
+  var OK=${jsVal(t.monitorOk)};
+  var BAD=${jsVal(t.monitorBadEmail)};
+  var FAIL=${jsVal(t.monitorFail)};
+  // Deliberately backslash-free: this source sits inside a template literal,
+  // where an escape sequence would be eaten before it reaches the browser.
+  function looksLikeEmail(v){
+    var at=v.indexOf('@');
+    if(at<1||at!==v.lastIndexOf('@'))return false;
+    if(v.indexOf(' ')!==-1)return false;
+    var dot=v.indexOf('.',at+2);
+    return dot>-1&&dot<v.length-1;
+  }
+  function say(text,cls){msg.textContent=text;msg.className='msg '+cls;}
+  form.addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var email=(input.value||'').trim().toLowerCase();
+    if(!looksLikeEmail(email)){say(BAD,'err');input.focus();return;}
+    btn.disabled=true;
+    say('','');
+    fetch(API+'/bormes/v3/alerts/request',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:email,entity_name:NAME,jurisdiction:'ES'})
+    }).then(function(r){
+      if(!r.ok)throw new Error('http_'+r.status);
+      form.style.display='none';
+      say(OK,'ok');
+      // The request is only accepted here — the alert exists once the emailed
+      // link is clicked. Name the event for what actually happened.
+      if(typeof gtag==='function')gtag('event','monitor_request_sent',{
+        company_slug:SLUG,language:LANG,surface:'company_profile'
+      });
+    }).catch(function(){
+      btn.disabled=false;
+      say(FAIL,'err');
     });
   });
 })();
