@@ -30,6 +30,29 @@ import { reconcileOfficersWithEvents } from '../../src/utils/pendingOfficerEvent
 // seat here (HAJJAJI ABDELKRIM / HAJJAJI ABDEL KARIM); see the module header.
 import { foldVariantSeats } from '../../src/utils/officerNameVariants.js';
 
+import { isSeoVariant } from './_seo_experiment.js';
+
+// What Google actually renders before truncating, in characters. Both are
+// approximations of a pixel budget, so they are deliberately conservative:
+// a clause that survives at 155 will survive in practice, one written to 160
+// may not. The title budget excludes the " | Mapa Societario" suffix, which is
+// expendable — brand is the one thing a reader can lose without losing meaning.
+const DESC_DISPLAY_LIMIT = 155;
+const TITLE_DISPLAY_LIMIT = 58;
+
+/**
+ * A variant title: the richest count phrase that still fits the visible budget,
+ * then the CIF, then the brand. `phrases` is ordered richest-first; the first
+ * one that fits wins, and if none do the name goes out alone. The CIF and brand
+ * are appended regardless — they may be truncated on screen without loss, and
+ * the CIF must stay in the markup for the exact-match ranking it earns.
+ */
+function buildVariantTitle(name, nif, phrases) {
+  const cif = nif ? ` (CIF ${nif})` : '';
+  const chosen = phrases.find((p) => p && `${name}: ${p}`.length <= TITLE_DISPLAY_LIMIT);
+  return `${chosen ? `${name}: ${chosen}` : name}${cif} | Mapa Societario`;
+}
+
 const API_BASE = 'https://api.ncdata.eu';
 const SITE = 'https://mapasocietario.es';
 
@@ -204,6 +227,33 @@ const T = {
         ? `${name}: CIF ${nif}, administradores y estructura societaria | Mapa Societario`
         : `${name} — Socios, administradores y estructura societaria (Registro Mercantil) | Mapa Societario`,
     ogTitle: (name) => `${name} — Estructura societaria`,
+    // Variant arm (see _seo_experiment.js). Leads with the counts, keeps the
+    // CIF as a parenthetical so the exact-match token survives without the
+    // title handing a "cif <empresa>" searcher their whole answer.
+    titleVariant: (name, nif, { active = 0, former = 0 } = {}) =>
+      // Ranking reads the WHOLE title, only the SERP truncates it — so the CIF
+      // stays on every title (it is what earns the "cif <empresa>" position)
+      // but sits last, where losing it to truncation costs nothing. What has to
+      // survive on screen is the counts, so those degrade by preference:
+      // both -> primary only -> bare name.
+      buildVariantTitle(name, nif, [
+        active && former ? `${active} administradores y ${former} cargos cesados` : '',
+        active ? `${active} administradores` : former ? `${former} cargos cesados` : '',
+      ]),
+    descVariant: (name, cap, prov, nif, { active = 0, former = 0, filings = 0, lastFiling = '' } = {}) => {
+      const parts = [];
+      if (active || former) parts.push(`${active} cargos vigentes, ${former} cesados`);
+      if (filings) parts.push(`${filings} publicaciones BORME${lastFiling ? ` (última: ${lastFiling})` : ''}`);
+      let out = `Quién controla ${name}: ${parts.join(', ')}.`;
+      // Everything after this point is optional padding, added only while the
+      // description still fits what Google actually renders. The counts and the
+      // filing recency are what differentiate this page from every competitor's
+      // identical company ficha, so they are never the clauses that get cut.
+      for (const extra of [cap ? ` Capital ${cap}.` : '', prov ? ` ${prov}.` : '', nif ? ` CIF ${nif}.` : '']) {
+        if (extra && out.length + extra.length <= DESC_DISPLAY_LIMIT) out += extra;
+      }
+      return out;
+    },
     desc: (name, cap, prov, nif) =>
       `Ficha del Registro Mercantil (BORME) de ${name}${nif ? ` (CIF ${nif})` : ''}: socios, administradores actuales y cesados, capital social (${cap || 'n/d'})${prov ? `, domicilio en ${prov}` : ''} e historial mercantil reciente. Consulta gratuita.`,
     jsonLdDesc: (name) =>
@@ -423,6 +473,21 @@ const T = {
         ? `${name}: CIF ${nif}, Directors & Company Records | Mapa Societario`
         : `${name}: Directors & Company Records | Mapa Societario`,
     ogTitle: (name) => `${name}: directors and Spanish company records`,
+    titleVariant: (name, nif, { active = 0, former = 0 } = {}) =>
+      buildVariantTitle(name, nif, [
+        active && former ? `${active} directors and ${former} former officers` : '',
+        active ? `${active} directors` : former ? `${former} former officers` : '',
+      ]),
+    descVariant: (name, cap, prov, nif, { active = 0, former = 0, filings = 0, lastFiling = '' } = {}) => {
+      const parts = [];
+      if (active || former) parts.push(`${active} serving officers, ${former} former`);
+      if (filings) parts.push(`${filings} BORME filings${lastFiling ? ` (latest: ${lastFiling})` : ''}`);
+      let out = `Who controls ${name}: ${parts.join(', ')}.`;
+      for (const extra of [cap ? ` Share capital ${cap}.` : '', prov ? ` ${prov}.` : '', nif ? ` CIF ${nif}.` : '']) {
+        if (extra && out.length + extra.length <= DESC_DISPLAY_LIMIT) out += extra;
+      }
+      return out;
+    },
     desc: (name, cap, prov, nif) =>
       `Search ${name} in Spain${nif ? ` (CIF ${nif})` : ''}: directors, officers, registered address${prov ? ` in ${prov}` : ''}, share capital${cap ? ` (${cap})` : ''} and BORME filing history. Free company profile.`,
     jsonLdDesc: (name) =>
@@ -721,8 +786,24 @@ export function resolveNif(company, seed) {
 }
 
 /** Title + meta description for a company page, CIF-aware when a NIF is known. */
-export function buildSeoMeta(lang, name, { nif = null, capital = '', province = '' } = {}) {
+export function buildSeoMeta(
+  lang,
+  name,
+  { nif = null, capital = '', province = '', variant = false, counts = null } = {},
+) {
   const t = T[lang] || T.es;
+  // The variant needs real numbers to be worth showing. With none of them the
+  // headline would read "administradores y socios" — vaguer than the control —
+  // so a company with no counts stays on the control template whatever arm it
+  // is in. Never ship a variant that is worse than what it replaces.
+  const c = counts || {};
+  const hasCounts = !!(c.active || c.former || c.filings);
+  if (variant && hasCounts) {
+    return {
+      title: t.titleVariant(name, nif, c),
+      desc: t.descVariant(name, capital, province, nif, c),
+    };
+  }
   return {
     title: t.title(name, nif),
     desc: t.desc(name, capital, province, nif),
@@ -1288,10 +1369,23 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   // data visible in the page body and structured data.
   const seoName = seed?.name || name;
   const seoNif = resolveNif(company, seed);
+  // Counted here rather than beside the overview block below, because the SEO
+  // meta needs them too and the meta is built first.
+  const activeCount = (company.officers_active || []).length;
+  const formerCount = (company.officers_resigned || []).length;
+  const filingCount = company.total_publications ?? events?.length ?? 0;
+
   const { title, desc } = buildSeoMeta(lang, seoName, {
     nif: seoNif,
     capital: fmtEur(company.current_capital, lang),
     province: company.province,
+    variant: isSeoVariant(canonicalSlug),
+    counts: {
+      active: activeCount,
+      former: formerCount,
+      filings: filingCount,
+      lastFiling: fmtDate(company.last_seen, lang),
+    },
   });
 
   const badges = [
@@ -1391,13 +1485,10 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   // The stats mirror the sections below one-to-one: on a dissolved company the
   // first stat counts the seats open at closure under that label, and "former"
   // stays what the former-officers table lists — never a merged figure.
-  const activeCount = (company.officers_active || []).length;
   const activeLabel = isDissolved ? t.overviewAtDissolution : t.overviewCurrent;
-  const formerCount = (company.officers_resigned || []).length;
   const ownerCount =
     (company.sole_shareholders || []).length +
     (company.sole_shareholder_individuals || []).length;
-  const filingCount = company.total_publications ?? events?.length ?? 0;
   const relationshipOverviewBlock = `<section class="overview" id="relationships">
     <h2>${t.relationshipOverview}</h2>
     <p class="more">${t.relationshipOverviewLead}</p>
