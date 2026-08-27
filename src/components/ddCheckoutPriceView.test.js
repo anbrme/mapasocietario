@@ -19,6 +19,7 @@ const copy = {
   googlePlaySoon: 'Google Play payment coming soon',
   openingGooglePlay: 'Opening Google Play...',
   freeDiscount: 'First report — on us',
+  freePrice: 'Free',
   freeFsExcluded: 'Not included in the free report',
   freeNoTax: 'Nothing to pay',
   generateFree: 'Generate my free report',
@@ -90,5 +91,54 @@ describe('checkoutPriceView', () => {
     expect(v.total).toEqual({ label: 'Total', value: 'EUR 22.50' });
     expect(v.cta).toBe('Pay with Google Play · EUR 22.50');
     expect(v.note).toBeNull();
+  });
+});
+
+describe('checkoutPriceView — the product card price', () => {
+  it('shows Free, and the price it replaces, on the free path', () => {
+    // Arrange / Act — the card used to keep showing EUR 22.50 beside a
+    // "Generate my free report" button, so the dialog contradicted itself.
+    const v = checkoutPriceView({ ...base, freeActive: true });
+
+    // Assert
+    expect(v.product).toEqual({ value: 'Free', was: 'EUR 22.50', isFree: true });
+  });
+
+  it('shows the plain price on the paid path, with nothing struck through', () => {
+    // Arrange / Act
+    const v = checkoutPriceView({ ...base, freeActive: false });
+
+    // Assert
+    expect(v.product).toEqual({ value: 'EUR 22.50', was: null, isFree: false });
+  });
+
+  it('keeps the base price on the card when the add-on is ticked', () => {
+    // Arrange / Act — the add-on has its own row; the card prices the report
+    const v = checkoutPriceView({ ...base, freeActive: false, includeFS: true });
+
+    // Assert
+    expect(v.product.value).toBe('EUR 22.50');
+  });
+
+  it('prefers the Google Play price on Android when that product is selected', () => {
+    // Arrange / Act
+    const v = checkoutPriceView({
+      ...base, freeActive: false, isAndroidApp: true,
+      androidDisplayPrice: '24,99 \u20ac', androidCardPrice: '24,99 \u20ac',
+    });
+
+    // Assert
+    expect(v.product).toEqual({ value: '24,99 \u20ac', was: null, isFree: false });
+  });
+
+  it('falls back to the EUR price on Android when no product is selected', () => {
+    // Arrange / Act
+    const v = checkoutPriceView({
+      ...base, freeActive: false, isAndroidApp: true,
+      androidDisplayPrice: '24,99 \u20ac', androidCardPrice: null,
+    });
+
+    // Assert
+    expect(v.product).toEqual({ value: 'EUR 22.50', was: null, isFree: false });
   });
 });

@@ -36,7 +36,7 @@ import {
 import { API_URL, PAYMENTS_API } from '../config';
 import { getClientId } from '../utils/clientId';
 import { trackEvent } from '../utils/track';
-import { buildCheckoutIntake } from '../utils/checkoutIntake';
+import { buildCheckoutIntake, findCheckoutBlocker } from '../utils/checkoutIntake';
 import { checkoutPriceView } from './ddCheckoutPriceView';
 import CheckoutErrorBoundary from './CheckoutErrorBoundary';
 import { resolveGroupKey, listCorrections } from '../services/correctionsService';
@@ -141,14 +141,14 @@ const DD_COPY = {
     aiIncluded: 'Includes 2 days of AI investigation on this company’s network',
     freeReportToggle: '🎁 Use my free first report',
     freeReportHelp:
-      'Your first report is on us — without financial statements. In exchange, tell us briefly who you are and what you needed it for. We may email one short question later. No calls, ever.',
-    freeReportRoleLabel: 'Which best describes you?',
-    freeReportNeedLabel: 'What did you need this report for?',
+      'Your first report is on us — without financial statements. If you have a moment, tell us who you are and what you needed it for; both fields are optional. We may email one short question later. No calls, ever.',
+    freeReportRoleLabel: 'Which best describes you? (optional)',
+    freeReportNeedLabel: 'What did you need this report for? (optional)',
     freeReportNeedPlaceholder: 'e.g. checking a supplier before signing',
     freeReportFollowUp: 'OK to email me one short question later',
-    freeReportRequired: 'Please tell us who you are and what you needed it for.',
     freeReportConfirm: '✓ This report will be free',
     freeReportConfirmHelp: 'No card, no payment page — the total below is EUR 0.00.',
+    freePrice: 'Free',
     freeDiscount: 'First report — on us',
     freeFsExcluded: 'Not included in the free report',
     freeNoTax: 'Nothing to pay',
@@ -246,14 +246,14 @@ const DD_COPY = {
     aiIncluded: 'Incluye 2 días de investigación por IA sobre la red de esta empresa',
     freeReportToggle: '🎁 Usar mi primer informe gratis',
     freeReportHelp:
-      'Tu primer informe corre de nuestra cuenta — sin cuentas anuales. A cambio, cuéntanos brevemente quién eres y para qué lo necesitabas. Puede que te enviemos una pregunta corta por email más adelante. Nunca llamadas.',
-    freeReportRoleLabel: '¿Qué te describe mejor?',
-    freeReportNeedLabel: '¿Para qué necesitabas este informe?',
+      'Tu primer informe corre de nuestra cuenta — sin cuentas anuales. Si tienes un momento, cuéntanos quién eres y para qué lo necesitabas; ambos campos son opcionales. Puede que te enviemos una pregunta corta por email más adelante. Nunca llamadas.',
+    freeReportRoleLabel: '¿Qué te describe mejor? (opcional)',
+    freeReportNeedLabel: '¿Para qué necesitabas este informe? (opcional)',
     freeReportNeedPlaceholder: 'p. ej. comprobar un proveedor antes de firmar',
     freeReportFollowUp: 'De acuerdo en recibir una pregunta corta por email',
-    freeReportRequired: 'Cuéntanos quién eres y para qué lo necesitabas.',
     freeReportConfirm: '✓ Este informe será gratuito',
     freeReportConfirmHelp: 'Sin tarjeta ni página de pago — el total de abajo es 0,00 EUR.',
+    freePrice: 'Gratis',
     freeDiscount: 'Primer informe — invitamos nosotros',
     freeFsExcluded: 'No incluidas en el informe gratuito',
     freeNoTax: 'Nada que pagar',
@@ -334,6 +334,9 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
   const freeActive = !!FREE_FIRST_REPORT_CODE && useFreeReport && !isAndroidApp;
   const priceView = checkoutPriceView({
     freeActive, isAndroidApp, loading, ddPrice: DD_PRICE, fsPrice: FS_PRICE, includeFS, copy, email,
+    androidCardPrice: selectedAndroidProduct?.productId === ANDROID_DD_PRODUCT_IDS.basic
+      ? selectedAndroidProduct.formattedPrice
+      : null,
     androidDisplayPrice, androidBillingEnabled: ANDROID_PLAY_BILLING_ENABLED,
   });
   const theme = useTheme();
@@ -590,13 +593,10 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
   };
 
   const handleCheckout = async () => {
-    if (!email.trim()) {
+    // Email is the only requirement, free path included — the role and need
+    // fields below it are optional. See findCheckoutBlocker.
+    if (findCheckoutBlocker({ email }) === 'email') {
       setError(copy.emailRequired);
-      return;
-    }
-    // Intake is the gate on the free path — require who + why before we proceed.
-    if (freeActive && (!buyerRole || !needContext.trim())) {
-      setError(copy.freeReportRequired);
       return;
     }
     const checkoutIntake = buildCheckoutIntake({
@@ -1114,11 +1114,22 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
                 {copy.title}
               </Typography>
             </Box>
-            <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.main' }}>
-              {isAndroidApp && selectedAndroidProduct?.productId === ANDROID_DD_PRODUCT_IDS.basic
-                ? selectedAndroidProduct.formattedPrice
-                : `EUR ${DD_PRICE.toFixed(2)}`}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+              {priceView.product.was && (
+                <Typography
+                  variant="body2"
+                  sx={{ color: 'text.disabled', textDecoration: 'line-through', fontWeight: 500 }}
+                >
+                  {priceView.product.was}
+                </Typography>
+              )}
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 700, color: priceView.product.isFree ? 'success.main' : 'warning.main' }}
+              >
+                {priceView.product.value}
+              </Typography>
+            </Box>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
             {copy.baseDescription}

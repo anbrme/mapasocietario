@@ -21,12 +21,15 @@ const eur = amount => `EUR ${amount.toFixed(2)}`;
  * @param {object} p.copy - the dialog's language dictionary
  * @param {string} p.email - buyer email, named in the free delivery note
  * @param {string} [p.androidDisplayPrice]
+ * @param {string} [p.androidCardPrice] - Google Play price for the report card,
+ *   or null when no matching Play product is selected
  * @param {boolean} [p.androidBillingEnabled]
- * @returns {{ rows: {label: string, value: string}[], total: {label: string, value: string}, cta: string, note: string|null }}
+ * @returns {{ rows: {label: string, value: string}[], total: {label: string, value: string},
+ *   product: {value: string, was: string|null, isFree: boolean}, cta: string, note: string|null }}
  */
 export function checkoutPriceView({
   freeActive, isAndroidApp, loading, ddPrice, fsPrice, includeFS, copy, email,
-  androidDisplayPrice, androidBillingEnabled,
+  androidDisplayPrice, androidBillingEnabled, androidCardPrice,
 }) {
   if (isAndroidApp) {
     return {
@@ -35,6 +38,7 @@ export function checkoutPriceView({
         { label: copy.taxVat, value: copy.includedGooglePlay },
       ],
       total: { label: copy.total, value: androidDisplayPrice },
+      product: { value: androidCardPrice || eur(ddPrice), was: null, isFree: false },
       cta: loading
         ? copy.openingGooglePlay
         : (androidBillingEnabled ? copy.payGooglePlay(androidDisplayPrice) : copy.googlePlaySoon),
@@ -55,6 +59,10 @@ export function checkoutPriceView({
         { label: copy.taxVat, value: copy.freeNoTax },
       ],
       total: { label: copy.total, value: eur(0) },
+      // The card leads the dialog, so it must say Free too — it used to keep
+      // showing the full price beside a "Generate my free report" button.
+      // `was` keeps the number visible, struck through, so the gift is legible.
+      product: { value: copy.freePrice, was: eur(ddPrice), isFree: true },
       cta: loading ? copy.placingFreeOrder : copy.generateFree,
       note: copy.freeDelivery(email),
     };
@@ -67,6 +75,7 @@ export function checkoutPriceView({
       { label: copy.taxVat, value: copy.calculatedStripe },
     ],
     total: { label: copy.total, value: copy.shownAtStripe },
+    product: { value: eur(ddPrice), was: null, isFree: false },
     cta: loading ? copy.redirectingStripe : copy.continueStripe(subtotal),
     note: null,
   };

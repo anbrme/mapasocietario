@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCheckoutIntake } from './checkoutIntake';
+import { buildCheckoutIntake, findCheckoutBlocker } from './checkoutIntake';
 
 describe('buildCheckoutIntake', () => {
   it('sends nothing on the paid path — that question moved to after payment', () => {
@@ -49,5 +49,39 @@ describe('buildCheckoutIntake', () => {
 
     // Assert
     expect(intake).toBeNull();
+  });
+});
+
+describe('findCheckoutBlocker', () => {
+  it('blocks on a missing email, which is where the report is sent', () => {
+    // Arrange / Act
+    const blocker = findCheckoutBlocker({ email: '   ' });
+
+    // Assert
+    expect(blocker).toBe('email');
+  });
+
+  it('lets the free path through with no role and no need', () => {
+    // Arrange — the case that used to be rejected: free report, questionnaire skipped
+    const input = { email: 'buyer@example.com', freeActive: true, role: '', need: '' };
+
+    // Act
+    const blocker = findCheckoutBlocker(input);
+
+    // Assert — the worker only requires an email, so neither should the dialog
+    expect(blocker).toBeNull();
+  });
+
+  it('lets the paid path through with an email alone', () => {
+    // Arrange / Act
+    const blocker = findCheckoutBlocker({ email: 'buyer@example.com', freeActive: false });
+
+    // Assert
+    expect(blocker).toBeNull();
+  });
+
+  it('blocks when called with no arguments', () => {
+    // Arrange / Act / Assert
+    expect(findCheckoutBlocker()).toBe('email');
   });
 });
