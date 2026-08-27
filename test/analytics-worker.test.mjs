@@ -17,9 +17,34 @@ test('periods uses two adjacent complete seven-day windows', () => {
   const result = periods(Date.parse('2026-08-25T14:30:00Z'));
 
   assert.deepEqual(result, {
+    day: { start: '2026-08-24', end: '2026-08-24' },
+    priorDay: { start: '2026-08-17', end: '2026-08-17' },
     current: { start: '2026-08-18', end: '2026-08-24' },
     prior: { start: '2026-08-11', end: '2026-08-17' },
   });
+});
+
+// A daily report compared against the day before would read Monday against
+// Sunday every week and call the weekday shape a collapse. The comparison day
+// must always be the same weekday, seven days back.
+test('the daily comparison is the same weekday a week earlier, not yesterday', () => {
+  const weekday = (iso) => new Date(`${iso}T00:00:00Z`).getUTCDay();
+  for (const at of ['2026-08-25T07:30:00Z', '2026-08-24T07:30:00Z',
+                    '2026-08-23T07:30:00Z', '2026-09-01T07:30:00Z']) {
+    const p = periods(Date.parse(at));
+    assert.equal(weekday(p.day.start), weekday(p.priorDay.start),
+      `${at}: ${p.day.start} and ${p.priorDay.start} must fall on the same weekday`);
+    const gapDays = (Date.parse(p.day.start) - Date.parse(p.priorDay.start)) / 86400000;
+    assert.equal(gapDays, 7);
+  }
+});
+
+test('the headline day is a single complete day, not a range', () => {
+  const p = periods(Date.parse('2026-08-25T07:30:00Z'));
+  assert.equal(p.day.start, p.day.end);
+  assert.equal(p.priorDay.start, p.priorDay.end);
+  // and it is yesterday, never today: today is still being written.
+  assert.equal(p.day.start, '2026-08-24');
 });
 
 test('today snapshot queries only today and reads newly registered interaction dimensions', async () => {

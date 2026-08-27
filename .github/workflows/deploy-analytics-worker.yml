@@ -6,12 +6,22 @@ on:
       - main
     paths:
       - 'workers/analytics/**'
+      # The worker BUNDLES the SEO experiment's arm assignment so the report
+      # measures the same split the pages render. Without this path the two
+      # would silently diverge after a re-split: Pages would serve new arms
+      # while the worker kept reporting the old ones.
+      - 'functions/empresa/_seo_experiment.js'
       - '.github/workflows/deploy-analytics-worker.yml'
   pull_request:
     branches:
       - main
     paths:
       - 'workers/analytics/**'
+      # The worker BUNDLES the SEO experiment's arm assignment so the report
+      # measures the same split the pages render. Without this path the two
+      # would silently diverge after a re-split: Pages would serve new arms
+      # while the worker kept reporting the old ones.
+      - 'functions/empresa/_seo_experiment.js'
       - '.github/workflows/deploy-analytics-worker.yml'
   workflow_dispatch:
 

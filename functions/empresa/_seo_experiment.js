@@ -245,6 +245,21 @@ export function isSeoVariant(slug) {
   return VARIANT_SLUGS.has(String(slug || '').trim().toLowerCase());
 }
 
+/**
+ * Which arm a slug belongs to, or null for a page that was never enrolled.
+ *
+ * The null case is the one that matters when reading results: only the 400
+ * enrolled pages are comparable. Treating "not variant" as "control" would drag
+ * ~1,500 unenrolled pages into the control arm and compare two different
+ * populations — which is exactly the confound the md5 split exists to avoid.
+ */
+export function seoArm(slug) {
+  const s = String(slug || '').trim().toLowerCase();
+  if (!s) return null;
+  if (VARIANT_SLUGS.has(s)) return 'variant';
+  return CONTROL_SET.has(s) ? 'control' : null;
+}
+
 /** Control-arm slugs. Exported so a reader can audit the split, and so the
  *  test can assert the two arms never overlap. */
 export const CONTROL_SLUGS = Object.freeze([
@@ -441,3 +456,5 @@ export const CONTROL_SLUGS = Object.freeze([
   "verescence-la-granja-sl",
   "weylchem-bilbao-sl",
 ]);
+
+const CONTROL_SET = new Set(CONTROL_SLUGS);

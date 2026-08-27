@@ -3,7 +3,7 @@
  *
  * GA4 only counts requests that executed JavaScript and survived its
  * filtering; Cloudflare counts everything that reached the edge. The gap
- * between them is the measurement the weekly report's own caveat has always
+ * between them is the measurement the report's own caveat has always
  * demanded — "GA4 is not the raw traffic source" — and could never supply.
  *
  * Shared by the Worker (so the Friday email carries it) and by
@@ -191,7 +191,7 @@ export async function fetchEdgeTraffic({ token, zoneName, since, until }) {
     return {
       available: false,
       reason: 'not_configured',
-      hint: 'Set the CLOUDFLARE_ANALYTICS_TOKEN secret (Account Analytics: Read, Zone Analytics: Read, Zone: Read) to include edge traffic in the weekly report.',
+      hint: 'Set the CLOUDFLARE_ANALYTICS_TOKEN secret (Account Analytics: Read, Zone Analytics: Read, Zone: Read) to include edge traffic in the report.',
     };
   }
   try {

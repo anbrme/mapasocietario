@@ -1,13 +1,19 @@
 /**
  * mapasocietario-analytics
  *
- * Weekly GA4 pull for mapasocietario.es.
+ * Daily analytics pull for mapasocietario.es, from three sources that measure
+ * three different things and routinely disagree:
+ *   GA4              - what the browser reported. Silent when a tag breaks.
+ *   Cloudflare edge  - what the server saw. Includes bots, so it over-counts.
+ *   Search Console   - what Google showed. Lags 2-3 days, survives a dead tag.
+ * Reported side by side on purpose: in August 2026 a broken inline tag made
+ * /empresa look dead in GA4 for six days while GSC recorded a 28x rise.
  *
  * Why this exists as a Worker rather than inside a scheduled Claude session:
  * neither the Cowork cloud sandbox nor the device sandbox has outbound network
  * access to googleapis.com. Cloudflare does. So the data pull lives here, the
- * result is persisted to D1, and the Friday Claude task reads it back over HTTP
- * and writes the analysis.
+ * result is persisted to D1, where a Claude task can read it back over HTTP
+ * and write the analysis.
  *
  * Endpoints (all require ?token=<REPORT_TOKEN>):
  *   GET /discover          -> GA4 accounts + properties this service account can see
@@ -26,6 +32,11 @@ import {
   fetchEdgeTraffic,
   ga4CountryToRows,
 } from './cloudflare-edge.js';
+import { GSC_SCOPE, fetchSearchConsole } from './search-console.js';
+// Imported from the Pages side on purpose: the experiment's arm assignment must
+// have exactly one definition, or the report would measure a different split
+// from the one the pages actually render.
+import { seoArm } from '../../../functions/empresa/_seo_experiment.js';
 
 const GA_SCOPE = 'https://www.googleapis.com/auth/analytics.readonly';
 const DATA_API = 'https://analyticsdata.googleapis.com/v1beta';
@@ -56,12 +67,12 @@ function pemToPkcs8(pem) {
   return buf.buffer;
 }
 
-async function getAccessToken(sa) {
+async function getAccessToken(sa, scope = GA_SCOPE) {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const claim = {
     iss: sa.client_email,
-    scope: GA_SCOPE,
+    scope,
     aud: sa.token_uri,
     exp: now + 3600,
     iat: now,
@@ -95,18 +106,47 @@ async function getAccessToken(sa) {
   return (await res.json()).access_token;
 }
 
-function loadServiceAccount(env) {
-  if (!env.GA_SA_KEY) throw new Error('GA_SA_KEY secret is not set');
+function loadServiceAccount(env, keyName = 'GA_SA_KEY') {
+  if (!env[keyName]) throw new Error(`${keyName} secret is not set`);
   let sa;
   try {
-    sa = JSON.parse(env.GA_SA_KEY);
+    sa = JSON.parse(env[keyName]);
   } catch {
-    throw new Error('GA_SA_KEY is not valid JSON — paste the whole key file');
+    throw new Error(`${keyName} is not valid JSON — paste the whole key file`);
   }
   if (!sa.private_key || !sa.client_email) {
-    throw new Error('GA_SA_KEY is missing private_key or client_email');
+    throw new Error(`${keyName} is missing private_key or client_email`);
   }
   return sa;
+}
+
+/**
+ * Search Console data, or an explanation of why there is none.
+ *
+ * Two service accounts are tolerated because the two products grant access in
+ * different places: GA4 in the property's admin, Search Console in its own
+ * Users and permissions screen. GSC_SA_KEY wins when set; otherwise the GA key
+ * is tried, which works only if that same account was also added in Search
+ * Console. Either way a failure here degrades the section, never the report:
+ * GA4 and the edge numbers are worth mailing on their own.
+ */
+async function gatherSearchConsole(env, periodsForRun) {
+  const site = env.GSC_SITE_URL;
+  if (!site) {
+    return { available: false, reason: 'GSC_SITE_URL is not set (URL-prefix property, e.g. https://mapasocietario.es/)' };
+  }
+  try {
+    const sa = loadServiceAccount(env, env.GSC_SA_KEY ? 'GSC_SA_KEY' : 'GA_SA_KEY');
+    const token = await getAccessToken(sa, GSC_SCOPE);
+    return await fetchSearchConsole(token, site, {
+      window: periodsForRun.current,
+      priorWindow: periodsForRun.prior,
+      armOf: seoArm,
+    });
+  } catch (e) {
+    console.error('search console pull failed:', e.message || e);
+    return { available: false, reason: String(e.message || e).slice(0, 200), site };
+  }
 }
 
 /* ------------------------------------------------------------- ga4 calls */
@@ -133,7 +173,7 @@ async function runReport(token, propertyId, body) {
 /**
  * GA4's ordered funnel endpoint is currently v1alpha. Keep it isolated from the
  * stable core-report path so an alpha API change can degrade one report section
- * without preventing the weekly rollup from being stored.
+ * without preventing the rollup from being stored.
  */
 async function runFunnelReport(token, propertyId, body) {
   const res = await fetch(
@@ -217,13 +257,29 @@ function isoDate(d) {
  * current = the 7 days ending yesterday; prior = the 7 days before that.
  * GA4 data for "today" is always partial, so today is never included.
  */
+/**
+ * The windows a run reports on.
+ *
+ * `day` is the headline now that this mails daily, and `priorDay` is the SAME
+ * WEEKDAY a week earlier — not the day before. B2B search and app traffic have
+ * a weekday shape strong enough to swamp any real movement, so a Monday
+ * compared against a Sunday reads as a collapse every single week. Comparing
+ * like weekday to like weekday is the only single-day delta worth mailing.
+ *
+ * `current` / `prior` stay seven-day windows. A single day is too noisy at this
+ * traffic to carry a report on its own, so every section below the headline is
+ * trailing-week context that a one-day spike cannot distort.
+ */
 function periods(nowMs) {
   const day = 86400000;
   const end = new Date(nowMs - day);
   const start = new Date(end.getTime() - 6 * day);
   const priorEnd = new Date(start.getTime() - day);
   const priorStart = new Date(priorEnd.getTime() - 6 * day);
+  const priorSameWeekday = new Date(end.getTime() - 7 * day);
   return {
+    day: { start: isoDate(end), end: isoDate(end) },
+    priorDay: { start: isoDate(priorSameWeekday), end: isoDate(priorSameWeekday) },
     current: { start: isoDate(start), end: isoDate(end) },
     prior: { start: isoDate(priorStart), end: isoDate(priorEnd) },
   };
@@ -425,6 +481,8 @@ async function gather(env, token, propertyId, nowMs) {
   const primaryResults = await namedAll({
     curTotals: coreTotals(p.current),
     priTotals: coreTotals(p.prior),
+    dayTotals: coreTotals(p.day),
+    priorDayTotals: coreTotals(p.priorDay),
     dailyRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['date']),
@@ -578,6 +636,8 @@ async function gather(env, token, propertyId, nowMs) {
   const {
     curTotals,
     priTotals,
+    dayTotals,
+    priorDayTotals,
     dailyRep,
     chanCur,
     chanPri,
@@ -751,7 +811,7 @@ async function gather(env, token, propertyId, nowMs) {
       trafficScope:
         'GA4-filtered traffic; compare with Cloudflare raw traffic before diagnosing bots.',
     },
-    totals: { current: curTotals, prior: priTotals },
+    totals: { current: curTotals, prior: priTotals, day: dayTotals, priorDay: priorDayTotals },
     daily: rowsToObjects(dailyRep, ['date'], ['sessions', 'totalUsers', 'keyEvents']),
     channels,
     sources: rowsToObjects(
@@ -973,7 +1033,7 @@ const INTERACTION_EVENTS = [
 
 /**
  * A deliberately partial, aggregate view of the property-local current day.
- * This is for fast product feedback, not weekly comparisons or durable storage.
+ * This is for fast product feedback, not period comparisons or durable storage.
  * GA4 can revise intraday numbers, so every response carries that caveat.
  */
 async function gatherToday(token, propertyId, nowMs = Date.now()) {
@@ -1607,7 +1667,7 @@ function toMarkdown(r) {
   const p = r.totals.prior;
   const L = [];
 
-  L.push(`# GA4 weekly — mapasocietario.es`);
+  L.push(`# Daily analytics — mapasocietario.es`);
   L.push('');
   L.push(`Property: ${r.propertyId}`);
   L.push(`Current window: ${r.period.current.start} to ${r.period.current.end}`);
@@ -1835,7 +1895,7 @@ function toMarkdown(r) {
     );
   } else {
     L.push(
-      `Unavailable without blocking the weekly report: ${r.orderedCheckout?.error || 'GA4 funnel query failed'}`,
+      `Unavailable without blocking the report: ${r.orderedCheckout?.error || 'GA4 funnel query failed'}`,
     );
   }
   L.push('');
@@ -1944,7 +2004,7 @@ const htmlResponse = (body, status = 200) =>
     status,
     headers: {
       'content-type': 'text/html; charset=utf-8',
-      // A weekly report is a snapshot; never let an intermediary serve a stale one.
+      // A report is a snapshot; never let an intermediary serve a stale one.
       'cache-control': 'no-store',
     },
   });
@@ -1986,6 +2046,9 @@ async function doRun(env, nowMs) {
   }
   const token = await getAccessToken(sa);
   const report = await gather(env, token, env.GA_PROPERTY_ID, nowMs);
+  // Pulled after GA4 rather than beside it: a Search Console outage must not
+  // cost the report its GA4 and edge sections, which stand on their own.
+  report.searchConsole = await gatherSearchConsole(env, periods(nowMs));
   if (env.ANALYTICS_DB) await persist(env.ANALYTICS_DB, report);
   return report;
 }
@@ -2112,18 +2175,18 @@ export default {
         // logged rather than allowed to look like a failed pull.
         const delivery = await sendReportEmail(env, report);
         if (delivery.sent) {
-          console.log(`weekly report emailed to ${delivery.to}`);
+          console.log(`daily report emailed to ${delivery.to}`);
         } else if (delivery.reason === 'not_configured') {
-          console.warn(`weekly report not emailed: ${delivery.hint}`);
+          console.warn(`daily report not emailed: ${delivery.hint}`);
         } else {
           console.error(
-            `weekly report email failed (${delivery.status || 'no status'}): ${delivery.error}`,
+            `daily report email failed (${delivery.status || 'no status'}): ${delivery.error}`,
           );
         }
 
         if (report.warnings?.length) {
           console.warn(
-            `weekly report carries ${report.warnings.length} measurement warning(s): ${report.warnings.join(' | ')}`,
+            `daily report carries ${report.warnings.length} measurement warning(s): ${report.warnings.join(' | ')}`,
           );
         }
       })(),

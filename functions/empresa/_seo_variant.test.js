@@ -114,3 +114,19 @@ describe('when the counts are missing', () => {
     expect(desc).not.toContain('CIF');
   });
 });
+
+describe('seoArm', () => {
+  it('classifies enrolled pages into their arm and everything else as null', async () => {
+    const { seoArm, CONTROL_SLUGS: control } = await import('./_seo_experiment.js');
+    expect(seoArm(control[0])).toBe('control');
+    expect(seoArm('a-page-that-was-never-enrolled-sl')).toBe(null);
+    expect(seoArm('')).toBe(null);
+    expect(seoArm(null)).toBe(null);
+  });
+
+  it('agrees with isSeoVariant on every enrolled page', async () => {
+    const { seoArm, CONTROL_SLUGS: control } = await import('./_seo_experiment.js');
+    for (const slug of control) expect(isSeoVariant(slug)).toBe(false);
+    expect(control.every((s) => seoArm(s) === 'control')).toBe(true);
+  });
+});

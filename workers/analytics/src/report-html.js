@@ -1,5 +1,5 @@
 /**
- * Styled HTML rendering of the weekly GA4 report.
+ * Styled HTML rendering of the daily report (GA4 + Cloudflare edge + Search Console).
  *
  * One renderer serves both surfaces — the browser view at /report and the email
  * the cron sends — so the two can never drift. That constrains the CSS: every
@@ -230,6 +230,107 @@ function edgeSection(edge) {
   );
 }
 
+/* --------------------------------------------------- search console */
+
+/**
+ * Search performance. Rendered separately from GA4 because it measures a
+ * different thing (what Google SHOWED, not what a browser reported) and lags
+ * it by two to three days — the section states the date it is actually talking
+ * about, so a lagging figure is never read as a traffic collapse.
+ */
+function searchConsoleSection(sc) {
+  if (!sc) return '';
+  if (!sc.available) {
+    return section(
+      'Search Console',
+      `<p style="margin:0;font:400 13px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${MUTED};">Not available this run — ${escapeHtml(sc.reason || 'unknown reason')}</p>`,
+      'GA4 and edge figures above are unaffected.',
+    );
+  }
+  const d = sc.day || {};
+  const pd = sc.priorDay || {};
+  const e = sc.empresaDay || {};
+  const ep = sc.empresaPriorDay || {};
+  const posText = (v) => (v == null ? '—' : num(v, 1));
+  // Position improves as it FALLS, so the usual up-is-good colouring is
+  // inverted here. Getting this backwards would paint a ranking loss green.
+  const posColor = (cur, pri) =>
+    cur == null || pri == null ? MUTED : cur < pri ? TEAL : cur > pri ? '#b91c1c' : MUTED;
+
+  const cards = `<tr><td style="padding:4px 24px 0 24px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+        ${metricCard('Clicks', num(d.clicks), `${change(d.clicks, pd.clicks)} vs same day last week`, changeColor(d.clicks, pd.clicks))}
+        ${metricCard('Impressions', num(d.impressions), `${change(d.impressions, pd.impressions)} vs same day last week`, changeColor(d.impressions, pd.impressions))}
+        ${metricCard('Avg position', posText(d.position), `${posText(pd.position)} a week earlier`, posColor(d.position, pd.position))}
+      </tr></table>
+    </td></tr>`;
+
+  const empresa = table(
+    ['Surface', 'Clicks', 'Impressions', 'CTR', 'Position'],
+    [
+      ['Whole site', num(d.clicks), num(d.impressions), pct(d.ctr), posText(d.position)],
+      ['/empresa pages', { text: num(e.clicks), bold: true }, num(e.impressions), pct(e.ctr), posText(e.position)],
+      ['/empresa a week earlier', num(ep.clicks), num(ep.impressions), pct(ep.ctr), posText(ep.position)],
+    ],
+  );
+
+  const trend = table(
+    ['Date', 'Clicks', 'Impressions', 'CTR', 'Position'],
+    (sc.trend || []).map((r) => [
+      r.date, num(r.clicks), num(r.impressions), pct(r.ctr), num(r.position, 1),
+    ]),
+  );
+
+  const queries = table(
+    ['Query', 'Clicks', 'Impressions', 'CTR', 'Position'],
+    (sc.topQueries || []).map((q) => [
+      q.query, num(q.clicks), num(q.impressions), pct(q.ctr), num(q.position, 1),
+    ]),
+  );
+
+  const striking = table(
+    ['Page', 'Clicks', 'Impressions', 'CTR', 'Position'],
+    (sc.strikingDistance || []).map((p) => [
+      p.page, num(p.clicks), num(p.impressions), pct(p.ctr), num(p.position, 1),
+    ]),
+  );
+
+  const ex = sc.experiment;
+  const experiment = ex && (ex.variant?.impressions || ex.control?.impressions)
+    ? table(
+        ['Arm', 'Pages', 'Clicks', 'Impressions', 'CTR', 'Position'],
+        [
+          ['Variant (counts-first title)', num(ex.variant.pages), num(ex.variant.clicks),
+           num(ex.variant.impressions), { text: pct(ex.variant.ctr), bold: true }, posText(ex.variant.position)],
+          ['Control (CIF-first title)', num(ex.control.pages), num(ex.control.clicks),
+           num(ex.control.impressions), { text: pct(ex.control.ctr), bold: true }, posText(ex.control.position)],
+        ],
+      )
+    : '';
+
+  return [
+    section(
+      'Search Console',
+      cards + empresa,
+      `Google data through <strong>${escapeHtml(sc.dataThrough)}</strong>${sc.lagDays ? ` — ${sc.lagDays} day${sc.lagDays === 1 ? '' : 's'} behind the rest of this report, which is normal` : ''}. Compared with ${escapeHtml(sc.comparedWith)}, the same weekday a week earlier.`,
+    ),
+    section('Search, last 7 days', trend),
+    section('Top search queries', queries, 'Trailing 7 days, by impressions.'),
+    section(
+      'Ranking but not clicked',
+      striking,
+      'Position 3-12 with 20+ impressions and CTR at or below 2%. These are already visible to a human; the title and snippet are what is losing the click.',
+    ),
+    experiment
+      ? section(
+          'Title A/B test',
+          experiment,
+          'Both arms were drawn from the same population, so the CTR difference is readable directly. Watch POSITION as well: a CTR win that came with a worse position means the CIF leaving the title head cost the exact-match ranking, which is a loss, not a win.',
+        )
+      : '',
+  ].join('');
+}
+
 export function renderReportHtml(r) {
   const c = r.totals?.current || {};
   const p = r.totals?.prior || {};
@@ -252,6 +353,8 @@ export function renderReportHtml(r) {
     </td></tr>`,
 
     orderedFunnelSection(r.orderedCheckout),
+
+    searchConsoleSection(r.searchConsole),
 
     section(
       'Checkout outcomes',
@@ -395,14 +498,14 @@ export function renderReportHtml(r) {
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>GA4 weekly — mapasocietario.es — ${escapeHtml(window)}</title>
+<title>Daily analytics — mapasocietario.es — ${escapeHtml(window)}</title>
 </head>
 <body style="margin:0;padding:0;background:#f8fafc;">
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc;">
 <tr><td align="center" style="padding:20px 12px;">
 <table role="presentation" cellpadding="0" cellspacing="0" width="680" style="width:680px;max-width:100%;background:#ffffff;border:1px solid ${LINE};border-radius:12px;">
   <tr><td style="padding:24px 24px 0 24px;border-bottom:1px solid ${LINE};padding-bottom:20px;">
-    <div style="font:700 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${TEAL};text-transform:uppercase;letter-spacing:0.09em;">mapasocietario.es · weekly analytics</div>
+    <div style="font:700 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${TEAL};text-transform:uppercase;letter-spacing:0.09em;">mapasocietario.es · daily analytics</div>
     <h1 style="margin:6px 0 4px 0;font:700 22px/1.25 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${INK};letter-spacing:-0.02em;">${escapeHtml(window)}</h1>
     <div style="font:400 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${MUTED};">Compared with ${escapeHtml(priorWindow)} · GA4 property ${escapeHtml(r.propertyId)} · pulled ${escapeHtml(r.generatedAt)}</div>
   </td></tr>
@@ -420,7 +523,7 @@ export function renderReportText(r) {
   const c = r.totals?.current || {};
   const p = r.totals?.prior || {};
   const lines = [
-    `GA4 weekly — mapasocietario.es`,
+    `Daily analytics — mapasocietario.es`,
     `${r.period?.current?.start} to ${r.period?.current?.end} (vs ${r.period?.prior?.start} to ${r.period?.prior?.end})`,
     '',
   ];

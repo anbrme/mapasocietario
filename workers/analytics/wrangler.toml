@@ -9,11 +9,16 @@ compatibility_flags = ["nodejs_compat"]
 enabled = true
 head_sampling_rate = 1
 
-# Friday 14:30 UTC. That is 16:30 Madrid in summer (CEST) and 15:30 in winter
-# (CET) — cron is always UTC, it does not follow DST. The pull deliberately
-# runs ~30 min before the Claude task reads it.
+# Daily at 07:30 UTC — 09:30 Madrid in summer (CEST), 08:30 in winter (CET).
+# Cron is always UTC and does not follow DST, so the local hour shifts twice a
+# year by design; the report lands before the working day either way.
+#
+# Deliberately NOT earlier: GA4 finalises the previous day a few hours after
+# midnight in the property's timezone, and a pull at 02:00 UTC reports a day
+# that is still being written. Search Console lags two to three days regardless
+# and labels its own data date, so it is unaffected by this choice.
 [triggers]
-crons = ["30 14 * * 5"]
+crons = ["30 7 * * *"]
 
 # Reuses the existing mapasocietario D1 instance; the worker creates and owns
 # its own `analytics_weekly` table and touches nothing else in there.
@@ -27,7 +32,12 @@ database_id = "2e471c22-6478-4d55-b3c6-9d0fc279e6ba"
 # G-XXXXXXXX measurement id.
 GA_PROPERTY_ID = "530829482"
 
-# Where the cron mails the styled weekly report. The FROM domain must be
+# Search Console. A URL-PREFIX property string ("https://mapasocietario.es/"),
+# not "sc-domain:mapasocietario.es" — this property is the former, and the two
+# are not interchangeable: the wrong one 403s.
+GSC_SITE_URL = "https://mapasocietario.es/"
+
+# Where the cron mails the styled daily report. The FROM domain must be
 # onboarded onto Cloudflare Email Sending (ncdata.eu already is — the same
 # domain functions/feedback.js sends from in production).
 REPORT_EMAIL_FROM = "analytics@ncdata.eu"
@@ -35,6 +45,13 @@ REPORT_EMAIL_TO = "mapasocietario@ncdata.eu"
 
 # Secrets (set via `wrangler secret put`, never in this file):
 #   GA_SA_KEY        - the full service account JSON, pasted as one blob
+#   GSC_SA_KEY       - OPTIONAL. Service account JSON for Search Console. Only
+#                      needed when the GA4 service account is NOT also a user on
+#                      the Search Console property — the two products grant
+#                      access in different places. Without it the GA key is
+#                      tried, and if that account has no GSC access the search
+#                      section degrades with a stated reason while GA4 and the
+#                      edge numbers still mail.
 #   REPORT_TOKEN     - random string; required as ?token= on every endpoint
 #   CLOUDFLARE_EMAIL_API_TOKEN - Cloudflare API token with Email Sending write.
 #                      Same name and same token as the Pages project uses for

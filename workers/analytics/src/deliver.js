@@ -1,5 +1,5 @@
 /**
- * Delivery of the weekly report.
+ * Delivery of the daily report.
  *
  * Uses the Cloudflare Email Sending REST API — the same mechanism, account,
  * endpoint and secret name already in production in functions/feedback.js, so
@@ -22,7 +22,7 @@ const DEFAULT_TO = 'mapasocietario@ncdata.eu';
 export function reportSubject(report) {
   const window = `${report?.period?.current?.start} to ${report?.period?.current?.end}`;
   const flag = report?.warnings?.length ? '⚠ ' : '';
-  return `${flag}mapasocietario.es weekly analytics — ${window}`;
+  return `${flag}mapasocietario.es daily analytics — ${window}`;
 }
 
 export async function sendReportEmail(env, report) {
