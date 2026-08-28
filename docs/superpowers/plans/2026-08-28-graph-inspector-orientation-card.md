@@ -455,6 +455,12 @@ In `CompanyInspectorPanel.jsx`, in the root `<Paper sx={{...}}>` (~line 148):
 
 Leave `onContextMenu`, `position: 'absolute'`, the border and `borderRadius: 0` untouched.
 
+**Keep `overflowY: 'auto'` on the body box (line 223).** The spec's "no internal
+scroll" is a statement about CONTENT — with findings gone and the detail
+collapsed, the card fits, so the scrollbar never appears. Deleting the property
+would not make the card shorter; it would clip and strand content on a short
+viewport. The fix is having less to show, not forbidding the overflow.
+
 - [ ] **Step 3: Unmount the findings block**
 
 Delete the whole `{FINDINGS_PANEL_ENABLED && data?.type === 'company' && data.name && (<CompanyFindings ... />)}` expression (~lines 237-248) and its preceding comment block. Then delete the now-unused imports: `CompanyFindings`, `FINDINGS_PANEL_ENABLED`, `listedBadgeFor`, and the `FINDINGS_EVIDENCE_DATASET_KEY` / `FINDINGS_OFFICERS_DATASET_KEY` constants **only if nothing else in the file references them** — grep first:
@@ -476,23 +482,23 @@ import { companyRecencyLine } from './companyRecencyLine';
 Delete both grid cells — the `{(e?.firstSeen || e?.lastSeen) && (...)}` block (~lines 424-431) and the `{e?.eventCount > 0 && (...)}` block (~lines 432-437). In their place, after the closing `</Paper>` of the overview grid, render:
 
 ```jsx
-              {companyRecencyLine({
+              {recencyLine && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {recencyLine}
+                </Typography>
+              )}
+```
+
+computed once, immediately after `const e = data.enriched;` in the same IIFE:
+
+```js
+              const recencyLine = companyRecencyLine({
                 lastEventType: e?.lastEventType,
                 lastSeen: e?.lastSeen,
                 firstSeen: e?.firstSeen,
                 eventCount: e?.eventCount,
                 lang,
-              }) && (
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {companyRecencyLine({
-                    lastEventType: e?.lastEventType,
-                    lastSeen: e?.lastSeen,
-                    firstSeen: e?.firstSeen,
-                    eventCount: e?.eventCount,
-                    lang,
-                  })}
-                </Typography>
-              )}
+              });
 ```
 
 - [ ] **Step 5: Make the CTA visible and primary**
@@ -544,7 +550,11 @@ Import `Accordion`, `AccordionSummary`, `AccordionDetails` and `ExpandMoreIcon` 
                   <Typography variant="subtitle2">{text.moreRegistryDetail}</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
-                  {/* moved detail here */}
+                  {/* Exactly three things move in here, unchanged:
+                      1. the sole-shareholder cell (`e?.isUnipersonal && ...`)
+                      2. the hoja-history cell (`e?.hojaHistory?.length > 1`)
+                      3. the officer tables rendered below the overview grid
+                      Move the JSX verbatim; do not restyle it in this task. */}
                 </AccordionDetails>
               </Accordion>
 ```
