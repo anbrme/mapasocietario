@@ -1916,6 +1916,13 @@ const SpanishCompanyNetworkGraph = ({
   // (width 0 reserved) and behaves like the old modal.
   const isInspectorDockable = useMediaQuery(theme.breakpoints.up('sm'));
   const isWideViewport = useMediaQuery(theme.breakpoints.up('md'));
+  // Put the cursor in the search box on arrival, so an empty canvas can be
+  // typed into without a click. Two exceptions:
+  //   * a touch/narrow viewport, where focusing opens the on-screen keyboard
+  //     over the graph the visitor came to see;
+  //   * a deep link that already carries a company, where the search has
+  //     already run and the field holds text someone could edit by accident.
+  const autoFocusSearch = isInspectorDockable && !initialCompanyName;
   const inspectorWidth = isWideViewport ? INSPECTOR_WIDTH_WIDE : INSPECTOR_WIDTH_COMPACT;
   const isInspectorDocked = previewOpen && isInspectorDockable;
   const reservedInspectorWidth = isInspectorDocked ? inspectorWidth : 0;
@@ -8618,9 +8625,20 @@ const SpanishCompanyNetworkGraph = ({
             <TextField
               {...params}
               size="small"
+              autoFocus={autoFocusSearch}
               placeholder={text.searchUnifiedPlaceholder}
               onFocus={() => {
                 if (searchFocusTrackedRef.current) return;
+                // graph_search_focus measures a DECISION — the visitor chose to
+                // start searching, and time_to_focus_ms is how long they looked
+                // first. Autofocus is not that decision: counting it would fire
+                // the event for every arrival at ~0ms and make both the count
+                // and the timing meaningless. The funnel is unaffected either
+                // way; its "Started a search" stage is
+                // graph_search_typing_started, which is typing, not focus.
+                // Return WITHOUT arming the ref: the visitor has not focused
+                // yet, and when they do that focus must still be counted.
+                if (autoFocusSearch && Date.now() - graphEnteredAtRef.current < 1000) return;
                 searchFocusTrackedRef.current = true;
                 trackEvent('graph_search_focus', {
                   entry_source: entrySource,
