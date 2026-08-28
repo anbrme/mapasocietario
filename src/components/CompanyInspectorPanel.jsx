@@ -1,7 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Typography,
   Box,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Button,
   IconButton,
   CircularProgress,
@@ -22,6 +25,7 @@ import {
   NotificationsActive as NotificationsActiveIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import GroupsIcon from '@mui/icons-material/Groups';
 import TableRowsIcon from '@mui/icons-material/TableRows';
@@ -78,6 +82,11 @@ const CompanyInspectorPanel = ({
   onOpenTimeline,
   onFocusCompany,
 }) => {
+  // The registry-detail disclosure. Closed for every node: carrying the
+  // previous company's open state over is how a card stops being predictable.
+  const [detailOpen, setDetailOpen] = useState(false);
+  useEffect(() => { setDetailOpen(false); }, [data?.name]);
+
   // Escape closes the panel — the modal gave users that for free; a non-modal
   // fixed Paper has no backdrop or focus trap, so it has to be wired by hand.
   useEffect(() => {
@@ -383,12 +392,7 @@ const CompanyInspectorPanel = ({
                       </Typography>
                     </Box>
                   )}
-                  {e?.activity && (
-                    <Box sx={{ gridColumn: '1 / -1' }}>
-                      <Typography variant="caption" color="text.secondary">{text.activity}</Typography>
-                      <Typography variant="body2">{e.activity}</Typography>
-                    </Box>
-                  )}
+
                   {e?.capital && (
                     <Box>
                       <Typography variant="caption" color="text.secondary">{text.capital}</Typography>
@@ -405,6 +409,37 @@ const CompanyInspectorPanel = ({
                           </Typography>
                         )}
                       </Typography>
+                    </Box>
+                  )}
+
+
+                </Box>
+              </Paper>
+
+              {/* Everything of variable length lives behind one closed door.
+                  The objeto social is free text and can run to a paragraph;
+                  sole-shareholder and hoja history grow with the company. Left
+                  in the grid they are what made the card a different height for
+                  every node. Closed on every open, so no node inherits the
+                  previous one's state. */}
+              {(e?.activity || e?.isUnipersonal || e?.hojaHistory?.length > 1) && (
+                <Accordion
+                  expanded={detailOpen}
+                  onChange={(_, open) => setDetailOpen(open)}
+                  disableGutters
+                  elevation={0}
+                  sx={{ mb: 2, border: '1px solid', borderColor: 'divider',
+                        '&:before': { display: 'none' } }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="subtitle2">{text.moreRegistryDetail}</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 1.5 }}>
+                  {e?.activity && (
+                    <Box sx={{ gridColumn: '1 / -1' }}>
+                      <Typography variant="caption" color="text.secondary">{text.activity}</Typography>
+                      <Typography variant="body2">{e.activity}</Typography>
                     </Box>
                   )}
                   {e?.isUnipersonal &&
@@ -451,8 +486,10 @@ const CompanyInspectorPanel = ({
                       </Typography>
                     </Box>
                   )}
-                </Box>
-              </Paper>
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              )}
 
               {recencyLine && (
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
