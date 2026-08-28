@@ -1316,6 +1316,35 @@ function hreflangTags(slug) {
   ].join('\n');
 }
 
+// The graph CTAs have to name the legal entity, not just repeat its name
+// string. /app reads `gk` and passes it to handleSearch as groupKeyOverride —
+// the same argument an in-graph selection supplies. Without it these links
+// re-ran a fuzzy NAME search on arrival, so a visitor leaving BANKINTER SA's
+// page could land on one of the two other docs by that name and be counted as
+// graph engagement. Resolution order mirrors the graph's own
+// (SpanishCompanyNetworkGraph: doc.group_key || doc._id || doc.id); the seed
+// hoja is the last resort, and is the identity handleCompany itself resolves
+// by, because a hoja never changes while a canonical name can.
+//
+// `source` is the other half. /app reads it into graph_view.entry_source, so
+// arrivals from an indexed profile become separable from every other way into
+// the graph — the measurement that answers what a search lander does next.
+const graphGroupKey = (company, seed) =>
+  company.group_key
+  || company._id
+  || company.id
+  || (seed && seed.hoja ? hojaGroupKey(seed.hoja) : null)
+  || null;
+
+// Emitted straight into an href, so the separators are escaped: a raw & in an
+// attribute is invalid HTML5. A doc with no stable identity omits gk entirely
+// and keeps the old name-search behaviour rather than binding to a guess.
+const graphHref = (name, groupKey) => {
+  const params = new URLSearchParams({ search: name, source: 'company_profile' });
+  if (groupKey) params.set('gk', String(groupKey));
+  return `/app/?${params.toString().replace(/&/g, '&amp;')}`;
+};
+
 export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false) {
   // For the hours between a filing reaching the event log and the aggregation
   // absorbing it, "Administradores y cargos vigentes" — and the JSON-LD employee
@@ -1361,6 +1390,7 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
       ? latestRename.new_name
       : registeredName;
   const canonicalSlug = slug;
+  const groupKey = graphGroupKey(company, seed);
   const canonicalUrl = renamedTo ? companyUrl(lang, nameToSlug(renamedTo)) : companyUrl(lang, canonicalSlug);
 
   // Listed-company searches overwhelmingly use the familiar brand ("Inditex",
@@ -1498,7 +1528,7 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
       <div class="overview-stat"><span class="overview-value">${esc(ownerCount)}</span><span class="overview-label">${t.overviewOwners}</span></div>
       <div class="overview-stat"><span class="overview-value">${esc(filingCount)}</span><span class="overview-label">${t.overviewFilings}</span></div>
     </div>
-    <a class="overview-action" data-track="profile_open_graph" href="/app/?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
+    <a class="overview-action" data-track="profile_open_graph" href="${graphHref(name, groupKey)}">${t.topMapBtn}</a>
   </section>`;
 
   // Significant shareholders from CNMV (listed companies only). Reproduced
@@ -1745,7 +1775,7 @@ ${GA_SNIPPET}
   <div class="badges">${badges}</div>
   <p class="lead">${t.lead}</p>
   <div class="hero-actions">
-    <a class="hero-primary" data-track="profile_open_graph" href="/app/?search=${encodeURIComponent(name)}">${t.topMapBtn}</a>
+    <a class="hero-primary" data-track="profile_open_graph" href="${graphHref(name, groupKey)}">${t.topMapBtn}</a>
     <a class="hero-secondary" data-track="profile_registry_jump" href="#registry-data">${t.topRegistryBtn}</a>
   </div>
 
@@ -1801,7 +1831,7 @@ ${GA_SNIPPET}
     <p>${esc(t.ddCtaText(name))}</p>
     <div class="cta-actions">
       <a class="cta-primary" data-track="profile_due_diligence" href="/due-diligence/?company=${encodeURIComponent(name)}">${t.ddCtaBtn}</a>
-      <a class="cta-secondary" data-track="profile_open_graph" href="/app/?search=${encodeURIComponent(name)}">${t.ctaBtn}</a>
+      <a class="cta-secondary" data-track="profile_open_graph" href="${graphHref(name, groupKey)}">${t.ctaBtn}</a>
     </div>
   </div>
 

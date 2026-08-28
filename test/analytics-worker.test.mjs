@@ -389,6 +389,57 @@ test('reads the destination split once GA4 starts populating it', () => {
   );
 });
 
+test('does not call a redirect free when it carries no destination at all', () => {
+  // The 21-27 Aug report announced "all of them were free_order" off 1 tagged
+  // free_order and 11 "(not set)". destinationRows drops the untagged rows, so
+  // paidRedirects === 0 was read as proof no paid checkout started — a claim
+  // about 12 events built from 1. `destination` was registered mid-flight and
+  // registration is not retroactive: an untagged redirect is UNKNOWN, not free.
+  const warnings = reportWarnings({
+    checkoutOutcomes: [
+      { event: 'checkout_redirect', eventCount: 12, users: 2 },
+      { event: 'purchase', eventCount: 0, users: 0 },
+    ],
+    checkoutDestinations: {
+      available: true,
+      rows: [
+        { destination: '(not set)', eventCount: 11, users: 2 },
+        { destination: 'free_order', eventCount: 1, users: 1 },
+      ],
+    },
+    checkoutFailureReasons: { available: true, rows: [] },
+    measurementQuality: { sessionSums: { core: 1, daily: 1, channels: 1, landingPages: 1 }, reconciled: true },
+  });
+
+  const w = warnings.find((x) => /checkout redirect/i.test(x));
+  assert.ok(w, `expected a checkout warning, got: ${JSON.stringify(warnings)}`);
+  assert.doesNotMatch(w, /all of them/i);
+  assert.match(w, /11/, `the unattributed count must be stated: ${w}`);
+});
+
+test('a paid stall still reports the redirects it could not classify', () => {
+  const warnings = reportWarnings({
+    checkoutOutcomes: [
+      { event: 'checkout_redirect', eventCount: 10, users: 4 },
+      { event: 'purchase', eventCount: 0, users: 0 },
+    ],
+    checkoutDestinations: {
+      available: true,
+      rows: [
+        { destination: 'stripe_new_tab', eventCount: 4, users: 3 },
+        { destination: '(not set)', eventCount: 6, users: 2 },
+      ],
+    },
+    checkoutFailureReasons: { available: true, rows: [] },
+    measurementQuality: { sessionSums: { core: 1, daily: 1, channels: 1, landingPages: 1 }, reconciled: true },
+  });
+
+  const w = warnings.find((x) => /paid checkout/i.test(x));
+  assert.ok(w, `expected a paid-stall warning, got: ${JSON.stringify(warnings)}`);
+  assert.match(w, /4 paid checkout/i);
+  assert.match(w, /6/, `the unattributed remainder must survive: ${w}`);
+});
+
 test('does not raise the free-order caveat once purchases are recorded', () => {
   const warnings = reportWarnings({
     checkoutOutcomes: [

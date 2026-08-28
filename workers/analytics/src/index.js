@@ -938,18 +938,35 @@ function reportWarnings(r) {
     .filter((row) => String(row.destination).startsWith('stripe_'))
     .reduce((sum, row) => sum + (row.eventCount || 0), 0);
 
+  // How many redirects the dimension actually classified. `destination` was
+  // registered mid-flight and GA4 registration is not retroactive, so one
+  // window can hold both tagged and "(not set)" redirects. destinationRows
+  // drops the untagged ones, which is right for reading the SPLIT and wrong for
+  // reading the TOTAL: the 21-27 Aug report turned 1 free_order and 11
+  // "(not set)" into "all of them were free_order" — a claim about 12 events
+  // built from 1. An untagged redirect is unknown. It is never free.
+  const attributed = destinationRows.reduce((sum, row) => sum + (row.eventCount || 0), 0);
+  const unattributed = Math.max(0, redirects - attributed);
+
   if (redirects > 0 && purchases === 0) {
-    if (!destinationRows.length) {
+    if (!attributed) {
       warnings.push(
         `${redirects} checkout redirect(s) and no purchases. This is NOT evidence of lost revenue: checkout_redirect also fires for free_order, a waived report fulfilled without Stripe that never emits a purchase event. The "destination" dimension is registered but not retroactive, so this window cannot be split — future windows can.`,
       );
-    } else if (paidRedirects === 0) {
+    } else if (paidRedirects > 0) {
       warnings.push(
-        `${redirects} checkout redirect(s) and no purchases, but all of them were free_order — no paid checkout was started. Zero purchases is the expected outcome here, not lost revenue.`,
+        `${paidRedirects} paid checkout redirect(s) reached Stripe and NONE completed. Unlike a free_order run, this is a real conversion failure — check Stripe for abandoned sessions and whether buyers returned to /order/:sessionId, where the purchase event fires.`
+        + (unattributed
+          ? ` A further ${unattributed} redirect(s) carry no destination and cannot be classified either way.`
+          : ''),
+      );
+    } else if (unattributed) {
+      warnings.push(
+        `${redirects} checkout redirect(s) and no purchases. Of these, ${attributed} carried a destination and none reached Stripe — but ${unattributed} carry no destination at all, and "destination" is not retroactive, so those cannot be called free or paid. Unresolved, not zero lost revenue.`,
       );
     } else {
       warnings.push(
-        `${paidRedirects} paid checkout redirect(s) reached Stripe and NONE completed. Unlike a free_order run, this is a real conversion failure — check Stripe for abandoned sessions and whether buyers returned to /order/:sessionId, where the purchase event fires.`,
+        `${redirects} checkout redirect(s) and no purchases, but all of them were free_order — no paid checkout was started. Zero purchases is the expected outcome here, not lost revenue.`,
       );
     }
   }
