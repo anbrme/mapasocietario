@@ -413,6 +413,11 @@ const CompanyInspectorPanel = ({
                             {text.externalEstimate}
                           </Typography>
                         )}
+                        {e.capitalUnverified && (
+                          <Typography component="span" variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic', ml: 0.5 }}>
+                            {text.capitalUnverified}
+                          </Typography>
+                        )}
                       </Typography>
                     </Box>
                   )}

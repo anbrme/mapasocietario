@@ -89,6 +89,7 @@ import { isMonitorableNode } from '../services/monitoringService';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
+import { hasIncoherentCapital } from '../utils/capitalCoherence';
 import { normalizeCompanyName, displayCompanyName } from '../utils/companyName';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
 import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
@@ -465,6 +466,7 @@ const SEARCH_COPY = {
     status: 'Status',
     address: 'Address',
     externalEstimate: '(external-source estimate - verify)',
+    capitalUnverified: '(as published by BORME, inconsistent with the registered amount - unverified)',
     reportNifTooltip: 'Report incorrect NIF',
     reportNifTitle: 'Report incorrect NIF',
     reportIntro: 'This NIF comes from a web search and may be wrong. Send a correction and an administrator will review it.',
@@ -814,6 +816,7 @@ const SEARCH_COPY = {
     status: 'Estado',
     address: 'Domicilio',
     externalEstimate: '(estimación de fuente externa - verificar)',
+    capitalUnverified: '(según el BORME, incoherente con el importe inscrito - sin verificar)',
     reportNifTooltip: 'Reportar NIF incorrecto',
     reportNifTitle: 'Reportar NIF incorrecto',
     reportIntro: 'Este NIF procede de una búsqueda web y puede ser erróneo. Envía una corrección y un administrador la revisará.',
@@ -5957,6 +5960,11 @@ const SpanishCompanyNetworkGraph = ({
             capitalRaw = company.enriched_capital;
             capitalExternal = true;
           }
+          // BORME states both halves of a capital move in one entry, so the
+          // figure can be checked against the gazette's own arithmetic before
+          // the panel presents it as registry fact. See utils/capitalCoherence.
+          const capitalUnverified = !capitalExternal
+            && hasIncoherentCapital(capitalRaw, sortedEvents);
           let formattedCapital = null;
           if (capitalRaw) {
             const num = typeof capitalRaw === 'number' ? capitalRaw : parseFloat(String(capitalRaw).replace(/[^\d.,]/g, '').replace(',', '.'));
@@ -6033,6 +6041,7 @@ const SpanishCompanyNetworkGraph = ({
             company,
             enriched: {
               capital: formattedCapital,
+              capitalUnverified,
               capitalExternal,
               address: addressValue,
               addressExternal,

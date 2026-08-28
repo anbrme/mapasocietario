@@ -29,6 +29,7 @@ import { reconcileOfficersWithEvents } from '../../src/utils/pendingOfficerEvent
 // A cese BORME printed under a variant spelling of an active officer closes that
 // seat here (HAJJAJI ABDELKRIM / HAJJAJI ABDEL KARIM); see the module header.
 import { foldVariantSeats } from '../../src/utils/officerNameVariants.js';
+import { hasIncoherentCapital } from '../../src/utils/capitalCoherence.js';
 
 import { isSeoVariant } from './_seo_experiment.js';
 
@@ -270,6 +271,7 @@ const T = {
     factCapital: 'Capital social',
     factActivity: 'Objeto social',
     externalEstimate: '(estimación de fuente externa — verificar)',
+    borneIncoherent: '(cifra publicada por el BORME, incoherente con el importe inscrito — sin verificar)',
     factFirstSeen: 'Primera inscripción (desde el 1/1/2009)',
     factIncorporation: 'Constitución (primera inscripción)',
     factLastSeen: 'Última actualización',
@@ -504,6 +506,7 @@ const T = {
     factCapital: 'Share capital',
     factActivity: 'Corporate purpose',
     externalEstimate: '(externally sourced estimate — verify)',
+    borneIncoherent: '(figure as published by BORME, inconsistent with the registered amount — unverified)',
     factFirstSeen: 'First filing (since 1 Jan 2009)',
     factIncorporation: 'Incorporation (first filing)',
     factLastSeen: 'Last updated',
@@ -783,63 +786,6 @@ export function resolveNif(company, seed) {
   return normalizeNif(
     (seed && seed.nif) || (company && (company.nif || company.enriched_nif)) || null,
   );
-}
-
-/**
- * Is `current_capital` contradicted by the very BORME filing that set it?
- *
- * A "Reducción/Ampliación de capital" entry states both halves in one sentence
- * — the amount moved and the capital left standing — so the gazette's own
- * arithmetic can check the figure we publish.
- *
- * MAIER NAVARRA SL was gazetted as reducing capital by EUR 700.872,80 and being
- * left with EUR 6.231.559.999,99: a reduction of 0.011% of the result, which no
- * company files. The parser was faithful — BORME published that string — but it
- * reached the meta description, so Google showed a EUR 6.2bn claim about an
- * ordinary Navarrese SL over our byline. Three commercial providers disagree
- * about the real figure across three orders of magnitude, so nothing here tries
- * to reconstruct it; the page simply stops asserting what it cannot stand behind.
- *
- * The test is deliberately narrow. A SMALL amount against a large capital is a
- * real and common filing — a nominal-value redenomination, so the share nominal
- * divides cleanly (TESTA RESIDENCIAL SOCIMI SA moved EUR 0,57 against EUR 132m;
- * HOTELES MARINA D'OR SL, EUR 3,00 against EUR 114m). Suppressing on magnitude
- * alone would delete good data. Only a SUBSTANTIAL amount that shifts a
- * negligible share of the stated result is incoherent: across 150 sampled
- * companies and 75 checkable entries this fires on MAIER and nothing else.
- */
-const CAPITAL_AMOUNT_FLOOR = 10000;
-const CAPITAL_INCOHERENT_RATIO = 0.001;
-// Spanish grouping: dots separate thousands, the comma is the decimal point.
-const ES_AMOUNT = String.raw`(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}|\d+)`;
-const CAPITAL_IMPORTE = new RegExp(`Importe[^:]{0,40}:\\s*${ES_AMOUNT}`, 'i');
-const CAPITAL_RESULTANTE = new RegExp(`Resultante[^:]{0,40}:\\s*${ES_AMOUNT}`, 'i');
-
-function parseEsAmount(text) {
-  const value = Number(String(text).replace(/\./g, '').replace(',', '.'));
-  return Number.isFinite(value) ? value : null;
-}
-
-export function hasIncoherentCapital(company, events) {
-  const current = company?.current_capital;
-  if (typeof current !== 'number' || !(current > 0)) return false;
-  for (const event of events || []) {
-    if (!event?.has_capital_change) continue;
-    const entry = event.full_entry || '';
-    const importe = CAPITAL_IMPORTE.exec(entry);
-    const resultante = CAPITAL_RESULTANTE.exec(entry);
-    if (!importe || !resultante) continue;
-    const amount = parseEsAmount(importe[1]);
-    const result = parseEsAmount(resultante[1]);
-    if (!amount || !result || result <= 0) continue;
-    // Only the filing whose stated result IS the current figure can condemn it;
-    // an older incoherent entry says nothing about a capital later replaced.
-    // Tolerance covers cents of drift between the gazette string and the
-    // aggregated value.
-    if (Math.abs(result - current) > 1) continue;
-    if (amount >= CAPITAL_AMOUNT_FLOOR && amount / result < CAPITAL_INCOHERENT_RATIO) return true;
-  }
-  return false;
 }
 
 /** Title + meta description for a company page, CIF-aware when a NIF is known. */
@@ -1462,11 +1408,17 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   const formerCount = (company.officers_resigned || []).length;
   const filingCount = company.total_publications ?? events?.length ?? 0;
 
+  // BORME's own arithmetic can contradict the capital it publishes. The figure
+  // is not deleted — the facts table still shows it with its provenance — but
+  // it is withheld from the snippet, which Google republishes verbatim and
+  // which has no room to explain itself.
+  const capitalUnverified = hasIncoherentCapital(company.current_capital, events);
+
   const { title, desc } = buildSeoMeta(lang, seoName, {
     nif: seoNif,
     // Withheld when BORME's own arithmetic contradicts it: the snippet is the
     // one surface Google republishes verbatim, so it asserts nothing doubtful.
-    capital: hasIncoherentCapital(company, events) ? '' : fmtEur(company.current_capital, lang),
+    capital: capitalUnverified ? '' : fmtEur(company.current_capital, lang),
     province: company.province,
     variant: isSeoVariant(canonicalSlug),
     counts: {
@@ -1502,9 +1454,15 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
     : company.enriched_address
     ? withCaveat(esc(company.enriched_address))
     : '';
+  // A figure BORME contradicts is shown, not hidden: the reader is better served
+  // by the published number plus the reason to doubt it than by a blank row, and
+  // the provenance is the part no other free registry search gives them.
+  const unverified = (v) => `${v} <span class="muted">${esc(t.borneIncoherent)}</span>`;
   const capitalVal =
     typeof company.current_capital === 'number'
-      ? esc(fmtEur(company.current_capital, lang))
+      ? capitalUnverified
+        ? unverified(esc(fmtEur(company.current_capital, lang)))
+        : esc(fmtEur(company.current_capital, lang))
       : typeof company.enriched_capital === 'number'
       ? withCaveat(esc(fmtEur(company.enriched_capital, lang)))
       : '';

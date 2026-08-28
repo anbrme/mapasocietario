@@ -6,8 +6,8 @@
  * numbers can only ever be stale, never absent or wrong-by-typo.
  */
 export const REGISTRY_SCALE_RAW = {
-  totalCompanies: 3152861,
-  totalEvents: 9573212,
-  officerChanges: 6486571,
-  constitutions: 1732154,
+  totalCompanies: 3155253,
+  totalEvents: 9583195,
+  officerChanges: 6493896,
+  constitutions: 1734233,
 };
