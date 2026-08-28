@@ -132,19 +132,21 @@ where it already reads properly and has evidence beside it.
 ### Presentation
 
 - Drop `elevation={8}` and the heavy shadow for a quieter, anchored card.
-- **Anchored, but non-occluding.** The panel stays `position: absolute` rather
-  than becoming a docked flex column — docking would resize the canvas and
-  re-fit the simulation on every open, and fit timing has bitten us before
-  (`fb151bd`, "fit again once the simulation has cooled after a unify").
-  Spending the whole canvas width on a small card is a bad trade.
+- **Occlusion: already solved, no change needed.** *(Corrected 2026-08-28
+  during implementation.)* This design originally called for a fit inset so no
+  node could hide behind the panel. That was written on a wrong reading of the
+  code. `SpanishCompanyNetworkGraph.jsx:1915-1919` already computes
+  `canvasDimensions.width = containerDimensions.width - reservedInspectorWidth`,
+  so on `sm`+ viewports the canvas is narrowed and the graph is docked beside
+  the panel, not underneath it. Below `sm` the panel is full width, where an
+  inset cannot help either. `position: absolute` describes how the panel is
+  placed inside a container that has already made room for it — it is not an
+  overlay in the sense that matters.
 
-  But occlusion, more than positioning, is what makes a surface read as a
-  modal: nodes disappearing behind the panel is very likely why clicking the
-  background became the dismissal gesture at all — it is how you get your graph
-  back. So pass the panel width into the existing fit logic (`fb151bd`,
-  `adcb2c9`) as a right-hand inset, and re-fit into the VISIBLE area when the
-  panel opens. Nothing is ever hidden, nobody has to dismiss anything to see
-  their graph, and the layout is never restructured.
+  This makes the doubled background-click reading *stronger*, not weaker:
+  people were not clicking the canvas to recover hidden nodes. They were
+  closing the panel.
+
 - **Lift `userSelect: 'none'` and the `onCopy` block.** Text you cannot select
   is a large part of why it does not feel real, and blocking copy on a handful
   of registry facts protects nothing — the same facts are copyable on
