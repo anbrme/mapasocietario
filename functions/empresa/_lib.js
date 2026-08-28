@@ -785,6 +785,63 @@ export function resolveNif(company, seed) {
   );
 }
 
+/**
+ * Is `current_capital` contradicted by the very BORME filing that set it?
+ *
+ * A "Reducción/Ampliación de capital" entry states both halves in one sentence
+ * — the amount moved and the capital left standing — so the gazette's own
+ * arithmetic can check the figure we publish.
+ *
+ * MAIER NAVARRA SL was gazetted as reducing capital by EUR 700.872,80 and being
+ * left with EUR 6.231.559.999,99: a reduction of 0.011% of the result, which no
+ * company files. The parser was faithful — BORME published that string — but it
+ * reached the meta description, so Google showed a EUR 6.2bn claim about an
+ * ordinary Navarrese SL over our byline. Three commercial providers disagree
+ * about the real figure across three orders of magnitude, so nothing here tries
+ * to reconstruct it; the page simply stops asserting what it cannot stand behind.
+ *
+ * The test is deliberately narrow. A SMALL amount against a large capital is a
+ * real and common filing — a nominal-value redenomination, so the share nominal
+ * divides cleanly (TESTA RESIDENCIAL SOCIMI SA moved EUR 0,57 against EUR 132m;
+ * HOTELES MARINA D'OR SL, EUR 3,00 against EUR 114m). Suppressing on magnitude
+ * alone would delete good data. Only a SUBSTANTIAL amount that shifts a
+ * negligible share of the stated result is incoherent: across 150 sampled
+ * companies and 75 checkable entries this fires on MAIER and nothing else.
+ */
+const CAPITAL_AMOUNT_FLOOR = 10000;
+const CAPITAL_INCOHERENT_RATIO = 0.001;
+// Spanish grouping: dots separate thousands, the comma is the decimal point.
+const ES_AMOUNT = String.raw`(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2}|\d+)`;
+const CAPITAL_IMPORTE = new RegExp(`Importe[^:]{0,40}:\\s*${ES_AMOUNT}`, 'i');
+const CAPITAL_RESULTANTE = new RegExp(`Resultante[^:]{0,40}:\\s*${ES_AMOUNT}`, 'i');
+
+function parseEsAmount(text) {
+  const value = Number(String(text).replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(value) ? value : null;
+}
+
+export function hasIncoherentCapital(company, events) {
+  const current = company?.current_capital;
+  if (typeof current !== 'number' || !(current > 0)) return false;
+  for (const event of events || []) {
+    if (!event?.has_capital_change) continue;
+    const entry = event.full_entry || '';
+    const importe = CAPITAL_IMPORTE.exec(entry);
+    const resultante = CAPITAL_RESULTANTE.exec(entry);
+    if (!importe || !resultante) continue;
+    const amount = parseEsAmount(importe[1]);
+    const result = parseEsAmount(resultante[1]);
+    if (!amount || !result || result <= 0) continue;
+    // Only the filing whose stated result IS the current figure can condemn it;
+    // an older incoherent entry says nothing about a capital later replaced.
+    // Tolerance covers cents of drift between the gazette string and the
+    // aggregated value.
+    if (Math.abs(result - current) > 1) continue;
+    if (amount >= CAPITAL_AMOUNT_FLOOR && amount / result < CAPITAL_INCOHERENT_RATIO) return true;
+  }
+  return false;
+}
+
 /** Title + meta description for a company page, CIF-aware when a NIF is known. */
 export function buildSeoMeta(
   lang,
@@ -1407,7 +1464,9 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
 
   const { title, desc } = buildSeoMeta(lang, seoName, {
     nif: seoNif,
-    capital: fmtEur(company.current_capital, lang),
+    // Withheld when BORME's own arithmetic contradicts it: the snippet is the
+    // one surface Google republishes verbatim, so it asserts nothing doubtful.
+    capital: hasIncoherentCapital(company, events) ? '' : fmtEur(company.current_capital, lang),
     province: company.province,
     variant: isSeoVariant(canonicalSlug),
     counts: {
