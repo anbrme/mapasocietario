@@ -209,7 +209,19 @@ const CompanyInspectorPanel = ({
           <CloseIcon />
         </IconButton>
       </Box>
-      <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+      {/* The card does not scroll. Everything above the disclosure is bounded —
+          the header already carries the name and the status chips, so the grid
+          no longer repeats them, and the address is clamped. Only an OPENED
+          disclosure scrolls, inside itself: that is opt-in, so it cannot make
+          the card a different height for every node the way the old body did. */}
+      <Box sx={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflowY: 'auto',
+        p: 2,
+      }}>
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
             <CircularProgress size={40} />
@@ -293,58 +305,6 @@ const CompanyInspectorPanel = ({
                       being OFF, because CompanyFindings rendered the legal name
                       itself; with findings moved to /empresa the card would
                       otherwise have no company name on it at all. */}
-                  {true && (
-                    <Box sx={{ gridColumn: '1 / -1' }}>
-                      <Typography variant="caption" color="text.secondary">{text.legalName}</Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 600,
-                          textDecoration: e?.isDissolved ? 'line-through' : 'none',
-                          color: e?.isDissolved ? 'error.main' : 'inherit',
-                        }}
-                      >
-                        {data.name}
-                      </Typography>
-                      {e?.nameChanges?.length > 0 ? (
-                        <Box sx={{ mt: 0.25 }}>
-                          {e.nameChanges.map((nc, idx) => (
-                            <Typography
-                              key={idx}
-                              variant="caption"
-                              display="block"
-                              sx={{ color: 'warning.main', fontStyle: 'italic' }}
-                            >
-                              {nc.date ? `${formatDate(nc.date, lang)}: ` : ''}
-                              {nc.old_name} → {nc.new_name}
-                            </Typography>
-                          ))}
-                        </Box>
-                      ) : (
-                        e?.previousNames?.length > 0 && (
-                          <Typography variant="caption" sx={{ color: 'warning.main', fontStyle: 'italic' }}>
-                            {text.previous}: {e.previousNames.join(', ')}
-                          </Typography>
-                        )
-                      )}
-                    </Box>
-                  )}
-                  {(e?.isDissolved || e?.isInConcurso || e?.isUnipersonal) && (
-                    <Box sx={{ gridColumn: '1 / -1' }}>
-                      <Typography variant="caption" color="text.secondary">{text.status}</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.25 }}>
-                        {e.isDissolved && (
-                          <Chip label={text.dissolved} size="small" color="error" />
-                        )}
-                        {e.isInConcurso && (
-                          <Chip label={text.concurso} size="small" color="warning" />
-                        )}
-                        {e.isUnipersonal && (
-                          <Chip label={text.unipersonal} size="small" color="info" variant="outlined" />
-                        )}
-                      </Box>
-                    </Box>
-                  )}
                   {e?.cif ? (
                     <Box>
                       <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
@@ -447,7 +407,9 @@ const CompanyInspectorPanel = ({
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Typography variant="subtitle2">{text.moreRegistryDetail}</Typography>
                   </AccordionSummary>
-                  <AccordionDetails>
+                  {/* Opt-in, and bounded even then: an open disclosure scrolls
+                      inside itself rather than growing the card. */}
+                  <AccordionDetails sx={{ maxHeight: 340, overflowY: 'auto' }}>
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 1.5 }}>
                   {e?.activity && (
                     <Box sx={{ gridColumn: '1 / -1' }}>
