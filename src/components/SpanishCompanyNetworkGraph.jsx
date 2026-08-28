@@ -90,6 +90,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { hasIncoherentCapital } from '../utils/capitalCoherence';
+import { latestEventType } from '../utils/latestEventType';
 import { normalizeCompanyName, displayCompanyName } from '../utils/companyName';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
 import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
@@ -6051,6 +6052,8 @@ const SpanishCompanyNetworkGraph = ({
               cif: latestCif || company?.enriched_nif || null,
               firstSeen,
               lastSeen,
+              // What last HAPPENED, not just when — the card names the act.
+              lastEventType: latestEventType(sortedEvents),
               previousNames,
               nameChanges,
               isDissolved,
