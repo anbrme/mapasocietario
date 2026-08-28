@@ -94,10 +94,12 @@ feed.
 
 - Company name, legal form, province
 - Active and former officer counts
-- Last publication date and total publications
-  (*"Última publicación: 4 de agosto de 2026 · 24 en total desde 2009"*)
-- The most recent registry event in plain words, no severity, no
-  interpretation (*"Nombramiento de apoderado — 4 ago 2026"*)
+- One recency line that names the last filing and dates it once, no severity
+  and no interpretation:
+  *"Última publicación: Nombramiento de apoderado · 4 ago 2026 · 24 en total
+  desde 2009"*. The event type is what makes this interesting rather than
+  merely recent; the count is what makes it feel alive. Falls back to the date
+  alone when the filing has no readable type.
 - **"Abrir ficha completa" — visible, primary, opens in a new window.** Not
   chrome that can be pushed down by whatever is added next.
 
