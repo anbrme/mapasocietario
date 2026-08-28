@@ -27,29 +27,15 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import OfficerInspectorBody from './OfficerInspectorBody.jsx';
-import CompanyFindings from './CompanyFindings';
 import { FINDINGS_PANEL_ENABLED } from '../config';
 import { listedBadgeFor } from '../utils/ibex35Match';
 import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
+import { companyRecencyLine } from './companyRecencyLine';
 import { trackFullCompanyProfileClick } from '../utils/track';
 import { recordCompanyDemand } from '../utils/companyDemand';
 import { formatDate } from '../utils/formatDate';
-
-// Findings-block evidence links open the data dock. The inspector has no
-// events/capital/ownership dataset (buildCompanyDatasets in
-// src/utils/inspectorDatasets.js has no generic "events" table), so only
-// officer-kind evidence gets a link — the component itself only renders the
-// link for that kind. 'current' is the only true officers table, and is the
-// fallback for any other officer-evidence finding kind.
-const FINDINGS_OFFICERS_DATASET_KEY = 'current';
-
-// Finding kind -> the officer dataset key that actually backs it.
-const FINDINGS_EVIDENCE_DATASET_KEY = {
-  superseded_seats: 'superseded',
-  governing_body_turnover: 'nombramientos',
-};
 
 /**
  * Company / officer inspector for the network graph.
@@ -146,9 +132,8 @@ const CompanyInspectorPanel = ({
     // beside the panel instead of hiding under it. `width` null means the
     // viewport is too narrow to sit side by side — the panel covers the canvas.
     <Paper
-      elevation={8}
+      elevation={0}
       onContextMenu={e => e.preventDefault()}
-      onCopy={e => e.preventDefault()}
       sx={{
         position: 'absolute',
         top: 0,
@@ -162,11 +147,6 @@ const CompanyInspectorPanel = ({
         borderRadius: 0,
         borderLeft: '1px solid',
         borderColor: 'divider',
-        boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        MozUserSelect: 'none',
-        msUserSelect: 'none',
       }}
     >
       {/* Header — name on its own line, chips wrapping beneath it: the panel is
@@ -234,20 +214,13 @@ const CompanyInspectorPanel = ({
           <Alert severity="info" sx={{ mb: 2 }}>{text.snapshotPreviewNotice}</Alert>
         )}
 
-        {/* Findings — the on-ramp to the paid report. Sits first in the
-            scrollable body, above the Structure chips and the rest of the
-            fact sheet, so it is the first thing a reader hits after the
-            header. */}
-        {FINDINGS_PANEL_ENABLED && data?.type === 'company' && data.name && (
-          <CompanyFindings
-            groupKey={data.company?.group_key || data.company?._id || null}
-            name={data.name}
-            lang={lang}
-            onOpenReport={onOpenReport}
-            onEvidence={ev => onOpenDataset?.(FINDINGS_EVIDENCE_DATASET_KEY[ev.kind] || FINDINGS_OFFICERS_DATASET_KEY)}
-            listed={listedBadgeFor(data.name, lang)}
-          />
-        )}
+        {/* Findings live on /empresa, not here. They are an INTERPRETATION, and
+            an interpretation needs room to justify itself — the dated filing it
+            came from, why it is worth noting. This card has no such room, which
+            is why every compressed version of it became either a wall or an
+            alarm. Mounting them here on 2026-08-24 cut full-profile opens
+            threefold and doubled the clicks that dismiss this panel.
+            FINDINGS_PANEL_ENABLED still governs them on /empresa. */}
 
         {/* Structure — the parts of the record the GRAPH already draws. Showing
             them as counts rather than tables keeps this panel a fixed height
@@ -284,6 +257,15 @@ const CompanyInspectorPanel = ({
         )}
         {data && data.type === 'company' && (() => {
           const e = data.enriched;
+          // One line where two grid cells used to repeat the same date. Names
+          // the act, dates it once, counts the record. No severity.
+          const recencyLine = companyRecencyLine({
+            lastEventType: e?.lastEventType,
+            lastSeen: e?.lastSeen,
+            firstSeen: e?.firstSeen,
+            eventCount: e?.eventCount,
+            lang,
+          });
           const fullHref = fullCompanyPageHref(data.name, lang);
           return (
             <Box>
@@ -298,7 +280,11 @@ const CompanyInspectorPanel = ({
               </Typography>
               <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-                  {!FINDINGS_PANEL_ENABLED && (
+                  {/* Always shown. This was conditional on the findings block
+                      being OFF, because CompanyFindings rendered the legal name
+                      itself; with findings moved to /empresa the card would
+                      otherwise have no company name on it at all. */}
+                  {true && (
                     <Box sx={{ gridColumn: '1 / -1' }}>
                       <Typography variant="caption" color="text.secondary">{text.legalName}</Typography>
                       <Typography
@@ -421,20 +407,6 @@ const CompanyInspectorPanel = ({
                       </Typography>
                     </Box>
                   )}
-                  {(e?.firstSeen || e?.lastSeen) && (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">{text.bormeRange}</Typography>
-                      <Typography variant="body2" className="registry-ref">
-                        {e.firstSeen ? formatDate(e.firstSeen, lang) : '?'} — {e.lastSeen ? formatDate(e.lastSeen, lang) : '?'}
-                      </Typography>
-                    </Box>
-                  )}
-                  {e?.eventCount > 0 && (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">{text.publicationsFound}</Typography>
-                      <Typography variant="body2" className="registry-ref">{e.eventCount}</Typography>
-                    </Box>
-                  )}
                   {e?.isUnipersonal &&
                     ((e?.soleShareholdersCorporate?.length || 0) +
                       (e?.soleShareholdersIndividual?.length || 0) > 0) && (
@@ -482,47 +454,49 @@ const CompanyInspectorPanel = ({
                 </Box>
               </Paper>
 
-              {fullHref && (
-                <Typography
-                  component="a"
-                  href={fullHref}
-                  target="_blank"
-                  rel="noopener"
-                  onClick={() => {
-                    trackFullCompanyProfileClick({
-                      href: fullHref,
-                      language: lang,
-                      entrySource,
-                    });
-                    recordCompanyDemand({
-                      eventType: 'full_profile_click',
-                      language: lang,
-                      company: { ...(e || {}), name: data.name },
-                    });
-                  }}
-                  variant="body2"
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.5,
-                    mb: 3,
-                    // accent.primary in both directions, hover included: the
-                    // old primary.light -> primary.main hover DIMMED the link
-                    // in dark mode (light.dark's "light" shade is brighter than
-                    // its "main"), while accent.primary's light-mode value is
-                    // already darkened to primary.dark for the 4.5:1 text floor
-                    // (finding 1), leaving no further token to darken toward on
-                    // hover. Dropping the hover colour swap avoids reintroducing
-                    // a wrong-direction change in either mode (finding 6).
-                    color: 'accent.primary',
-                    fontWeight: 600,
-                    textDecoration: 'underline',
-                    textDecorationColor: (t) => alpha(t.palette.accent.primary, 0.5),
-                  }}
-                >
-                  {lang === 'en' ? 'Open company profile' : 'Abrir ficha societaria'}
-                  <OpenInNewIcon sx={{ fontSize: 16 }} />
+              {recencyLine && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {recencyLine}
                 </Typography>
+              )}
+
+              {/* The door out, as chrome rather than content: a text link at the
+                  bottom of a growing panel is whatever the last addition pushed
+                  it below. Both calls must fire — recordCompanyDemand feeds
+                  shouldPromoteCompany, which is what promotes a company page
+                  into the indexable set. */}
+              {fullHref && (
+                <Box sx={{ mb: 3 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    href={fullHref}
+                    target="_blank"
+                    rel="noopener"
+                    endIcon={<OpenInNewIcon sx={{ fontSize: 16 }} />}
+                    onClick={() => {
+                      trackFullCompanyProfileClick({
+                        href: fullHref,
+                        language: lang,
+                        entrySource,
+                      });
+                      recordCompanyDemand({
+                        eventType: 'full_profile_click',
+                        language: lang,
+                        company: { ...(e || {}), name: data.name },
+                      });
+                    }}
+                  >
+                    {text.openFullProfile}
+                  </Button>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mt: 0.75 }}
+                  >
+                    {text.fullProfileHint}
+                  </Typography>
+                </Box>
               )}
 
               {/* Watermark */}
