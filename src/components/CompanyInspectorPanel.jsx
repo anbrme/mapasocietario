@@ -382,7 +382,20 @@ const CompanyInspectorPanel = ({
                   {e?.address && (
                     <Box sx={{ gridColumn: e?.cif ? 'auto' : '1 / -1' }}>
                       <Typography variant="caption" color="text.secondary">{text.address}</Typography>
-                      <Typography variant="body2">
+                      {/* A registered address is free text and occasionally runs
+                          to three lines. The card must not scroll, so anything
+                          that can grow without bound is clamped rather than
+                          allowed to set the panel's height. */}
+                      <Typography
+                        variant="body2"
+                        title={e.address || ''}
+                        sx={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
                         {e.address}
                         {e.addressExternal && (
                           <Typography component="span" variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', ml: 0.5 }}>
@@ -536,13 +549,6 @@ const CompanyInspectorPanel = ({
                 </Box>
               )}
 
-              {/* Watermark */}
-              <Typography
-                variant="caption"
-                sx={{ display: 'block', textAlign: 'center', color: 'text.disabled', mt: 2, fontStyle: 'italic' }}
-              >
-                {text.previewWatermark}
-              </Typography>
             </Box>
           );
         })()}
@@ -703,13 +709,10 @@ const CompanyInspectorPanel = ({
           );
         })()}
 
-        {/* What the paid report adds over this preview — the value gap, stated
-            plainly. Lives in the scroll area so the pinned footer stays short. */}
-        {data?.type === 'company' && (
-          <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.5, mt: 3 }}>
-            {text.fullReportAdds}
-          </Typography>
-        )}
+        {/* The value-gap paragraph (text.fullReportAdds) used to sit here. It
+            argues, and arguing needs room to persuade — which a card that must
+            not scroll does not have. The argument lives on /empresa and on the
+            report page, where it can be made properly. */}
 
       </Box>
       {data?.type === 'company' ? (
