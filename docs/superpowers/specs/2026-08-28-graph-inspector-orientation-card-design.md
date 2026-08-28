@@ -69,6 +69,21 @@ The fear the panel was solving does not exist: the CTA is already
 `target="_blank"` (line 489), so opening the full profile never cost anyone
 their graph.
 
+## The constraint that governs this and what comes after it
+
+**Complexity is only worth adding until the point where it repels.** Past that
+point every further addition costs more than it gives, and the loss is silent —
+nobody files a complaint, they just stop clicking.
+
+The panel crossed that line on 24 Aug. Each thing added to it was individually
+defensible; the sum made a wall. So the test for anything added here later is
+not "is this useful?" but "does the panel still read at a glance?"
+
+The distinction that keeps this workable: **interface complexity is what the
+reader must take in; engineering complexity is what we carry so they do not.**
+The fit-inset below is the second kind — it costs us a calculation and costs
+the reader nothing. Trading the first for the second is always the right trade.
+
 ## The decision
 
 **The panel answers "what is this company", not "is something wrong with it."**
@@ -116,9 +131,20 @@ where it already reads properly and has evidence beside it.
 
 ### Presentation
 
-- Drop `elevation={8}` and the heavy shadow for a quieter, anchored card. The
-  panel stays anchored rather than becoming a docked column: the docking
-  argument was about it being a reading surface, which it no longer is.
+- Drop `elevation={8}` and the heavy shadow for a quieter, anchored card.
+- **Anchored, but non-occluding.** The panel stays `position: absolute` rather
+  than becoming a docked flex column — docking would resize the canvas and
+  re-fit the simulation on every open, and fit timing has bitten us before
+  (`fb151bd`, "fit again once the simulation has cooled after a unify").
+  Spending the whole canvas width on a small card is a bad trade.
+
+  But occlusion, more than positioning, is what makes a surface read as a
+  modal: nodes disappearing behind the panel is very likely why clicking the
+  background became the dismissal gesture at all — it is how you get your graph
+  back. So pass the panel width into the existing fit logic (`fb151bd`,
+  `adcb2c9`) as a right-hand inset, and re-fit into the VISIBLE area when the
+  panel opens. Nothing is ever hidden, nobody has to dismiss anything to see
+  their graph, and the layout is never restructured.
 - **Lift `userSelect: 'none'` and the `onCopy` block.** Text you cannot select
   is a large part of why it does not feel real, and blocking copy on a handful
   of registry facts protects nothing — the same facts are copyable on
@@ -148,6 +174,8 @@ keeps its other entry points.
 - The CTA carries `target="_blank"` and `rel="noopener"`.
 - The disclosure is closed on mount and closed again when the selected node
   changes.
+- While the panel is open, the graph's fit bounds exclude the panel width, so
+  no node is rendered underneath it.
 - Text in the card is selectable (no `userSelect: 'none'`).
 - No findings block is mounted in the panel.
 
@@ -168,6 +196,7 @@ cause — say so rather than iterating on the layout.
 
 ## Out of scope
 
-- Converting the panel to a docked column that resizes the canvas.
+- Converting the panel to a docked column that resizes the canvas. Revisit
+  only if the fit-inset proves insufficient — not before.
 - Redesigning `/empresa`.
 - Changing what findings say or how they are computed.
