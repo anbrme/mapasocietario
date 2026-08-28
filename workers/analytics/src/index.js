@@ -19,6 +19,7 @@
  *   GET /discover          -> GA4 accounts + properties this service account can see
  *   GET /run               -> pull now, persist, return JSON
  *   GET /today             -> partial current-day behavior + interaction dimensions
+ *   GET /series            -> daily per-event series (?events=a,b&days=28&breakdown=entry_source)
  *   GET /latest            -> most recent stored report (?format=md|json, default md)
  *   GET /health            -> config sanity check, no Google call
  *
@@ -1331,6 +1332,69 @@ async function gatherToday(token, propertyId, nowMs = Date.now()) {
   };
 }
 
+/**
+ * A DAILY series for named events, optionally split by an event parameter.
+ *
+ * The weekly report aggregates, and an aggregate cannot separate a UI
+ * regression from a change in who visited. In the 21-27 Aug window the
+ * inspector gained a findings block and a findings-first reorder on 24 Aug
+ * (mapasocietario 52fac01, c7203c7) while organic arrivals rose 53% and direct
+ * fell 44% — and company_full_profile_click fell 41% against graph_node_click
+ * rising 58%. Only a daily series split by entry_source shows whether the drop
+ * STEPS on the 24th (the UI) or DRIFTS with the traffic mix (the audience).
+ *
+ * `breakdown` is an event PARAMETER name (e.g. entry_source) and must already
+ * be registered as a GA4 custom dimension; unregistered parameters return
+ * "(not set)" and cannot be backfilled.
+ */
+export function seriesQuery({ events, startDate, endDate, breakdown = null }) {
+  const dimensions = [{ name: 'date' }, { name: 'eventName' }];
+  if (breakdown) dimensions.push({ name: `customEvent:${breakdown}` });
+  return {
+    dateRanges: [{ startDate, endDate }],
+    dimensions,
+    metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+    dimensionFilter: {
+      filter: { fieldName: 'eventName', inListFilter: { values: events } },
+    },
+    limit: 100000,
+  };
+}
+
+/** GA4 returns dates as YYYYMMDD; everything downstream reads ISO. */
+export function seriesFromReport(report) {
+  const rows = (report && report.rows) || [];
+  return rows.map((row) => {
+    const dims = (row.dimensionValues || []).map((d) => d.value);
+    const mets = (row.metricValues || []).map((m) => Number(m.value) || 0);
+    const [date, event, breakdown] = dims;
+    return {
+      date: String(date || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'),
+      event: event || '',
+      breakdown: breakdown === undefined ? null : breakdown,
+      eventCount: mets[0] || 0,
+      users: mets[1] || 0,
+    };
+  });
+}
+
+async function handleSeries(env, url) {
+  const sa = loadServiceAccount(env);
+  if (!env.GA_PROPERTY_ID) throw new Error('GA_PROPERTY_ID is not set');
+  const events = (url.searchParams.get('events') || '')
+    .split(',').map((e) => e.trim()).filter(Boolean);
+  if (!events.length) throw new Error('pass ?events=a,b (comma-separated GA4 event names)');
+  const days = Math.min(Math.max(parseInt(url.searchParams.get('days') || '28', 10) || 28, 1), 365);
+  const token = await getAccessToken(sa);
+  const report = await runReport(token, env.GA_PROPERTY_ID, seriesQuery({
+    events,
+    startDate: `${days}daysAgo`,
+    endDate: 'yesterday',
+    breakdown: url.searchParams.get('breakdown') || null,
+  }));
+  return { events, days, series: seriesFromReport(report) };
+}
+
 async function handleInteractions(env, url) {
   const sa = loadServiceAccount(env);
   if (!env.GA_PROPERTY_ID) throw new Error('GA_PROPERTY_ID is not set');
@@ -2175,6 +2239,7 @@ export default {
       if (path === '/discover') return await handleDiscover(env);
 
       if (path === '/interactions') return json(await handleInteractions(env, url));
+      if (path === '/series') return json(await handleSeries(env, url));
 
       if (path === '/today') {
         const sa = loadServiceAccount(env);
