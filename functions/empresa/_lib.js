@@ -312,6 +312,11 @@ const T = {
     shareholders: 'Estructura de socios',
     soleCompanies: 'Socio único (sociedades)',
     soleIndividuals: 'Socio único (personas físicas)',
+    formerSoleCompanies: 'Socio único anterior (sociedades)',
+    formerSoleIndividuals: 'Socio único anterior (personas físicas)',
+    soleDeclaredOn: (d) => `declarado el ${d}`,
+    soleDeclaredAs: (name, d) => `declarado como «${name}» el ${d}`,
+    soleScopeNote: 'El BORME publica el socio único, no el accionariado completo. Fecha de la última declaración inscrita.',
     capitalHistory: 'Evolución del capital social',
     thDate: 'Fecha',
     thCapital: 'Capital',
@@ -547,6 +552,11 @@ const T = {
     shareholders: 'Shareholder structure',
     soleCompanies: 'Sole shareholder (companies)',
     soleIndividuals: 'Sole shareholder (individuals)',
+    formerSoleCompanies: 'Former sole shareholder (companies)',
+    formerSoleIndividuals: 'Former sole shareholder (individuals)',
+    soleDeclaredOn: (d) => `declared on ${d}`,
+    soleDeclaredAs: (name, d) => `declared as \u201c${name}\u201d on ${d}`,
+    soleScopeNote: 'BORME publishes the sole shareholder, not the full share register. Date of the latest declaration on record.',
     capitalHistory: 'Share capital history',
     thDate: 'Date',
     thCapital: 'Capital',
@@ -811,6 +821,44 @@ export function buildSeoMeta(
     title: t.title(name, nif),
     desc: t.desc(name, capital, province, nif),
   };
+}
+
+/**
+ * Sole-shareholder lists, dated to the filing that recorded them.
+ *
+ * A declaration of unipersonalidad is a DATED act, not a standing fact. The
+ * page rendered the bare name in the present tense, so a 2019 declaration read
+ * as current ownership in 2026 — while `sole_shareholder_declarations` carried
+ * the date in the same payload, unused. The graph panel had shown it all along;
+ * only the page threw it away.
+ *
+ * `sole_shareholders_resolved` additionally tracks owners RENAMED since they
+ * were declared. Both names are printed: the current one is what the reader
+ * needs to follow, the declared one is what BORME actually published, and
+ * dropping either breaks traceability back to the filing.
+ */
+function ownerList(title, names, { declarations = [], resolved = [], lang = 'es', t }) {
+  if (!names || !names.length) return '';
+  const key = (n) => (n || '').toUpperCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+  const dateOf = new Map((declarations || [])
+    .filter((d) => d && d.name && d.date)
+    .map((d) => [key(d.name), d.date]));
+  const renameOf = new Map((resolved || [])
+    .filter((r) => r && r.current_name)
+    .map((r) => [key(r.current_name), r]));
+
+  const items = names.map((name) => {
+    const r = renameOf.get(key(name));
+    const declaredDate = (r && r.declared_date) || dateOf.get(key(name)) || null;
+    const renamed = r && r.declared_name && key(r.declared_name) !== key(name);
+    if (!declaredDate) return `<li>${esc(name)}</li>`;
+    const when = fmtDate(declaredDate, lang);
+    const note = renamed
+      ? t.soleDeclaredAs(r.declared_name, when)
+      : t.soleDeclaredOn(when);
+    return `<li>${esc(name)} <span class="muted">${esc(note)}</span></li>`;
+  });
+  return `<h3>${esc(title)}</h3><ul class="pill">${items.join('')}</ul>`;
 }
 
 function listBlock(title, arr) {
@@ -1393,6 +1441,12 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
       ? latestRename.new_name
       : registeredName;
   const canonicalSlug = slug;
+  const ownerOpts = {
+    declarations: company.sole_shareholder_declarations || [],
+    resolved: company.sole_shareholders_resolved || [],
+    lang,
+    t,
+  };
   const groupKey = graphGroupKey(company, seed);
   const canonicalUrl = renamedTo ? companyUrl(lang, nameToSlug(renamedTo)) : companyUrl(lang, canonicalSlug);
 
@@ -1810,11 +1864,17 @@ ${GA_SNIPPET}
   ${chartBlock}
 
   ${
-    (company.sole_shareholders && company.sole_shareholders.length) ||
-    (company.sole_shareholder_individuals && company.sole_shareholder_individuals.length)
+    // Former owners count too: a company that STOPPED being unipersonal has no
+    // current owner, and that is exactly when who held it last is the story.
+    [company.sole_shareholders, company.sole_shareholder_individuals,
+     company.previous_sole_shareholders, company.previous_sole_shareholder_individuals]
+      .some((list) => list && list.length)
       ? `<h2>${t.shareholders}</h2>
-         ${listBlock(t.soleCompanies, company.sole_shareholders)}
-         ${listBlock(t.soleIndividuals, company.sole_shareholder_individuals)}`
+         ${ownerList(t.soleCompanies, company.sole_shareholders, ownerOpts)}
+         ${ownerList(t.soleIndividuals, company.sole_shareholder_individuals, ownerOpts)}
+         ${ownerList(t.formerSoleCompanies, company.previous_sole_shareholders, ownerOpts)}
+         ${ownerList(t.formerSoleIndividuals, company.previous_sole_shareholder_individuals, ownerOpts)}
+         <p class="more">${esc(t.soleScopeNote)}</p>`
       : ''
   }
 
