@@ -37,6 +37,7 @@ import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
 import { companyRecencyLine } from './companyRecencyLine';
+import { deputyTenure } from '../services/deputyTenure';
 import { trackFullCompanyProfileClick } from '../utils/track';
 import { recordCompanyDemand } from '../utils/companyDemand';
 import { formatDate } from '../utils/formatDate';
@@ -538,27 +539,17 @@ const CompanyInspectorPanel = ({
             <Box>
               {deputyMatch?.deputy && (() => {
                 const d = deputyMatch.deputy;
-                const isFormer = !!d.FECHABAJA;
+                // Sitting or former is decided by a seat in the CURRENT
+                // legislature, never by the absence of an exit record — see
+                // services/deputyTenure.js.
+                const tenure = deputyTenure(deputyMatch.rows);
+                const isFormer = tenure.isFormer;
                 const fullName = d.APELLIDOS ? `${d.NOMBRE || ''} ${d.APELLIDOS}`.trim() : d.NOMBRE;
                 const legs = Array.from(
                   new Set((deputyMatch.rows || []).map(r => r.LEGISLATURA).filter(Boolean))
                 );
-                const allDates = (deputyMatch.rows || [])
-                  .map(r => r.FECHAINICIOLEGISLATURA)
-                  .filter(Boolean);
-                const allEnds = (deputyMatch.rows || [])
-                  .map(r => r.FECHAFINLEGISLATURA || r.FECHABAJA)
-                  .filter(Boolean);
-                const parseEs = s => {
-                  if (!s) return 0;
-                  const p = String(s).split('/');
-                  return p.length === 3 ? Date.parse(`${p[2]}-${p[1]}-${p[0]}`) || 0 : Date.parse(s) || 0;
-                };
-                const earliest = allDates.sort((a, b) => parseEs(a) - parseEs(b))[0];
-                const sittingRow = (deputyMatch.rows || []).find(r => r.LEGISLATURAACTUAL === 'S');
-                const latest = isFormer
-                  ? allEnds.sort((a, b) => parseEs(b) - parseEs(a))[0]
-                  : null;
+                const earliest = tenure.earliest;
+                const latest = isFormer ? tenure.latest : null;
                 return (
                   <Alert
                     severity={isFormer ? 'info' : 'warning'}
@@ -616,7 +607,7 @@ const CompanyInspectorPanel = ({
                           <Typography variant="body2">
                             {earliest || '?'}
                             {isFormer ? ` — ${latest || '?'}` : ` — ${text.present}`}
-                            {sittingRow?.LEGISLATURA ? ` (${sittingRow.LEGISLATURA})` : ''}
+                            {tenure.sittingLegislature ? ` (${tenure.sittingLegislature})` : ''}
                           </Typography>
                         </Box>
                       )}
