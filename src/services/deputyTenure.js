@@ -29,7 +29,16 @@ const parseEsDate = (value) => {
 
 export function deputyTenure(rows) {
   const all = Array.isArray(rows) ? rows.filter(Boolean) : [];
-  const sittingRow = all.find((r) => r.LEGISLATURAACTUAL === 'S' && !r.FECHABAJA) || null;
+  // Two sources, two schemas. The historical file (?source=all) carries every
+  // deputy ever and marks the current legislature with LEGISLATURAACTUAL. The
+  // active file (DiputadosActivos) lists ONLY sitting deputies and is the only
+  // one carrying FORMACIONELECTORAL — so a party field is itself evidence of a
+  // current seat. The matcher uses the historical file when it can and falls
+  // back to active-only, so both markers have to count or a sitting deputy
+  // would read as former in the fallback path.
+  const sittingRow = all.find(
+    (r) => (r.LEGISLATURAACTUAL === 'S' || r.FORMACIONELECTORAL) && !r.FECHABAJA,
+  ) || null;
 
   const starts = all.map((r) => r.FECHAINICIOLEGISLATURA).filter(Boolean);
   // FECHABAJA is the fallback: an early exit ends a term just as a legislature's

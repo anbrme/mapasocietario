@@ -53,6 +53,25 @@ describe('deputyTenure', () => {
     expect(t.latest).toBe('13/12/2011');
   });
 
+  it('an active-file row means a current seat even without the flag', () => {
+    // The matcher falls back to the active-only file when ?source=all is
+    // unavailable. Those rows are sitting deputies by definition but carry no
+    // LEGISLATURAACTUAL — only FORMACIONELECTORAL, which the historical file
+    // never has. Requiring the flag alone would call every sitting deputy former.
+    const t = deputyTenure([
+      row({ LEGISLATURA: 'XV', FORMACIONELECTORAL: 'PP', FECHAINICIOLEGISLATURA: '17/08/2023' }),
+    ]);
+    expect(t.isFormer).toBe(false);
+  });
+
+  it('an active-file row with an early exit is still former', () => {
+    const t = deputyTenure([
+      row({ FORMACIONELECTORAL: 'PP', FECHAINICIOLEGISLATURA: '17/08/2023', FECHABAJA: '02/02/2025' }),
+    ]);
+    expect(t.isFormer).toBe(true);
+    expect(t.latest).toBe('02/02/2025');
+  });
+
   it('never claims a current seat from missing data', () => {
     for (const rows of [[], null, undefined, [{}], [row({})]]) {
       expect(deputyTenure(rows).isFormer).toBe(true);
