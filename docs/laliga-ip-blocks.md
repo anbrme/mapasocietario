@@ -82,20 +82,53 @@ mirror hostname per service, on an address LaLiga does not touch.
 
 ### 1. Expose the API's VPS directly
 
-The BORME API already runs on a VPS with its own dedicated address. Publish a
-second hostname that reaches it without passing through Cloudflare's anycast:
+The live path to the BORME API crosses Cloudflare **twice**, so either hop
+going dark takes the API down:
+
+```
+browser -> api.ncdata.eu (api-proxy Worker) -> rag.ncdata.eu (CF) -> nginx -> Flask:5000
+```
+
+The Flask app already runs on a VPS with its own dedicated address, so the
+fallback is a third door straight to it. `docs/laliga-fallback/nginx-api-directo.conf`
+is a ready server block; deploy it on the `ncdata-bormes-impl` box next to the
+existing `rag.ncdata.eu` one, then:
 
 - In Cloudflare DNS, add `api-directo.ncdata.eu` as an `A` record to the VPS
   address with the proxy **off** (grey cloud). Orange-clouding it would put it
   straight back into the blocked pool.
-- Issue a certificate on the VPS for that name (Let's Encrypt).
-- Send `Access-Control-Allow-Origin: https://mapasocietario.es` from it, since
-  the browser treats it as a third origin.
+- `certbot --nginx -d api-directo.ncdata.eu`.
 - Repeat for `payments.ncdata.eu` and `rag.ncdata.eu` if they share the VPS.
 
-Note the trade-off: a grey-clouded hostname publishes the origin address, so it
-loses Cloudflare's DDoS protection and WAF. It is a fallback, not a new front
-door — keep the primary orange-clouded and let the failover choose.
+Three things about the api-proxy Worker make this workable, all verified
+against `anbrme/local-rag`:
+
+- **Path mapping is effectively identity.** Every `targetPath` in
+  `handleSpanishCompaniesRequest` maps to itself, with one exception:
+  `/bormes/search` and `/spanish-companies` are rewritten to
+  `/bormes/working-search`. This app calls `working-search` directly, so a
+  plain nginx passthrough is API-compatible for the endpoints it uses. Anything
+  added later that relies on that rewrite would need it replicated in nginx.
+- **CORS is the Worker's job, not Flask's.** `ALLOWED_ORIGINS`
+  (`api-proxy/src/index.js:43`) echoes the request origin when allowlisted.
+  Bypassing the Worker means nginx has to do it; the config linked above
+  mirrors that list, and hides any upstream CORS headers so a `flask-cors`
+  setup cannot produce a duplicated header the browser rejects.
+- **BORME endpoints carry no auth to replicate.**
+  `api-proxy/src/index.js:1927` removes it deliberately ("Remove
+  authentication for BORME endpoints to simplify access").
+
+That last point is also the trade-off. A grey-clouded hostname publishes the
+origin address, and these endpoints have no auth of their own, so on the
+fallback they sit behind only nginx's rate limits — no Cloudflare WAF, no
+`search-analytics-guard`. It is a fallback, not a new front door: keep
+`api.ncdata.eu` orange-clouded and let the failover choose.
+
+One loose end worth a look while you are in there: the `/bormes/graph/*`
+handlers fetch `http://rag.ncdata.eu:5000` (`api-proxy/src/index.js:1947`).
+Cloudflare's proxy does not serve port 5000, so those subrequests look like
+they cannot succeed as written. Unrelated to the blocks, but it is the same
+code path.
 
 ### 2. Mirror the static site on Bunny.net
 
