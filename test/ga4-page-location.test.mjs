@@ -7,7 +7,7 @@
  * just the browser's raw URL instead of the canonical one we meant to send.
  */
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -57,4 +57,34 @@ test('both server-rendered pages use the shared GA snippet', () => {
   const source = readFileSync(join(ROOT, 'functions/empresa/_lib.js'), 'utf8');
   const uses = source.match(/\$\{GA_SNIPPET\}/g) || [];
   assert.equal(uses.length, 2, 'company page and province hub must share one snippet');
+});
+
+// The guard above only watches the four page_view surfaces, and `view_item`
+// carried page_path past it for months. GA4 attaches page_location to EVERY
+// event by itself, so a hand-sent page_path is redundant wherever it appears —
+// and being unregistered, it was never readable in the first place. Widen the
+// net to any event, not just page_view.
+test('no GA4 event anywhere sends the UA-only page_path', () => {
+  const offenders = [];
+
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules') continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!/\.(js|jsx|mjs)$/.test(entry.name)) continue;
+      readFileSync(full, 'utf8').split('\n').forEach((line) => {
+        if (/^\s*page_path\s*:/.test(line)) {
+          offenders.push(`${full.slice(ROOT.length + 1)}: ${line.trim()}`);
+        }
+      });
+    }
+  };
+
+  for (const root of ['src', 'functions', 'public']) walk(join(ROOT, root));
+
+  assert.deepEqual(offenders, [], `page_path is a Universal Analytics field gtag drops:\n${offenders.join('\n')}`);
 });

@@ -355,7 +355,6 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
       currency: 'EUR',
       items: [{ item_name: `DD Report — ${(country || 'es').toUpperCase()}`, item_category: 'Due Diligence', quantity: 1 }],
       company: companyName || '',
-      page_path: window.location.pathname,
       platform: isAndroidApp ? 'android' : 'web',
     });
   }, [open, companyName, country]);
