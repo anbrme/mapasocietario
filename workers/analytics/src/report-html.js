@@ -346,7 +346,16 @@ export function renderReportHtml(r) {
         ${metricCard('Users', num(c.totalUsers), `${change(c.totalUsers, p.totalUsers)} vs prior week`, changeColor(c.totalUsers, p.totalUsers))}
         ${metricCard('Page views', num(c.screenPageViews), `${change(c.screenPageViews, p.screenPageViews)} vs prior week`, changeColor(c.screenPageViews, p.screenPageViews))}
       </tr><tr>
-        ${metricCard('Engagement rate', pct(c.engagementRate), `${pct(p.engagementRate)} prior week`)}
+        ${metricCard(
+          'Engagement rate',
+          r.measurementQuality?.engagement?.reconciled === false
+            ? 'unreadable'
+            : pct(c.engagementRate),
+          r.measurementQuality?.engagement?.reconciled === false
+            ? 'daily and window cuts disagree'
+            : `${num(c.engagedSessions)} engaged · ${pct(p.engagementRate)} prior week`,
+          r.measurementQuality?.engagement?.reconciled === false ? WARN : undefined,
+        )}
         ${metricCard('Avg session', seconds(c.averageSessionDuration), `${seconds(p.averageSessionDuration)} prior week`)}
         ${metricCard('Key events', num(c.keyEvents), 'engagement depth, not conversions')}
       </tr></table>
@@ -397,8 +406,24 @@ export function renderReportHtml(r) {
           pct(f.pctOfTop),
         ]),
       ),
-      'Independent distinct-user counts per stage, not a strict sequence: a visitor can reach a later stage without firing an earlier one.',
+      'The graph journey, in order. Every stage is genuinely nested in the one above it, so a later stage larger than an earlier one means the definition is wrong, not the behaviour.',
     ),
+
+    (r.sideSignals || []).length
+      ? section(
+          'Outside the graph funnel',
+          table(
+            ['Signal', 'Users', 'Prior wk', 'Why it is not a stage'],
+            (r.sideSignals || []).map((sig) => [
+              sig.label,
+              { text: num(sig.users), bold: true },
+              num(sig.priorUsers),
+              sig.note || '',
+            ]),
+          ),
+          'These reach the product by a different route, so counting them as funnel stages produced a funnel whose last stage was larger than the two before it.',
+        )
+      : '',
 
     section(
       'Acquisition channels',

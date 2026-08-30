@@ -219,14 +219,45 @@ const num = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/**
+ * `runReportCompat` may retry a rejected `keyEvents` request as `conversions`,
+ * so a response can name a column the caller never asked for. Treat the pair as
+ * one metric rather than letting the rename read as a missing value.
+ */
+const METRIC_ALIASES = { keyEvents: ['keyEvents', 'conversions'] };
+
+/**
+ * Where each requested metric actually sits in the response.
+ *
+ * GA4 labels its columns in `metricHeaders`, and reading the values by their
+ * position in the REQUEST assumes the two orders never diverge. That assumption
+ * is exactly the transposition defect this file has already been bitten by
+ * twice, and it fails silently: every number is present and plausible, just
+ * attached to the wrong name. Resolve by name, and keep positional order only
+ * as the fallback for a response that carries no headers at all — never worse
+ * than the old behaviour, and correct whenever GA4 tells us the layout.
+ */
+function metricPositions(report, metNames) {
+  const headers = report.metricHeaders;
+  if (!Array.isArray(headers) || headers.length === 0) {
+    return metNames.map((_, i) => i);
+  }
+  return metNames.map((name, i) => {
+    const candidates = METRIC_ALIASES[name] || [name];
+    const found = headers.findIndex((h) => candidates.includes(h?.name));
+    return found === -1 ? i : found;
+  });
+}
+
 function rowsToObjects(report, dimNames, metNames) {
+  const at = metricPositions(report, metNames);
   return (report.rows || []).map((row) => {
     const out = {};
     dimNames.forEach((d, i) => {
       out[d] = row.dimensionValues?.[i]?.value ?? '';
     });
     metNames.forEach((m, i) => {
-      out[m] = num(row.metricValues?.[i]?.value);
+      out[m] = num(row.metricValues?.[at[i]]?.value);
     });
     return out;
   });
@@ -241,8 +272,9 @@ function totalsFrom(report, metNames) {
   const out = {};
   const vals =
     report.totals?.[0]?.metricValues || report.rows?.[0]?.metricValues || [];
+  const at = metricPositions(report, metNames);
   metNames.forEach((m, i) => {
-    out[m] = num(vals[i]?.value);
+    out[m] = num(vals[at[i]]?.value);
   });
   return out;
 }
@@ -305,8 +337,32 @@ const FUNNEL_STAGES = [
   { event: 'graph_search_selection', label: 'Picked a result' },
   { event: 'graph_node_click', label: 'Explored a node' },
   { event: 'company_full_profile_click', label: 'Opened a full profile' },
-  { event: 'company_profile_cta_click', label: 'Clicked a profile CTA' },
-  { event: 'view_item', label: 'Viewed a paid item' },
+];
+
+/**
+ * Counted and reported, but NOT funnel stages — they do not sit downstream of
+ * the graph journey, and putting them in the chain made the funnel lie.
+ *
+ * `company_profile_cta_click` fires only in functions/empresa/_lib.js, on the
+ * server-rendered company pages. Those arrive from Google search and never
+ * touch the graph, so it is the tail of a different journey entirely.
+ *
+ * `view_item` opens from the graph toolbar, a node card AND /due-diligence, so
+ * it is downstream of no single stage. It already heads `orderedCheckout`,
+ * which is a real sequential funnel; it was double-counted as the tail of this
+ * one, where it read as 13 users converting from a stage of 9.
+ */
+const SIDE_SIGNALS = [
+  {
+    event: 'company_profile_cta_click',
+    label: 'Company-page CTA (SEO arrivals)',
+    note: 'Server-rendered /empresa pages, reached from search. Not a continuation of the graph funnel.',
+  },
+  {
+    event: 'view_item',
+    label: 'Opened the checkout dialog',
+    note: 'Heads the checkout funnel below; reachable from three surfaces, so not a graph stage.',
+  },
 ];
 
 const CHECKOUT_EVENTS = [
@@ -445,11 +501,17 @@ async function namedAll(requests) {
   return Object.fromEntries(names.map((name, i) => [name, values[i]]));
 }
 
+// `engagedSessions` earns its place beside `engagementRate`: a rate can only be
+// compared with another rate, and two rates that disagree give no way to tell
+// which is wrong. A count is additive, so the daily rows can be summed and held
+// against the window total. On 27-29 Aug the day rate read 16-24% while the
+// window containing those days read 54-60%, and the report had no way to notice.
 const CORE_METRICS = [
   'sessions',
   'totalUsers',
   'newUsers',
   'screenPageViews',
+  'engagedSessions',
   'engagementRate',
   'averageSessionDuration',
   'keyEvents',
@@ -487,7 +549,7 @@ async function gather(env, token, propertyId, nowMs) {
     dailyRep: call({
       dateRanges: range(p.current),
       dimensions: dim(['date']),
-      metrics: met(['sessions', 'totalUsers', 'keyEvents']),
+      metrics: met(['sessions', 'totalUsers', 'keyEvents', 'engagedSessions']),
       orderBys: [{ dimension: { dimensionName: 'date' } }],
     }),
     chanCur: call({
@@ -556,7 +618,7 @@ async function gather(env, token, propertyId, nowMs) {
       dimensionFilter: {
         filter: {
           fieldName: 'eventName',
-          inListFilter: { values: FUNNEL_STAGES.map((s) => s.event) },
+          inListFilter: { values: [...FUNNEL_STAGES, ...SIDE_SIGNALS].map((s) => s.event) },
         },
       },
       limit: 50,
@@ -568,7 +630,7 @@ async function gather(env, token, propertyId, nowMs) {
       dimensionFilter: {
         filter: {
           fieldName: 'eventName',
-          inListFilter: { values: FUNNEL_STAGES.map((s) => s.event) },
+          inListFilter: { values: [...FUNNEL_STAGES, ...SIDE_SIGNALS].map((s) => s.event) },
         },
       },
       limit: 50,
@@ -720,6 +782,15 @@ async function gather(env, token, propertyId, nowMs) {
     return row;
   });
 
+  const sideSignals = SIDE_SIGNALS.map((s) => ({
+    event: s.event,
+    label: s.label,
+    note: s.note,
+    users: curByEvent[s.event]?.totalUsers || 0,
+    eventCount: curByEvent[s.event]?.eventCount || 0,
+    priorUsers: priByEvent[s.event] || 0,
+  }));
+
   const checkoutCurrent = Object.fromEntries(
     rowsToObjects(checkoutCur, ['eventName'], ['eventCount', 'totalUsers']).map(
       (row) => [row.eventName, row],
@@ -770,12 +841,35 @@ async function gather(env, token, propertyId, nowMs) {
     ['landingPage'],
     ['sessions', 'bounceRate', 'keyEvents'],
   );
+  const dailyRows = rowsToObjects(
+    dailyRep,
+    ['date'],
+    ['sessions', 'totalUsers', 'keyEvents', 'engagedSessions'],
+  );
+
+  // Engagement, held against itself. The window total and the daily rows are
+  // separate GA4 queries over the same days, so their engaged-session counts
+  // must agree; when they do not, neither the day rate nor the window rate can
+  // be quoted as behaviour, and the report has to say so rather than print both.
+  const dailyEngagedSum = dailyRows.reduce(
+    (sum, row) => sum + (row.engagedSessions || 0),
+    0,
+  );
+  const engagement = {
+    days: dailyRows.length,
+    dailyEngagedSum,
+    windowSessions: curTotals.sessions,
+    windowEngagedSessions: curTotals.engagedSessions,
+    dayEngagedSessions: dayTotals.engagedSessions,
+    daySessions: dayTotals.sessions,
+    // GA4 rounds a rate it derives from the same two numbers, so allow a single
+    // session of slack rather than crying wolf on a rounding boundary.
+    reconciled: Math.abs(dailyEngagedSum - curTotals.engagedSessions) <= 1,
+  };
+
   const sessionSums = {
     core: curTotals.sessions,
-    daily: rowsToObjects(dailyRep, ['date'], ['sessions']).reduce(
-      (sum, row) => sum + row.sessions,
-      0,
-    ),
+    daily: dailyRows.reduce((sum, row) => sum + row.sessions, 0),
     channels: channels.reduce((sum, row) => sum + row.sessions, 0),
     landingPages: landingPages.reduce((sum, row) => sum + row.sessions, 0),
   };
@@ -802,18 +896,20 @@ async function gather(env, token, propertyId, nowMs) {
     propertyId,
     period: p,
     funnel,
+    sideSignals,
     checkoutOutcomes,
     checkoutFailureReasons,
     orderedCheckout,
     measurementQuality: {
       sessionSums,
       reconciled,
+      engagement,
       unassignedBreakdown,
       trafficScope:
         'GA4-filtered traffic; compare with Cloudflare raw traffic before diagnosing bots.',
     },
     totals: { current: curTotals, prior: priTotals, day: dayTotals, priorDay: priorDayTotals },
-    daily: rowsToObjects(dailyRep, ['date'], ['sessions', 'totalUsers', 'keyEvents']),
+    daily: dailyRows,
     channels,
     sources: rowsToObjects(
       srcRep,
@@ -993,6 +1089,45 @@ function reportWarnings(r) {
     );
   }
 
+  // A funnel asserts that each stage is a subset of the one above it. When a
+  // later stage is LARGER, the stages are not nested and the percentages beneath
+  // them are meaningless — which is a defect in the funnel's definition, never a
+  // surprising behaviour worth acting on. Say so rather than printing it.
+  const stages = r.funnel || [];
+  for (let i = 1; i < stages.length; i++) {
+    const here = stages[i];
+    const above = stages[i - 1];
+    if ((here.users || 0) > (above.users || 0)) {
+      warnings.push(
+        `Funnel stage "${here.label}" reports ${here.users} users against ${above.users} at "${above.label}" directly above it. A later stage cannot be larger than the one it flows from, so these two events are not nested — treat the funnel's definition as wrong, not the behaviour.`,
+      );
+    }
+  }
+
+  // Two rates that disagree cannot be adjudicated; two counts of the same thing
+  // can. When the daily rows and the window total do not agree on how many
+  // sessions were engaged, the honest output is that neither rate is readable —
+  // not a headline engagement figure with an invisible contradiction under it.
+  const eng = r.measurementQuality?.engagement;
+  if (eng && eng.reconciled === false) {
+    warnings.push(
+      `Engagement does not reconcile: the ${eng.days} daily rows sum to ${eng.dailyEngagedSum} engaged session(s) but the window total reports ${eng.windowEngagedSessions} out of ${eng.windowSessions}. These are two queries over the same days, so one of them is wrong — do not read the day or window engagement rate as behaviour until this closes.`,
+    );
+  }
+
+  // GA4 marks a session engaged if it lasts 10s, takes a second page, OR fires
+  // a key event. A cut reporting key events at a zero engagement rate is
+  // therefore describing something that cannot happen, and it points at the
+  // session rather than the visitor: a tag that records events without ever
+  // establishing engagement. Name the cut so it can be traced to a surface.
+  for (const row of r.channels || []) {
+    if (row.engagementRate === 0 && (row.keyEvents || 0) > 0) {
+      warnings.push(
+        `Channel "${row.channel}" reports a 0% engagement rate across ${row.sessions} session(s) while also reporting ${row.keyEvents} key event(s). A session with a key event is engaged by GA4's own definition, so this cut is impossible: suspect a page that fires events without establishing an engaged session, not a bounce.`,
+      );
+    }
+  }
+
   const sums = r.measurementQuality?.sessionSums;
   if (sums && !r.measurementQuality.reconciled) {
     const off = Object.entries(sums)
@@ -1119,7 +1254,7 @@ async function gatherToday(token, propertyId, nowMs = Date.now()) {
         filter: {
           fieldName: 'eventName',
           inListFilter: {
-            values: [...new Set([...FUNNEL_STAGES, ...CHECKOUT_EVENTS].map((s) => s.event))],
+            values: [...new Set([...FUNNEL_STAGES, ...SIDE_SIGNALS, ...CHECKOUT_EVENTS].map((s) => s.event))],
           },
         },
       },
@@ -1307,7 +1442,7 @@ async function gatherToday(token, propertyId, nowMs = Date.now()) {
       ['sessions', 'totalUsers', 'engagementRate'],
     ),
     events: rowsToObjects(results.events, ['eventName'], ['eventCount', 'totalUsers']),
-    funnel: [...FUNNEL_STAGES, ...CHECKOUT_EVENTS]
+    funnel: [...FUNNEL_STAGES, ...SIDE_SIGNALS, ...CHECKOUT_EVENTS]
       .filter((stage, index, stages) => stages.findIndex((s) => s.event === stage.event) === index)
       .map((stage) => ({
         ...stage,
@@ -1776,6 +1911,7 @@ function toMarkdown(r) {
         ['New users', fmt(c.newUsers), fmt(p.newUsers), delta(c.newUsers, p.newUsers)],
         ['Page views', fmt(c.screenPageViews), fmt(p.screenPageViews), delta(c.screenPageViews, p.screenPageViews)],
         ['Engagement rate', `${(c.engagementRate * 100).toFixed(1)}%`, `${(p.engagementRate * 100).toFixed(1)}%`, delta(c.engagementRate, p.engagementRate)],
+        ['Engaged sessions', fmt(c.engagedSessions), fmt(p.engagedSessions), delta(c.engagedSessions, p.engagedSessions)],
         ['Avg session', duration(c.averageSessionDuration), duration(p.averageSessionDuration), delta(c.averageSessionDuration, p.averageSessionDuration)],
         ['Key events', fmt(c.keyEvents), fmt(p.keyEvents), delta(c.keyEvents, p.keyEvents)],
       ],
@@ -1804,6 +1940,15 @@ function toMarkdown(r) {
         : '_Warning: the session-scoped cuts do not reconcile. Resolve the query/scope mismatch before changing attribution or UTMs._',
     );
     L.push('');
+    const eng = quality.engagement;
+    if (eng) {
+      L.push(
+        eng.reconciled
+          ? `_Engagement reconciles: ${fmt(eng.dailyEngagedSum)} engaged session(s) across ${eng.days} daily rows, matching the window total of ${fmt(eng.windowEngagedSessions)} out of ${fmt(eng.windowSessions)}._`
+          : `_Warning: engagement does NOT reconcile. The ${eng.days} daily rows sum to ${fmt(eng.dailyEngagedSum)} engaged session(s); the window total reports ${fmt(eng.windowEngagedSessions)} of ${fmt(eng.windowSessions)}. Do not quote either engagement rate until this closes._`,
+      );
+      L.push('');
+    }
     L.push(`_${quality.trafficScope}_`);
     L.push('');
 
@@ -1999,6 +2144,22 @@ function toMarkdown(r) {
     ),
   );
   L.push('');
+  if (r.sideSignals?.length) {
+    L.push('### Outside the graph funnel');
+    L.push('');
+    L.push(
+      mdTable(
+        ['Signal', 'Users', 'Prior wk', 'Why it is not a stage'],
+        r.sideSignals.map((sig) => [
+          sig.label,
+          fmt(sig.users),
+          fmt(sig.priorUsers),
+          sig.note || '',
+        ]),
+      ),
+    );
+    L.push('');
+  }
   L.push(
     '_Note: GA4 `keyEvents` on this property counts many graph interaction ' +
       'events, so it exceeds session count and does not represent conversions. ' +
@@ -2196,6 +2357,11 @@ async function doRun(env, nowMs) {
 // default export below.
 export {
   cleanFunnelStepName,
+  FUNNEL_STAGES,
+  SIDE_SIGNALS,
+  metricPositions,
+  rowsToObjects,
+  totalsFrom,
   delta,
   duration,
   funnelHasRows,
