@@ -19,7 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SEED } from '../functions/empresa/_ibex35.js';
 import { STUDIES, hubPath } from '../src/copy/studies.js';
-import { esc, gaSnippet, citationBlock, CITE_STYLE, toCsv, formatMonth } from './_study_chrome.mjs';
+import { esc, gaSnippet, citationBlock, toCsv, formatMonth, formatDate, PAGE_STYLE, FONT_LINK } from './_study_chrome.mjs';
 
 // Paths, title and blurb live in the registry so the hub, the sitemap and this
 // page can never drift apart.
@@ -94,7 +94,7 @@ function arcDiagramSvg() {
     const ax = x[e.a], bx = x[e.b], dx = Math.abs(bx - ax);
     const h = Math.min(dx * 0.55, maxH);
     const isHub = e.shared.some((nm) => triNames.has(nm));
-    const stroke = e.affiliated ? '#94a3b8' : (isHub ? '#d97706' : '#2563eb');
+    const kind = e.affiliated ? 'aff' : (isHub ? 'hub' : 'norm');
     const dash = e.affiliated ? ' stroke-dasharray="5 4"' : '';
     const w = Math.min(1.2 + e.shared.length * 0.9, 4.5);
     const op = e.affiliated ? 0.55 : (isHub ? 0.9 : 0.5);
@@ -102,17 +102,17 @@ function arcDiagramSvg() {
     const shared = e.shared.map((nm) => titleCase(nm)).join(', ');
     return `<g class="arc" data-a="${e.a}" data-b="${e.b}" data-an="${esc(e.a_name)}" data-bn="${esc(e.b_name)}" data-shared="${esc(shared)}">`
       + `<path class="hit" d="${d}" fill="none" stroke="transparent" stroke-width="16"/>`
-      + `<path class="ln" d="${d}" fill="none" stroke="${stroke}" stroke-opacity="${op}" stroke-width="${w.toFixed(1)}"${dash}/></g>`;
+      + `<path class="ln ${kind}" d="${d}" fill="none" stroke-opacity="${op}" stroke-width="${w.toFixed(1)}"${dash}/></g>`;
   }).join('');
 
-  const baseline = `<line x1="${marginX - 12}" y1="${baselineY}" x2="${(W - marginX + 12).toFixed(1)}" y2="${baselineY}" stroke="#cbd5e1" stroke-width="1"/>`;
+  const baseline = `<line x1="${marginX - 12}" y1="${baselineY}" x2="${(W - marginX + 12).toFixed(1)}" y2="${baselineY}" class="baseline" stroke-width="1"/>`;
 
   const marks = nodes.map((s) => {
     const cx = x[s], r = rOf(s), col = colorFor[sectorOf[s]];
     const ly = baselineY + 14;
     return `<g class="node" data-slug="${s}" data-name="${esc(nameOf[s])}">`
-      + `<circle cx="${cx.toFixed(1)}" cy="${baselineY}" r="${r.toFixed(1)}" fill="${col}" stroke="#fff" stroke-width="1"/>`
-      + `<text x="${cx.toFixed(1)}" y="${ly}" transform="rotate(90 ${cx.toFixed(1)} ${ly})" font-size="11" fill="#475569">${esc(nameOf[s])}</text></g>`;
+      + `<circle cx="${cx.toFixed(1)}" cy="${baselineY}" r="${r.toFixed(1)}" fill="${col}" stroke-width="1"/>`
+      + `<text x="${cx.toFixed(1)}" y="${ly}" transform="rotate(90 ${cx.toFixed(1)} ${ly})" font-size="11">${esc(nameOf[s])}</text></g>`;
   }).join('');
 
   const legend = sectors.map((s) => `<span class="lg"><i style="background:${colorFor[s]}"></i>${esc(s)}</span>`).join('');
@@ -155,6 +155,8 @@ const T = {
     ctaText: `Este mapa cubre 35 empresas. La herramienta hace lo mismo con cualquiera de los ${es.companies} millones de sociedades españolas del BORME: busca una empresa o un administrador y explora sus vínculos en un grafo interactivo.`,
     ctaBtn: 'Abrir el buscador →',
     crumbHome: 'Mapa Societario', crumbStudies: 'Estudios',
+    kicker: 'Investigación original · BORME', dataLabel: 'Datos a',
+    eye1: '01 · La red', eye2: '02 · Las personas', eye3: '03 · Metodología',
   },
   en: {
     htmlLang: 'en', ogLocale: 'en_GB',
@@ -186,61 +188,40 @@ const T = {
     ctaText: `This map covers 35 companies. The tool does the same for any of the ${en.companies} million Spanish companies in BORME: search a company or a director and explore their links in an interactive graph.`,
     ctaBtn: 'Open the search →',
     crumbHome: 'Mapa Societario', crumbStudies: 'Studies',
+    kicker: 'Original research · BORME', dataLabel: 'Data as of',
+    eye1: '01 · The network', eye2: '02 · The people', eye3: '03 · Methodology',
   },
 };
 
-const STYLE = `<style>
-  :root{--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--bg:#f8fafc;--brand:#2563eb}
-  *{box-sizing:border-box}
-  body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
-  .wrap{max-width:860px;margin:0 auto;padding:32px 20px 80px}
-  a{color:var(--brand)}
-  nav.crumbs{font-size:13px;color:var(--mut);margin-bottom:18px}
-  .langs{float:right}
-  h1{font-size:32px;line-height:1.12;margin:0 0 12px}
-  h2{font-size:21px;margin:40px 0 14px;padding-top:20px;border-top:1px solid var(--line)}
-  .lead{color:var(--mut);font-size:17px;margin:0 0 28px}
-  .heroes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:0 0 8px}
-  .hero{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px}
-  .hero .n{font-size:30px;font-weight:800;color:var(--brand);line-height:1.1}
-  .hero .t{color:var(--mut);font-size:14px;margin-top:6px}
-  figure{margin:14px 0 0}
-  .net{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;position:relative}
-  figcaption{color:var(--mut);font-size:13px;margin-top:10px}
-  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:12px 2px 0}
-  .legend .lg{display:inline-flex;align-items:center;font-size:11.5px;color:var(--mut)}
-  .legend .lg i{width:10px;height:10px;border-radius:3px;margin-right:5px;display:inline-block}
+const STYLE = `<style>${PAGE_STYLE}
+  /* Arc diagram. Its own encoding, but every neutral comes from the shared
+     tokens so it holds in both themes; only the sector hues stay literal,
+     because they carry data. */
   #arcsvg .arc{cursor:pointer}
   #arcsvg .arc .ln,#arcsvg .node{transition:opacity .12s}
+  #arcsvg .ln.aff{stroke:var(--base-ink)}
+  #arcsvg .ln.hub{stroke:var(--amber)}
+  #arcsvg .ln.norm{stroke:var(--teal)}
+  #arcsvg .baseline{stroke:var(--rule)}
+  #arcsvg .node circle{stroke:var(--raise)}
+  #arcsvg .node text{fill:var(--ink-3);font-family:"IBM Plex Mono",ui-monospace,monospace}
   #arcsvg.faded .arc:not(.on) .ln{opacity:.07}
   #arcsvg.faded .node:not(.on){opacity:.22}
   #arcsvg .arc.on .ln{stroke-opacity:1}
-  #arcsvg .node.on text{font-weight:700;fill:#0f172a}
-  #arcsvg .node.on circle{stroke:#0f172a;stroke-width:1.5}
-  .tt{position:absolute;pointer-events:none;background:#0f172a;color:#fff;font-size:12px;line-height:1.4;padding:7px 11px;border-radius:8px;max-width:280px;transform:translate(-50%,-100%);box-shadow:0 6px 18px rgba(15,23,42,.22);z-index:5}
-  .tt b{font-weight:700}
-  .tt .sub{opacity:.8;font-size:11px}
-  table{border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
-  th{background:#f1f5f9;text-align:left;color:var(--mut);font-size:13px}
-  th,td{padding:10px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-  tr:last-child td{border-bottom:0}
-  .cos{color:var(--mut)}
-  .aff{color:#94a3b8;font-size:12px}
-  ol.method{color:#334155;font-size:14px;padding-left:20px}
-  ol.method li{margin-bottom:8px}
-  .disc{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:12px 16px;font-size:13px;margin:18px 0 0}
-  .cta{margin:40px 0 0;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border-radius:16px;padding:28px;text-align:center}
-  .cta h2{border:0;color:#fff;margin:0 0 8px;padding:0}
-  .cta p{margin:0 auto 18px;opacity:.92;max-width:560px}
-  .cta a{display:inline-block;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:10px;background:#fff;color:#1e3a8a}
-  footer{margin-top:44px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
-${CITE_STYLE}
+  #arcsvg .node.on text{font-weight:700;fill:var(--ink)}
+  #arcsvg .node.on circle{stroke:var(--ink);stroke-width:1.5}
+  .cos{color:var(--ink-2)}
+  .aff-note{color:var(--ink-3);font-size:12px}
+  td,th{vertical-align:top;white-space:normal}
+  /* The shared table style right-aligns for numbers; only the board count is a
+     number here, so the company list goes back to the left. */
+  td:nth-child(3),th:nth-child(3){text-align:left}
 </style>`;
 
 function peopleRows(t) {
   return data.people_multi.map((p) => {
     const cos = p.companies.map((c) => esc(c.name)).join(', ');
-    const aff = p.affiliated ? ` <span class="aff">${t.affilNote}</span>` : '';
+    const aff = p.affiliated ? ` <span class="aff-note">${t.affilNote}</span>` : '';
     return `<tr><td>${esc(titleCase(p.name))}</td><td>${p.count}</td><td class="cos">${cos}${aff}</td></tr>`;
   }).join('');
 }
@@ -295,47 +276,64 @@ function render(lang) {
 <meta name="twitter:title" content="${esc(t.h1)}">
 <meta name="twitter:description" content="${esc(t.desc)}">
 ${jsonLd(t, lang)}
+${FONT_LINK}
 ${STYLE}
 ${gaSnippet()}
 </head>
 <body>
+<header class="mast">
+  <div class="wrap"><div class="col">
+    <nav class="crumbs"><span class="langs"><a href="${altPath}/">${altLabel}</a></span><a href="/">${esc(t.crumbHome)}</a> › <a href="${hubPath(lang)}">${esc(t.crumbStudies)}</a></nav>
+    <span class="eyebrow">${esc(t.kicker)}</span>
+    <h1>${esc(t.h1)}</h1>
+    <p class="dek">${esc(t.lead)}</p>
+    <div class="byline"><span><b>Mapa Societario</b></span><span>${esc(t.dataLabel)} ${esc(formatDate(data.as_of, lang))}</span></div>
+  </div></div>
+</header>
+
 <div class="wrap">
-  <nav class="crumbs"><span class="langs"><a href="${altPath}/">${altLabel}</a></span><a href="/">${t.crumbHome}</a> › <a href="${hubPath(lang)}">${t.crumbStudies}</a></nav>
-  <h1>${esc(t.h1)}</h1>
-  <p class="lead">${esc(t.lead)}</p>
-
-  <div class="heroes">
-    <div class="hero"><div class="n">${esc(t.heroA)}</div><div class="t">${esc(t.heroAt)}</div></div>
-    <div class="hero"><div class="n">${esc(t.heroB)}</div><div class="t">${esc(t.heroBt)}</div></div>
-    <div class="hero"><div class="n">${esc(t.heroC)}</div><div class="t">${esc(t.heroCt)}</div></div>
+  <div class="col">
+    <div class="hero-num">
+      <div><div class="n">${esc(t.heroA)}</div><div class="t">${esc(t.heroAt)}</div></div>
+      <div><div class="n plain">${esc(t.heroB)}</div><div class="t">${esc(t.heroBt)}</div></div>
+      <div><div class="n">${esc(t.heroC)}</div><div class="t">${esc(t.heroCt)}</div></div>
+    </div>
   </div>
 
-  <h2>${esc(t.netTitle)}</h2>
-  <figure>
-    <div class="net">${arc.svg}<div class="tt" id="tt" hidden></div></div>
-    <figcaption>${esc(t.netCaption)}</figcaption>
-    <div class="legend">${arc.legend}</div>
-  </figure>
+  <section>
+    <div class="col"><span class="eyebrow">${esc(t.eye1)}</span><h2>${esc(t.netTitle)}</h2></div>
+    <figure class="fig"><div class="col">
+      <div class="plot">${arc.svg}<div class="tip" id="tt" hidden></div></div>
+      <div class="key">${arc.legend}</div>
+      <figcaption>${esc(t.netCaption)}</figcaption>
+    </div></figure>
+  </section>
 
-  <h2>${esc(t.tableTitle)}</h2>
-  <table>
-    <thead><tr><th>${t.thName}</th><th>${t.thN}</th><th>${t.thCos}</th></tr></thead>
-    <tbody>${peopleRows(t)}</tbody>
-  </table>
+  <section><div class="col">
+    <span class="eyebrow">${esc(t.eye2)}</span>
+    <h2>${esc(t.tableTitle)}</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>${esc(t.thName)}</th><th>${esc(t.thN)}</th><th>${esc(t.thCos)}</th></tr></thead>
+      <tbody>${peopleRows(t)}</tbody>
+    </table></div>
+  </div></section>
 
-  <h2>${esc(t.methodTitle)}</h2>
-  <ol class="method">${t.method.map((m) => `<li>${esc(m)}</li>`).join('')}</ol>
-  <p class="disc">${esc(t.disclaimer)}</p>
-  ${citationBlock(STUDY, lang, data.as_of, SITE, csvHref(lang))}
-
-  <div class="cta">
-    <h2>${esc(t.ctaTitle)}</h2>
-    <p>${esc(t.ctaText)}</p>
-    <a href="/app/">${esc(t.ctaBtn)}</a>
-  </div>
-
-  <footer>Mapa Societario · ${fmtDate(data.as_of, lang)}</footer>
+  <section><div class="col">
+    <span class="eyebrow">${esc(t.eye3)}</span>
+    <h2>${esc(t.methodTitle)}</h2>
+    <ol class="limits">${t.method.map((m) => `<li>${esc(m)}</li>`).join('')}</ol>
+    <div class="note">${esc(t.disclaimer)}</div>
+    ${citationBlock(STUDY, lang, data.as_of, SITE, csvHref(lang))}
+    <div class="cta">
+      <h2>${esc(t.ctaTitle)}</h2>
+      <p>${esc(t.ctaText)}</p>
+      <a href="/app/">${esc(t.ctaBtn)}</a>
+    </div>
+  </div></section>
 </div>
+
+<footer><div class="wrap"><div class="col">Mapa Societario · BORME · ${esc(formatDate(data.as_of, lang))}</div></div></footer>
+
 <script>
 (function(){
   var svg=document.getElementById('arcsvg'); if(!svg) return;
@@ -346,7 +344,7 @@ ${gaSnippet()}
   var locked=false;
   function reset(){ arcs.forEach(function(a){a.classList.remove('on');}); nodes.forEach(function(n){n.classList.remove('on');}); }
   function hide(){ svg.classList.remove('faded'); reset(); tt.hidden=true; }
-  function tip(title,sub,e){ tt.replaceChildren(); var b=document.createElement('b'); b.textContent=title; tt.appendChild(b); tt.appendChild(document.createElement('br')); var s=document.createElement('span'); s.className='sub'; s.textContent=sub; tt.appendChild(s); tt.hidden=false; var r=svg.getBoundingClientRect(); var px=(e.clientX!=null?e.clientX:r.left+r.width/2)-r.left; var py=(e.clientY!=null?e.clientY:r.top)-r.top; tt.style.left=Math.min(Math.max(px,52),r.width-52)+'px'; tt.style.top=Math.max(py-14,26)+'px'; }
+  function tip(title,sub,e){ tt.replaceChildren(); var b=document.createElement('b'); b.textContent=title; tt.appendChild(b); tt.appendChild(document.createElement('br')); var s=document.createElement('span'); s.className='sub'; s.textContent=sub; tt.appendChild(s); tt.hidden=false; var r=tt.parentNode.getBoundingClientRect(); var px=(e.clientX!=null?e.clientX:r.left+r.width/2)-r.left; var py=(e.clientY!=null?e.clientY:r.top)-r.top; tt.style.left=Math.min(Math.max(px,52),r.width-52)+'px'; tt.style.top=Math.max(py-14,26)+'px'; }
   function arcOn(a,e){ svg.classList.add('faded'); reset(); a.classList.add('on'); var A=a.getAttribute('data-a'),B=a.getAttribute('data-b'); if(bySlug[A])bySlug[A].classList.add('on'); if(bySlug[B])bySlug[B].classList.add('on'); tip(a.getAttribute('data-an')+' \\u2194 '+a.getAttribute('data-bn'), a.getAttribute('data-shared'), e); }
   function nodeOn(n,e){ svg.classList.add('faded'); reset(); n.classList.add('on'); var s=n.getAttribute('data-slug'),c=0; arcs.forEach(function(a){ var A=a.getAttribute('data-a'),B=a.getAttribute('data-b'); if(A===s||B===s){ a.classList.add('on'); var o=A===s?B:A; if(bySlug[o])bySlug[o].classList.add('on'); c++; } }); tip(n.getAttribute('data-name'), c+' ${t.linksWord}', e); }
   svg.addEventListener('pointermove',function(e){ if(locked) return; var a=e.target.closest('.arc'); if(a){ arcOn(a,e); return; } var n=e.target.closest('.node'); if(n){ nodeOn(n,e); return; } hide(); });
