@@ -2168,11 +2168,13 @@ function toMarkdown(r) {
   );
   L.push('');
   L.push(
-    '_Stages are independent distinct-user counts for each event, not a strict ' +
-      'sequential funnel: a user can reach a later stage without firing an ' +
-      'earlier one (arriving straight on a company page, for instance). A ' +
-      '"% of prev stage" above 100% means that stage has its own entry path, ' +
-      'not that the data is wrong._',
+    '_Every stage here is genuinely nested in the one above it, so the column '
+      + 'reads as a real narrowing. Events reachable by their own entry path — '
+      + 'the company-page CTA, and the checkout dialog — are listed separately '
+      + 'above rather than inlined, because as stages they produced a funnel '
+      + 'whose last row was larger than the two before it. A "% of prev stage" '
+      + 'above 100% is now a defect in the funnel definition, not an entry '
+      + 'path, and the report warns about it._',
   );
   L.push('');
 
