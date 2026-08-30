@@ -312,7 +312,11 @@ function searchConsoleSection(sc) {
     section(
       'Search Console',
       cards + empresa,
-      `Google data through <strong>${escapeHtml(sc.dataThrough)}</strong>${sc.lagDays ? ` — ${sc.lagDays} day${sc.lagDays === 1 ? '' : 's'} behind the rest of this report, which is normal` : ''}. Compared with ${escapeHtml(sc.comparedWith)}, the same weekday a week earlier.`,
+      `Google data through <strong>${escapeHtml(sc.dataThrough)}</strong>${sc.lagDays ? ` — ${sc.lagDays} day${sc.lagDays === 1 ? '' : 's'} behind the rest of this report, which is normal` : ''}. Compared with ${escapeHtml(sc.comparedWith)}, the same weekday a week earlier. Settled figures only.${
+        sc.provisional?.days?.length
+          ? ` Google has also begun ${sc.provisional.days.length} newer day${sc.provisional.days.length === 1 ? '' : 's'} (through ${escapeHtml(sc.provisional.through)}) carrying at least ${num(sc.provisional.clicksSoFar)} more click${sc.provisional.clicksSoFar === 1 ? '' : 's'} — a floor that can only rise, never a decline.`
+          : ''
+      }`,
     ),
     section('Search, last 7 days', trend),
     section('Top search queries', queries, 'Trailing 7 days, by impressions.'),

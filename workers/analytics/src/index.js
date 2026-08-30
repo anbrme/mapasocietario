@@ -2196,7 +2196,10 @@ function toMarkdown(r) {
     L.push('## Search Console');
     L.push('');
     L.push(
-      `Google data through **${sc.dataThrough}**${sc.lagDays ? ` (${sc.lagDays} day(s) behind the rest of this report — normal, GSC lags 2-3 days)` : ''}, compared with ${sc.comparedWith}, the same weekday a week earlier.`,
+      `Google data through **${sc.dataThrough}**${sc.lagDays ? ` (${sc.lagDays} day(s) behind the rest of this report — normal, GSC lags 2-3 days)` : ''}, compared with ${sc.comparedWith}, the same weekday a week earlier. Settled figures only (\`dataState: final\`).`
+      + (sc.provisional?.days?.length
+        ? ` Google has begun ${sc.provisional.days.length} newer day(s) through ${sc.provisional.through}, carrying at least ${fmt(sc.provisional.clicksSoFar)} more click(s) and ${fmt(sc.provisional.impressionsSoFar)} impression(s). Those are floors and can only rise.`
+        : ''),
     );
     L.push('');
     L.push(

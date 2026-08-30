@@ -7,9 +7,14 @@
  * three disagree, this is the arbiter for anything search-related.
  *
  * TWO THINGS TO KNOW about the numbers here:
- *  - GSC lags two to three days. "Yesterday" is usually empty, so every figure
- *    is labelled with the date it actually came from rather than assumed to be
- *    the report date. Never present a lagging zero as a collapse in traffic.
+ *  - GSC lags two to three days, and the lag is not a clean edge: it BEGINS
+ *    reporting a day long before it has finished writing it. `dataState: 'all'`
+ *    returns those part-written days, which is why every daily email understated
+ *    its own headline day (measured 2026-08-30: Aug 27 67 -> 80 clicks,
+ *    Aug 28 56 -> 65, Aug 29 15 -> 24). The headline therefore comes from
+ *    `dataState: 'final'` — settled and safe to compare — while the fresher
+ *    part-written days are reported separately as provisional floors that can
+ *    only grow. Never present a lagging or provisional figure as a collapse.
  *  - `position` is an impression-weighted average. Summing or averaging it
  *    across rows without weighting silently invents a number, so the weighting
  *    is done here, once.
@@ -120,19 +125,31 @@ export function strikingDistance(pageRows, { minImpressions = 20, maxCtr = 0.02 
  * enough to swamp any real change (a Monday-vs-Sunday delta says nothing).
  */
 export async function fetchSearchConsole(token, siteUrl, { window, priorWindow, armOf }) {
-  const daily = await query(token, siteUrl, {
-    startDate: priorWindow.start, endDate: window.end, dimensions: ['date'],
-  });
-  const latest = latestDateWithData(daily);
+  // Two views of the same days. `final` is what Google will stand behind;
+  // `all` additionally carries the days it has started but not finished. The
+  // difference between them is the backfill still in flight.
+  const [settledDaily, daily] = await Promise.all([
+    query(token, siteUrl, {
+      startDate: priorWindow.start, endDate: window.end, dimensions: ['date'],
+      dataState: 'final',
+    }),
+    query(token, siteUrl, {
+      startDate: priorWindow.start, endDate: window.end, dimensions: ['date'],
+    }),
+  ]);
+  const latest = latestDateWithData(settledDaily);
   if (!latest) {
-    return { available: false, reason: 'no rows in the requested window', site: siteUrl };
+    return { available: false, reason: 'no settled rows in the requested window', site: siteUrl };
   }
   // Same weekday, one week back — the only honest single-day comparison.
   const priorDate = new Date(`${latest}T00:00:00Z`);
   priorDate.setUTCDate(priorDate.getUTCDate() - 7);
   const prior = priorDate.toISOString().slice(0, 10);
 
-  const byDate = new Map(daily.map((r) => [r.keys[0], r]));
+  const byDate = new Map(settledDaily.map((r) => [r.keys[0], r]));
+  const provisionalRows = daily
+    .filter((r) => r.keys[0] > latest && r.keys[0] <= window.end)
+    .sort((a, b) => a.keys[0].localeCompare(b.keys[0]));
   const dayRow = byDate.get(latest);
   const priorRow = byDate.get(prior);
 
@@ -140,6 +157,7 @@ export async function fetchSearchConsole(token, siteUrl, { window, priorWindow, 
     query(token, siteUrl, {
       startDate: priorWindow.start, endDate: window.end,
       dimensions: ['date'], dimensionFilterGroups: [{ filters: EMPRESA_FILTER }],
+      dataState: 'final',
     }),
     query(token, siteUrl, {
       startDate: window.start, endDate: window.end, dimensions: ['query'], rowLimit: 200,
@@ -158,17 +176,33 @@ export async function fetchSearchConsole(token, siteUrl, { window, priorWindow, 
     dataThrough: latest,
     comparedWith: prior,
     lagDays: Math.round((Date.parse(`${window.end}T00:00:00Z`) - Date.parse(`${latest}T00:00:00Z`)) / 86400000),
+    // Days Google has begun but not finished. Floors, not totals: they can only
+    // grow, so a dip here is never evidence of a dip in traffic.
+    provisional: {
+      through: latestDateWithData(daily),
+      days: provisionalRows.map((r) => ({
+        date: r.keys[0], clicks: r.clicks, impressions: r.impressions,
+      })),
+      clicksSoFar: provisionalRows.reduce((n, r) => n + (r.clicks || 0), 0),
+      impressionsSoFar: provisionalRows.reduce((n, r) => n + (r.impressions || 0), 0),
+    },
+    // Both sides of every window comparison come from the same data state.
+    // Holding a settled prior week against a current week whose tail is still
+    // filling in understates growth by exactly the unwritten remainder.
+    windowDataState: 'final',
     day: totalsOf(dayRow ? [dayRow] : []),
     priorDay: totalsOf(priorRow ? [priorRow] : []),
     empresaDay: totalsOf(empresaByDate.has(latest) ? [empresaByDate.get(latest)] : []),
     empresaPriorDay: totalsOf(empresaByDate.has(prior) ? [empresaByDate.get(prior)] : []),
-    window: totalsOf(daily.filter((r) => r.keys[0] >= window.start && r.keys[0] <= window.end)),
-    priorWindowTotals: totalsOf(daily.filter((r) => r.keys[0] < window.start)),
+    window: totalsOf(settledDaily.filter((r) => r.keys[0] >= window.start && r.keys[0] <= window.end)),
+    priorWindowTotals: totalsOf(settledDaily.filter((r) => r.keys[0] < window.start)),
+    // The trend keeps the fresh tail — a chart that stops three days short is
+    // its own kind of lie — but every row says whether it is settled.
     trend: daily
       .filter((r) => r.keys[0] >= window.start)
       .sort((a, b) => a.keys[0].localeCompare(b.keys[0]))
       .map((r) => ({ date: r.keys[0], clicks: r.clicks, impressions: r.impressions,
-                     ctr: r.ctr, position: r.position })),
+                     ctr: r.ctr, position: r.position, provisional: r.keys[0] > latest })),
     topQueries: queries
       .sort((a, b) => b.impressions - a.impressions)
       .slice(0, 15)
