@@ -2362,6 +2362,8 @@ async function doRun(env, nowMs) {
 // default export below.
 export {
   cleanFunnelStepName,
+  getAccessToken,
+  GA_SCOPE,
   FUNNEL_STAGES,
   SIDE_SIGNALS,
   metricPositions,

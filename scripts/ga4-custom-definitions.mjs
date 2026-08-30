@@ -23,6 +23,8 @@
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 
+import { getAccessToken } from '../workers/analytics/src/index.js';
+
 const ADMIN = 'https://analyticsadmin.googleapis.com/v1beta';
 const SCOPE = 'https://www.googleapis.com/auth/analytics.edit';
 const PROPERTY = process.env.GA_PROPERTY_ID || '530829482';
@@ -134,60 +136,9 @@ const METRICS = [
 
 /* ------------------------------------------------------------------ auth */
 
-const b64url = (buf) =>
-  Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-async function getAccessToken(sa) {
-  const now = Math.floor(Date.now() / 1000);
-  const unsigned =
-    `${b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.` +
-    `${b64url(JSON.stringify({
-      iss: sa.client_email, scope: SCOPE, aud: sa.token_uri, exp: now + 3600, iat: now,
-    }))}`;
-
-  const pkcs8 = sa.private_key
-    .replace(/-----(BEGIN|END) PRIVATE KEY-----/g, '')
-    .replace(/\s+/g, '');
-  const key = await crypto.subtle.importKey(
-    'pkcs8',
-    Buffer.from(pkcs8, 'base64'),
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(unsigned),
-  );
-
-  const res = await fetch(sa.token_uri, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: `${unsigned}.${b64url(sig)}`,
-    }),
-  });
-  if (!res.ok) throw new Error(`token exchange failed (${res.status}): ${await res.text()}`);
-  return (await res.json()).access_token;
-}
-
-/**
- * GA4 rejects a displayName containing anything but alphanumerics, underscores
- * and spaces — a hyphen 400s the entire create. Normalise here so a readable
- * label in the table above cannot fail the run.
- */
-const safeName = (name) => name.replace(/[^A-Za-z0-9_ ]+/g, ' ').replace(/\s+/g, ' ').trim();
-
-// GA4 caps a description at 150 characters and 400s past it. Trim on a word
-// boundary so the reason a dimension exists survives in readable form.
-const DESC_LIMIT = 150;
-const safeDesc = (text) => {
-  if (text.length <= DESC_LIMIT) return text;
-  const cut = text.slice(0, DESC_LIMIT);
-  const at = cut.lastIndexOf(' ');
-  return `${(at > 60 ? cut.slice(0, at) : cut).replace(/[,.;:]$/, '')}.`;
-};
-
+// One implementation of the service-account JWT dance, owned by the worker that
+// depends on it most. This script had its own copy; a second copy is a second
+// thing to get wrong.
 /* ------------------------------------------------------------------ api */
 
 async function api(token, path, init = {}) {
@@ -238,7 +189,7 @@ try {
   process.exit(1);
 }
 
-const token = await getAccessToken(sa);
+const token = await getAccessToken(sa, SCOPE);
 console.log(`property ${PROPERTY}  ·  ${sa.client_email}\n`);
 
 let existingDims;
