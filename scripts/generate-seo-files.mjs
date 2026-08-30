@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { STUDIES, LANGS, studyPath, hubPath } from '../src/copy/studies.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -102,8 +103,12 @@ const sitemapRoutes = [
   { path: '/es/borme-grafo-empresas/', changefreq: 'weekly', priority: '0.8' },
   { path: '/es/barometro-empresarial/', changefreq: 'monthly', priority: '0.8' },
   { path: '/es/mapa-relaciones-societarias/', changefreq: 'weekly', priority: '0.8' },
-  { path: '/estudios/consejos-cruzados-ibex-35/', changefreq: 'monthly', priority: '0.7' },
-  { path: '/en/studies/ibex-35-interlocking-boards/', changefreq: 'monthly', priority: '0.7' },
+  // Studies and their hub come from src/copy/studies.js: adding a study there
+  // puts it in the sitemap and on the hub in one edit, with no chance of a new
+  // study being published but never submitted.
+  ...LANGS.map((lang) => ({ path: hubPath(lang), changefreq: 'monthly', priority: '0.8' })),
+  ...STUDIES.flatMap((study) =>
+    LANGS.map((lang) => ({ path: studyPath(study, lang), changefreq: 'monthly', priority: '0.7' }))),
   { path: '/connect-claude/', changefreq: 'monthly', priority: '0.6' },
   { path: '/glossary/', changefreq: 'monthly', priority: '0.7' },
   { path: '/es/glosario/', changefreq: 'monthly', priority: '0.7' },

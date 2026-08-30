@@ -18,6 +18,14 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SEED } from '../functions/empresa/_ibex35.js';
+import { STUDIES, hubPath } from '../src/copy/studies.js';
+import { esc, gaSnippet, citationBlock, CITE_STYLE, toCsv, formatMonth } from './_study_chrome.mjs';
+
+// Paths, title and blurb live in the registry so the hub, the sitemap and this
+// page can never drift apart.
+const STUDY = STUDIES.find((s) => s.id === 'ibex35-interlocking-boards');
+const CSV_NAME = { es: 'consejos-cruzados-ibex35.csv', en: 'ibex35-interlocking-boards.csv' };
+const csvHref = (lang) => `${STUDY.paths[lang]}/${CSV_NAME[lang]}`;
 
 // Coverage figures come from one build-time source; never retype them here.
 const en = registryScale('en');
@@ -29,26 +37,13 @@ const SITE = 'https://mapasocietario.es';
 
 const data = JSON.parse(readFileSync(path.join(root, 'src/data/interlock-ibex35.json'), 'utf8'));
 
-const esc = (s) =>
-  String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
 // "APELLIDO1 APELLIDO2 NOMBRE" → "Apellido1 Apellido2 Nombre"
 const titleCase = (s) =>
   String(s).toLowerCase().replace(/(^|[\s-])([\p{L}])/gu, (_, sep, ch) => sep + ch.toUpperCase());
 
-const PATHS = {
-  es: '/estudios/consejos-cruzados-ibex-35',
-  en: '/en/studies/ibex-35-interlocking-boards',
-};
+const PATHS = STUDY.paths;
 
-const fmtDate = (iso, lang) => {
-  const [y, m] = iso.split('-');
-  const months = lang === 'en'
-    ? ['January','February','March','April','May','June','July','August','September','October','November','December']
-    : ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  return lang === 'en' ? `${months[+m - 1]} ${y}` : `${months[+m - 1]} de ${y}`;
-};
+const fmtDate = formatMonth;
 
 // ---------------------------------------------------------------------------
 // Arc diagram: connected companies on a baseline (grouped by sector, sized by
@@ -239,6 +234,7 @@ const STYLE = `<style>
   .cta p{margin:0 auto 18px;opacity:.92;max-width:560px}
   .cta a{display:inline-block;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:10px;background:#fff;color:#1e3a8a}
   footer{margin-top:44px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
+${CITE_STYLE}
 </style>`;
 
 function peopleRows(t) {
@@ -262,7 +258,8 @@ function jsonLd(t, lang) {
     '@context': 'https://schema.org', '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: t.crumbHome, item: `${SITE}/` },
-      { '@type': 'ListItem', position: 2, name: t.h1, item: url },
+      { '@type': 'ListItem', position: 2, name: t.crumbStudies, item: `${SITE}${hubPath(lang)}` },
+      { '@type': 'ListItem', position: 3, name: t.h1, item: url },
     ],
   };
   const ser = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
@@ -299,20 +296,11 @@ function render(lang) {
 <meta name="twitter:description" content="${esc(t.desc)}">
 ${jsonLd(t, lang)}
 ${STYLE}
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-HHWT6ZTKZD"></script>
-<script>
-  window.dataLayer=window.dataLayer||[];
-  function gtag(){dataLayer.push(arguments)}
-  gtag('js',new Date());
-  gtag('config','G-HHWT6ZTKZD',{send_page_view:false});
-  var canonical=document.querySelector('link[rel="canonical"]');
-  var pagePath=canonical?new URL(canonical.href,location.origin).pathname:(location.pathname.replace(/\/+$/,'')||'/');
-  gtag('event','page_view',{page_path:pagePath+location.search,page_title:document.title});
-</script>
+${gaSnippet()}
 </head>
 <body>
 <div class="wrap">
-  <nav class="crumbs"><span class="langs"><a href="${altPath}/">${altLabel}</a></span><a href="/">${t.crumbHome}</a> › ${t.crumbStudies}</nav>
+  <nav class="crumbs"><span class="langs"><a href="${altPath}/">${altLabel}</a></span><a href="/">${t.crumbHome}</a> › <a href="${hubPath(lang)}">${t.crumbStudies}</a></nav>
   <h1>${esc(t.h1)}</h1>
   <p class="lead">${esc(t.lead)}</p>
 
@@ -338,6 +326,7 @@ ${STYLE}
   <h2>${esc(t.methodTitle)}</h2>
   <ol class="method">${t.method.map((m) => `<li>${esc(m)}</li>`).join('')}</ol>
   <p class="disc">${esc(t.disclaimer)}</p>
+  ${citationBlock(STUDY, lang, data.as_of, SITE, csvHref(lang))}
 
   <div class="cta">
     <h2>${esc(t.ctaTitle)}</h2>
@@ -370,10 +359,25 @@ ${STYLE}
 </html>`;
 }
 
+// The table as a file: a study people can re-check is a study people cite.
+function csvFor(lang) {
+  const head = lang === 'en'
+    ? ['Director', 'Boards', 'Companies', 'Same group']
+    : ['Consejero', 'Consejos', 'Empresas', 'Mismo grupo'];
+  const rows = data.people_multi.map((p) => [
+    titleCase(p.name),
+    p.count,
+    p.companies.map((c) => c.name).join('; '),
+    p.affiliated ? (lang === 'en' ? 'yes' : 'sí') : (lang === 'en' ? 'no' : 'no'),
+  ]);
+  return toCsv([head, ...rows]);
+}
+
 const distDir = path.resolve(root, 'dist');
 for (const lang of ['es', 'en']) {
   const outDir = path.join(distDir, PATHS[lang]);
   mkdirSync(outDir, { recursive: true });
   writeFileSync(path.join(outDir, 'index.html'), render(lang), 'utf8');
-  console.log(`  Study: ${PATHS[lang]}/index.html`);
+  writeFileSync(path.join(outDir, CSV_NAME[lang]), csvFor(lang), 'utf8');
+  console.log(`  Study: ${PATHS[lang]}/index.html + ${CSV_NAME[lang]}`);
 }

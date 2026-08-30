@@ -29,6 +29,7 @@ import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE, SAMPLE_REPORT_URL } fro
 import { siteNav } from '../utils/siteNav';
 import { statsService } from '../services/statsService';
 import { millionsLabel, REGISTRY_SCALE_RAW } from '../copy/registryScale';
+import { hubPath } from '../copy/studies';
 import { openListedCompanies } from '../services/listedCompaniesNav';
 import { trackEvent, trackUserManualDownload } from '../utils/track';
 import { isReturningGuideVisit, markGuideSeen } from '../utils/firstRunGuide';
@@ -348,7 +349,7 @@ export default function LandingPage({ lang = 'en' }) {
               </Link>
               <Link
                 component="a"
-                href={lang === 'en' ? '/en/studies/ibex-35-interlocking-boards/' : '/estudios/consejos-cruzados-ibex-35/'}
+                href={hubPath(lang === 'en' ? 'en' : 'es')}
                 sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
               >
                 <HubIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.study}

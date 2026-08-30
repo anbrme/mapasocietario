@@ -254,6 +254,7 @@ const routes = [
           <li><a href="/spanish-company-register-search/">Search Spanish companies and understand the company register</a></li>
           <li><a href="/company-director-search/">Search Spanish company directors and officers</a></li>
           <li><a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></li>
+          <li><a href="/en/studies/">Data studies on Spanish companies</a></li>
           <li><a href="${FACEBOOK_URL}">Mapa Societario on Facebook</a></li>
         </ul>
         <h2>Frequently asked questions</h2>
@@ -540,6 +541,7 @@ const routes = [
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
           <li><a href="/es/mapa-relaciones-societarias/">Mapa de relaciones societarias</a></li>
+          <li><a href="/estudios/">Estudios de datos sobre empresas espa&ntilde;olas</a></li>
           <li><a href="${FACEBOOK_URL}">Mapa Societario en Facebook</a></li>
           <li><a href="/">English version</a></li>
         </ul>

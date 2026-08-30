@@ -42,7 +42,7 @@ export const LANDING_COPY = {
     quickLinks: {
       listed: 'Browse IBEX 35 companies',
       dashboard: 'Stats dashboard',
-      study: 'IBEX 35 interlocking boards',
+      study: 'Data studies',
     },
     professional: {
       heading: 'Built for decisions where relationships matter',
@@ -314,7 +314,7 @@ export const LANDING_COPY = {
     quickLinks: {
       listed: 'Ver empresas del IBEX 35',
       dashboard: 'Panel estadístico',
-      study: 'Consejos cruzados del IBEX 35',
+      study: 'Estudios de datos',
     },
     professional: {
       heading: 'Para decisiones donde las relaciones importan',

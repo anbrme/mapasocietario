@@ -8,7 +8,7 @@
     "check": "node scripts/check-gleif-render.mjs",
     "prebuild": "node scripts/generate-registry-scale.mjs && node scripts/check-gleif-render.mjs && node scripts/check-curated.mjs && node scripts/check-confirmations.mjs && node scripts/generate-empresa-sitemap.mjs && node scripts/generate-seo-files.mjs",
     "build": "vite build",
-    "postbuild": "node scripts/generate-barometro.mjs && node scripts/generate-interlock-study.mjs && node scripts/prerender.mjs",
+    "postbuild": "node scripts/generate-barometro.mjs && node scripts/generate-interlock-study.mjs && node scripts/generate-studies-hub.mjs && node scripts/prerender.mjs",
     "preview": "vite preview",
     "test": "vitest run && node --test test/*.test.mjs"
   },
