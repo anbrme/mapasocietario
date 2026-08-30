@@ -27,9 +27,10 @@
  * and says why, exactly as the deployed worker does — the point is to see what
  * the email would look like, including when a source is unavailable.
  */
-import { readFileSync } from 'node:fs';
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   GA_SCOPE,
@@ -41,6 +42,29 @@ import {
 import { renderReportHtml } from '../workers/analytics/src/report-html.js';
 import { fetchSearchConsole, GSC_SCOPE } from '../workers/analytics/src/search-console.js';
 import { seoArm } from '../functions/empresa/_seo_experiment.js';
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * Load .env.analytics.local if it is there — the same gitignored file the
+ * Cloudflare tokens already live in, so the edge section populates without
+ * anyone having to remember to export anything.
+ *
+ * A value already in the environment WINS: an explicit `FOO=bar node ...` must
+ * override the file, not be silently overridden by it.
+ */
+function loadLocalEnv() {
+  const path = join(REPO_ROOT, '.env.analytics.local');
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, 'utf8').split('\n')) {
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!match || line.trimStart().startsWith('#')) continue;
+    const [, key, raw] = match;
+    if (process.env[key] !== undefined) continue;
+    process.env[key] = raw.trim().replace(/^(['"])(.*)\1$/, '$2');
+  }
+}
+loadLocalEnv();
 
 const PROPERTY_ID = process.env.GA_PROPERTY_ID || '530829482';
 const SITE_URL = process.env.GSC_SITE_URL || 'https://mapasocietario.es/';
@@ -132,7 +156,8 @@ if (asJson) {
 
 if (!report.edge?.available) {
   console.error(
-    '\nnote: the Cloudflare edge section is empty — set CLOUDFLARE_ANALYTICS_TOKEN '
-    + 'to populate it. The deployed worker has it, so this is a local gap only.',
+    `\nnote: the Cloudflare edge section is empty${report.edge?.reason ? ` (${report.edge.reason})` : ''}. `
+    + 'Put CLOUDFLARE_ANALYTICS_TOKEN in .env.analytics.local, which this script '
+    + 'reads automatically, or export it.',
   );
 }

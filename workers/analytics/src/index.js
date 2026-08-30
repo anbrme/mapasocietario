@@ -2249,6 +2249,53 @@ function toMarkdown(r) {
     L.push('');
   }
 
+  // The edge is the measurement-quality section that matters most: it sizes
+  // everything above it. The HTML edition has carried it since the start; the
+  // markdown edition silently omitted the whole source, so /run and /latest
+  // disagreed with the email about which sources even exist.
+  const edge = r.edge;
+  if (edge) {
+    L.push('## Edge traffic (Cloudflare)');
+    L.push('');
+    if (!edge.available) {
+      L.push(`_Unavailable: ${edge.error || edge.hint || edge.reason || 'not configured'}_`);
+      L.push('');
+    } else {
+      const t = edge.totals || {};
+      L.push(
+        mdTable(
+          ['Cloudflare (every request that reached the edge)', 'Count'],
+          [
+            ['Requests', fmt(t.requests)],
+            ['Page views', fmt(t.pageViews)],
+            ['Unique visitors (by IP)', fmt(t.uniques)],
+            ['Threats blocked', fmt(t.threats)],
+          ],
+        ),
+      );
+      L.push('');
+      if (edge.comparison?.length) {
+        L.push(
+          mdTable(
+            ['Country', 'CF requests', 'Threats', 'GA4 sessions', 'Requests / session'],
+            edge.comparison.slice(0, 12).map((row) => [
+              row.country,
+              fmt(row.requests),
+              fmt(row.threats),
+              fmt(row.sessions),
+              // Null, never Infinity: "GA4 recorded nothing here" is a different
+              // statement from "the ratio is very large".
+              row.requestsPerSession === null
+                ? 'no GA4 data'
+                : row.requestsPerSession.toFixed(1),
+            ]),
+          ),
+        );
+        L.push('');
+      }
+    }
+  }
+
   L.push('## Geography');
   L.push('');
   L.push(
