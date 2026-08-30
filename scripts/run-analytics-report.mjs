@@ -37,6 +37,7 @@ import {
   gather,
   getAccessToken,
   periods,
+  plainSummary,
   toMarkdown,
 } from '../workers/analytics/src/index.js';
 import { renderReportHtml } from '../workers/analytics/src/report-html.js';
@@ -142,6 +143,10 @@ try {
 } catch (e) {
   report.searchConsole = { available: false, reason: explain(e).slice(0, 300), site: SITE_URL };
 }
+
+// Search Console lands after gather(), exactly as it does in the worker, so the
+// summary is rebuilt here for the same reason doRun rebuilds it.
+report.plainSummary = plainSummary(report);
 
 if (htmlArg) {
   const path = htmlArg.slice('--html='.length);

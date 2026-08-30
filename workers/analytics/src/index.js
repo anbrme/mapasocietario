@@ -970,8 +970,11 @@ async function gather(env, token, propertyId, nowMs) {
   }
   report.edge = edge;
 
-  // Computed last: it reads the assembled sections against each other.
-  return { ...report, warnings: reportWarnings(report) };
+  // Computed last: both read the assembled sections against each other, and the
+  // summary must sit ON the payload so the stored copy the email renders from
+  // carries the same words as the markdown edition.
+  const warnings = reportWarnings(report);
+  return { ...report, warnings, plainSummary: plainSummary({ ...report, warnings }) };
 }
 
 /* ------------------------------------------------------ cross-validation */
@@ -983,6 +986,105 @@ async function gather(env, token, propertyId, nowMs) {
  * that reaches the reader as a warning costs a paragraph; one that does not
  * costs a decision.
  */
+/**
+ * The report in plain English, for a reader who does not already know what an
+ * impression-weighted position is.
+ *
+ * Every sentence is derived from a number in the payload and carries that
+ * number with it, so this can never drift from the tables below it — it is a
+ * translation, not a commentary, and it must never assert a cause. "Nobody
+ * bought a report" is sayable; "because checkout is broken" is not.
+ */
+function plainSummary(r) {
+  const lines = [];
+  const n = (v) => Number(v || 0).toLocaleString('en-US');
+  const plural = (count, one, many) => `${n(count)} ${count === 1 ? one : many}`;
+  const cur = r.totals?.current;
+  const pri = r.totals?.prior;
+
+  if (cur?.totalUsers != null) {
+    const now = cur.totalUsers;
+    const before = pri?.totalUsers || 0;
+    const change = before ? (now - before) / before : null;
+    // Under 5% either way is noise at this volume, and calling it growth would
+    // teach the reader to trust a number that cannot carry that weight.
+    const direction =
+      change === null ? ''
+        : Math.abs(change) < 0.05 ? ' — about the same as the week before'
+        : ` — ${change > 0 ? 'up' : 'down'} ${Math.abs(Math.round(change * 100))}%`;
+    lines.push(
+      `**${n(now)} people** visited the site this week, against ${n(before)} the week before${direction}.`,
+    );
+  }
+
+  const top = (r.channels || []).slice().sort((a, b) => (b.sessions || 0) - (a.sessions || 0))[0];
+  const totalSessions = (r.channels || []).reduce((sum, c) => sum + (c.sessions || 0), 0);
+  if (top && totalSessions) {
+    lines.push(
+      `Most arrived through **${top.label || top.channel}** (${n(top.sessions)} of ${n(totalSessions)} visits).`,
+    );
+  }
+
+  const sc = r.searchConsole;
+  if (sc?.available && sc.window) {
+    const w = sc.window;
+    const priorClicks = sc.priorWindowTotals?.clicks;
+    const vs = priorClicks ? ` against ${n(priorClicks)} the week before` : '';
+    lines.push(
+      `Google showed your pages **${n(w.impressions)} times** and **${n(w.clicks)} people clicked**${vs}. `
+      + `Your average spot in the results was **${(w.position || 0).toFixed(1)}** — that is a rank, so lower is better.`,
+    );
+    if (sc.provisional?.days?.length) {
+      lines.push(
+        `Those search figures stop at ${sc.dataThrough}: Google takes two to three days to finish counting a day. `
+        + `${plural(sc.provisional.days.length, 'newer day has', 'newer days have')} started and already hold ${n(sc.provisional.clicksSoFar)} more clicks, so the real total is higher, never lower.`,
+      );
+    }
+  }
+
+  const outcome = (event) => (r.checkoutOutcomes || []).find((o) => o.event === event) || {};
+  // A sentence counting PEOPLE must not quote an event count. checkout_redirect
+  // fired 12 times across 3 users in the 23-29 Aug window; "12 reached the
+  // payment step" reads as twelve people and overstates it fourfold.
+  const purchaseEvents = outcome('purchase').eventCount || 0;
+  const buyers = outcome('purchase').users || 0;
+  const redirectPeople = outcome('checkout_redirect').users || 0;
+  const redirects = outcome('checkout_redirect').eventCount || 0;
+  const viewed = outcome('view_item').users || 0;
+  if (purchaseEvents > 0) {
+    lines.push(`**${plural(purchaseEvents, 'report was', 'reports were')} bought**, by ${plural(buyers, 'person', 'people')}.`);
+  } else if (redirects > 0) {
+    const unclassified = (r.checkoutDestinations?.rows || [])
+      .filter((row) => !row.destination || row.destination === '(not set)')
+      .reduce((sum, row) => sum + (row.eventCount || 0), 0);
+    lines.push(
+      `**Nobody bought a report.** ${plural(viewed, 'person', 'people')} opened the checkout and `
+      + `${plural(redirectPeople, 'person', 'people')} reached the payment step`
+      + (unclassified
+        ? `, but ${plural(unclassified, 'attempt', 'attempts')} there cannot yet be told apart from free-report claims, so this is not evidence either way.`
+        : '.'),
+    );
+  } else if (viewed > 0) {
+    lines.push(`**Nobody bought a report.** ${plural(viewed, 'person', 'people')} opened the checkout and none went through.`);
+  }
+
+  const requests = r.edge?.totals?.requests || 0;
+  if (requests && cur?.sessions) {
+    lines.push(
+      `The server handled ${n(requests)} requests but only ${n(cur.sessions)} were real browser visits. `
+      + `Most of what reaches the site is automated, so treat server-side totals as load, not as audience.`,
+    );
+  }
+
+  if (r.warnings?.length) {
+    lines.push(
+      `**${plural(r.warnings.length, 'figure', 'figures')} in this report cannot be trusted yet** — "Read this first" says which, and why.`,
+    );
+  }
+
+  return lines;
+}
+
 function reportWarnings(r) {
   const warnings = [];
 
@@ -1894,7 +1996,15 @@ function toMarkdown(r) {
   // Warnings lead. A contradiction discovered after the reader has already
   // formed a view has arrived too late to be useful.
   if (r.warnings?.length) {
-    L.push('## Read this first');
+    const summary = plainSummary(r);
+  if (summary.length) {
+    L.push('## In plain English');
+    L.push('');
+    summary.forEach((line) => L.push(`- ${line}`));
+    L.push('');
+  }
+
+  L.push('## Read this first');
     L.push('');
     r.warnings.forEach((w) => L.push(`- **${w}**`));
     L.push('');
@@ -2401,6 +2511,11 @@ async function doRun(env, nowMs) {
   // Pulled after GA4 rather than beside it: a Search Console outage must not
   // cost the report its GA4 and edge sections, which stand on their own.
   report.searchConsole = await gatherSearchConsole(env, periods(nowMs));
+  // Recomputed now that search has landed: gather() built the summary before
+  // this section existed, and the stored payload is what the email renders
+  // from, so a stale summary there would silently drop the search sentences
+  // from every email while the markdown edition kept them.
+  report.plainSummary = plainSummary(report);
   if (env.ANALYTICS_DB) await persist(env.ANALYTICS_DB, report);
   return report;
 }
@@ -2409,6 +2524,7 @@ async function doRun(env, nowMs) {
 // default export below.
 export {
   cleanFunnelStepName,
+  plainSummary,
   getAccessToken,
   GA_SCOPE,
   FUNNEL_STAGES,

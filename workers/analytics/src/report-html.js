@@ -121,6 +121,28 @@ function metricCard(label, value, sub, subColor) {
     </td>`;
 }
 
+/**
+ * The report in words, above every table. A reader who bounces off "engagement
+ * rate" still has to be able to learn what happened this week.
+ */
+function summaryBlock(lines) {
+  if (!lines?.length) return '';
+  const items = lines
+    .map((line) => `<li style="margin:0 0 8px 0;">${inlineBold(line)}</li>`)
+    .join('');
+  return `<tr><td style="padding:24px 24px 0 24px;">
+    <div style="border:1px solid ${LINE};border-left:3px solid ${INK};border-radius:8px;padding:14px 16px 14px 18px;">
+      <div style="font:600 10px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${MUTED};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">In plain English</div>
+      <ul style="margin:0;padding-left:18px;font:400 14px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${INK};">${items}</ul>
+    </div>
+  </td></tr>`;
+}
+
+/** Escapes, then re-applies **bold** — the summary marks its own key figures. */
+function inlineBold(text) {
+  return escapeHtml(text).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+}
+
 function warningsBlock(warnings) {
   if (!warnings?.length) return '';
   const items = warnings
@@ -342,6 +364,7 @@ export function renderReportHtml(r) {
   const priorWindow = `${r.period?.prior?.start} to ${r.period?.prior?.end}`;
 
   const body = [
+    summaryBlock(r.plainSummary),
     warningsBlock(r.warnings),
 
     `<tr><td style="padding:24px 24px 0 24px;">
