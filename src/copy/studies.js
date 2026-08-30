@@ -40,6 +40,24 @@ export const STUDIES = [
         "Who sits on more than one board among Spain's 35 largest listed companies, and which companies a shared director links together.",
     },
   },
+  {
+    id: 'capital-governance-same-filing',
+    dataFile: 'capital-filings.json',
+    paths: {
+      es: '/estudios/mismo-asiento-registral',
+      en: '/en/studies/same-filing',
+    },
+    es: {
+      title: 'Capital y administradores llegan en el mismo asiento',
+      blurb:
+        '205.077 operaciones de capital muestran que el cambio de administradores se inscribe en el mismo asiento que la operación de capital, y casi en ningún otro sitio.',
+    },
+    en: {
+      title: 'Capital and governance arrive in the same filing',
+      blurb:
+        '205,077 capital operations show that governance change is registered in the same filing as the capital operation, and almost nowhere else.',
+    },
+  },
 ];
 
 /** Canonical, trailing-slashed path for a study page. */

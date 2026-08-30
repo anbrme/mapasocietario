@@ -1,0 +1,30 @@
+{
+  "_provenance": "Figures transcribed programmatically from the study first published on nurnbergconsulting.com on 2026-06-12 (ES + EN editions), ported to mapasocietario.es 2026-08-30. Not regenerable from a script: the underlying analysis was run against the BORME corpus offline.",
+  "as_of": "2026-06-11",
+  "published": "2026-06-12",
+  "author": "Alessandro Nurnberg",
+  "period": "2021–2025",
+  "series_period": "2009–2025",
+  "n_operations": 205077,
+  "n_increases": 167248,
+  "n_reductions": 37829,
+  "n_baseline": 923291,
+  "same_day_multiple": 65,
+  "windows": [
+    { "id": "same_day", "inc": [13.4], "red": [16.1], "base": [0.2] },
+    { "id": "d30",  "inc": [4.1, 2.6],  "red": [4.2, 3.4],  "base": [4.7, 2.4] },
+    { "id": "d90",  "inc": [12.1, 6.0], "red": [9.1, 7.6],  "base": [11.5, 6.6] },
+    { "id": "d180", "inc": [21.6, 9.9], "red": [14.4, 12.0], "base": [18.9, 12.0] }
+  ],
+  "years": { "from": 2009, "rates": [13.7, 13.6, 13.1, 13.6, 14.1, 14.3, 14.0, 13.8, 13.6, 12.9, 13.3, 13.9, 13.8, 13.6, 13.2, 13.5, 12.9] },
+  "forms": [
+    { "id": "SL", "n": 153745, "same_day": 12.7, "d90_before": 11.6, "base": 11.4, "base_n": 819270 },
+    { "id": "SA", "n": 8373,   "same_day": 13.1, "d90_before": 21.4, "base": 11.4, "base_n": 75222 }
+  ],
+  "amounts": [
+    { "id": "with",    "median": 40000, "n": 47335 },
+    { "id": "without", "median": 61046, "n": 119753 }
+  ],
+  "lag": { "n": 203914, "median": 7, "p90": 11, "p99": 18 },
+  "reverse": { "change_days": 1304292, "same_day": 21632, "pct": 1.66 }
+}
