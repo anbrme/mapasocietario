@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Paper, Button, CircularProgress, Alert, Chip, TextField } from '@mui/material';
 import { API_URL } from '../config';
 
+import { resilientFetch } from '../services/originFailover';
+
 // Admin review queue for user-reported wrong web-enriched values
 // (NIF / capital / address). Applying a report overwrites the shared
 // borme_companies_v3 ES field via the backend's _persist_enrichment. Mirrors
@@ -20,7 +22,7 @@ export default function EnrichmentReviewTab({ adminKey }) {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${BORME_API}/bormes/enrichment/pending`, { headers: { 'X-Admin-Token': adminKey } });
+      const res = await resilientFetch(`${BORME_API}/bormes/enrichment/pending`, { headers: { 'X-Admin-Token': adminKey } });
       if (res.status === 403) { setError('Admin token rejected by BORME API.'); return; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -37,7 +39,7 @@ export default function EnrichmentReviewTab({ adminKey }) {
   const review = async (id, action) => {
     setBusy(id); setError('');
     try {
-      const res = await fetch(`${BORME_API}/bormes/enrichment/review`, {
+      const res = await resilientFetch(`${BORME_API}/bormes/enrichment/review`, {
         method: 'POST',
         headers: { 'X-Admin-Token': adminKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, action, ...(action === 'apply' && { value: (values[id] || '').trim() }) }),

@@ -1,4 +1,7 @@
-const API_BASE = 'https://ibex35-api.ncdata.eu';
+import { IBEX35_API_URL } from '../config';
+import { resilientFetch } from './originFailover';
+
+const API_BASE = IBEX35_API_URL;
 const PUBLIC_API_KEY = 'ibex35-public-access-2024';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -15,7 +18,7 @@ async function fetchCompanies() {
   if (cache.rows && now - cache.fetchedAt < CACHE_TTL_MS) {
     return cache.rows;
   }
-  const res = await fetch(`${API_BASE}/api/companies`, {
+  const res = await resilientFetch(`${API_BASE}/api/companies`, {
     headers: { Authorization: `Bearer ${PUBLIC_API_KEY}` },
   });
   if (!res.ok) throw new Error(`ibex35-api responded with status ${res.status}`);

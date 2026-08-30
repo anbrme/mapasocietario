@@ -18,6 +18,8 @@ import {
 } from '@mui/material';
 import { API_URL } from '../config';
 
+import { resilientFetch } from '../services/originFailover';
+
 const fmtDate = (s) => {
   if (!s) return '—';
   try {
@@ -115,7 +117,7 @@ export default function MonitoringTab({ adminKey }) {
     if (!adminKey) return;
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${API_URL}/bormes/v3/alerts/admin/overview`, {
+      const res = await resilientFetch(`${API_URL}/bormes/v3/alerts/admin/overview`, {
         headers: { 'X-Admin-Token': adminKey },
       });
       if (res.status === 401) { setError('Invalid admin key.'); return; }

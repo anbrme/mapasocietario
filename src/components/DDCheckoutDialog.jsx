@@ -58,6 +58,8 @@ import { furthestCheckoutStage } from '../utils/checkoutAbandon';
 // here so surfaces that only announce the offer (landing page, prerenderer)
 // don't pull this dialog into their bundle; re-exported for existing importers.
 import { FREE_FIRST_REPORT_CODE } from '../copy/freeFirstReport';
+import { resilientFetch } from '../services/originFailover';
+
 export { FREE_FIRST_REPORT_CODE };
 const ANDROID_PLAY_BILLING_ENABLED = true;
 const FS_FALLBACK_KEEP_DD = 'keep_dd_refund_fs';
@@ -421,7 +423,7 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`${PAYMENTS_API}/api/stripe/check-free-report-eligibility`, {
+        const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/check-free-report-eligibility`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: trimmed }),
@@ -518,7 +520,7 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
     if (country !== 'es' || !companyName) return true;
 
     try {
-      const checkRes = await fetch(`${API_URL}/bormes/dd-report/check-company`, {
+      const checkRes = await resilientFetch(`${API_URL}/bormes/dd-report/check-company`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ company_name: companyName }),
@@ -548,7 +550,7 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
     pendingFinancialStatementsFallback = financialStatementsFallback,
     pendingAndroidProduct = selectedAndroidProduct,
   }) => {
-    const fulfillRes = await fetch(`${PAYMENTS_API}/api/google-play/fulfill-dd-report`, {
+    const fulfillRes = await resilientFetch(`${PAYMENTS_API}/api/google-play/fulfill-dd-report`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -718,7 +720,7 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
           email: email.trim(),
         } : {}),
       };
-      const res = await fetch(`${PAYMENTS_API}/api/stripe/create-dd-checkout`, {
+      const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/create-dd-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -32,6 +32,8 @@ import MonitoringTab from './MonitoringTab';
 import { ddStatusView, DdStatusChip } from './AdminDdStatus';
 import { PAYMENTS_API } from '../config';
 
+import { resilientFetch } from '../services/originFailover';
+
 export default function AdminPage() {
   const [adminKey, setAdminKey] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -70,7 +72,7 @@ export default function AdminPage() {
       // cache: 'no-store' — without it the browser served the previous
       // response and the Refresh button appeared to do nothing, while a full
       // page load looked like it worked.
-      const res = await fetch(`${PAYMENTS_API}/api/stripe/list-fs-orders`, {
+      const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/list-fs-orders`, {
         cache: 'no-store',
         headers: { 'Authorization': `Bearer ${authKey}` },
       });
@@ -107,7 +109,7 @@ export default function AdminPage() {
     setError('');
 
     try {
-      const res = await fetch(
+      const res = await resilientFetch(
         `${PAYMENTS_API}/api/stripe/upload-financial-statements?sessionId=${encodeURIComponent(sessionId)}`,
         {
           method: 'POST',
@@ -147,7 +149,7 @@ export default function AdminPage() {
     setError('');
     setUploadProgress('');
     try {
-      const res = await fetch(`${PAYMENTS_API}/api/stripe/admin-retrigger-dd`, {
+      const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/admin-retrigger-dd`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminKey}` },
         body: JSON.stringify({ sessionId }),
@@ -175,7 +177,7 @@ export default function AdminPage() {
     setError('');
     setUploadProgress('');
     try {
-      const res = await fetch(`${PAYMENTS_API}/api/stripe/admin-regenerate-fs-dd`, {
+      const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/admin-regenerate-fs-dd`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminKey}` },
         body: JSON.stringify({ sessionId }),
@@ -223,7 +225,7 @@ export default function AdminPage() {
     }
 
     try {
-      const res = await fetch(
+      const res = await resilientFetch(
         `${PAYMENTS_API}/api/stripe/get-fs-analysis?sessionId=${encodeURIComponent(sessionId)}`,
         { headers: { 'Authorization': `Bearer ${adminKey}` } }
       );
@@ -240,7 +242,7 @@ export default function AdminPage() {
     setDeletingSession(sessionId);
     setError('');
     try {
-      const res = await fetch(
+      const res = await resilientFetch(
         `${PAYMENTS_API}/api/stripe/delete-fs-order?sessionId=${encodeURIComponent(sessionId)}`,
         {
           method: 'POST',

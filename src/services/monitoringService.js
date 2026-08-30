@@ -1,4 +1,5 @@
 import { API_URL } from '../config';
+import { resilientFetch } from './originFailover';
 
 // Self-serve monitoring requests. Unlike the post-purchase opt-in on the order
 // page, nothing here proves the address belongs to the requester — the backend
@@ -43,7 +44,7 @@ export async function requestMonitoring({ email, entityName, jurisdiction = 'ES'
 
   let response;
   try {
-    response = await fetch(`${API_URL}${REQUEST_PATH}`, {
+    response = await resilientFetch(`${API_URL}${REQUEST_PATH}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -76,7 +77,7 @@ export async function activateMonitoring(token) {
 
   let response;
   try {
-    response = await fetch(
+    response = await resilientFetch(
       `${API_URL}${ACTIVATE_PATH}?t=${encodeURIComponent(clean)}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' } }
     );
@@ -102,7 +103,7 @@ async function magicLinkPost(path, token) {
 
   let response;
   try {
-    response = await fetch(`${API_URL}${path}?t=${encodeURIComponent(clean)}`, {
+    response = await resilientFetch(`${API_URL}${path}?t=${encodeURIComponent(clean)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -141,7 +142,7 @@ export async function requestManageLink(email) {
 
   let response;
   try {
-    response = await fetch(`${API_URL}${SEND_VIEW_LINK_PATH}`, {
+    response = await resilientFetch(`${API_URL}${SEND_VIEW_LINK_PATH}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: cleanEmail }),
@@ -170,7 +171,7 @@ export async function fetchMonitoring(token) {
 
   let response;
   try {
-    response = await fetch(`${API_URL}${VIEW_PATH}?t=${encodeURIComponent(clean)}`);
+    response = await resilientFetch(`${API_URL}${VIEW_PATH}?t=${encodeURIComponent(clean)}`);
   } catch {
     throw new MonitoringRequestError('network_error', 0);
   }
@@ -192,7 +193,7 @@ export async function stopMonitoring(token, alertId) {
 
   let response;
   try {
-    response = await fetch(
+    response = await resilientFetch(
       `${API_URL}${VIEW_UNSUBSCRIBE_PATH}?t=${encodeURIComponent(clean)}`,
       {
         method: 'POST',

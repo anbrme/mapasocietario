@@ -10,6 +10,8 @@ import {
   buildInvestigatePayload, loadToken, saveToken,
 } from '../utils/aiInvestigationClient';
 
+import { resilientFetch } from '../services/originFailover';
+
 // Cloudflare Turnstile sitekey for the ai-investigation widget.
 const TURNSTILE_SITEKEY = '0x4AAAAAADp3WnZGNiZai_32';
 
@@ -82,7 +84,7 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
     try {
       const turnstileToken = window.turnstile && widgetId.current != null
         ? window.turnstile.getResponse(widgetId.current) : '';
-      const res = await fetch(`${AI_INVESTIGATION_API}/redeem`, {
+      const res = await resilientFetch(`${AI_INVESTIGATION_API}/redeem`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildRedeemBody(email, code, turnstileToken)),
@@ -108,7 +110,7 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
     if (!isTokenValid(session, Math.floor(Date.now() / 1000))) { setSession(null); setError(t.expired); return; }
     setBusy(true); setError(''); setAnswer(null);
     try {
-      const res = await fetch(`${AI_INVESTIGATION_API}/investigate`, {
+      const res = await resilientFetch(`${AI_INVESTIGATION_API}/investigate`, {
         method: 'POST',
         headers: buildInvestigateHeaders(session.token),
         body: JSON.stringify(buildInvestigatePayload({

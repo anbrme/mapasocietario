@@ -7,8 +7,10 @@
 // order-agnostic — we tokenize, accent-strip, and compare token sets.
 
 import { congresoCacheService } from './congresoCacheService';
+import { CONGRESO_PROXY_URL } from '../config';
+import { resilientFetch } from './originFailover';
 
-const WORKER_BASE_URL = 'https://congreso-proxy.anurnberg.workers.dev';
+const WORKER_BASE_URL = CONGRESO_PROXY_URL;
 // Bumped to v4 when we taught the matcher about the historical file's
 // {NOMBRE, APELLIDOS} schema (one row per legislatura) — the v3 cache held
 // rows that, when tokenized via NOMBRE alone, were just first names like
@@ -51,7 +53,7 @@ async function fetchDeputiesFrom(sourceParam) {
   while (page < 50) {
     const sourceQuery = sourceParam ? `source=${sourceParam}&` : '';
     const url = `${WORKER_BASE_URL}/deputies?${sourceQuery}page=${page}&limit=${PAGE_SIZE}`;
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    const res = await resilientFetch(url, { headers: { Accept: 'application/json' } });
     if (!res.ok) throw new Error(`Congreso /deputies HTTP ${res.status}`);
     const body = await res.json();
     const rows = Array.isArray(body) ? body : body.data || [];

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Paper, Button, TextField, CircularProgress, Alert, Chip, Divider } from '@mui/material';
 import { PAYMENTS_API } from '../config';
 
+import { resilientFetch } from '../services/originFailover';
+
 const fmtDate = (s) => {
   if (!s) return '—';
   try { return new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -19,7 +21,7 @@ export default function FreeReportsTab({ adminKey }) {
     if (!adminKey) return;
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${PAYMENTS_API}/api/stripe/list-free-reports`, {
+      const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/list-free-reports`, {
         cache: 'no-store',
         headers: { Authorization: `Bearer ${adminKey}` },
       });
@@ -42,7 +44,7 @@ export default function FreeReportsTab({ adminKey }) {
     if (!email) return;
     setBusy(`${k}:${email}`); setError('');
     try {
-      const res = await fetch(`${PAYMENTS_API}/api/stripe/${route(k)}`, {
+      const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/${route(k)}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${adminKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

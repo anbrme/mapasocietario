@@ -1,4 +1,5 @@
 import { API_URL } from '../config';
+import { resilientFetch } from './originFailover';
 
 const BASE_URL = API_URL;
 
@@ -18,7 +19,7 @@ async function fetchStats(endpoint, params = {}) {
     }
   });
 
-  const resp = await fetch(url.toString());
+  const resp = await resilientFetch(url.toString());
   if (!resp.ok) throw new Error(`Stats API error: ${resp.status}`);
   const data = await resp.json();
   if (!data.success) throw new Error(data.error || 'Unknown error');

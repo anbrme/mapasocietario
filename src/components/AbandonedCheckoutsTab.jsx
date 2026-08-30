@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Paper, Chip, CircularProgress, Alert, Button } from '@mui/material';
 import { PAYMENTS_API } from '../config';
 
+import { resilientFetch } from '../services/originFailover';
+
 /**
  * Checkouts that were started and never paid.
  *
@@ -35,7 +37,7 @@ export default function AbandonedCheckoutsTab({ adminKey }) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${PAYMENTS_API}/api/stripe/list-abandoned-checkouts`, {
+      const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/list-abandoned-checkouts`, {
         cache: 'no-store',
         headers: { Authorization: `Bearer ${adminKey}` },
       });

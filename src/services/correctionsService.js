@@ -13,6 +13,8 @@ import { API_URL } from '../config';
 import { getClientId } from '../utils/clientId';
 import { spanishCompaniesService } from './spanishCompaniesService';
 
+import { resilientFetch } from './originFailover';
+
 const BASE = `${API_URL}/bormes/corrections`;
 
 const _normName = (s) => (s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
@@ -45,7 +47,7 @@ export async function resolveGroupKey(companyName) {
  * @param {object} c - { groupKey, action, nameA, nameB?, resignedDate? }
  */
 export async function postCorrection({ groupKey, action, nameA, nameB, resignedDate }) {
-  const res = await fetch(BASE, {
+  const res = await resilientFetch(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -71,7 +73,7 @@ export async function postCorrection({ groupKey, action, nameA, nameB, resignedD
  */
 export async function listCorrections(groupKey) {
   const url = `${BASE}?client_id=${encodeURIComponent(getClientId())}&group_key=${encodeURIComponent(groupKey)}`;
-  const res = await fetch(url);
+  const res = await resilientFetch(url);
   if (!res.ok) {
     throw new Error(`Could not load corrections (${res.status})`);
   }
@@ -85,7 +87,7 @@ export async function listCorrections(groupKey) {
  */
 export async function deleteCorrection(correctionId) {
   const url = `${BASE}/${correctionId}?client_id=${encodeURIComponent(getClientId())}`;
-  const res = await fetch(url, { method: 'DELETE' });
+  const res = await resilientFetch(url, { method: 'DELETE' });
   if (res.status === 404) return false;
   if (!res.ok) {
     throw new Error(`Could not delete correction (${res.status})`);

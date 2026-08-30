@@ -4,6 +4,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { API_URL } from '../config';
 
+import { resilientFetch } from '../services/originFailover';
+
 const BORME_API = API_URL;
 const fmtPct = (n) => (typeof n === 'number' ? `${n.toFixed(3)} %` : '—');
 const CHANGE_COLOR = { new: 'success', increased: 'info', decreased: 'warning', dropped: 'default' };
@@ -18,7 +20,7 @@ export default function CnmvReviewTab({ adminKey }) {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${BORME_API}/bormes/cnmv/pending`, { headers: { 'X-Admin-Token': adminKey } });
+      const res = await resilientFetch(`${BORME_API}/bormes/cnmv/pending`, { headers: { 'X-Admin-Token': adminKey } });
       if (res.status === 403) { setError('Admin token rejected by BORME API.'); return; }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -32,7 +34,7 @@ export default function CnmvReviewTab({ adminKey }) {
   const review = async (slug, holder_norm, action, scope) => {
     setBusy(`${slug}:${scope === 'company' ? 'ALL' : holder_norm}`); setError('');
     try {
-      const res = await fetch(`${BORME_API}/bormes/cnmv/review`, {
+      const res = await resilientFetch(`${BORME_API}/bormes/cnmv/review`, {
         method: 'POST',
         headers: { 'X-Admin-Token': adminKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug, holder_norm, action, scope }),

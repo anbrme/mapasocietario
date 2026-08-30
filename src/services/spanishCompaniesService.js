@@ -19,6 +19,7 @@ import {
 import { API_URL } from '../config';
 import { officerQueryVariants } from '../utils/ibex35Match';
 import { createRequestCache } from '../utils/requestCache';
+import { resilientFetch } from './originFailover';
 
 const createApiError = (label, response, responseBody = '') => {
   const detail = responseBody ? ` - ${responseBody}` : '';
@@ -115,7 +116,7 @@ class SpanishCompaniesService {
    */
   async fetchWithRetry(url, options = {}, retryCount = 0) {
     try {
-      const response = await fetch(url, {
+      const response = await resilientFetch(url, {
         ...options,
         headers: {
           ...options.headers,
@@ -144,6 +145,14 @@ class SpanishCompaniesService {
 
       return response;
     } catch (error) {
+      // `resilientFetch` has already tried every configured origin for this
+      // service and each one either timed out or refused the connection. That
+      // is the LaLiga-block signature, and a block lasts for the match, not
+      // for a backoff window — so retrying here would just hold the spinner
+      // open for another half-minute before failing anyway. Surface it now
+      // and let the caller show a real message.
+      if (error?.blocked) throw error;
+
       // Network errors - retry with backoff
       if (retryCount < this.maxRetries) {
         const delay = Math.min(this.baseRetryDelay * Math.pow(2, retryCount), this.maxRetryDelay);
@@ -241,7 +250,7 @@ class SpanishCompaniesService {
       const normalizedQuery = query.trim();
       // Use the directory autocomplete endpoint which queries borme_companies index
       // This has the complete company index vs borme_v2 which may miss some companies
-      const response = await fetch(
+      const response = await resilientFetch(
         `${this.baseUrl}/bormes/companies/directory/autocomplete?q=${encodeURIComponent(normalizedQuery)}&limit=${limit}`,
         { method: 'GET' }
       );
@@ -360,7 +369,7 @@ class SpanishCompaniesService {
       // Normalize query: trim whitespace only (backend handles case normalization)
       const normalizedQuery = query.trim();
       // Use the proper autocomplete endpoint (10-100x faster than /bormes/officers)
-      const response = await fetch(`${this.baseUrl}/bormes/officers-autocomplete`, {
+      const response = await resilientFetch(`${this.baseUrl}/bormes/officers-autocomplete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1135,7 +1144,7 @@ class SpanishCompaniesService {
         requestBody.company_name = exactCompanyName;
       }
 
-      const response = await fetch(`${this.baseUrl}/bormes/smart-search`, {
+      const response = await resilientFetch(`${this.baseUrl}/bormes/smart-search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1289,7 +1298,7 @@ INSTRUCCIONES IMPORTANTES para el análisis temporal:
 Por favor, determina quiénes ejercen actualmente sus cargos basándote en el análisis cronológico de eventos.`;
       }
 
-      const response = await fetch(`${this.baseUrl}/bormes/agent-intelligence`, {
+      const response = await resilientFetch(`${this.baseUrl}/bormes/agent-intelligence`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1327,7 +1336,7 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
     } = options;
 
     try {
-      const response = await fetch(`${this.baseUrl}/bormes/agent-intelligence`, {
+      const response = await resilientFetch(`${this.baseUrl}/bormes/agent-intelligence`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1362,7 +1371,7 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
     try {
       const query = `¿Qué relación hay entre ${company1} y ${company2}?`;
 
-      const response = await fetch(`${this.baseUrl}/bormes/agent-intelligence`, {
+      const response = await resilientFetch(`${this.baseUrl}/bormes/agent-intelligence`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2374,7 +2383,7 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
       // Normalize the search term
       const normalizedSearch = companyName.toUpperCase().trim();
 
-      const response = await fetch(
+      const response = await resilientFetch(
         `${this.baseUrl}/bormes/companies/directory?q=${encodeURIComponent(companyName)}&size=${size}`,
         {
           method: 'GET',
@@ -2457,7 +2466,7 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
    */
   async getDirectoryCompany(companyId) {
     try {
-      const response = await fetch(
+      const response = await resilientFetch(
         `${this.baseUrl}/bormes/companies/directory/${encodeURIComponent(companyId)}`,
         {
           method: 'GET',
@@ -2576,7 +2585,7 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
         requestBody.company_name = exactCompanyName;
       }
 
-      const response = await fetch(`${this.baseUrl}/bormes/smart-query`, {
+      const response = await resilientFetch(`${this.baseUrl}/bormes/smart-query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2794,7 +2803,7 @@ Por favor, determina quiénes ejercen actualmente sus cargos basándote en el an
     note = null,
     turnstileToken,
   }) {
-    const response = await fetch(`${this.baseUrl}/bormes/enrichment/report-public`, {
+    const response = await resilientFetch(`${this.baseUrl}/bormes/enrichment/report-public`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

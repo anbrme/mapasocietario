@@ -31,6 +31,8 @@ import {
 } from '../utils/language';
 import AIInvestigationGate from './AIInvestigationGate';
 
+import { resilientFetch } from '../services/originFailover';
+
 const POLL_INTERVAL = 15_000; // 15 seconds
 const DD_PRICE_EUR = 22.50;
 // Flask backend hosting the anonymous alert endpoint. Lives on rag.ncdata.eu
@@ -301,7 +303,7 @@ export default function OrderStatusPage() {
         throw new Error(`Unsupported country: ${data.country}`);
       }
 
-      const reportRes = await fetch(endpoint, {
+      const reportRes = await resilientFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -320,7 +322,7 @@ export default function OrderStatusPage() {
       const blob = await reportRes.blob();
 
       // Store in R2 for 7-day re-download
-      await fetch(`${PAYMENTS_API}/api/stripe/store-dd-report?sessionId=${sessionId}`, {
+      await resilientFetch(`${PAYMENTS_API}/api/stripe/store-dd-report?sessionId=${sessionId}`, {
         method: 'POST',
         body: blob,
       });
@@ -354,7 +356,7 @@ export default function OrderStatusPage() {
     if (!buyerRole || !sessionId) return;
     setBuyerRoleState('saving');
     try {
-      const res = await fetch(`${PAYMENTS_API}/api/stripe/set-order-intake`, {
+      const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/set-order-intake`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, role: buyerRole }),
@@ -376,7 +378,7 @@ export default function OrderStatusPage() {
 
     (async () => {
       try {
-        const res = await fetch(`${PAYMENTS_API}/api/stripe/verify-dd-payment`, {
+        const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/verify-dd-payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId }),
@@ -418,7 +420,7 @@ export default function OrderStatusPage() {
 
     const poll = async () => {
       try {
-        const res = await fetch(`${PAYMENTS_API}/api/stripe/verify-dd-payment`, {
+        const res = await resilientFetch(`${PAYMENTS_API}/api/stripe/verify-dd-payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId }),
@@ -433,7 +435,7 @@ export default function OrderStatusPage() {
 
         // For financial statements, check if the supplementary file exists
         if (data.options?.financialStatements) {
-          const fsRes = await fetch(
+          const fsRes = await resilientFetch(
             `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}&type=financial-statements`,
             { method: 'HEAD' }
           );
@@ -469,7 +471,7 @@ export default function OrderStatusPage() {
     let attempts = 0;
     const check = async () => {
       try {
-        const res = await fetch(
+        const res = await resilientFetch(
           `${PAYMENTS_API}/api/stripe/get-dd-report?sessionId=${sessionId}&type=html`,
           { method: 'HEAD' }
         );
@@ -502,7 +504,7 @@ export default function OrderStatusPage() {
     if (status !== 'processing') return;
     if (orderDataRef.current?.options?.financialStatements) return; // FS waits for admin upload
     const t = setTimeout(() => {
-      fetch(`${PAYMENTS_API}/api/stripe/retrigger-dd-report`, {
+      resilientFetch(`${PAYMENTS_API}/api/stripe/retrigger-dd-report`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
       }).catch(() => {});
@@ -553,7 +555,7 @@ export default function OrderStatusPage() {
     const fetchCode = async () => {
       attempts += 1;
       try {
-        const res = await fetch(`${AI_INVESTIGATION_API}/code-for-session`, {
+        const res = await resilientFetch(`${AI_INVESTIGATION_API}/code-for-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(buildCodeForSessionBody(sessionId)),
@@ -605,7 +607,7 @@ export default function OrderStatusPage() {
     }
 
     try {
-      const res = await fetch(baseUrl);
+      const res = await resilientFetch(baseUrl);
       if (!res.ok) throw new Error('Download failed');
       const blob = await res.blob();
       const a = document.createElement('a');
@@ -627,7 +629,7 @@ export default function OrderStatusPage() {
     setMonitorState('loading');
     setMonitorError('');
     try {
-      const res = await fetch(`${ALERTS_API}/anonymous`, {
+      const res = await resilientFetch(`${ALERTS_API}/anonymous`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stripe_session_id: sessionId }),
