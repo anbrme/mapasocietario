@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-09",
+  "as_of": "2026-08-30",
   "universe": "IBEX 35",
   "n_companies": 35,
   "methodology_note": "Boards reflect BORME-active board seats (seat=BOARD) per company; a person on >=2 IBEX-35 boards is a shared director. Person identity is resolved across companies by surname+given-name token matching, then hand-verified via a corrections overlay to reject homonyms and merge spelling variants.",
@@ -20,8 +20,8 @@
       "count": 19
     },
     {
-      "slug": "enagas",
-      "name": "Enagás",
+      "slug": "inmobiliaria-colonial",
+      "name": "Inmobiliaria Colonial",
       "count": 17
     },
     {
@@ -40,8 +40,8 @@
       "count": 16
     },
     {
-      "slug": "fluidra",
-      "name": "Fluidra",
+      "slug": "enagas",
+      "name": "Enagás",
       "count": 16
     },
     {
@@ -75,6 +75,11 @@
       "count": 15
     },
     {
+      "slug": "fluidra",
+      "name": "Fluidra",
+      "count": 15
+    },
+    {
       "slug": "iberdrola",
       "name": "Iberdrola",
       "count": 15
@@ -95,11 +100,6 @@
       "count": 15
     },
     {
-      "slug": "sacyr",
-      "name": "Sacyr",
-      "count": 15
-    },
-    {
       "slug": "telefonica",
       "name": "Telefónica",
       "count": 15
@@ -107,11 +107,6 @@
     {
       "slug": "bankinter",
       "name": "Bankinter",
-      "count": 14
-    },
-    {
-      "slug": "inmobiliaria-colonial",
-      "name": "Inmobiliaria Colonial",
       "count": 14
     },
     {
@@ -125,6 +120,11 @@
       "count": 13
     },
     {
+      "slug": "sacyr",
+      "name": "Sacyr",
+      "count": 13
+    },
+    {
       "slug": "acciona",
       "name": "Acciona",
       "count": 12
@@ -132,16 +132,6 @@
     {
       "slug": "ferrovial",
       "name": "Ferrovial",
-      "count": 12
-    },
-    {
-      "slug": "inditex",
-      "name": "Inditex",
-      "count": 12
-    },
-    {
-      "slug": "logista",
-      "name": "Logista",
       "count": 12
     },
     {
@@ -155,23 +145,33 @@
       "count": 11
     },
     {
+      "slug": "grifols",
+      "name": "Grifols",
+      "count": 11
+    },
+    {
       "slug": "international-airlines-group",
       "name": "International Airlines Group (IAG)",
       "count": 11
     },
     {
-      "slug": "grifols",
-      "name": "Grifols",
-      "count": 10
+      "slug": "inditex",
+      "name": "Inditex",
+      "count": 11
     },
     {
-      "slug": "laboratorios-rovi",
-      "name": "Laboratorios Rovi",
-      "count": 7
+      "slug": "logista",
+      "name": "Logista",
+      "count": 11
     },
     {
       "slug": "solaria",
       "name": "Solaria",
+      "count": 8
+    },
+    {
+      "slug": "laboratorios-rovi",
+      "name": "Laboratorios Rovi",
       "count": 7
     },
     {
@@ -291,6 +291,29 @@
         {
           "slug": "banco-sabadell",
           "name": "Banco Sabadell"
+        }
+      ],
+      "affiliated": false
+    },
+    {
+      "name": "PAZ-ARES RODRIGUEZ TERESA",
+      "variants": [
+        "PAZ-ARES RODRIGUEZ TERESA",
+        "PAZ ARES RODRIGUEZ TERESA"
+      ],
+      "count": 3,
+      "companies": [
+        {
+          "slug": "bankinter",
+          "name": "Bankinter"
+        },
+        {
+          "slug": "logista",
+          "name": "Logista"
+        },
+        {
+          "slug": "solaria",
+          "name": "Solaria"
         }
       ],
       "affiliated": false
@@ -463,24 +486,6 @@
       "affiliated": false
     },
     {
-      "name": "GOMEZ CIRIA ANTONIO",
-      "variants": [
-        "GOMEZ CIRIA ANTONIO"
-      ],
-      "count": 2,
-      "companies": [
-        {
-          "slug": "mapfre",
-          "name": "Mapfre"
-        },
-        {
-          "slug": "redeia",
-          "name": "Redeia Corporación"
-        }
-      ],
-      "affiliated": false
-    },
-    {
       "name": "IGLESIAS HERRAIZ LETICIA",
       "variants": [
         "IGLESIAS HERRAIZ LETICIA"
@@ -603,44 +608,6 @@
         {
           "slug": "telefonica",
           "name": "Telefónica"
-        }
-      ],
-      "affiliated": false
-    },
-    {
-      "name": "OLIU CREUS JOSEP",
-      "variants": [
-        "OLIU CREUS JOSEP",
-        "OLIU CREUS JOSE"
-      ],
-      "count": 2,
-      "companies": [
-        {
-          "slug": "puig",
-          "name": "Puig"
-        },
-        {
-          "slug": "banco-sabadell",
-          "name": "Banco Sabadell"
-        }
-      ],
-      "affiliated": false
-    },
-    {
-      "name": "PAZ-ARES RODRIGUEZ TERESA",
-      "variants": [
-        "PAZ-ARES RODRIGUEZ TERESA",
-        "PAZ ARES RODRIGUEZ TERESA"
-      ],
-      "count": 2,
-      "companies": [
-        {
-          "slug": "bankinter",
-          "name": "Bankinter"
-        },
-        {
-          "slug": "logista",
-          "name": "Logista"
         }
       ],
       "affiliated": false
@@ -1049,16 +1016,6 @@
       "affiliated": false
     },
     {
-      "a": "banco-sabadell",
-      "a_name": "Banco Sabadell",
-      "b": "puig",
-      "b_name": "Puig",
-      "shared": [
-        "OLIU CREUS JOSEP"
-      ],
-      "affiliated": false
-    },
-    {
       "a": "banco-santander",
       "a_name": "Banco Santander",
       "b": "logista",
@@ -1093,6 +1050,16 @@
       "a_name": "Bankinter",
       "b": "logista",
       "b_name": "Logista",
+      "shared": [
+        "PAZ-ARES RODRIGUEZ TERESA"
+      ],
+      "affiliated": false
+    },
+    {
+      "a": "bankinter",
+      "a_name": "Bankinter",
+      "b": "solaria",
+      "b_name": "Solaria",
       "shared": [
         "PAZ-ARES RODRIGUEZ TERESA"
       ],
@@ -1199,20 +1166,20 @@
       "affiliated": false
     },
     {
-      "a": "mapfre",
-      "a_name": "Mapfre",
-      "b": "redeia",
-      "b_name": "Redeia Corporación",
+      "a": "logista",
+      "a_name": "Logista",
+      "b": "solaria",
+      "b_name": "Solaria",
       "shared": [
-        "GOMEZ CIRIA ANTONIO"
+        "PAZ-ARES RODRIGUEZ TERESA"
       ],
       "affiliated": false
     }
   ],
   "stats": {
-    "total_people_multi": 34,
-    "cross_group_people": 31,
-    "on_three": 6,
+    "total_people_multi": 32,
+    "cross_group_people": 29,
+    "on_three": 7,
     "companies_connected": 28,
     "companies_isolated": 7,
     "edges_total": 37,

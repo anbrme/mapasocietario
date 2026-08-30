@@ -37,6 +37,23 @@ const CORRECTIONS = {
     ['TORRE DE SILVA LOPEZ DE LETONA JOSE ANTONIO', 'LOPEZ LOPEZ ANTONIO'],
   ],
 
+  // Board seats held by a LEGAL person (a company or a public body) rather than
+  // an individual. The published methodology states that corporate directors
+  // are excluded, so counting one would contradict the study's own text and put
+  // an institution in a table headed "people". Excluded ONLY by explicit entry:
+  // the automatic check below merely warns, so a real director can never be
+  // dropped by a heuristic.
+  //   SEPI holds board seats at Enagás (2024-05-30) and, since 2026-07-14, at
+  //   Redeia — the appointment that first made this matter.
+  excludeNames: [
+    'SOCIEDAD ESTATAL DE PARTICIPACIONES INDUSTRIALES',
+    // Surfaced by the legal-person guard below: each carries an SA/SL form, so
+    // each is unambiguously a company sitting on a board, not a director.
+    'CXG CORPORACION NOVACAIXAGALICIA SA',
+    'PIUMOC INVERSIONS SA',
+    'SACYR GESTION DE ACTIVOS SL',
+  ],
+
   // Same person the clusterer MISSED (spelling / language variants it can't
   // safely auto-merge). Each group lists names that are one real person.
   forceMerges: [
@@ -56,6 +73,23 @@ const groupKey = (hoja) => `H:${hoja.replace(/\s+/g, '-')}`;
 
 const pairKey = (a, b) => [a, b].sort().join('##');
 const rejectSet = new Set(CORRECTIONS.rejectMerges.map(([a, b]) => pairKey(norm(a), norm(b))));
+const excludeSet = new Set((CORRECTIONS.excludeNames || []).map(norm));
+
+// Conservative "this is an institution, not a person" test, used ONLY to warn.
+// A trailing legal form, or an organisational word no personal name carries as
+// a whole token. src/utils/legalEntity.js is the suffix rule for the app, but it
+// reaches this case not at all (SEPI has no suffix) and cannot be imported here
+// anyway — it sits behind a chain of extensionless imports that only Vite
+// resolves, and this script runs on plain Node.
+const LEGAL_FORM = new Set(['SA', 'SAU', 'SL', 'SLU', 'SLP', 'SCR', 'SICAV', 'SAS', 'SPA', 'AG', 'GMBH', 'BV', 'NV', 'PLC', 'LTD', 'LIMITED', 'INC', 'OY', 'PTY', 'AB', 'AS']);
+const ORG_WORD = new Set(['SOCIEDAD', 'FUNDACION', 'CORPORACION', 'ASOCIACION', 'INSTITUTO', 'CONSORCIO', 'HOLDING', 'GRUPO', 'PARTICIPACIONES', 'INVERSIONES', 'PATRIMONIO', 'ADMINISTRACION', 'COMPANIA', 'ENTIDAD']);
+function looksLikeLegalPerson(name) {
+  const parts = norm(name).split(' ').filter(Boolean);
+  if (!parts.length) return false;
+  if (LEGAL_FORM.has(parts[parts.length - 1])) return true;
+  return parts.some((w) => ORG_WORD.has(w));
+}
+const flaggedLegal = new Set();
 
 async function boardOf(slug, seed) {
   const url = `${API}?group_key=${encodeURIComponent(groupKey(seed.hoja))}&full_officers=1`;
@@ -65,6 +99,8 @@ async function boardOf(slug, seed) {
   const seen = new Map(); // name_normalized -> display name (first seen)
   for (const o of co.officers_active || []) {
     if (o.seat !== 'BOARD') continue;
+    if (excludeSet.has(norm(o.name))) continue;
+    if (looksLikeLegalPerson(o.name)) flaggedLegal.add(`${o.name}  (${slug})`);
     const key = o.name_normalized || o.name;
     if (!seen.has(key)) seen.set(key, o.name);
   }
@@ -200,4 +236,12 @@ const suspicious = boardSizes.filter((x) => x.count < TINY_BOARD);
 if (suspicious.length) {
   process.stderr.write(`\n⚠️  SUSPICIOUS board sizes (<${TINY_BOARD} seats) — likely a wrong SEED hoja, verify the entity:\n`);
   for (const b of suspicious) process.stderr.write(`     ${b.count}  ${b.name} (${b.slug})\n`);
+}
+
+// Sanity guard: a board seat held by an institution. The study counts PEOPLE,
+// so anything here must be judged and, if it is a legal person, added to
+// CORRECTIONS.excludeNames before publishing.
+if (flaggedLegal.size) {
+  process.stderr.write(`\n⚠️  BOARD SEATS THAT LOOK LIKE A LEGAL PERSON — judge each, and add real ones to CORRECTIONS.excludeNames:\n`);
+  for (const n of [...flaggedLegal].sort()) process.stderr.write(`     ${n}\n`);
 }
