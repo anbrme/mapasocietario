@@ -287,6 +287,11 @@ const T = {
     overviewOwners: 'Socios únicos conocidos',
     overviewFilings: 'Publicaciones BORME',
     topMapBtn: 'Explorar relaciones en el mapa →',
+    overlayClose: 'Cerrar',
+    listedQuote: 'Ver cotización',
+    overlayLoading: 'Cargando relaciones…',
+    overlayFailed: 'No se han podido cargar las relaciones. Abre el mapa completo para verlas.',
+    overlayEmpty: 'No hay cargos registrados para representar en el mapa.',
     topRegistryBtn: 'Ver datos registrales',
     listedCompany: 'Sociedad cotizada',
     cSector: 'Sector',
@@ -527,6 +532,11 @@ const T = {
     overviewOwners: 'Known sole shareholders',
     overviewFilings: 'BORME filings',
     topMapBtn: 'Explore relationships on the map →',
+    overlayClose: 'Close',
+    listedQuote: 'View quote',
+    overlayLoading: 'Loading relationships…',
+    overlayFailed: 'Relationships could not be loaded. Open the full map to see them.',
+    overlayEmpty: 'No recorded officers to plot on the map.',
     topRegistryBtn: 'View registry details',
     listedCompany: 'Listed company',
     cSector: 'Sector',
@@ -1313,6 +1323,52 @@ const STYLE = `<style>
   .mon .msg{margin:12px 0 0;font-size:.92rem;font-weight:600}
   .mon .msg.ok{color:#15803d}
   .mon .msg.err{color:#b91c1c}
+  .rail-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:0 0 16px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .rail-card h2{border:0;margin:0 0 4px;padding:0;font-size:15px}
+  .ticker-line{margin:0 0 12px;font-size:14px}
+  .ticker{display:inline-block;font-weight:800;letter-spacing:.03em;background:#eff6ff;color:#1e3a8a;border-radius:6px;padding:3px 9px;margin-right:10px}
+  .rail-card>p{margin:0;color:var(--mut);font-size:13px}
+  .rail-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 14px}
+  .rail-stat{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px}
+  .rail-stat .v{display:block;font-size:20px;line-height:1.1;font-weight:800;color:#1e3a8a}
+  .rail-stat .l{display:block;margin-top:4px;font-size:11px;color:var(--mut)}
+  .rail-graph-btn{display:block;width:100%;border:0;border-radius:9px;padding:11px 14px;background:var(--brand);color:#fff;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer}
+  .rail-rel{display:none}
+  @media(min-width:1024px){
+    .wrap{max-width:1240px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:48px;align-items:start}
+    .sheet{min-width:0}
+    .rail{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow-y:auto;scrollbar-width:thin}
+    .rail .rail-card,.rail .cta,.rail .mon{padding:14px 16px;margin:0 0 12px}
+    .rail .rail-stats{gap:6px;margin:10px 0 12px}
+    .rail .rail-stat{padding:8px 9px}
+    .rail .rail-stat .v{font-size:18px}
+    .rail .rail-stat .l{font-size:10px}
+    .rail .cta p,.rail .mon>p{font-size:12.5px;margin:0 0 12px}
+    .rail .mon .note{font-size:11px;margin:8px 0 0}
+    .rail-rel{display:block}
+    .wrap>footer{grid-column:1 / -1}
+    .hero-actions{display:none}
+    .overview{display:none}
+    .rail .cta-secondary{display:none}
+    .rail .cta{background:#f8fafc;border:1px solid var(--line);color:var(--ink);margin:0 0 16px;padding:16px 18px;text-align:left}
+    .rail .cta h2{color:var(--ink);font-size:15px;margin:0 0 6px}
+    .rail .cta p{color:var(--mut);font-size:13px;opacity:1;margin:0 0 14px}
+    .rail .cta-actions{justify-content:flex-start}
+    .rail .cta-primary{display:block;width:100%;text-align:center;background:var(--brand);color:#fff;padding:11px 14px;font-size:14px}
+    .rail .mon{margin:0}
+    .rail .mon h2{font-size:15px}
+    .rail .mon form{flex-direction:column}
+  }
+  #graph-overlay{width:min(1100px,92vw);height:min(720px,86vh);border:0;border-radius:16px;padding:0;overflow:hidden}
+  #graph-overlay::backdrop{background:rgba(15,23,42,.55)}
+  .go-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line)}
+  .go-head h2{margin:0;padding:0;border:0;font-size:17px}
+  .go-actions{display:flex;gap:10px;align-items:center}
+  .go-app{font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
+  .go-close{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer}
+  .go-body{width:100%;height:calc(100% - 55px);position:relative}
+  #graph-canvas{width:100%;height:100%}
+  .go-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:14px;text-align:center;padding:20px}
   footer{margin-top:48px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
   section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:18px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
   section h2{margin-top:0;border-top:0;padding-top:0}
@@ -1563,9 +1619,29 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
     ? `<div class="notice">${t.priorNames(priorNames.map(esc).join(', '))}</div>`
     : '';
 
-  const cotizadaBlock = seed
+  // A ticker is what makes a company quoted. This used to key on the seed
+  // merely EXISTING, which is right in production only because handleCompany
+  // passes a seed for IBEX entries alone (`resolved.kind === 'seed'`) — one
+  // line away from printing "Sociedad cotizada" over a private company, a
+  // claim about legal status that would rightly cost the reader's trust in
+  // every other figure on the page.
+  const tickerParts = seed && seed.ticker ? String(seed.ticker).split(':') : [];
+  const [tickerExchange, tickerSymbol] =
+    tickerParts.length > 1 ? tickerParts : ['BME', tickerParts[0]];
+  // Derived from the ticker the seed already carries rather than a hand-kept
+  // URL per company, so it cannot drift out of step with _ibex35.js.
+  const quoteUrl = tickerSymbol
+    ? `https://www.google.com/finance/quote/${encodeURIComponent(tickerSymbol)}:${encodeURIComponent(tickerExchange)}`
+    : '';
+
+  const cotizadaBlock = seed && seed.ticker
     ? `<section class="cotizada">
-        <h2>${t.listedCompany}${seed.ticker ? ` · ${esc(seed.ticker)}` : ''}</h2>
+        <h2>${t.listedCompany}</h2>
+        <p class="ticker-line"><span class="ticker">${esc(seed.ticker)}</span>${
+          quoteUrl
+            ? `<a href="${esc(quoteUrl)}" target="_blank" rel="nofollow noopener noreferrer">${esc(t.listedQuote)} ↗</a>`
+            : ''
+        }</p>
         <table class="facts"><tbody>
           ${seed.sector ? `<tr><th>${t.cSector}</th><td>${esc(seed.sector)}</td></tr>` : ''}
           ${seed.nif ? `<tr><th>${t.cNif}</th><td>${esc(seed.nif)}</td></tr>` : ''}
@@ -1601,6 +1677,41 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
     </div>
     <a class="overview-action" data-track="profile_open_graph" href="${graphHref(name, groupKey)}">${t.topMapBtn}</a>
   </section>`;
+
+  // The four counts that used to headline a promo card above the registry
+  // table now sit BESIDE the graph trigger, where they are the reason to press
+  // it: the button makes a claim about this company instead of naming a
+  // feature. On a phone the at-a-glance card still does that job, so this one
+  // is desktop-only.
+  const railRelationshipsCard = `<div class="rail-card rail-rel">
+    <h2>${t.relationshipOverview}</h2>
+    <div class="rail-stats">
+      <div class="rail-stat"><span class="v">${esc(activeCount)}</span><span class="l">${activeLabel}</span></div>
+      <div class="rail-stat"><span class="v">${esc(formerCount)}</span><span class="l">${t.overviewFormer}</span></div>
+      <div class="rail-stat"><span class="v">${esc(ownerCount)}</span><span class="l">${t.overviewOwners}</span></div>
+      <div class="rail-stat"><span class="v">${esc(filingCount)}</span><span class="l">${t.overviewFilings}</span></div>
+    </div>
+    <button type="button" class="rail-graph-btn" data-track="profile_graph_open">${t.topMapBtn}</button>
+  </div>`;
+
+  // The graph comes to the reader instead of the reader going to the graph.
+  // The old button navigated to /app/?search=, which is a SEARCH interface —
+  // it answered a question the reader had already finished asking, and cost
+  // them the data sheet they arrived for. The escape to the full app stays,
+  // for the people who genuinely want the search tool.
+  const graphOverlay = `<dialog id="graph-overlay" aria-label="${esc(t.relationshipOverview)}">
+  <div class="go-head">
+    <h2>${esc(name)}</h2>
+    <div class="go-actions">
+      <a class="go-app" data-track="profile_graph_to_app" href="${graphHref(name, groupKey)}">${t.topMapBtn}</a>
+      <button type="button" class="go-close">${esc(t.overlayClose)}</button>
+    </div>
+  </div>
+  <div class="go-body">
+    <div class="go-msg" id="go-msg">${esc(t.overlayLoading)}</div>
+    <div id="graph-canvas"></div>
+  </div>
+</dialog>`;
 
   // Significant shareholders from CNMV (listed companies only). Reproduced
   // faithfully with CNMV attribution per their reuse terms.
@@ -1840,6 +1951,7 @@ ${GA_SNIPPET}
 </head>
 <body>
 <div class="wrap">
+  <main class="sheet">
   <nav class="crumbs"><span class="langs"><a href="${altPath}">${altLabel}</a></span><a href="/">${t.home}</a> › <a href="/app/">${t.crumbCompanies}</a> › ${esc(name)}</nav>
 
   <h1>${esc(name)}</h1>
@@ -1902,7 +2014,10 @@ ${GA_SNIPPET}
   }
 
   ${eventsBlock(events, t, lang, company.total_publications)}
+  </main>
 
+  <aside class="rail">
+  ${railRelationshipsCard}
   <div class="cta">
     <h2>${t.ddCtaTitle}</h2>
     <p>${esc(t.ddCtaText(name))}</p>
@@ -1923,22 +2038,87 @@ ${GA_SNIPPET}
     <p class="note">${esc(t.monitorNote)}</p>
     <p class="msg" id="mon-msg" role="status" aria-live="polite"></p>
   </div>
+  </aside>
 
   <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}</footer>
 </div>
+${graphOverlay}
 <script>
 (function(){
   document.querySelectorAll('[data-track]').forEach(function(link){
     link.addEventListener('click',function(){
       if(typeof gtag!=='function')return;
-      gtag('event','company_profile_cta_click',{
+      var params={
         action:link.getAttribute('data-track'),
         company_slug:${JSON.stringify(canonicalSlug)},
         language:${JSON.stringify(lang)},
         link_url:link.getAttribute('href')||''
-      });
+      };
+      gtag('event','company_profile_cta_click',params);
+      gtag('event',link.getAttribute('data-track'),params);
     });
   });
+})();
+</script>
+<script>
+(function(){
+  var btn=document.querySelector('[data-track="profile_graph_open"]');
+  var dlg=document.getElementById('graph-overlay');
+  if(!btn||!dlg)return;
+  var API=${jsVal(API_BASE)},NAME=${jsVal(name)},GK=${jsVal(groupKey ? String(groupKey) : '')};
+  var FAILED=${jsVal(t.overlayFailed)},EMPTY=${jsVal(t.overlayEmpty)};
+  var msg=document.getElementById('go-msg');
+  var started=false;
+  function say(text){if(msg){msg.textContent=text;msg.style.display='flex';}}
+  function hide(){if(msg)msg.style.display='none';}
+  function close(){if(typeof dlg.close==='function')dlg.close();else dlg.removeAttribute('open');}
+  var closer=dlg.querySelector('.go-close');
+  if(closer)closer.addEventListener('click',close);
+  btn.addEventListener('click',function(){
+    if(typeof dlg.showModal==='function')dlg.showModal();else dlg.setAttribute('open','');
+    if(started)return;
+    started=true;
+    var tag=document.createElement('script');
+    tag.src='/vendor/force-graph.min.js';
+    tag.onload=load;
+    tag.onerror=function(){say(FAILED);};
+    document.head.appendChild(tag);
+  });
+  function load(){
+    var url=GK
+      ? API+'/bormes/v3/company?group_key='+encodeURIComponent(GK)
+      : API+'/bormes/v3/company/'+encodeURIComponent(NAME);
+    fetch(url)
+      .then(function(r){return r.ok?r.json():Promise.reject(new Error('http'));})
+      .then(draw)
+      .catch(function(){say(FAILED);});
+  }
+  function draw(data){
+    var c=(data&&data.company)||data||{};
+    var people=[].concat(c.officers_active||[],c.officers_resigned||[]);
+    var nodes=[{id:'__self__',label:NAME,self:true}],links=[],seen={};
+    people.forEach(function(o){
+      var n=o&&(o.name||o.officer_name||o.full_name);
+      if(!n||seen[n]||nodes.length>60)return;
+      seen[n]=1;
+      nodes.push({id:n,label:n,self:false});
+      links.push({source:'__self__',target:n});
+    });
+    if(nodes.length<2){say(EMPTY);return;}
+    var make=window.ForceGraph;
+    if(typeof make!=='function'){say(FAILED);return;}
+    var el=document.getElementById('graph-canvas');
+    if(!el)return;
+    hide();
+    make()(el)
+      .graphData({nodes:nodes,links:links})
+      .nodeLabel('label')
+      .nodeRelSize(5)
+      .nodeColor(function(n){return n.self?'#1e3a8a':'#64748b';})
+      .linkColor(function(){return '#cbd5e1';})
+      .width(el.clientWidth)
+      .height(el.clientHeight);
+  }
 })();
 </script>
 <script>

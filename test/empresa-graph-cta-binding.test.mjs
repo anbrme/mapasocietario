@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderCompanyPage } from '../functions/empresa/_lib.js';
 
-// The three "ver el mapa" CTAs linked to /app/?search=<name> and nothing else.
+// The "ver el mapa" CTAs linked to /app/?search=<name> and nothing else.
 // /app reads `gk` (App.jsx) and hands it to handleSearch as groupKeyOverride —
 // the same argument an in-graph selection supplies. Without it the click re-ran
 // a fuzzy NAME search on arrival, so a visitor leaving a company page could land
@@ -20,8 +20,11 @@ test('every graph CTA binds to the legal entity and names its surface', () => {
   const html = renderCompanyPage({ ...base, _id: 'grp_abc123' }, [], 'acme-consulting-sl', null, 'es');
   const links = graphLinks(html);
 
-  // hero, relationship overview, bottom CTA
-  assert.equal(links.length, 3, `expected 3 graph links, got ${JSON.stringify(links)}`);
+  // hero, relationship overview, bottom CTA (all three now hidden at >=1024px,
+  // where the rail's overlay trigger replaces them) and the overlay's own
+  // escape to the full app. The count is the guard: it is what makes a NEW
+  // graph link impossible to add without coming through this binding check.
+  assert.equal(links.length, 4, `expected 4 graph links, got ${JSON.stringify(links)}`);
   for (const href of links) {
     assert.match(href, /(\?|&amp;)gk=grp_abc123(&amp;|$)/, `missing gk: ${href}`);
     assert.match(href, /(\?|&amp;)source=company_profile(&amp;|$)/, `missing source: ${href}`);
@@ -53,7 +56,7 @@ test('a seed page falls back to the registry hoja, the identity that never chang
 test('a document with no stable identity omits gk rather than guessing one', () => {
   const html = renderCompanyPage(base, [], 'acme-consulting-sl', null, 'es');
   const links = graphLinks(html);
-  assert.equal(links.length, 3);
+  assert.equal(links.length, 4);
   for (const href of links) {
     assert.doesNotMatch(href, /(\?|&amp;)gk=/, `guessed a gk: ${href}`);
     assert.match(href, /source=company_profile/);
