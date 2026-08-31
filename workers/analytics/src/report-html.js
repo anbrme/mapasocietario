@@ -187,6 +187,46 @@ function orderedFunnelSection(ordered) {
 }
 
 /**
+ * What the automated-traffic exclusion removed.
+ *
+ * This section is not optional decoration: every GA4 number above it has been
+ * reduced, and a reader who cannot see by how much is reading a subtraction
+ * they were never told about. The engaged-sessions column is the filter's own
+ * alarm — it should sit at or near zero, and a rising value means real people
+ * are being removed rather than more bots arriving.
+ */
+function automatedTrafficSection(auto) {
+  if (!auto) return '';
+  if (!auto.available) {
+    return section(
+      'Automated traffic excluded',
+      `<div style="background:${WARN_SOFT};border:1px solid #fcd34d;border-radius:8px;padding:12px 14px;font:400 13px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${INK};">Applied, but the amount could not be measured this run: ${escapeHtml(auto.error || 'unknown reason')}</div>`,
+    );
+  }
+
+  const row = (label, t) => [
+    label,
+    num(t?.totalUsers),
+    num(t?.sessions),
+    num(t?.screenPageViews),
+    {
+      text: num(t?.engagedSessions),
+      color: Number(t?.engagedSessions) > 0 ? WARN : MUTED,
+      align: 'right',
+    },
+  ];
+
+  return section(
+    'Automated traffic excluded',
+    table(
+      ['Window', 'Users', 'Sessions', 'Page views', 'Engaged'],
+      [row('Headline day', auto.day), row('Trailing week', auto.window)],
+    ),
+    'Every GA4 figure above is net of this. GA4\'s own bot filter does not catch it \u2014 it does not identify itself. It is recognised by reporting a stripped Chrome build number (X.0.0.0) where a real browser sends its full build through client hints. Engaged sessions here should stay at or near zero; a rising number means the filter has started removing real people.',
+  );
+}
+
+/**
  * Cloudflare edge traffic. Deliberately placed before "Measurement quality":
  * it IS the measurement-quality section that matters most, because it sizes
  * everything above it.
@@ -527,6 +567,8 @@ export function renderReportHtml(r) {
     ),
 
     edgeSection(r.edge),
+
+    automatedTrafficSection(r.automatedTraffic),
 
     section(
       'Measurement quality',

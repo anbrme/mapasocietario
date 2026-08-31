@@ -253,6 +253,23 @@ test('funnel section is unavailable — not zero — when GA4 returns no rows', 
 });
 
 /**
+ * Every value a GA4 dimensionFilter positively selects on, at any depth.
+ */
+function collectFilterValues(expression) {
+  if (!expression) return [];
+  if (expression.notExpression) return [];
+  if (expression.andGroup || expression.orGroup) {
+    const group = expression.andGroup || expression.orGroup;
+    return (group.expressions || []).flatMap(collectFilterValues);
+  }
+  const filter = expression.filter;
+  if (!filter) return [];
+  if (filter.inListFilter?.values) return filter.inListFilter.values;
+  if (filter.stringFilter) return [filter.stringFilter.value];
+  return [];
+}
+
+/**
  * Canned GA4 responses keyed by what each request actually asks for. This is
  * the test the swapped-destructuring bug needed: it asserts that each parsed
  * section came from the query that was meant to feed it.
@@ -273,11 +290,12 @@ function stubGa4() {
     const body = JSON.parse(init.body);
     const isPrior = JSON.stringify(body.dateRanges).includes('2026-08-11');
     const dims = (body.dimensions || []).map((d) => d.name);
-    const filterValues =
-      body.dimensionFilter?.filter?.inListFilter?.values ||
-      (body.dimensionFilter?.filter?.stringFilter
-        ? [body.dimensionFilter.filter.stringFilter.value]
-        : []);
+    // What the query POSITIVELY asks for. Every request now also carries the
+    // automated-traffic exclusion, which nests the caller's own filter inside
+    // an andGroup, so this walks the tree rather than assuming a flat filter.
+    // notExpression subtrees are skipped on purpose: they are what the query
+    // excludes, not what it is asking for.
+    const filterValues = collectFilterValues(body.dimensionFilter);
     const json = (payload) => ({ ok: true, json: async () => payload });
 
     if (String(url).includes('runFunnelReport')) return json(REAL_FUNNEL_RESPONSE);
