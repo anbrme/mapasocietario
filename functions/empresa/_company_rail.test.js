@@ -248,12 +248,27 @@ describe('the phone layout', () => {
 });
 
 describe('the framed graph', () => {
-  it('says the framed view is the whole graph, and can be opened on its own', () => {
+  it('offers one expand control that really opens a tab', () => {
     const html = render();
-    const overlay = html.slice(html.indexOf('id="graph-overlay"'));
+    const overlay = html.slice(html.indexOf('id="graph-overlay"'), html.indexOf('</dialog>'));
+
+    // It had no target, so it navigated the company page away — the opposite
+    // of expanding. And it was labelled "explore relationships on the map"
+    // while the reader was already looking at the map.
+    expect(overlay).toMatch(/<a[^>]*class="go-app"[^>]*target="_blank"/);
+    expect(overlay).toMatch(/<a[^>]*class="go-app"[^>]*rel="[^"]*noopener/);
+    expect(overlay).toContain('profile_graph_to_app');
+    expect(overlay).not.toContain('Explorar relaciones en el mapa</a>');
+  });
+
+  it('states the framed view is the whole graph without repeating the action', () => {
+    const html = render();
+    const overlay = html.slice(html.indexOf('id="graph-overlay"'), html.indexOf('</dialog>'));
 
     expect(overlay).toContain('go-foot');
-    expect(overlay).toContain('profile_graph_to_app');
+    // Two controls saying "open it" either side of the same graph is the
+    // awkwardness this section is meant to remove.
+    expect(overlay).not.toContain('ábrelo');
   });
 });
 
@@ -291,7 +306,7 @@ describe('the English page', () => {
     for (const text of [
       'Listed company', 'View quote', 'Get alerts for this company',
       'Close', 'Loading the graph', 'Explore relationships on the map',
-      'Follow this company', 'This is the full graph',
+      'Follow this company', 'the same tools as the app', 'Open in a new tab',
     ]) {
       expect(en, text).toContain(text);
     }

@@ -291,7 +291,8 @@ const T = {
     listedQuote: 'Ver cotización',
     monitorFab: 'Recibir avisos de esta empresa',
     overlayLoading: 'Cargando el grafo…',
-    overlayFull: 'Este es el grafo completo · ábrelo en una pestaña propia',
+    overlayFull: 'Es el grafo completo, con las mismas herramientas que la aplicación.',
+    overlayNewTab: 'Abrir en una pestaña nueva',
     overlayFailed: 'No se han podido cargar las relaciones. Abre el mapa completo para verlas.',
     overlayEmpty: 'No hay cargos registrados para representar en el mapa.',
     topRegistryBtn: 'Ver datos registrales',
@@ -538,7 +539,8 @@ const T = {
     listedQuote: 'View quote',
     monitorFab: 'Get alerts for this company',
     overlayLoading: 'Loading the graph…',
-    overlayFull: 'This is the full graph · open it in its own tab',
+    overlayFull: 'It is the full graph, with the same tools as the app.',
+    overlayNewTab: 'Open in a new tab',
     overlayFailed: 'Relationships could not be loaded. Open the full map to see them.',
     overlayEmpty: 'No recorded officers to plot on the map.',
     topRegistryBtn: 'View registry details',
@@ -1376,7 +1378,7 @@ const STYLE = `<style>
   .go-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line)}
   .go-head h2{margin:0;padding:0;border:0;font-size:17px}
   .go-actions{display:flex;gap:10px;align-items:center}
-  .go-app{font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
+  .go-app{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;border:1px solid #bfdbfe;border-radius:8px;padding:6px 12px}
   .go-close{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer}
   .go-body{width:100%;height:calc(100% - 90px);position:relative}
   #graph-frame{width:100%;height:100%;border:0;display:block}
@@ -1738,7 +1740,7 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   <div class="go-head">
     <h2>${esc(name)}</h2>
     <div class="go-actions">
-      <a class="go-app" data-track="profile_graph_to_app" href="${graphHref(name, groupKey)}">${t.topMapBtn}</a>
+      <a class="go-app" data-track="profile_graph_to_app" href="${graphHref(name, groupKey)}" target="_blank" rel="noopener"><span aria-hidden="true">⤢</span> ${esc(t.overlayNewTab)}</a>
       <button type="button" class="go-close">${esc(t.overlayClose)}</button>
     </div>
   </div>
