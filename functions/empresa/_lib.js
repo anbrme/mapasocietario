@@ -290,7 +290,8 @@ const T = {
     overlayClose: 'Cerrar',
     listedQuote: 'Ver cotización',
     monitorFab: 'Recibir avisos de esta empresa',
-    overlayLoading: 'Cargando relaciones…',
+    overlayLoading: 'Cargando el grafo…',
+    overlayFull: 'Este es el grafo completo · ábrelo en una pestaña propia',
     overlayFailed: 'No se han podido cargar las relaciones. Abre el mapa completo para verlas.',
     overlayEmpty: 'No hay cargos registrados para representar en el mapa.',
     topRegistryBtn: 'Ver datos registrales',
@@ -536,7 +537,8 @@ const T = {
     overlayClose: 'Close',
     listedQuote: 'View quote',
     monitorFab: 'Get alerts for this company',
-    overlayLoading: 'Loading relationships…',
+    overlayLoading: 'Loading the graph…',
+    overlayFull: 'This is the full graph · open it in its own tab',
     overlayFailed: 'Relationships could not be loaded. Open the full map to see them.',
     overlayEmpty: 'No recorded officers to plot on the map.',
     topRegistryBtn: 'View registry details',
@@ -1376,8 +1378,9 @@ const STYLE = `<style>
   .go-actions{display:flex;gap:10px;align-items:center}
   .go-app{font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
   .go-close{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer}
-  .go-body{width:100%;height:calc(100% - 55px);position:relative}
-  #graph-canvas{width:100%;height:100%}
+  .go-body{width:100%;height:calc(100% - 90px);position:relative}
+  #graph-frame{width:100%;height:100%;border:0;display:block}
+  .go-foot{margin:0;padding:9px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--mut);background:#f8fafc}
   .go-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:14px;text-align:center;padding:20px}
   footer{margin-top:48px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:16px}
   section{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:18px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
@@ -1741,8 +1744,10 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   </div>
   <div class="go-body">
     <div class="go-msg" id="go-msg">${esc(t.overlayLoading)}</div>
-    <div id="graph-canvas"></div>
+    <iframe id="graph-frame" title="${esc(t.relationshipOverview)}" loading="lazy"
+            data-src="${graphHref(name, groupKey)}&amp;embed=1"></iframe>
   </div>
+  <p class="go-foot">${esc(t.overlayFull)}</p>
 </dialog>`;
 
   // Significant shareholders from CNMV (listed companies only). Reproduced
@@ -2118,99 +2123,18 @@ ${monitorLauncher}
 (function(){
   var btn=document.querySelector('[data-track="profile_graph_open"]');
   var dlg=document.getElementById('graph-overlay');
-  if(!btn||!dlg)return;
-  var API=${jsVal(API_BASE)},NAME=${jsVal(name)},GK=${jsVal(groupKey ? String(groupKey) : '')};
-  var FAILED=${jsVal(t.overlayFailed)},EMPTY=${jsVal(t.overlayEmpty)};
+  var frame=document.getElementById('graph-frame');
+  if(!btn||!dlg||!frame)return;
   var msg=document.getElementById('go-msg');
-  var started=false;
-  function say(text){if(msg){msg.textContent=text;msg.style.display='flex';}}
-  function hide(){if(msg)msg.style.display='none';}
-  function close(){if(typeof dlg.close==='function')dlg.close();else dlg.removeAttribute('open');}
   var closer=dlg.querySelector('.go-close');
-  if(closer)closer.addEventListener('click',close);
+  function shut(){if(typeof dlg.close==='function')dlg.close();else dlg.removeAttribute('open');}
+  if(closer)closer.addEventListener('click',shut);
+  frame.addEventListener('load',function(){if(msg)msg.style.display='none';});
   btn.addEventListener('click',function(){
     if(typeof dlg.showModal==='function')dlg.showModal();else dlg.setAttribute('open','');
-    if(started)return;
-    started=true;
-    if(window.ForceGraph){load();return;}
-    var tag=document.createElement('script');
-    tag.src='/vendor/force-graph.min.js';
-    tag.onload=load;
-    tag.onerror=function(){say(FAILED);};
-    document.head.appendChild(tag);
+    if(frame.getAttribute('src'))return;
+    frame.setAttribute('src',frame.getAttribute('data-src'));
   });
-  function load(){
-    var url=GK
-      ? API+'/bormes/v3/company?group_key='+encodeURIComponent(GK)
-      : API+'/bormes/v3/company/'+encodeURIComponent(NAME);
-    fetch(url)
-      .then(function(r){return r.ok?r.json():Promise.reject(new Error('http'));})
-      .then(draw)
-      .catch(function(){say(FAILED);});
-  }
-  function draw(data){
-    var c=(data&&data.company)||data||{};
-    var groups=[['active',c.officers_active||[]],['former',c.officers_resigned||[]]];
-    var nodes=[{id:'__self__',label:NAME,role:'self'}],links=[],seen={};
-    groups.forEach(function(g){
-      g[1].forEach(function(o){
-        var n=o&&(o.name||o.officer_name||o.full_name);
-        if(!n||seen[n]||nodes.length>60)return;
-        seen[n]=1;
-        var pos=o.position||o.role||'';
-        nodes.push({id:n,label:n,role:g[0],title:pos?n+' — '+pos:n});
-        links.push({source:'__self__',target:n,former:g[0]==='former'});
-      });
-    });
-    if(nodes.length<2){say(EMPTY);return;}
-    var make=window.ForceGraph;
-    if(typeof make!=='function'){say(FAILED);return;}
-    var el=document.getElementById('graph-canvas');
-    if(!el)return;
-    hide();
-    var COLORS={self:'#2563eb',active:'#0ea5e9',former:'#94a3b8'};
-    var RADIUS={self:7,active:4.5,former:3.5};
-    function radius(n){return RADIUS[n.role]||RADIUS.former;}
-    function drawNode(node,ctx,scale){
-      var r=radius(node);
-      ctx.beginPath();
-      ctx.arc(node.x,node.y,r,0,2*Math.PI,false);
-      ctx.fillStyle=COLORS[node.role]||COLORS.former;
-      ctx.fill();
-      if(node.role!=='self'&&scale<1.2)return;
-      var text=node.label.length>24?node.label.slice(0,23)+'…':node.label;
-      var size=Math.max(7,9/scale);
-      ctx.font=size+'px -apple-system, system-ui, sans-serif';
-      ctx.textAlign='center';
-      ctx.textBaseline='top';
-      var y=node.y+r+1.5;
-      ctx.lineWidth=3/scale;
-      ctx.strokeStyle='rgba(255,255,255,0.9)';
-      ctx.strokeText(text,node.x,y);
-      ctx.fillStyle='#334155';
-      ctx.fillText(text,node.x,y);
-    }
-    function pointerArea(node,color,ctx){
-      ctx.beginPath();
-      ctx.arc(node.x,node.y,radius(node)+2,0,2*Math.PI,false);
-      ctx.fillStyle=color;
-      ctx.fill();
-    }
-    var Graph=make()(el)
-      .backgroundColor('#ffffff')
-      .nodeLabel(function(n){return n.title||n.label;})
-      .nodeCanvasObject(drawNode)
-      .nodePointerAreaPaint(pointerArea)
-      .linkColor(function(l){return l.former?'#e2e8f0':'#cbd5e1';})
-      .linkLineDash(function(l){return l.former?[3,3]:null;})
-      .width(el.clientWidth)
-      .height(el.clientHeight)
-      .graphData({nodes:nodes,links:links});
-    if(Graph.d3Force('charge'))Graph.d3Force('charge').strength(-160);
-    var lf=Graph.d3Force('link');
-    if(lf&&lf.distance)lf.distance(48);
-    setTimeout(function(){if(Graph.zoomToFit)Graph.zoomToFit(400,40);},600);
-  }
 })();
 </script>
 <script>

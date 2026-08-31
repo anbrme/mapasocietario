@@ -98,13 +98,29 @@ describe('the graph overlay', () => {
     expect(overlay).toContain('profile_graph_to_app');
   });
 
-  it('loads no graph code until the trigger is pressed', () => {
+  it('frames the real graph rather than reimplementing it', () => {
     const html = render();
 
-    // These pages ARE the SEO surface. A graph library on initial load would
+    // A hand-rolled force graph here was a second implementation of the app's
+    // graph and looked nothing like it: every officer plotted instead of the
+    // ~10 Simplify leaves, one link colour instead of appointments vs
+    // cessations, no role labels, no company/person shapes. Framing the app
+    // means it cannot drift, and every future improvement to the graph lands
+    // on these pages for free.
+    expect(html).toMatch(/<iframe[^>]*id="graph-frame"/);
+    expect(html).toContain('embed=1');
+    expect(html).not.toContain('force-graph.min.js');
+  });
+
+  it('loads nothing until the trigger is pressed', () => {
+    const html = render();
+
+    // These pages ARE the SEO surface. Booting a React app on page load would
     // buy an interaction nobody asked for with the LCP of every company page.
-    expect(html).not.toContain('<script src="/vendor/force-graph.min.js"');
-    expect(html).toContain('/vendor/force-graph.min.js');
+    // The URL waits in data-src until the dialog opens.
+    expect(html).toMatch(/<iframe[^>]*data-src="/);
+    expect(html).not.toMatch(/<iframe[^>]*\ssrc="/);
+    expect(html).toContain("frame.setAttribute('src',frame.getAttribute('data-src'))");
   });
 });
 
@@ -231,14 +247,13 @@ describe('the phone layout', () => {
   });
 });
 
-describe('the graph library', () => {
-  it('is not re-executed when the GLEIF block has already loaded it', () => {
+describe('the framed graph', () => {
+  it('says the framed view is the whole graph, and can be opened on its own', () => {
     const html = render();
+    const overlay = html.slice(html.indexOf('id="graph-overlay"'));
 
-    // On the ~35 pages carrying a LEI, the GLEIF section loads force-graph
-    // eagerly. Injecting a second tag re-runs the whole bundle from cache and
-    // redefines window.ForceGraph for no reason.
-    expect(html).toContain('if(window.ForceGraph){load();return;}');
+    expect(overlay).toContain('go-foot');
+    expect(overlay).toContain('profile_graph_to_app');
   });
 });
 
@@ -275,8 +290,8 @@ describe('the English page', () => {
     // the expected strings is the only assertion that actually fails.
     for (const text of [
       'Listed company', 'View quote', 'Get alerts for this company',
-      'Close', 'Loading relationships', 'Explore relationships on the map',
-      'Follow this company',
+      'Close', 'Loading the graph', 'Explore relationships on the map',
+      'Follow this company', 'This is the full graph',
     ]) {
       expect(en, text).toContain(text);
     }

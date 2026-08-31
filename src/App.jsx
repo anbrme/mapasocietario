@@ -171,6 +171,13 @@ export default function App() {
     const value = (new URLSearchParams(window.location.search).get('gk') || '').trim();
     return value || undefined;
   }, []);
+  // Set by the graph overlay on /empresa, which frames this app in a dialog.
+  // The company page has its own title, breadcrumb and language switch, so the
+  // nav bar here would be a second set of the same controls inside a box.
+  const isEmbedded = React.useMemo(
+    () => new URLSearchParams(window.location.search).get('embed') === '1',
+    [],
+  );
   const graphEntrySource = React.useMemo(() => {
     const value = new URLSearchParams(window.location.search).get('source') || '';
     return /^[a-z0-9_]{1,40}$/.test(value) ? value : 'direct';
@@ -212,6 +219,7 @@ export default function App() {
       {/* Slim home breadcrumb. Gives a way back to the homepage (the back gesture
           is also wired in the native app) and lowers the search inputs off the
           very top edge. */}
+      {!isEmbedded && (
       <Box
         component="nav"
         aria-label="breadcrumb"
@@ -335,6 +343,7 @@ export default function App() {
           </ToggleButtonGroup>
         </Box>
       </Box>
+      )}
 
       <SpanishCompanyNetworkGraph
         visible={true}

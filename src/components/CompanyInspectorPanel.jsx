@@ -101,6 +101,11 @@ const CompanyInspectorPanel = ({
 
   if (!open) return null;
 
+  // Lifted out of the company section below: the link to the full profile is
+  // the panel's primary outbound action and now sits in the header, above the
+  // scroll, rather than under the summary where it needed scrolling to reach.
+  const fullHref = data?.type === 'company' ? fullCompanyPageHref(data.name, lang) : null;
+
   const statusChips = data?.type === 'company' && (
     <>
       {data.enriched?.isDissolved && (
@@ -210,6 +215,35 @@ const CompanyInspectorPanel = ({
           <CloseIcon />
         </IconButton>
       </Box>
+      {fullHref && (
+        <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            href={fullHref}
+            target="_blank"
+            rel="noopener"
+            endIcon={<OpenInNewIcon sx={{ fontSize: 16 }} />}
+            onClick={() => {
+              trackFullCompanyProfileClick({
+                href: fullHref,
+                language: lang,
+                entrySource,
+              });
+              recordCompanyDemand({
+                eventType: 'full_profile_click',
+                language: lang,
+                company: { ...(data.enriched || {}), name: data.name },
+              });
+            }}
+          >
+            {text.openFullProfile}
+          </Button>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+            {text.fullProfileHint}
+          </Typography>
+        </Box>
+      )}
       {/* The card does not scroll. Everything above the disclosure is bounded —
           the header already carries the name and the status chips, so the grid
           no longer repeats them, and the address is clamped. Only an OPENED
@@ -288,7 +322,6 @@ const CompanyInspectorPanel = ({
             eventCount: e?.eventCount,
             lang,
           });
-          const fullHref = fullCompanyPageHref(data.name, lang);
           return (
             <Box>
               <CurrencyConfirmationCard
@@ -478,40 +511,6 @@ const CompanyInspectorPanel = ({
                   it below. Both calls must fire — recordCompanyDemand feeds
                   shouldPromoteCompany, which is what promotes a company page
                   into the indexable set. */}
-              {fullHref && (
-                <Box sx={{ mb: 3 }}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    href={fullHref}
-                    target="_blank"
-                    rel="noopener"
-                    endIcon={<OpenInNewIcon sx={{ fontSize: 16 }} />}
-                    onClick={() => {
-                      trackFullCompanyProfileClick({
-                        href: fullHref,
-                        language: lang,
-                        entrySource,
-                      });
-                      recordCompanyDemand({
-                        eventType: 'full_profile_click',
-                        language: lang,
-                        company: { ...(e || {}), name: data.name },
-                      });
-                    }}
-                  >
-                    {text.openFullProfile}
-                  </Button>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: 'block', mt: 0.75 }}
-                  >
-                    {text.fullProfileHint}
-                  </Typography>
-                </Box>
-              )}
-
             </Box>
           );
         })()}
