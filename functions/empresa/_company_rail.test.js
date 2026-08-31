@@ -241,3 +241,44 @@ describe('the graph library', () => {
     expect(html).toContain('if(window.ForceGraph){load();return;}');
   });
 });
+
+/**
+ * /empresa and /en/company share renderCompanyPage, so the layout is
+ * language-agnostic by construction — but the COPY is not. Every string added
+ * to the rail, the overlay or the launcher has to be added to both dictionaries,
+ * and a miss renders Spanish on an English page rather than failing.
+ */
+describe('the English page', () => {
+  // A seed WITH a ticker, so the listed-company block actually renders. The
+  // bare SEED above has none, and a fixture that does not exercise a block
+  // cannot catch a missing string inside it — the first version of this test
+  // passed happily with `listedQuote` deleted from the English dictionary.
+  const LISTED_SEED = { name: 'ACME TEST SL', ticker: 'BME:ACME', isin: 'ES0000000000', hoja: 'M 1' };
+  const en = renderCompanyPage(COMPANY, [], 'acme-test-sl', LISTED_SEED, 'en');
+
+  it('gets the same structure as the Spanish one', () => {
+    for (const marker of [
+      'class="sheet-a"', '<aside class="rail"', 'class="sheet-b"',
+      'class="rail-graph-btn"', 'class="rail-graph-link"',
+      'id="mon-fab"', 'id="monitor-dialog"', 'id="graph-overlay"',
+    ]) {
+      expect(en, marker).toContain(marker);
+    }
+  });
+
+  it('carries every string this work added, in English', () => {
+    // The failure mode is SILENT. `const t = T[lang] || T.es` picks one
+    // dictionary outright, and esc() maps null/undefined to '' — so a key
+    // added to `es` alone renders an EMPTY link or an unlabelled button, not
+    // Spanish text and not the word "undefined". Two earlier versions of this
+    // test checked for both of those and passed with the key deleted. Naming
+    // the expected strings is the only assertion that actually fails.
+    for (const text of [
+      'Listed company', 'View quote', 'Get alerts for this company',
+      'Close', 'Loading relationships', 'Explore relationships on the map',
+      'Follow this company',
+    ]) {
+      expect(en, text).toContain(text);
+    }
+  });
+});
