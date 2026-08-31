@@ -152,6 +152,17 @@ describe('rail styling', () => {
     expect(html).not.toContain('overscroll-behavior:contain');
   });
 
+  it('does not let the email field inherit a 240px flex-basis as its height', () => {
+    const html = render();
+
+    // `.mon input{flex:1 1 240px}` was written for the form's original ROW
+    // layout, where 240px is a WIDTH. The rail turns that form into a column,
+    // which flips the main axis and made 240px the input's HEIGHT — a ~240px
+    // tall box to type an email into. Anything that changes flex-direction
+    // must reset the basis its children were written against.
+    expect(html).toMatch(/\.rail \.mon input\{flex:0 0 auto/);
+  });
+
   it('keeps the report card quiet on a light page', () => {
     const html = render();
     // Full-bleed saturated blue is fine as a full-width band at the bottom of a

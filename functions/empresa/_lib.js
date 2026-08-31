@@ -1358,6 +1358,8 @@ const STYLE = `<style>
     .rail .mon{margin:0}
     .rail .mon h2{font-size:15px}
     .rail .mon form{flex-direction:column}
+    .rail .mon input{flex:0 0 auto;width:100%;padding:9px 12px;font-size:14px}
+    .rail .mon button{padding:10px 14px;font-size:14px}
   }
   #graph-overlay{width:min(1100px,92vw);height:min(720px,86vh);border:0;border-radius:16px;padding:0;overflow:hidden}
   #graph-overlay::backdrop{background:rgba(15,23,42,.55)}
