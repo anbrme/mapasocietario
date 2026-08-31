@@ -20,11 +20,13 @@ test('every graph CTA binds to the legal entity and names its surface', () => {
   const html = renderCompanyPage({ ...base, _id: 'grp_abc123' }, [], 'acme-consulting-sl', null, 'es');
   const links = graphLinks(html);
 
-  // hero, relationship overview, bottom CTA (all three now hidden at >=1024px,
-  // where the rail's overlay trigger replaces them) and the overlay's own
-  // escape to the full app. The count is the guard: it is what makes a NEW
-  // graph link impossible to add without coming through this binding check.
-  assert.equal(links.length, 4, `expected 4 graph links, got ${JSON.stringify(links)}`);
+  // hero and bottom CTA (hidden at >=1024px), the relationship overview, the
+  // overlay's escape to the full app, and the phone's own graph link — a
+  // phone gets a plain link rather than the overlay, because a force graph of
+  // 80-odd nodes under a thumb is worse than the app's touch pan and zoom.
+  // The count is the guard: it is what makes a NEW graph link impossible to
+  // add without coming through this binding check.
+  assert.equal(links.length, 5, `expected 5 graph links, got ${JSON.stringify(links)}`);
   for (const href of links) {
     assert.match(href, /(\?|&amp;)gk=grp_abc123(&amp;|$)/, `missing gk: ${href}`);
     assert.match(href, /(\?|&amp;)source=company_profile(&amp;|$)/, `missing source: ${href}`);
@@ -56,7 +58,7 @@ test('a seed page falls back to the registry hoja, the identity that never chang
 test('a document with no stable identity omits gk rather than guessing one', () => {
   const html = renderCompanyPage(base, [], 'acme-consulting-sl', null, 'es');
   const links = graphLinks(html);
-  assert.equal(links.length, 4);
+  assert.equal(links.length, 5);
   for (const href of links) {
     assert.doesNotMatch(href, /(\?|&amp;)gk=/, `guessed a gk: ${href}`);
     assert.match(href, /source=company_profile/);

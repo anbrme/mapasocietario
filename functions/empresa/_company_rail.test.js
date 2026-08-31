@@ -171,3 +171,73 @@ describe('rail styling', () => {
     expect(html).toMatch(/\.rail \.cta\{[^}]*background:#f8fafc/);
   });
 });
+
+/**
+ * Mobile web (NOT the Capacitor app, which ships the vite SPA and has never
+ * contained these pages). 53% of the company-page cohort, 51% bounce, 56s
+ * against desktop's 162s — but scrolling to 90% at 19% vs desktop's 17%, so
+ * they scroll just as much and simply leave sooner. The first screen was two
+ * full-width buttons and a stat card before a single registry fact.
+ */
+describe('the phone layout', () => {
+  it('puts the actions between the officers and the filing history', () => {
+    const html = render();
+
+    const a = html.indexOf('class="sheet-a"');
+    const rail = html.indexOf('<aside class="rail">');
+    const b = html.indexOf('class="sheet-b"');
+
+    expect(a).toBeGreaterThan(-1);
+    expect(b).toBeGreaterThan(-1);
+    // Single column on a phone follows DOM order, so this ordering IS the
+    // placement: data, then what to do about it, then the long tail.
+    expect(a).toBeLessThan(rail);
+    expect(rail).toBeLessThan(b);
+  });
+
+  it('starts the registry data on the first screen', () => {
+    const html = render();
+
+    // The promo that used to occupy roughly two phone screens.
+    expect(html).toContain('.hero-actions{display:none}');
+    expect(html).toContain('.overview-action{display:none}');
+    // The counts survive as a text line — information, not a call to action.
+    expect(html).toMatch(/@media\(max-width:1023px\)[\s\S]*?\.overview-grid\{display:block/);
+  });
+
+  it('links a phone straight to the app instead of opening the overlay', () => {
+    const html = render();
+
+    // A force graph of 80-odd nodes under a thumb is worse than the app, which
+    // at least has touch pan and zoom. Desktop keeps the overlay.
+    expect(html).toMatch(/<a[^>]*class="rail-graph-link"[^>]*href="\/app\/\?search=/);
+    expect(html).toContain('.rail-graph-link{display:none}');
+    expect(html).toContain('.rail-graph-btn{display:none}');
+  });
+
+  it('moves the monitoring form into a dialog behind a floating button', () => {
+    const html = render();
+
+    expect(html).toContain('id="mon-fab"');
+    expect(html).toContain('id="monitor-dialog"');
+    // MOVED, never copied: the form binds by id and a second id="mon-form"
+    // would be invalid HTML and would break the existing submit handler.
+    expect(html.match(/id="mon-form"/g)).toHaveLength(1);
+    expect(html).toContain('monitorDialog.appendChild');
+    // Gated on the phone breakpoint. Moving it unconditionally would pull the
+    // form out of the desktop rail while the button that opens it is
+    // display:none there — the form would exist and be unreachable.
+    expect(html).toContain("matchMedia('(max-width:1023px)').matches");
+  });
+});
+
+describe('the graph library', () => {
+  it('is not re-executed when the GLEIF block has already loaded it', () => {
+    const html = render();
+
+    // On the ~35 pages carrying a LEI, the GLEIF section loads force-graph
+    // eagerly. Injecting a second tag re-runs the whole bundle from cache and
+    // redefines window.ForceGraph for no reason.
+    expect(html).toContain('if(window.ForceGraph){load();return;}');
+  });
+});

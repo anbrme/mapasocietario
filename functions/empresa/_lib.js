@@ -289,6 +289,7 @@ const T = {
     topMapBtn: 'Explorar relaciones en el mapa →',
     overlayClose: 'Cerrar',
     listedQuote: 'Ver cotización',
+    monitorFab: 'Recibir avisos de esta empresa',
     overlayLoading: 'Cargando relaciones…',
     overlayFailed: 'No se han podido cargar las relaciones. Abre el mapa completo para verlas.',
     overlayEmpty: 'No hay cargos registrados para representar en el mapa.',
@@ -534,6 +535,7 @@ const T = {
     topMapBtn: 'Explore relationships on the map →',
     overlayClose: 'Close',
     listedQuote: 'View quote',
+    monitorFab: 'Get alerts for this company',
     overlayLoading: 'Loading relationships…',
     overlayFailed: 'Relationships could not be loaded. Open the full map to see them.',
     overlayEmpty: 'No recorded officers to plot on the map.',
@@ -1333,11 +1335,18 @@ const STYLE = `<style>
   .rail-stat .v{display:block;font-size:20px;line-height:1.1;font-weight:800;color:#1e3a8a}
   .rail-stat .l{display:block;margin-top:4px;font-size:11px;color:var(--mut)}
   .rail-graph-btn{display:block;width:100%;border:0;border-radius:9px;padding:11px 14px;background:var(--brand);color:#fff;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer}
-  .rail-rel{display:none}
+  .hero-actions{display:none}
+  .overview-action{display:none}
+  .mon-fab{display:none;position:fixed;right:14px;bottom:14px;z-index:40;align-items:center;gap:8px;border:0;border-radius:999px;padding:12px 18px;background:#0f766e;color:#fff;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(15,23,42,.28)}
+  .mon-fab-text{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #monitor-dialog{width:min(520px,92vw);border:0;border-radius:16px;padding:0}
+  #monitor-dialog::backdrop{background:rgba(15,23,42,.55)}
+  #monitor-dialog .mon{border:0;margin:0;background:transparent}
   @media(min-width:1024px){
     .wrap{max-width:1240px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:48px;align-items:start}
-    .sheet{min-width:0}
-    .rail{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow-y:auto;scrollbar-width:thin}
+    .sheet-a{grid-column:1;grid-row:1;min-width:0}
+    .sheet-b{grid-column:1;grid-row:2;min-width:0}
+    .rail{grid-column:2;grid-row:1 / span 2;position:sticky;top:24px;max-height:calc(100vh - 48px);overflow-y:auto;scrollbar-width:thin}
     .rail .rail-card,.rail .cta,.rail .mon{padding:14px 16px;margin:0 0 12px}
     .rail .rail-stats{gap:6px;margin:10px 0 12px}
     .rail .rail-stat{padding:8px 9px}
@@ -1345,10 +1354,9 @@ const STYLE = `<style>
     .rail .rail-stat .l{font-size:10px}
     .rail .cta p,.rail .mon>p{font-size:12.5px;margin:0 0 12px}
     .rail .mon .note{font-size:11px;margin:8px 0 0}
-    .rail-rel{display:block}
-    .wrap>footer{grid-column:1 / -1}
-    .hero-actions{display:none}
+    .wrap>footer{grid-column:1 / -1;grid-row:3}
     .overview{display:none}
+    .rail-graph-link{display:none}
     .rail .cta-secondary{display:none}
     .rail .cta{background:#f8fafc;border:1px solid var(--line);color:var(--ink);margin:0 0 16px;padding:16px 18px;text-align:left}
     .rail .cta h2{color:var(--ink);font-size:15px;margin:0 0 6px}
@@ -1399,6 +1407,20 @@ const STYLE = `<style>
   .cc-aging .cc-dot{background:#d97706}
   .cc-stale{border-color:#e2e8f0;background:#f8fafc}
   .cc-stale .cc-dot{background:#94a3b8}
+  @media(max-width:1023px){
+    .overview{padding:12px 14px;margin:12px 0}
+    .overview h2{font-size:14px;margin:0 0 8px}
+    .overview>.more{display:none}
+    .overview-grid{display:block;margin:0}
+    .overview-stat{display:inline;background:none;border:0;padding:0}
+    .overview-stat+.overview-stat::before{content:" · ";color:#94a3b8}
+    .overview-value{display:inline;font-size:15px}
+    .overview-label{display:inline;font-size:13px;margin-left:4px}
+    .rail-graph-btn{display:none}
+    .rail-rel .rail-stats{display:none}
+    .mon-fab{display:flex}
+    body{padding-bottom:76px}
+  }
   @media(max-width:640px){
     .overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     .hero-actions a{width:100%;text-align:center}
@@ -1694,6 +1716,7 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
       <div class="rail-stat"><span class="v">${esc(filingCount)}</span><span class="l">${t.overviewFilings}</span></div>
     </div>
     <button type="button" class="rail-graph-btn" data-track="profile_graph_open">${t.topMapBtn}</button>
+    <a class="rail-graph-link" data-track="profile_open_graph" href="${graphHref(name, groupKey)}">${t.topMapBtn}</a>
   </div>`;
 
   // The graph comes to the reader instead of the reader going to the graph.
@@ -1701,6 +1724,13 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   // it answered a question the reader had already finished asking, and cost
   // them the data sheet they arrived for. The escape to the full app stays,
   // for the people who genuinely want the search tool.
+  const monitorLauncher = `<button type="button" id="mon-fab" class="mon-fab" data-track="profile_monitor_open" aria-label="${esc(t.monitorFab)}">
+  <span aria-hidden="true">✉</span><span class="mon-fab-text">${esc(t.monitorTitle)}</span>
+</button>
+<dialog id="monitor-dialog" aria-label="${esc(t.monitorFab)}">
+  <div class="go-head"><h2>${esc(t.monitorTitle)}</h2><button type="button" class="go-close mon-close">${esc(t.overlayClose)}</button></div>
+</dialog>`;
+
   const graphOverlay = `<dialog id="graph-overlay" aria-label="${esc(t.relationshipOverview)}">
   <div class="go-head">
     <h2>${esc(name)}</h2>
@@ -1953,7 +1983,7 @@ ${GA_SNIPPET}
 </head>
 <body>
 <div class="wrap">
-  <main class="sheet">
+  <div class="sheet-a">
   <nav class="crumbs"><span class="langs"><a href="${altPath}">${altLabel}</a></span><a href="/">${t.home}</a> › <a href="/app/">${t.crumbCompanies}</a> › ${esc(name)}</nav>
 
   <h1>${esc(name)}</h1>
@@ -1997,26 +2027,7 @@ ${GA_SNIPPET}
   ${active ? `<h2>${isDissolved ? t.officersAtDissolution : t.currentOfficers}</h2>${dissolvedSeatsNotice}${active}` : ''}
   ${resigned ? `<h2>${t.formerOfficers}</h2>${resigned}` : ''}
   ${active || resigned ? `<p class="more">${t.officerRoleNote}</p>` : ''}
-
-  ${boeBlock}
-
-  ${subsidiesBlock}
-
-  ${marksBlock}
-
-  ${
-    company.capital_history && company.capital_history.length
-      ? `<h2>${t.capitalHistory}</h2>
-         <table class="t"><thead><tr><th>${t.thDate}</th><th>${t.thCapital}</th></tr></thead><tbody>${company.capital_history
-           .slice(-6)
-           .reverse()
-           .map((c) => `<tr><td>${esc(fmtDate(c.date, lang))}</td><td>${esc(fmtEur(c.amount, lang))}</td></tr>`)
-           .join('')}</tbody></table>`
-      : ''
-  }
-
-  ${eventsBlock(events, t, lang, company.total_publications)}
-  </main>
+  </div>
 
   <aside class="rail">
   ${railRelationshipsCard}
@@ -2042,9 +2053,31 @@ ${GA_SNIPPET}
   </div>
   </aside>
 
+  <div class="sheet-b">
+  ${boeBlock}
+
+  ${subsidiesBlock}
+
+  ${marksBlock}
+
+  ${
+    company.capital_history && company.capital_history.length
+      ? `<h2>${t.capitalHistory}</h2>
+         <table class="t"><thead><tr><th>${t.thDate}</th><th>${t.thCapital}</th></tr></thead><tbody>${company.capital_history
+           .slice(-6)
+           .reverse()
+           .map((c) => `<tr><td>${esc(fmtDate(c.date, lang))}</td><td>${esc(fmtEur(c.amount, lang))}</td></tr>`)
+           .join('')}</tbody></table>`
+      : ''
+  }
+
+  ${eventsBlock(events, t, lang, company.total_publications)}
+  </div>
+
   <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}</footer>
 </div>
 ${graphOverlay}
+${monitorLauncher}
 <script>
 (function(){
   document.querySelectorAll('[data-track]').forEach(function(link){
@@ -2059,6 +2092,25 @@ ${graphOverlay}
       gtag('event','company_profile_cta_click',params);
       gtag('event',link.getAttribute('data-track'),params);
     });
+  });
+})();
+</script>
+<script>
+(function(){
+  var fab=document.getElementById('mon-fab');
+  var monitorDialog=document.getElementById('monitor-dialog');
+  var mon=document.querySelector('.rail .mon');
+  if(!fab||!monitorDialog||!mon)return;
+  if(!window.matchMedia||!window.matchMedia('(max-width:1023px)').matches)return;
+  monitorDialog.appendChild(mon);
+  function shut(){if(typeof monitorDialog.close==='function')monitorDialog.close();else monitorDialog.removeAttribute('open');}
+  var x=monitorDialog.querySelector('.mon-close');
+  if(x)x.addEventListener('click',shut);
+  fab.addEventListener('click',function(){
+    if(typeof monitorDialog.showModal==='function')monitorDialog.showModal();
+    else monitorDialog.setAttribute('open','');
+    var input=document.getElementById('mon-email');
+    if(input)input.focus();
   });
 })();
 </script>
@@ -2080,6 +2132,7 @@ ${graphOverlay}
     if(typeof dlg.showModal==='function')dlg.showModal();else dlg.setAttribute('open','');
     if(started)return;
     started=true;
+    if(window.ForceGraph){load();return;}
     var tag=document.createElement('script');
     tag.src='/vendor/force-graph.min.js';
     tag.onload=load;
@@ -2097,14 +2150,17 @@ ${graphOverlay}
   }
   function draw(data){
     var c=(data&&data.company)||data||{};
-    var people=[].concat(c.officers_active||[],c.officers_resigned||[]);
-    var nodes=[{id:'__self__',label:NAME,self:true}],links=[],seen={};
-    people.forEach(function(o){
-      var n=o&&(o.name||o.officer_name||o.full_name);
-      if(!n||seen[n]||nodes.length>60)return;
-      seen[n]=1;
-      nodes.push({id:n,label:n,self:false});
-      links.push({source:'__self__',target:n});
+    var groups=[['active',c.officers_active||[]],['former',c.officers_resigned||[]]];
+    var nodes=[{id:'__self__',label:NAME,role:'self'}],links=[],seen={};
+    groups.forEach(function(g){
+      g[1].forEach(function(o){
+        var n=o&&(o.name||o.officer_name||o.full_name);
+        if(!n||seen[n]||nodes.length>60)return;
+        seen[n]=1;
+        var pos=o.position||o.role||'';
+        nodes.push({id:n,label:n,role:g[0],title:pos?n+' — '+pos:n});
+        links.push({source:'__self__',target:n,former:g[0]==='former'});
+      });
     });
     if(nodes.length<2){say(EMPTY);return;}
     var make=window.ForceGraph;
@@ -2112,14 +2168,48 @@ ${graphOverlay}
     var el=document.getElementById('graph-canvas');
     if(!el)return;
     hide();
-    make()(el)
-      .graphData({nodes:nodes,links:links})
-      .nodeLabel('label')
-      .nodeRelSize(5)
-      .nodeColor(function(n){return n.self?'#1e3a8a':'#64748b';})
-      .linkColor(function(){return '#cbd5e1';})
+    var COLORS={self:'#2563eb',active:'#0ea5e9',former:'#94a3b8'};
+    var RADIUS={self:7,active:4.5,former:3.5};
+    function radius(n){return RADIUS[n.role]||RADIUS.former;}
+    function drawNode(node,ctx,scale){
+      var r=radius(node);
+      ctx.beginPath();
+      ctx.arc(node.x,node.y,r,0,2*Math.PI,false);
+      ctx.fillStyle=COLORS[node.role]||COLORS.former;
+      ctx.fill();
+      if(node.role!=='self'&&scale<1.2)return;
+      var text=node.label.length>24?node.label.slice(0,23)+'…':node.label;
+      var size=Math.max(7,9/scale);
+      ctx.font=size+'px -apple-system, system-ui, sans-serif';
+      ctx.textAlign='center';
+      ctx.textBaseline='top';
+      var y=node.y+r+1.5;
+      ctx.lineWidth=3/scale;
+      ctx.strokeStyle='rgba(255,255,255,0.9)';
+      ctx.strokeText(text,node.x,y);
+      ctx.fillStyle='#334155';
+      ctx.fillText(text,node.x,y);
+    }
+    function pointerArea(node,color,ctx){
+      ctx.beginPath();
+      ctx.arc(node.x,node.y,radius(node)+2,0,2*Math.PI,false);
+      ctx.fillStyle=color;
+      ctx.fill();
+    }
+    var Graph=make()(el)
+      .backgroundColor('#ffffff')
+      .nodeLabel(function(n){return n.title||n.label;})
+      .nodeCanvasObject(drawNode)
+      .nodePointerAreaPaint(pointerArea)
+      .linkColor(function(l){return l.former?'#e2e8f0':'#cbd5e1';})
+      .linkLineDash(function(l){return l.former?[3,3]:null;})
       .width(el.clientWidth)
-      .height(el.clientHeight);
+      .height(el.clientHeight)
+      .graphData({nodes:nodes,links:links});
+    if(Graph.d3Force('charge'))Graph.d3Force('charge').strength(-160);
+    var lf=Graph.d3Force('link');
+    if(lf&&lf.distance)lf.distance(48);
+    setTimeout(function(){if(Graph.zoomToFit)Graph.zoomToFit(400,40);},600);
   }
 })();
 </script>
