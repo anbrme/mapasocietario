@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FACEBOOK_URL } from '../src/utils/socialLinks.js';
+import { LINKEDIN_URL } from '../src/utils/socialLinks.js';
 import { registryScale } from '../src/copy/registryScale.js';
 import {
   FREE_FIRST_REPORT_COPY,
@@ -255,7 +255,7 @@ const routes = [
           <li><a href="/company-director-search/">Search Spanish company directors and officers</a></li>
           <li><a href="/spanish-company-due-diligence/">Spanish company due diligence reports</a></li>
           <li><a href="/en/studies/">Data studies on Spanish companies</a></li>
-          <li><a href="${FACEBOOK_URL}">Mapa Societario on Facebook</a></li>
+          <li><a href="${LINKEDIN_URL}">Mapa Societario on LinkedIn</a></li>
         </ul>
         <h2>Frequently asked questions</h2>
         <h3>What is Mapa Societario?</h3>
@@ -289,7 +289,7 @@ const routes = [
           <li>Visualize corporate relationships in real time</li>
           <li>Purchase Due Diligence reports from the search toolbar</li>
         </ul>
-        <p><a href="/">Back to Mapa Societario</a> | <a href="/spanish-company-register-search/">Spanish company register and BORME publication guide</a> | <a href="${FACEBOOK_URL}">Facebook</a></p>
+        <p><a href="/">Back to Mapa Societario</a> | <a href="/spanish-company-register-search/">Spanish company register and BORME publication guide</a> | <a href="${LINKEDIN_URL}">LinkedIn</a></p>
       </main>`,
   },
   {
@@ -542,7 +542,7 @@ const routes = [
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>
           <li><a href="/es/mapa-relaciones-societarias/">Mapa de relaciones societarias</a></li>
           <li><a href="/estudios/">Estudios de datos sobre empresas espa&ntilde;olas</a></li>
-          <li><a href="${FACEBOOK_URL}">Mapa Societario en Facebook</a></li>
+          <li><a href="${LINKEDIN_URL}">Mapa Societario en LinkedIn</a></li>
           <li><a href="/">English version</a></li>
         </ul>
       </main>`,

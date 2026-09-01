@@ -1,2 +1,1 @@
-export const FACEBOOK_URL = 'https://www.facebook.com/profile.php?id=61591449988403';
-
+export const LINKEDIN_URL = 'https://www.linkedin.com/showcase/mapa-societario/';

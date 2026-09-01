@@ -8,7 +8,7 @@
 //
 // `isHtml` flags the static .html pages (served outside the SPA) so callers can
 // choose full-page navigation vs in-app routing — all in the SAME tab.
-import { FACEBOOK_URL } from './socialLinks';
+import { LINKEDIN_URL } from './socialLinks';
 
 export function siteNav(lang = 'en') {
   const es = lang === 'es';
@@ -51,7 +51,7 @@ export function siteNav(lang = 'en') {
     // (non-machine) translations, so both languages use the Spanish page for now.
     terms: '/terms.html',
     privacy: '/privacy.html',
-    facebook: FACEBOOK_URL,
+    linkedin: LINKEDIN_URL,
   };
 }
 

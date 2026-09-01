@@ -757,8 +757,8 @@ export default function LandingPage({ lang = 'en' }) {
             <Link href="https://ncdata.eu" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.ncdata}
             </Link>
-            <Link href={nav.facebook} target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
-              {copy.footer.facebook}
+            <Link href={nav.linkedin} target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+              {copy.footer.linkedin}
             </Link>
             <Link href={nav.privacy} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.privacy}
