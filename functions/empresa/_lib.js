@@ -17,6 +17,7 @@ import { nameToSlug, pickSlugMatch } from './_slug.js';
 import { renderConfirmationBlock } from './_confirmation.js';
 import { CONFIRMATIONS } from './_confirmations.js';
 import { buildTrademarksBlock } from './_trademarks.js';
+import { buildAwardsBlock } from './_awards.js';
 import { findPromotedCompanyBySlug } from './_demand.js';
 // The canonical position classifier shared with the graph + officer-capping
 // service (backed by src/data/terms.json, swept by test/position-categories.test.mjs).
@@ -451,6 +452,17 @@ const T = {
     marksBadgeEs: 'ES',
     marksDisclaimer:
       'Datos: EUIPO / TMview. Información no oficial, puede estar incompleta; verifique en origen. No afiliado a la EUIPO ni respaldado por ella.',
+    awardsTitle: 'Contratación pública',
+    awardsSub: 'Contratos públicos adjudicados a esta sociedad, según los registros de licitación del sector público español.',
+    awardsScope:
+      'Recuento de la entidad con este NIF. Los contratos de filiales u otras sociedades del grupo figuran bajo sus propios NIF y no se suman aquí.',
+    awardsStatAwards: 'Contratos adjudicados',
+    awardsStatBuyers: 'Órganos de contratación',
+    awardsStatSingleBid: 'Con una sola oferta',
+    awardsSingleBidNote:
+      'La proporción adjudicada con una única oferta mide concentración y dependencia de la demanda pública; no implica irregularidad alguna.',
+    awardsSource:
+      'Fuente: Plataforma de Contratación del Sector Público. Información no oficial, puede estar incompleta; verifique en origen.',
     gleifTitle: 'Grupo societario (GLEIF)',
     gleifSub: 'Estructura de matrices y filiales según el identificador LEI global (GLEIF). Haz doble clic en un nodo del gráfico para expandir su grupo.',
     gleifParents: 'Matrices',
@@ -699,6 +711,17 @@ const T = {
     marksBadgeEs: 'ES',
     marksDisclaimer:
       'Data: EUIPO / TMview. Unofficial, may be incomplete; verify at source. Not affiliated with or endorsed by EUIPO.',
+    awardsTitle: 'Public procurement',
+    awardsSub: 'Public contracts awarded to this company, from Spanish public-sector tender records.',
+    awardsScope:
+      'Counts for the entity holding this tax ID (NIF). Contracts held by subsidiaries or other group companies sit under their own NIFs and are not added here.',
+    awardsStatAwards: 'Contracts awarded',
+    awardsStatBuyers: 'Public buyers',
+    awardsStatSingleBid: 'Awarded on a single bid',
+    awardsSingleBidNote:
+      'The share awarded on a single bid measures concentration and dependence on public demand; it does not imply any irregularity.',
+    awardsSource:
+      'Source: Plataforma de Contratación del Sector Público. Unofficial, may be incomplete; verify at source.',
     gleifTitle: 'Corporate group (GLEIF)',
     gleifSub: 'Parent and subsidiary structure from the global LEI identifier (GLEIF). Double-click a node in the graph to expand its group.',
     gleifParents: 'Parents',
@@ -1295,6 +1318,7 @@ const STYLE = `<style>
   .cat-sancion{background:#fee2e2;color:#991b1b}
   .cat-subvencion{background:#dcfce7;color:#166534}
   .cat-contrato{background:#dbeafe;color:#1e40af}
+  .awards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:4px 0 0}
   .subs-btn{font-size:14px;font-weight:600;border:1px solid var(--brand);border-radius:8px;padding:8px 16px;background:#fff;color:var(--brand);cursor:pointer}
   .subs-btn:hover{background:#eff6ff}
   .subs-btn:disabled{opacity:.6;cursor:default}
@@ -1417,6 +1441,7 @@ const STYLE = `<style>
     .overview h2{font-size:14px;margin:0 0 8px}
     .overview>.more{display:none}
     .overview-grid{display:block;margin:0}
+    .awards-grid{display:block}
     .overview-stat{display:inline;background:none;border:0;padding:0}
     .overview-stat+.overview-stat::before{content:" · ";color:#94a3b8}
     .overview-value{display:inline;font-size:15px}
@@ -1898,6 +1923,10 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   // the section hides itself. See functions/empresa/_trademarks.js.
   const marksBlock = buildTrademarksBlock({ company, t, lang, apiBase: API_BASE, esc });
 
+  // Public contracts — auto-loads on page view and stays hidden unless the
+  // backend corroborates awards for this NIF. See functions/empresa/_awards.js.
+  const awardsBlock = buildAwardsBlock({ company, t, lang, apiBase: API_BASE, esc });
+
   // GLEIF corporate group (IBEX seed companies with a verified LEI only).
   const flag = (cc) => (cc && cc !== 'N/A' ? `<span class="chip">${esc(cc)}</span>` : '');
   const gleifEntityRow = (e) =>
@@ -2071,6 +2100,8 @@ ${GA_SNIPPET}
 
   <div class="sheet-b">
   ${boeBlock}
+
+  ${awardsBlock}
 
   ${subsidiesBlock}
 
