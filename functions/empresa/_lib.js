@@ -1874,6 +1874,15 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
               .then(function(r){return r.json()})
               .then(function(j){
                 if(j&&j.disabled){document.getElementById('subs-section').hidden=true;return}
+                // panel:false means the backend could not corroborate that the
+                // beneficiary SNPSAP names for this NIF is this company, so it
+                // deliberately sent no counts. Hide, never render the empty
+                // state: "we could not vouch for this" is not "this company
+                // received nothing", and the empty state says the second one.
+                // Without this the response falls through to render(), which
+                // reads j.concessions (undefined) and throws into catch(fail) --
+                // a load error on a perfectly good query.
+                if(j&&j.panel===false){document.getElementById('subs-section').hidden=true;return}
                 if(!j||!j.success){fail();return}
                 render(j);
               })

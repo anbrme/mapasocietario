@@ -43,3 +43,24 @@ test('data-nif attribute is HTML-escaped', () => {
   assert.match(html, /data-nif="A46&quot;&gt;&lt;img src=x&gt;"/);
   assert.doesNotMatch(html, /data-nif="A46">/);
 });
+
+test('an uncorroborated NIF hides the section instead of erroring', () => {
+  // The backend gained a corroboration gate: when the beneficiary SNPSAP names
+  // for a NIF is not this company, it answers {success:true, panel:false} and
+  // deliberately sends no counts. Two things must hold.
+  //
+  // 1. The handler must branch on panel===false BEFORE render(), which reads
+  //    j.concessions -- undefined on a decline, so it throws into catch(fail)
+  //    and shows "could not load" for a query that worked perfectly.
+  // 2. It must HIDE rather than show the empty state. "We could not vouch for
+  //    this binding" and "this company received no subsidies" are different
+  //    statements, and only hiding declines to make the second one.
+  const html = render({ nif: 'A46103834' });
+  // Scope to the subsidies handler: other panels emit their own render(j).
+  const handler = html.slice(html.indexOf('subsidies-by-nif'));
+  const guard = handler.indexOf('j.panel===false');
+  assert.ok(guard > -1, 'the subsidies handler must branch on panel===false');
+  assert.ok(guard < handler.indexOf('render(j)'),
+    'the panel===false guard must precede render(j)');
+  assert.match(handler.slice(guard, guard + 120), /subs-section'\)\.hidden=true/);
+});
