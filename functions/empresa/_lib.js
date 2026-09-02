@@ -463,6 +463,11 @@ const T = {
       'La proporción adjudicada con una única oferta mide concentración y dependencia de la demanda pública; no implica irregularidad alguna.',
     awardsSource:
       'Fuente: Plataforma de Contratación del Sector Público. Información no oficial, puede estar incompleta; verifique en origen.',
+    awardsThObject: 'Objeto del contrato',
+    awardsThBuyer: 'Órgano de contratación',
+    awardsThDate: 'Fecha',
+    awardsThBids: 'Ofertas',
+    awardsShowing: 'Mostrando los {0} contratos más recientes de {1}.',
     gleifTitle: 'Grupo societario (GLEIF)',
     gleifSub: 'Estructura de matrices y filiales según el identificador LEI global (GLEIF). Haz doble clic en un nodo del gráfico para expandir su grupo.',
     gleifParents: 'Matrices',
@@ -722,6 +727,11 @@ const T = {
       'The share awarded on a single bid measures concentration and dependence on public demand; it does not imply any irregularity.',
     awardsSource:
       'Source: Plataforma de Contratación del Sector Público. Unofficial, may be incomplete; verify at source.',
+    awardsThObject: 'Object of the contract',
+    awardsThBuyer: 'Public buyer',
+    awardsThDate: 'Date',
+    awardsThBids: 'Bids',
+    awardsShowing: 'Showing the {0} most recent contracts of {1}.',
     gleifTitle: 'Corporate group (GLEIF)',
     gleifSub: 'Parent and subsidiary structure from the global LEI identifier (GLEIF). Double-click a node in the graph to expand its group.',
     gleifParents: 'Parents',
@@ -1318,6 +1328,7 @@ const STYLE = `<style>
   .cat-sancion{background:#fee2e2;color:#991b1b}
   .cat-subvencion{background:#dcfce7;color:#166534}
   .cat-contrato{background:#dbeafe;color:#1e40af}
+  .awards-scroll{overflow-x:auto;margin-top:14px}
   .awards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:4px 0 0}
   .subs-btn{font-size:14px;font-weight:600;border:1px solid var(--brand);border-radius:8px;padding:8px 16px;background:#fff;color:var(--brand);cursor:pointer}
   .subs-btn:hover{background:#eff6ff}

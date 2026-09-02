@@ -2,7 +2,8 @@
 //
 // Reads GET <api>/bormes/<nif>/company-awards, which answers either
 //   {success:true, panel:false}                       -> nothing to say
-//   {success:true, panel:true, awards, distinct_buyers, single_bid_share}
+//   {success:true, panel:true, awards, distinct_buyers, single_bid_share,
+//    contracts:[{id,title,buyer,date,bids,status,url}]}
 //
 // Three rules this module exists to hold:
 //
@@ -43,6 +44,10 @@ export function awardsPanelState(j) {
     awards: j.awards,
     distinctBuyers: typeof j.distinct_buyers === 'number' ? j.distinct_buyers : null,
     singleBidShare: typeof j.single_bid_share === 'number' ? j.single_bid_share : null,
+    // Defaults to empty rather than absent: this panel shipped against a
+    // backend that sent counts only, and a page served while the two are out
+    // of step must still show what it has.
+    contracts: Array.isArray(j.contracts) ? j.contracts : [],
   };
 }
 
@@ -77,6 +82,11 @@ export function buildAwardsBlock({ company, t, lang, apiBase, esc }) {
     statBuyers: t.awardsStatBuyers,
     statSingleBid: t.awardsStatSingleBid,
     singleBidNote: t.awardsSingleBidNote,
+    thObject: t.awardsThObject,
+    thBuyer: t.awardsThBuyer,
+    thDate: t.awardsThDate,
+    thBids: t.awardsThBids,
+    showing: t.awardsShowing,
   };
   const json = JSON.stringify(i18n)
     .replace(/</g, '\\u003c')
@@ -104,6 +114,29 @@ var v=document.createElement('span');v.className='overview-value';v.textContent=
 var l=document.createElement('span');l.className='overview-label';l.textContent=label;d.appendChild(l);
 return d;
 }
+function fdate(d){var m=/^(\\d{4})-(\\d{2})-(\\d{2})/.exec(d||'');return m?m[3]+'/'+m[2]+'/'+m[1]:(d||'')}
+function cell(row,value){var td=document.createElement('td');td.textContent=value==null?'':String(value);row.appendChild(td);return td}
+function contractTable(s){
+var table=document.createElement('table');table.className='t';
+var thead=document.createElement('thead');var trh=document.createElement('tr');
+[L.thObject,L.thBuyer,L.thDate,L.thBids].forEach(function(h){var th=document.createElement('th');th.textContent=h;trh.appendChild(th)});
+thead.appendChild(trh);table.appendChild(thead);
+var tbody=document.createElement('tbody');
+s.contracts.forEach(function(c){
+var tr=document.createElement('tr');
+var tdO=cell(tr,'');
+var label=c.title||c.id||'';
+// The deep link is checked here as well as at parse time and in the
+// endpoint: it is an outbound href on a public page, and the last hop
+// before the DOM is the one that actually decides where a reader goes.
+if(c.url&&c.url.indexOf('https://contrataciondelestado.es/')===0){
+var a=document.createElement('a');a.href=c.url;a.rel='nofollow noopener';a.target='_blank';a.textContent=label;tdO.appendChild(a);
+}else{tdO.textContent=label}
+cell(tr,c.buyer);cell(tr,fdate(c.date));cell(tr,c.bids);
+tbody.appendChild(tr);
+});
+table.appendChild(tbody);return table;
+}
 function render(s){
 var grid=document.createElement('div');grid.className='awards-grid';
 grid.appendChild(stat(String(s.awards),L.statAwards));
@@ -112,6 +145,14 @@ var pct=formatSingleBidShare(s.singleBidShare,s.awards);
 if(pct)grid.appendChild(stat(pct,L.statSingleBid));
 body.textContent='';body.appendChild(grid);
 if(pct){var n=document.createElement('p');n.className='more';n.textContent=L.singleBidNote;body.appendChild(n)}
+if(s.contracts.length){
+var wrap=document.createElement('div');wrap.className='awards-scroll';wrap.appendChild(contractTable(s));body.appendChild(wrap);
+if(s.awards>s.contracts.length){
+var sh=document.createElement('p');sh.className='more';
+sh.textContent=L.showing.replace('{0}',String(s.contracts.length)).replace('{1}',String(s.awards));
+body.appendChild(sh);
+}
+}
 sec.hidden=false;
 }
 fetch(body.getAttribute('data-api')+'/bormes/'+encodeURIComponent(body.getAttribute('data-nif'))+'/company-awards')

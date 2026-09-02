@@ -54,7 +54,7 @@ describe('awardsPanelState', () => {
         distinct_buyers: 11,
         single_bid_share: 0.8181818181818182,
       })
-    ).toEqual({ show: true, awards: 11, distinctBuyers: 11, singleBidShare: 0.8181818181818182 });
+    ).toEqual({ show: true, awards: 11, distinctBuyers: 11, singleBidShare: 0.8181818181818182, contracts: [] });
   });
 
   it('hides the panel when panel:true carries no positive award count', () => {
@@ -161,5 +161,59 @@ describe('buildAwardsBlock', () => {
     const html = buildAwardsBlock({ company, t, lang: 'es', apiBase: 'https://api.x', esc });
     expect(html).toContain('var awardsPanelState=' + awardsPanelState.toString());
     expect(html).toContain('var formatSingleBidShare=' + formatSingleBidShare.toString());
+  });
+});
+
+describe('awardsPanelState with contracts', () => {
+  it('carries the contract list through', () => {
+    const state = awardsPanelState({
+      success: true, panel: true, awards: 1, distinct_buyers: 1, single_bid_share: 1,
+      contracts: [{ id: 'CF-1', title: 'Montaje de carpas', buyer: 'Ayto Manilva',
+                    date: '2026-07-30', bids: 1, status: 'ADJ',
+                    url: 'https://contrataciondelestado.es/wps/poc?uri=x' }],
+    });
+    expect(state.contracts).toHaveLength(1);
+    expect(state.contracts[0].title).toBe('Montaje de carpas');
+  });
+
+  it('defaults to an empty list when the backend has not shipped contracts yet', () => {
+    // The panel deployed before the endpoint grew a contract list. A page
+    // served against the older backend must keep showing its counts rather
+    // than breaking on a field that is not there.
+    const state = awardsPanelState({ success: true, panel: true, awards: 11, distinct_buyers: 11 });
+    expect(state.show).toBe(true);
+    expect(state.contracts).toEqual([]);
+  });
+
+  it('ignores a contracts field that is not an array', () => {
+    expect(awardsPanelState({ success: true, panel: true, awards: 2, contracts: 'nope' }).contracts)
+      .toEqual([]);
+  });
+});
+
+describe('buildAwardsBlock contract table', () => {
+  const tt = { ...t, awardsThObject: 'Objeto del contrato', awardsThBuyer: 'Órgano de contratación',
+               awardsThDate: 'Fecha', awardsThBids: 'Ofertas', awardsShowing: 'Mostrando' };
+
+  it('ships the contract table labels in the i18n blob', () => {
+    const html = buildAwardsBlock({ company, t: tt, lang: 'es', apiBase: 'https://api.x', esc });
+    for (const label of [tt.awardsThObject, tt.awardsThBuyer, tt.awardsThDate, tt.awardsThBids]) {
+      expect(html).toContain(label);
+    }
+  });
+
+  it('still renders no monetary figure once the table exists', () => {
+    const html = buildAwardsBlock({ company, t: tt, lang: 'es', apiBase: 'https://api.x', esc });
+    expect(html).not.toMatch(/€|\bEUR\b|currency|NumberFormat|\bamount\b|importe/i);
+  });
+
+  it('only links a contract to the platform that published it', () => {
+    const html = buildAwardsBlock({ company, t: tt, lang: 'es', apiBase: 'https://api.x', esc });
+    expect(html).toContain('contrataciondelestado.es/');
+  });
+
+  it('still builds the DOM without innerHTML', () => {
+    const html = buildAwardsBlock({ company, t: tt, lang: 'es', apiBase: 'https://api.x', esc });
+    expect(html).not.toContain('innerHTML');
   });
 });
