@@ -34,10 +34,6 @@ import {
   ga4CountryToRows,
 } from './cloudflare-edge.js';
 import { GSC_SCOPE, fetchSearchConsole } from './search-console.js';
-import {
-  automatedTrafficQuery,
-  withoutAutomatedTraffic,
-} from './bot-filter.js';
 // Imported from the Pages side on purpose: the experiment's arm assignment must
 // have exactly one definition, or the report would measure a different split
 // from the one the pages actually render.
@@ -527,15 +523,10 @@ async function gather(env, token, propertyId, nowMs) {
   const met = (names) => names.map((name) => ({ name }));
   const dim = (names) => names.map((name) => ({ name }));
 
-  // Bind the compat helper to this token without threading it everywhere.
-  //
-  // Every GA4 figure below is NET OF AUTOMATED TRAFFIC. The exclusion is
-  // applied here, at the one chokepoint every section shares, rather than per
-  // query: a section added later cannot forget it, and the report can never
-  // hold a filtered figure against an unfiltered one. What it removed is
-  // measured separately and printed — see report.automatedTraffic.
-  const call = (body) =>
-    runReportCompat(token, propertyId, withoutAutomatedTraffic(body));
+  // Bind the compatibility helper to this token without threading it
+  // everywhere. These are raw GA4 figures: Chrome's normal reduced User-Agent
+  // ends in .0.0.0, so browser-version shape must never be used as a bot filter.
+  const call = (body) => runReportCompat(token, propertyId, body);
   const coreTotals = async (r) =>
     totalsFrom(
       await call({ dateRanges: range(r), metrics: met(CORE_METRICS) }),
@@ -964,28 +955,6 @@ async function gather(env, token, propertyId, nowMs) {
         })),
       };
 
-  // What the automated-traffic exclusion removed, for both windows the report
-  // leads with. Measured with the SAME expression the exclusion negates, so the
-  // disclosure can never describe a subtraction the report did not perform.
-  //
-  // This runs through runReportCompat directly, NOT through `call` — `call`
-  // applies the exclusion, which would report zero every time.
-  const automated = await namedAll({
-    day: runReportCompat(token, propertyId, automatedTrafficQuery(range(p.day))),
-    window: runReportCompat(token, propertyId, automatedTrafficQuery(range(p.current))),
-  }).catch((error) => ({ optionalError: String(error.message || error).slice(0, 300) }));
-
-  const automatedTotals = (rep) =>
-    totalsFrom(rep, ['sessions', 'totalUsers', 'engagedSessions', 'screenPageViews']);
-
-  report.automatedTraffic = automated.optionalError
-    ? { available: false, error: automated.optionalError }
-    : {
-        available: true,
-        day: automatedTotals(automated.day),
-        window: automatedTotals(automated.window),
-      };
-
   // Cloudflare edge traffic for the same window. GA4 sees only what ran
   // JavaScript; the edge sees everything. Best-effort — a missing token or a
   // Cloudflare outage degrades this one section, never the GA4 pull.
@@ -1049,17 +1018,6 @@ function plainSummary(r) {
       `**${n(now)} people** visited the site this week, against ${n(before)} the week before${direction}.`,
     );
 
-    // The headline figure is a SUBTRACTED one. A reader who only gets as far as
-    // this section would otherwise never learn that, and the whole basis for
-    // excluding the cohort was that the exclusion is stated rather than silent.
-    const auto = r.automatedTraffic;
-    if (auto?.available && auto.window?.totalUsers > 0) {
-      lines.push(
-        `That is after removing **${n(auto.window.totalUsers)} automated visitors** that GA4 counted as people. `
-        + `They are recognised by their browser signature, not by anything they claim about themselves, `
-        + `and ${auto.window.engagedSessions === 0 ? 'none of them engaged with the site' : `only ${n(auto.window.engagedSessions)} of their ${n(auto.window.sessions)} sessions engaged with the site`}.`,
-      );
-    }
   }
 
   const top = (r.channels || []).slice().sort((a, b) => (b.sessions || 0) - (a.sessions || 0))[0];
@@ -1130,31 +1088,8 @@ function plainSummary(r) {
   return lines;
 }
 
-/**
- * The automated-traffic signature is behavioural, so it survives the bots
- * rotating version numbers. What it does NOT survive is the cohort starting to
- * engage — either Chrome changed what it reports to same-origin JS, or real
- * users are being caught. Above this share of the excluded cohort being
- * engaged, the filter is no longer safe to trust silently.
- */
-const AUTOMATED_ENGAGEMENT_ALARM = 0.15;
-
 function reportWarnings(r) {
   const warnings = [];
-
-  const auto = r.automatedTraffic;
-  if (auto?.available) {
-    const { sessions = 0, engagedSessions = 0 } = auto.window || {};
-    if (sessions > 0 && engagedSessions / sessions > AUTOMATED_ENGAGEMENT_ALARM) {
-      warnings.push(
-        `${engagedSessions} of the ${sessions} sessions excluded as automated traffic this week were ENGAGED (${Math.round((engagedSessions / sessions) * 100)}%). The exclusion is meant to catch a cohort that never engages, so it is now removing real visitors. Re-check the signature in bot-filter.js before trusting any figure in this report.`,
-      );
-    }
-  } else if (auto && auto.error) {
-    warnings.push(
-      `Automated traffic could not be measured (${auto.error}), so this run cannot state how much it excluded. The exclusion itself still applied.`,
-    );
-  }
 
   const outcome = (event) =>
     (r.checkoutOutcomes || []).find((o) => o.event === event) || {};
@@ -1364,17 +1299,10 @@ async function gatherToday(token, propertyId, nowMs = Date.now()) {
   const met = (names) => names.map((name) => ({ name }));
   const dim = (names) => names.map((name) => ({ name }));
 
-  // Net of automated traffic, on the same terms as the daily report. An
-  // intraday view that counted bots while the email did not would have the two
-  // surfaces disagree about the same morning, and the reader would have no way
-  // to tell which was wrong.
-  const call = (body) =>
-    runReportCompat(token, propertyId, withoutAutomatedTraffic(body));
-  // The interaction probes reach GA4 directly rather than through `call`, so
-  // they need the exclusion applied explicitly or they would be the one cut
-  // that still counts bots.
-  const probeReport = (body) =>
-    runReport(token, propertyId, withoutAutomatedTraffic(body));
+  // Keep this aligned with the daily report: both return raw GA4 data. Chrome's
+  // standard reduced .0.0.0 User-Agent is not evidence of automation.
+  const call = (body) => runReportCompat(token, propertyId, body);
+  const probeReport = (body) => runReport(token, propertyId, body);
 
   const results = await namedAll({
     totals: call({ dateRanges, metrics: met(CORE_METRICS) }),
@@ -1497,10 +1425,6 @@ async function gatherToday(token, propertyId, nowMs = Date.now()) {
   // user counts in these cuts can overlap and are evidence about composition,
   // not additive cohort totals.
   const diagnosticResults = await namedAll({
-    // Not through `call`: `call` applies the exclusion, and measuring the
-    // excluded cohort through it would report zero every time.
-    automated: runReportCompat(token, propertyId, automatedTrafficQuery(dateRanges))
-      .catch((error) => ({ optionalError: String(error.message || error).slice(0, 400) })),
     landingContext: call({
       dateRanges,
       dimensions: dim([
@@ -1599,19 +1523,8 @@ async function gatherToday(token, propertyId, nowMs = Date.now()) {
     window: { startDate: 'today', endDate: 'today', partial: true },
     caveat:
       'GA4 current-day data is partial and can be revised. Counts are aggregate; they do not identify individual users or reconstruct exact per-user paths. '
-      + 'Every figure is net of automated traffic — see automatedTraffic for what was excluded.',
+      + 'Figures are raw GA4 data; no custom browser-version bot exclusion is applied.',
     totals: totalsFrom(results.totals, CORE_METRICS),
-    automatedTraffic: diagnosticResults.automated.optionalError
-      ? { available: false, error: diagnosticResults.automated.optionalError }
-      : {
-          available: true,
-          today: totalsFrom(diagnosticResults.automated, [
-            'sessions',
-            'totalUsers',
-            'engagedSessions',
-            'screenPageViews',
-          ]),
-        },
     channels: rowsToObjects(
       results.channels,
       ['sessionDefaultChannelGroup'],
@@ -2123,40 +2036,6 @@ function toMarkdown(r) {
     ),
   );
   L.push('');
-
-  const auto = r.automatedTraffic;
-  if (auto?.available) {
-    L.push('## Automated traffic excluded');
-    L.push('');
-    L.push(
-      'Every GA4 figure above is net of this cohort. GA4\'s own bot filter does '
-      + 'not catch it — it does not identify itself. It is recognised by '
-      + 'reporting a stripped Chrome build number (X.0.0.0) where a real browser '
-      + 'sends its full build through client hints.',
-    );
-    L.push('');
-    L.push(
-      mdTable(
-        ['Window', 'Users', 'Sessions', 'Page views', 'Engaged sessions'],
-        [
-          ['Headline day', fmt(auto.day.totalUsers), fmt(auto.day.sessions), fmt(auto.day.screenPageViews), fmt(auto.day.engagedSessions)],
-          ['Trailing week', fmt(auto.window.totalUsers), fmt(auto.window.sessions), fmt(auto.window.screenPageViews), fmt(auto.window.engagedSessions)],
-        ],
-      ),
-    );
-    L.push('');
-    L.push(
-      '_Engaged sessions here should stay at or near zero. That is the check on '
-      + 'the filter: a rising number means it has started removing real people, '
-      + 'not that more bots arrived._',
-    );
-    L.push('');
-  } else if (auto && auto.error) {
-    L.push('## Automated traffic excluded');
-    L.push('');
-    L.push(`_Applied, but the amount could not be measured this run: ${auto.error}_`);
-    L.push('');
-  }
 
   const quality = r.measurementQuality;
   if (quality) {
