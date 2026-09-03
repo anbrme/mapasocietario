@@ -47,34 +47,37 @@ describe('the desktop rail on a company page', () => {
   });
 });
 
-/**
- * Mobile was deliberately left alone this round: it is 53% of the cohort and
- * bounces at 51%, but changing it and the desktop layout in the same step
- * would leave neither measurable. One DOM serves both, so these tests pin the
- * mobile arrangement in place while the desktop one moves around it.
- */
-describe('the mobile arrangement, which this change must not disturb', () => {
-  it('keeps the hero actions and the at-a-glance card in the document', () => {
+describe('the mobile profile arrangement', () => {
+  it('puts the graph action before the registry data', () => {
     const html = render();
 
     expect(html).toContain('class="hero-actions"');
-    expect(html).toContain('class="overview"');
+    expect(html.indexOf('class="hero-actions"')).toBeLessThan(html.indexOf('id="registry-data"'));
+    expect(html).toMatch(/class="hero-primary"[^>]*data-open-graph/);
   });
 
-  it('keeps the report offer and monitoring form last, in that order', () => {
+  it('keeps graph, report and alerts in a persistent mobile action dock', () => {
     const html = render();
+    const dockStart = html.indexOf('class="mobile-dock"');
+    const dock = html.slice(dockStart, html.indexOf('</nav>', dockStart));
 
-    expect(html.indexOf('profile_due_diligence')).toBeLessThan(html.indexOf('id="mon-form"'));
-    expect(html.indexOf('id="mon-form"')).toBeLessThan(html.indexOf('<footer>'));
+    expect(dock).toContain('data-open-graph');
+    expect(dock).toContain('profile_due_diligence');
+    expect(dock).toContain('id="mon-fab"');
   });
 
-  it('hides the promo duplicates on desktop rather than deleting them', () => {
+  it('shows the early actions only at the mobile breakpoint', () => {
     const html = render();
 
-    // Hidden, not removed: deleting them would change the phone layout, which
-    // this round is explicitly not doing.
     expect(html).toContain('.hero-actions{display:none}');
-    expect(html).toContain('.overview{display:none}');
+    expect(html).toMatch(/@media\(max-width:1023px\)\{[\s\S]*?\.hero-actions\{display:grid/);
+  });
+
+  it('turns the graph overlay into a full-screen mobile surface', () => {
+    const html = render();
+
+    expect(html).toMatch(/@media\(max-width:1023px\)\{[\s\S]*?#graph-overlay\{width:100vw;height:100dvh/);
+    expect(html).toContain('#graph-overlay .go-foot{display:none}');
   });
 });
 
@@ -85,7 +88,7 @@ describe('the graph overlay', () => {
     // A button, not a link: the whole defect being fixed is that pressing it
     // took a reader out of the data sheet they came for and dropped them into
     // a search box they had already finished using.
-    expect(html).toMatch(/<button[^>]*data-track="profile_graph_open"/);
+    expect(html).toMatch(/<button[^>]*data-open-graph[^>]*data-track="profile_graph_open"/);
     expect(html).toContain('id="graph-overlay"');
     expect(html).toContain('<dialog');
   });
@@ -122,6 +125,13 @@ describe('the graph overlay', () => {
     expect(html).not.toMatch(/<iframe[^>]*\ssrc="/);
     expect(html).toContain("frame.setAttribute('src',frame.getAttribute('data-src'))");
   });
+
+  it('binds every profile graph trigger to the same lazy overlay', () => {
+    const html = render();
+
+    expect(html).toContain("document.querySelectorAll('[data-open-graph]')");
+    expect(html).toContain('buttons.forEach(function(btn)');
+  });
 });
 
 describe('CTA tracking', () => {
@@ -134,6 +144,22 @@ describe('CTA tracking', () => {
     expect(html).toContain("gtag('event',link.getAttribute('data-track')");
     // The existing aggregate event keeps firing so its history stays continuous.
     expect(html).toContain("gtag('event','company_profile_cta_click'");
+  });
+
+  it('instruments the mobile profile-to-graph funnel', () => {
+    const html = render();
+
+    expect(html).toContain("gtag('event','mobile_profile_viewed'");
+    expect(html).toContain("gtag('event','mobile_graph_cta_visible'");
+    expect(html).toContain("gtag('event','mobile_graph_cta_clicked'");
+    expect(html).toContain("gtag('event','mobile_profile_or_report_opened'");
+  });
+
+  it('waits for graph data before dismissing the mobile loading state', () => {
+    const html = render();
+
+    expect(html).toContain("event.data.type!=='mapa-societario:graph-ready'");
+    expect(html).toContain("if(msg&&!mobile)msg.style.display='none'");
   });
 });
 

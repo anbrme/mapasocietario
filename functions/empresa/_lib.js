@@ -288,6 +288,9 @@ const T = {
     overviewOwners: 'Socios únicos conocidos',
     overviewFilings: 'Publicaciones BORME',
     topMapBtn: 'Explorar relaciones en el mapa →',
+    mobileMapBtn: 'Mapa',
+    mobileReportBtn: 'Informe',
+    mobileAlertsBtn: 'Avisos',
     overlayClose: 'Cerrar',
     listedQuote: 'Ver cotización',
     monitorFab: 'Recibir avisos de esta empresa',
@@ -555,6 +558,9 @@ const T = {
     overviewOwners: 'Known sole shareholders',
     overviewFilings: 'BORME filings',
     topMapBtn: 'Explore relationships on the map →',
+    mobileMapBtn: 'Map',
+    mobileReportBtn: 'Report',
+    mobileAlertsBtn: 'Alerts',
     overlayClose: 'Close',
     listedQuote: 'View quote',
     monitorFab: 'Get alerts for this company',
@@ -1273,7 +1279,7 @@ const STYLE = `<style>
   h3{font-size:15px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px}
   .lead{color:var(--mut);margin:0 0 16px}
   .hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 22px}
-  .hero-actions a,.overview-action{display:inline-block;border-radius:9px;padding:9px 15px;font-size:14px;font-weight:700;text-decoration:none}
+  .hero-actions a,.hero-actions button,.overview-action{display:inline-block;border-radius:9px;padding:9px 15px;border:0;font-family:inherit;font-size:14px;font-weight:700;line-height:1.4;text-decoration:none;cursor:pointer}
   .hero-primary,.overview-action{background:var(--brand);color:#fff}
   .hero-secondary{background:#fff;color:var(--brand);border:1px solid #bfdbfe}
   .badges{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
@@ -1382,7 +1388,8 @@ const STYLE = `<style>
   .rail-graph-btn{display:block;width:100%;border:0;border-radius:9px;padding:11px 14px;background:var(--brand);color:#fff;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer}
   .hero-actions{display:none}
   .overview-action{display:none}
-  .mon-fab{display:none;position:fixed;right:14px;bottom:14px;z-index:40;align-items:center;gap:8px;border:0;border-radius:999px;padding:12px 18px;background:#0f766e;color:#fff;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(15,23,42,.28)}
+  .mobile-dock{display:none}
+  .mon-fab{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;background:transparent;color:inherit;font-weight:700;font-size:12px;font-family:inherit;cursor:pointer}
   .mon-fab-text{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #monitor-dialog{width:min(520px,92vw);border:0;border-radius:16px;padding:0}
   #monitor-dialog::backdrop{background:rgba(15,23,42,.55)}
@@ -1454,6 +1461,11 @@ const STYLE = `<style>
   .cc-stale{border-color:#e2e8f0;background:#f8fafc}
   .cc-stale .cc-dot{background:#94a3b8}
   @media(max-width:1023px){
+    .wrap{padding:18px 16px 92px}
+    h1{font-size:26px}
+    .lead{font-size:14px;line-height:1.45}
+    .hero-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:0 0 14px}
+    .hero-actions a,.hero-actions button{display:flex;align-items:center;justify-content:center;min-height:44px;text-align:center}
     .overview{padding:12px 14px;margin:12px 0}
     .overview h2{font-size:14px;margin:0 0 8px}
     .overview>.more{display:none}
@@ -1464,13 +1476,24 @@ const STYLE = `<style>
     .overview-value{display:inline;font-size:15px}
     .overview-label{display:inline;font-size:13px;margin-left:4px}
     .rail-graph-btn{display:none}
-    .rail-rel .rail-stats{display:none}
-    .mon-fab{display:flex}
-    body{padding-bottom:76px}
+    .rail-rel{display:none}
+    .mobile-dock{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:40;padding:6px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(15,23,42,.22);backdrop-filter:blur(12px)}
+    .mobile-dock a,.mobile-dock button{display:flex;min-width:0;min-height:44px;align-items:center;justify-content:center;gap:5px;padding:7px 5px;border:0;border-radius:9px;background:transparent;color:#334155;font:700 12px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;text-decoration:none;cursor:pointer}
+    .mobile-dock .mobile-dock-graph{background:var(--brand);color:#fff}
+    .mobile-dock-icon{font-size:16px;line-height:1}
+    body{padding-bottom:88px}
+    #graph-overlay{width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;border-radius:0}
+    #graph-overlay .go-head{min-height:56px;padding:9px 12px;padding-top:calc(9px + env(safe-area-inset-top))}
+    #graph-overlay .go-head h2{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #graph-overlay .go-app{display:none}
+    #graph-overlay .go-close{min-height:38px;padding:6px 11px}
+    #graph-overlay .go-body{height:calc(100% - 56px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom)}
+    #graph-overlay .go-foot{display:none}
   }
   @media(max-width:640px){
     .overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .hero-actions a{width:100%;text-align:center}
+    .hero-actions{grid-template-columns:1fr}
+    .hero-actions a,.hero-actions button{width:100%;text-align:center}
     .facts th{width:135px}
     .history-matrix-wrap{overflow-x:visible}
     .history-matrix{display:block;border:0;background:transparent;font-size:13px}
@@ -1762,7 +1785,7 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
       <div class="rail-stat"><span class="v">${esc(ownerCount)}</span><span class="l">${t.overviewOwners}</span></div>
       <div class="rail-stat"><span class="v">${esc(filingCount)}</span><span class="l">${t.overviewFilings}</span></div>
     </div>
-    <button type="button" class="rail-graph-btn" data-track="profile_graph_open">${t.topMapBtn}</button>
+    <button type="button" class="rail-graph-btn" data-open-graph data-track="profile_graph_open">${t.topMapBtn}</button>
     <a class="rail-graph-link" data-track="profile_open_graph" href="${graphHref(name, groupKey)}">${t.topMapBtn}</a>
   </div>`;
 
@@ -1771,13 +1794,6 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   // it answered a question the reader had already finished asking, and cost
   // them the data sheet they arrived for. The escape to the full app stays,
   // for the people who genuinely want the search tool.
-  const monitorLauncher = `<button type="button" id="mon-fab" class="mon-fab" data-track="profile_monitor_open" aria-label="${esc(t.monitorFab)}">
-  <span aria-hidden="true">✉</span><span class="mon-fab-text">${esc(t.monitorTitle)}</span>
-</button>
-<dialog id="monitor-dialog" aria-label="${esc(t.monitorFab)}">
-  <div class="go-head"><h2>${esc(t.monitorTitle)}</h2><button type="button" class="go-close mon-close">${esc(t.overlayClose)}</button></div>
-</dialog>`;
-
   const graphOverlay = `<dialog id="graph-overlay" aria-label="${esc(t.relationshipOverview)}">
   <div class="go-head">
     <h2>${esc(name)}</h2>
@@ -2081,7 +2097,7 @@ ${GA_SNIPPET}
   <div class="badges">${badges}</div>
   <p class="lead">${t.lead}</p>
   <div class="hero-actions">
-    <a class="hero-primary" data-track="profile_open_graph" href="${graphHref(name, groupKey)}">${t.topMapBtn}</a>
+    <button type="button" class="hero-primary" data-open-graph data-track="profile_graph_open">${t.topMapBtn}</button>
     <a class="hero-secondary" data-track="profile_registry_jump" href="#registry-data">${t.topRegistryBtn}</a>
   </div>
 
@@ -2170,9 +2186,40 @@ ${GA_SNIPPET}
   <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}</footer>
 </div>
 ${graphOverlay}
-${monitorLauncher}
+<nav class="mobile-dock" aria-label="${esc(t.relationshipOverview)}">
+  <button type="button" class="mobile-dock-graph" data-open-graph data-track="profile_graph_open"><span class="mobile-dock-icon" aria-hidden="true">⤢</span>${esc(t.mobileMapBtn)}</button>
+  <a data-track="profile_due_diligence" href="/due-diligence/?company=${encodeURIComponent(name)}"><span class="mobile-dock-icon" aria-hidden="true">▤</span>${esc(t.mobileReportBtn)}</a>
+  <button type="button" id="mon-fab" class="mon-fab" data-track="profile_monitor_open" aria-label="${esc(t.monitorFab)}"><span class="mobile-dock-icon" aria-hidden="true">✉</span>${esc(t.mobileAlertsBtn)}</button>
+</nav>
+<dialog id="monitor-dialog" aria-label="${esc(t.monitorFab)}">
+  <div class="go-head"><h2>${esc(t.monitorTitle)}</h2><button type="button" class="go-close mon-close">${esc(t.overlayClose)}</button></div>
+</dialog>
 <script>
 (function(){
+  var mobile=!!(window.matchMedia&&window.matchMedia('(max-width:1023px)').matches);
+  if(mobile&&typeof gtag==='function'){
+    gtag('event','mobile_profile_viewed',{company_slug:${JSON.stringify(canonicalSlug)},language:${JSON.stringify(lang)}});
+    var graphCta=document.querySelector('.hero-actions [data-open-graph]');
+    var visibleSent=false;
+    function sendVisible(){
+      if(visibleSent||typeof gtag!=='function')return;
+      visibleSent=true;
+      gtag('event','mobile_graph_cta_visible',{company_slug:${JSON.stringify(canonicalSlug)},language:${JSON.stringify(lang)}});
+    }
+    if(graphCta){
+      if(typeof IntersectionObserver==='function'){
+        var observer=new IntersectionObserver(function(entries){
+          if(entries.some(function(entry){return entry.isIntersecting&&entry.intersectionRatio>=.8;})){
+            sendVisible();observer.disconnect();
+          }
+        },{threshold:[.8]});
+        observer.observe(graphCta);
+      }else{
+        var rect=graphCta.getBoundingClientRect();
+        if(rect.top>=0&&rect.bottom<=window.innerHeight)sendVisible();
+      }
+    }
+  }
   document.querySelectorAll('[data-track]').forEach(function(link){
     link.addEventListener('click',function(){
       if(typeof gtag!=='function')return;
@@ -2184,6 +2231,10 @@ ${monitorLauncher}
       };
       gtag('event','company_profile_cta_click',params);
       gtag('event',link.getAttribute('data-track'),params);
+      if(mobile&&link.hasAttribute('data-open-graph'))gtag('event','mobile_graph_cta_clicked',params);
+      if(mobile&&link.getAttribute('data-track')==='profile_due_diligence'){
+        gtag('event','mobile_profile_or_report_opened',Object.assign({destination:'report'},params));
+      }
     });
   });
 })();
@@ -2209,19 +2260,26 @@ ${monitorLauncher}
 </script>
 <script>
 (function(){
-  var btn=document.querySelector('[data-track="profile_graph_open"]');
+  var buttons=document.querySelectorAll('[data-open-graph]');
   var dlg=document.getElementById('graph-overlay');
   var frame=document.getElementById('graph-frame');
-  if(!btn||!dlg||!frame)return;
+  if(!buttons.length||!dlg||!frame)return;
   var msg=document.getElementById('go-msg');
   var closer=dlg.querySelector('.go-close');
+  var mobile=!!(window.matchMedia&&window.matchMedia('(max-width:1023px)').matches);
   function shut(){if(typeof dlg.close==='function')dlg.close();else dlg.removeAttribute('open');}
   if(closer)closer.addEventListener('click',shut);
-  frame.addEventListener('load',function(){if(msg)msg.style.display='none';});
-  btn.addEventListener('click',function(){
-    if(typeof dlg.showModal==='function')dlg.showModal();else dlg.setAttribute('open','');
-    if(frame.getAttribute('src'))return;
-    frame.setAttribute('src',frame.getAttribute('data-src'));
+  frame.addEventListener('load',function(){if(msg&&!mobile)msg.style.display='none';});
+  window.addEventListener('message',function(event){
+    if(event.source!==frame.contentWindow||!event.data||event.data.type!=='mapa-societario:graph-ready')return;
+    if(msg)msg.style.display='none';
+  });
+  buttons.forEach(function(btn){
+    btn.addEventListener('click',function(){
+      if(typeof dlg.showModal==='function')dlg.showModal();else dlg.setAttribute('open','');
+      if(frame.getAttribute('src'))return;
+      frame.setAttribute('src',frame.getAttribute('data-src'));
+    });
   });
 })();
 </script>

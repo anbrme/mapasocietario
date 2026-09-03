@@ -275,6 +275,12 @@ const SEARCH_COPY = {
     myCorrections: count => `My corrections (${count})`,
     filterNodes: 'Filter nodes and notes',
     filterPlaceholder: 'e.g. Garcia, relevant manager',
+    mobileFilters: 'Filters',
+    mobileMoreTools: 'More tools',
+    mobileHint: 'Tap a node for details · pinch to zoom',
+    mobileMoreToolsHint: 'Advanced search, import/export and investigation tools are available in the full application.',
+    openFullApplication: 'Open full application',
+    expandRelationships: 'Expand relationships',
     legalTooltip: 'Source and legal notice',
     legalLabel: 'Source and legal notice',
     pathfinderTooltip: 'Find connection path (Pathfinder)',
@@ -628,6 +634,12 @@ const SEARCH_COPY = {
     myCorrections: count => `Mis correcciones (${count})`,
     filterNodes: 'Filtrar nodos y notas',
     filterPlaceholder: 'ej: Garcia, directivo relevante',
+    mobileFilters: 'Filtros',
+    mobileMoreTools: 'Más herramientas',
+    mobileHint: 'Toca un nodo para ver sus datos · pellizca para ampliar',
+    mobileMoreToolsHint: 'La búsqueda avanzada, importación/exportación y herramientas de investigación están disponibles en la aplicación completa.',
+    openFullApplication: 'Abrir aplicación completa',
+    expandRelationships: 'Ampliar relaciones',
     legalTooltip: 'Fuente y aviso legal',
     legalLabel: 'Fuente y aviso legal',
     pathfinderTooltip: 'Buscar camino de conexión (Pathfinder)',
@@ -1546,6 +1558,7 @@ const SpanishCompanyNetworkGraph = ({
   const [labelFilterText, setLabelFilterText] = useState('');
   const [statusFilters, setStatusFilters] = useState(new Set()); // 'active' | 'ceased'
   const [positionFilters, setPositionFilters] = useState(new Set());
+  const [compactPanel, setCompactPanel] = useState(null); // null | 'filters' | 'tools'
   const [isSearching, setIsSearching] = useState(false);
   // Per-company cap on officer nodes; apoderados truncated newest-first.
   const [officersPerCompany, setOfficersPerCompany] = useState(100);
@@ -1907,6 +1920,39 @@ const SpanishCompanyNetworkGraph = ({
   const MAX_NODE_SPEED = 30;
 
   const theme = useTheme();
+  const isCompactViewport = useMediaQuery('(max-width:1023px)');
+  // A profile deep-link has already answered the search question. On a narrow
+  // embedded canvas, showing the full desktop search/filter workbench above
+  // the result leaves almost no room for the result itself.
+  const isCompactEmbed = embedded && isCompactViewport && Boolean(initialCompanyName);
+  const compactDefaultsAppliedRef = useRef(false);
+  const compactReadyTrackedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isCompactEmbed || compactDefaultsAppliedRef.current) return;
+    compactDefaultsAppliedRef.current = true;
+    setNodeSize(11);
+    setLabelSize(7);
+  }, [isCompactEmbed]);
+
+  useEffect(() => {
+    if (
+      !isCompactEmbed ||
+      compactReadyTrackedRef.current ||
+      isSearching ||
+      graphData.nodes.length === 0
+    ) return;
+    compactReadyTrackedRef.current = true;
+    const readyPayload = {
+      entry_source: entrySource,
+      node_count: graphData.nodes.length,
+      time_to_ready_ms: Date.now() - graphEnteredAtRef.current,
+    };
+    trackEvent('mobile_graph_ready', readyPayload);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'mapa-societario:graph-ready' }, window.location.origin);
+    }
+  }, [entrySource, graphData.nodes.length, isCompactEmbed, isSearching]);
 
   // The inspector docks over the right edge of the graph container rather than
   // floating above the canvas. Reserving its width here (instead of letting it
@@ -4610,6 +4656,12 @@ const SpanishCompanyNetworkGraph = ({
           expand_origin: expandOrigin,
           expand_result: found ? 'success' : 'empty',
         });
+        if (isCompactEmbed && found) {
+          trackEvent('mobile_graph_relationships_expanded', {
+            ...graphInteractionParams(node),
+            expand_origin: expandOrigin,
+          });
+        }
         // Note: node.expanded = true was set above via direct mutation.
         // Do NOT call setGraphData here to re-create node objects — that breaks
         // ForceGraph2D's internal references (x, y, fx, fy get lost), causing
@@ -4626,7 +4678,7 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [expandOfficerNode, expandCompanyNode, graphInteractionParams, text]
+    [expandOfficerNode, expandCompanyNode, graphInteractionParams, isCompactEmbed, text]
   );
 
   // handleNodeClick is defined after handleNodeRightClick (below) for mobile touch support
@@ -5269,8 +5321,11 @@ const SpanishCompanyNetworkGraph = ({
       const threshold = embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS;
       const browserDoubleClick = Number(event?.detail) >= 2;
 
-      // On touch devices: first tap selects node, second tap on same node opens context menu
-      if (isTouchDevice) {
+      // Compact embeds use the one-tap selection sheet even when the browser's
+      // touch-capability signal is missing (common in responsive emulation and
+      // hybrid devices). The viewport mode, not hardware sniffing, owns this UX.
+      if (isTouchDevice || isCompactEmbed) {
+        if (isCompactEmbed) setCompactPanel(null);
         if (isSameNodeId(last.nodeId, nodeId) && now - last.time < 600) {
           // Second tap on same node — open context menu
           lastClickRef.current = { nodeId: null, time: 0 };
@@ -5285,9 +5340,12 @@ const SpanishCompanyNetworkGraph = ({
           lastClickRef.current = { nodeId, time: now };
           trackEvent('graph_node_click', {
             ...graphInteractionParams(node),
-            interaction_source: 'touch',
+            interaction_source: isTouchDevice ? 'touch' : 'compact_embed',
             click_action: 'select',
           });
+          if (isCompactEmbed) {
+            trackEvent('mobile_graph_node_selected', graphInteractionParams(node));
+          }
           setActiveNodeId(nodeId);
         }
         return;
@@ -5319,6 +5377,7 @@ const SpanishCompanyNetworkGraph = ({
       embedded,
       graphInteractionParams,
       isFullscreen,
+      isCompactEmbed,
       handleNodeRightClick,
       isNodeNoteMarkerClick,
       isTouchDevice,
@@ -7528,6 +7587,16 @@ const SpanishCompanyNetworkGraph = ({
     fitGraphToView(400, 50);
   };
 
+  const compactFullApplicationHref = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (initialCompanyName) params.set('search', initialCompanyName);
+    if (initialSearchType && initialSearchType !== 'company') params.set('type', initialSearchType);
+    if (initialGroupKey) params.set('gk', initialGroupKey);
+    params.set('lang', uiLanguage);
+    params.set('source', 'mobile_embed_more_tools');
+    return `/app/?${params.toString()}`;
+  }, [initialCompanyName, initialGroupKey, initialSearchType, uiLanguage]);
+
   const clearGraph = () => {
     if (embedded) {
       autosaveWriteIdRef.current += 1;
@@ -9455,21 +9524,23 @@ const SpanishCompanyNetworkGraph = ({
         }}
       >
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
-          <Tooltip title={text.zoomIn}>
+          {!isCompactEmbed && <Tooltip title={text.zoomIn}>
             <IconButton onClick={() => { trackGraphToolbarAction('zoom_in'); zoomIn(); }} size="small">
               <ZoomInIcon />
             </IconButton>
-          </Tooltip>
-          <Tooltip title={text.zoomOut}>
+          </Tooltip>}
+          {!isCompactEmbed && <Tooltip title={text.zoomOut}>
             <IconButton onClick={() => { trackGraphToolbarAction('zoom_out'); zoomOut(); }} size="small">
               <ZoomOutIcon />
             </IconButton>
-          </Tooltip>
-          <Tooltip title={text.center}>
+          </Tooltip>}
+          {!isCompactEmbed && <Tooltip title={text.center}>
             <IconButton onClick={() => { trackGraphToolbarAction('center_graph'); centerGraph(); }} size="small">
               <CenterIcon />
             </IconButton>
-          </Tooltip>
+          </Tooltip>}
+          {!isCompactEmbed && (
+          <>
           <Tooltip title={text.clearGraph}>
             <IconButton onClick={() => { trackGraphToolbarAction('clear_graph'); clearGraph(); }} size="small">
               <RefreshIcon />
@@ -9524,10 +9595,12 @@ const SpanishCompanyNetworkGraph = ({
               {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
             </IconButton>
           </Tooltip>
+          </>
+          )}
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-          {embedded && graphData.nodes.length > 0 && autosaveStatus !== 'idle' && (
+          {!isCompactEmbed && embedded && graphData.nodes.length > 0 && autosaveStatus !== 'idle' && (
             <Chip
               label={
                 autosaveStatus === 'saving'
@@ -9547,7 +9620,7 @@ const SpanishCompanyNetworkGraph = ({
               sx={{ height: 22, fontSize: '0.68rem' }}
             />
           )}
-          {snapshotMode && (
+          {!isCompactEmbed && snapshotMode && (
             <Chip
               label={snapshotSource === 'autosave' ? text.restoredSession : text.importedSnapshot}
               size="small"
@@ -9556,7 +9629,7 @@ const SpanishCompanyNetworkGraph = ({
               sx={{ height: 22, fontSize: '0.68rem' }}
             />
           )}
-          {hiddenNodeIds.size > 0 && (
+          {!isCompactEmbed && hiddenNodeIds.size > 0 && (
             <Tooltip title={text.manageHiddenNodes}>
               <Button
                 size="small"
@@ -9572,14 +9645,14 @@ const SpanishCompanyNetworkGraph = ({
               </Button>
             </Tooltip>
           )}
-          <Typography variant="caption">
+          {!isCompactEmbed && <Typography variant="caption">
             {text.nodes}: {filteredGraphData.nodes.length}
             {filterTerms.length > 0 || hiddenNodeIds.size > 0
               ? ` / ${graphData.nodes.length}`
               : ''}{' '}
             | {text.links}: {filteredGraphData.links.length}
             {filterTerms.length > 0 || hiddenNodeIds.size > 0 ? ` / ${graphData.links.length}` : ''}
-          </Typography>
+          </Typography>}
           {/* Expanding a node or unifying positions can take seconds on a
               bank-sized fan-out; a bare 16px spinner read as nothing happening. */}
           {isLoading && !isSearching && (
@@ -9698,8 +9771,188 @@ const SpanishCompanyNetworkGraph = ({
           />
         )}
 
-        {isTouchDevice && contextNode && contextNode.type !== 'officer' && (() => {
-          const profileHref = fullCompanyPageHref(contextNode.name, uiLanguage);
+        {isCompactEmbed && graphData.nodes.length > 0 && (
+          <Tooltip title={text.center}>
+            <IconButton
+              aria-label={text.center}
+              onClick={() => {
+                trackGraphToolbarAction('center_graph');
+                centerGraph();
+              }}
+              sx={{
+                position: 'absolute',
+                top: 12,
+                right: 12,
+                zIndex: 18,
+                width: 44,
+                height: 44,
+                bgcolor: (t) => alpha(t.palette.background.paper, 0.94),
+                border: '1px solid',
+                borderColor: 'divider',
+                boxShadow: 3,
+                '&:hover': { bgcolor: 'background.paper' },
+              }}
+            >
+              <CenterIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+
+        {isCompactEmbed && compactPanel && (
+          <Paper
+            role="dialog"
+            aria-label={compactPanel === 'filters' ? text.mobileFilters : text.mobileMoreTools}
+            elevation={8}
+            sx={{
+              position: 'absolute',
+              left: 8,
+              right: 8,
+              bottom: 8,
+              zIndex: 30,
+              maxHeight: '68%',
+              overflowY: 'auto',
+              p: 1.5,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {compactPanel === 'filters' ? text.mobileFilters : text.mobileMoreTools}
+              </Typography>
+              <IconButton size="small" aria-label={text.close} onClick={() => setCompactPanel(null)}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            {compactPanel === 'filters' ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                <TextField
+                  label={text.filterNodes}
+                  placeholder={text.filterPlaceholder}
+                  value={labelFilterText}
+                  onChange={event => setLabelFilterText(event.target.value)}
+                  size="small"
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                  <Chip
+                    label={`${text.active} (${statusCounts.active})`}
+                    size="small"
+                    variant={statusFilters.has('active') ? 'filled' : 'outlined'}
+                    color="success"
+                    onClick={() => setStatusFilters(prev => {
+                      const next = new Set(prev);
+                      next.has('active') ? next.delete('active') : next.add('active');
+                      return next;
+                    })}
+                  />
+                  <Chip
+                    label={`${text.ceased} (${statusCounts.ceased})`}
+                    size="small"
+                    variant={statusFilters.has('ceased') ? 'filled' : 'outlined'}
+                    color="error"
+                    onClick={() => setStatusFilters(prev => {
+                      const next = new Set(prev);
+                      next.has('ceased') ? next.delete('ceased') : next.add('ceased');
+                      return next;
+                    })}
+                  />
+                  <Chip
+                    label={text.soleShareholder}
+                    size="small"
+                    variant={showShareholders ? 'filled' : 'outlined'}
+                    onClick={() => setShowShareholders(prev => !prev)}
+                  />
+                  <Chip
+                    label={text.simplify}
+                    size="small"
+                    variant={simplifyGraph ? 'filled' : 'outlined'}
+                    color={simplifyGraph ? 'info' : 'default'}
+                    onClick={() => setSimplifyGraph(prev => !prev)}
+                  />
+                  {availablePositionCount > 0 && (
+                    <Button
+                      size="small"
+                      variant={selectedPositionFilterCount > 0 ? 'contained' : 'outlined'}
+                      endIcon={positionFiltersExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      onClick={() => setPositionFiltersExpanded(prev => !prev)}
+                      sx={{ minHeight: 32, textTransform: 'none', borderRadius: 4 }}
+                    >
+                      {selectedPositionFilterCount > 0
+                        ? `${text.positions} (${selectedPositionFilterCount}/${availablePositionCount})`
+                        : `${text.positions} (${availablePositionCount})`}
+                    </Button>
+                  )}
+                </Box>
+                {positionFiltersExpanded && availablePositionCount > 0 && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {availablePositions.map(({ category, count }) => (
+                      <Chip
+                        key={`mobile-${category}`}
+                        label={`${category} (${count})`}
+                        size="small"
+                        variant={positionFilters.has(category) ? 'filled' : 'outlined'}
+                        onClick={() => setPositionFilters(prev => {
+                          const next = new Set(prev);
+                          next.has(category) ? next.delete(category) : next.add(category);
+                          return next;
+                        })}
+                      />
+                    ))}
+                  </Box>
+                )}
+                {(hasChipFilters || labelFilterText) && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setLabelFilterText('');
+                      setStatusFilters(new Set());
+                      setPositionFilters(new Set());
+                    }}
+                    sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
+                  >
+                    {text.clearFilters}
+                  </Button>
+                )}
+              </Box>
+            ) : (
+              <Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  {text.mobileMoreToolsHint}
+                </Typography>
+                <Button
+                  component="a"
+                  href={compactFullApplicationHref}
+                  target="_blank"
+                  rel="noopener"
+                  variant="outlined"
+                  endIcon={<OpenInNewIcon />}
+                  onClick={() => trackEvent('mobile_graph_full_application_opened', {
+                    entry_source: entrySource,
+                  })}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {text.openFullApplication}
+                </Button>
+              </Box>
+            )}
+          </Paper>
+        )}
+
+        {(isTouchDevice || isCompactEmbed) && contextNode && (() => {
+          const canOpenCompanyProfile =
+            contextNode.type !== 'officer' || isCompanyOfficer(contextNode.name || '');
+          const profileHref = canOpenCompanyProfile
+            ? fullCompanyPageHref(contextNode.name, uiLanguage)
+            : null;
           return (
             <Paper
               elevation={6}
@@ -9718,10 +9971,12 @@ const SpanishCompanyNetworkGraph = ({
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                <BusinessIcon sx={{ mt: 0.25, color: 'primary.main' }} />
+                {contextNode.type === 'officer'
+                  ? <PersonIcon sx={{ mt: 0.25, color: 'primary.main' }} />
+                  : <BusinessIcon sx={{ mt: 0.25, color: 'primary.main' }} />}
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Typography variant="caption" color="text.secondary">
-                    {text.selectedCompany}
+                    {contextNode.type === 'officer' ? text.officer : text.selectedCompany}
                   </Typography>
                   <Typography
                     variant="body2"
@@ -9743,6 +9998,23 @@ const SpanishCompanyNetworkGraph = ({
                 <Button
                   size="small"
                   variant="contained"
+                  startIcon={<NetworkIcon />}
+                  disabled={isLoading || Boolean(contextNode.expanded)}
+                  onClick={() => {
+                    trackEvent('graph_selected_node_action', {
+                      ...graphInteractionParams(contextNode),
+                      interaction_source: 'graph_selection_card',
+                      selected_action: 'expand_relationships',
+                    });
+                    expandNode(contextNode, 'mobile_selection_sheet');
+                  }}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {isLoading ? text.expanding : text.expandRelationships}
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
                   startIcon={<PreviewIcon />}
                   onClick={() => {
                     trackEvent('graph_selected_node_action', {
@@ -9777,6 +10049,12 @@ const SpanishCompanyNetworkGraph = ({
                         language: uiLanguage,
                         company: contextNode,
                       });
+                      if (isCompactEmbed) {
+                        trackEvent('mobile_profile_or_report_opened', {
+                          entry_source: entrySource,
+                          destination: 'company_profile',
+                        });
+                      }
                     }}
                     sx={{ textTransform: 'none' }}
                   >
@@ -9784,12 +10062,12 @@ const SpanishCompanyNetworkGraph = ({
                   </Button>
                 )}
               </Box>
-              <Typography
+              {!isCompactEmbed && <Typography
                 variant="caption"
                 sx={{ display: 'block', mt: 1, color: 'text.secondary' }}
               >
                 {isTouchDevice ? text.moreOptionsHintTouch : text.moreOptionsHint}
-              </Typography>
+              </Typography>}
             </Paper>
           );
         })()}
@@ -9828,7 +10106,7 @@ const SpanishCompanyNetworkGraph = ({
         )}
 
         {/* Floating AI Investigation Launcher */}
-        {(() => {
+        {!isCompactEmbed && (() => {
           const count = investigationSet.size;
           const launch = investigationLaunchState(count);
           const stored = loadToken();
@@ -9875,7 +10153,7 @@ const SpanishCompanyNetworkGraph = ({
             middle of the canvas. It now opens in the bottom dock alongside the
             per-company tables, so every table shares one surface and the canvas
             keeps its centre. This is just the way in. */}
-        {visibleTableRows.length > 0 && (
+        {!isCompactEmbed && visibleTableRows.length > 0 && (
           <Button
             size="small"
             variant="contained"
@@ -10015,28 +10293,28 @@ const SpanishCompanyNetworkGraph = ({
       </Box>
 
       {/* Legend - compact inline bar */}
-      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap', px: 2, py: 0.5, opacity: 0.7, fontSize: '0.65rem' }}>
+      <Box sx={{ display: 'flex', gap: isCompactEmbed ? 1 : 1.5, alignItems: 'center', flexWrap: 'wrap', px: isCompactEmbed ? 1 : 2, py: 0.5, opacity: 0.7, fontSize: '0.65rem' }}>
         {[
           { color: nodeColors.company, label: text.legendCompanies },
           { color: nodeColors.officer_individual, label: text.legendPeople },
           { color: nodeColors.officer_company, label: text.legendCorporateOfficers },
           { color: nodeColors.expanded, label: text.legendExpanded },
           { color: nodeColors.searchOrigin, label: text.legendSearch },
-        ].map(item => (
+        ].filter((_, index) => !isCompactEmbed || index < 2).map(item => (
           <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
             <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color, flexShrink: 0 }} />
             <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{item.label}</Typography>
           </Box>
         ))}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+        {!isCompactEmbed && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
           <Box sx={{ width: 14, height: 2, bgcolor: 'graph.link.appointment' }} />
           <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.legendAppointments}</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+        </Box>}
+        {!isCompactEmbed && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
           <Box sx={{ width: 14, height: 2, bgcolor: 'graph.link.cessation' }} />
           <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.legendCessations}</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+        </Box>}
+        {!isCompactEmbed && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
           <Box
             sx={{
               width: 14,
@@ -10048,14 +10326,14 @@ const SpanishCompanyNetworkGraph = ({
             }}
           />
           <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.soleShareholder}</Typography>
-        </Box>
-        <Typography sx={{ fontSize: 'inherit', lineHeight: 1, ml: 'auto' }}>
+        </Box>}
+        {!isCompactEmbed && <Typography sx={{ fontSize: 'inherit', lineHeight: 1, ml: 'auto' }}>
           {isTouchDevice
             ? text.legendHintTouch
             : embedded && !isFullscreen
               ? text.legendHintEmbedded
               : text.legendHint}
-        </Typography>
+        </Typography>}
       </Box>
     </>
   );
@@ -11017,7 +11295,53 @@ const SpanishCompanyNetworkGraph = ({
             reclaimed the thin breadcrumb and the graph barely grew. The graph's own
             toolbar (incl. the exit-fullscreen button) + legend live in
             graphAreaContent, so the user can still fit/zoom and leave fullscreen. */}
-        {!isFullscreen && searchPanelContent}
+        {!isFullscreen && !isCompactEmbed && searchPanelContent}
+        {isCompactEmbed && (
+          <Box
+            sx={{
+              flexShrink: 0,
+              px: 1.25,
+              py: 0.5,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {text.mobileHint}
+            </Typography>
+            <Button
+              size="small"
+              startIcon={<TuneIcon />}
+              variant={compactPanel === 'filters' ? 'contained' : 'text'}
+              onClick={() => {
+                setActiveNodeId(null);
+                setCompactPanel(current => current === 'filters' ? null : 'filters');
+              }}
+              sx={{ minWidth: 0, px: 1, textTransform: 'none', whiteSpace: 'nowrap' }}
+            >
+              {text.mobileFilters}
+            </Button>
+            <IconButton
+              size="small"
+              aria-label={text.mobileMoreTools}
+              color={compactPanel === 'tools' ? 'primary' : 'default'}
+              onClick={() => {
+                setActiveNodeId(null);
+                setCompactPanel(current => current === 'tools' ? null : 'tools');
+              }}
+            >
+              <SettingsIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        )}
         {/* Search loading state is rendered INSIDE the graph container
             (graphAreaContent) so it covers only the canvas, not the whole
             viewport — the search panel above stays visible. */}
