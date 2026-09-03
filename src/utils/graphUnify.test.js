@@ -275,3 +275,111 @@ describe('mergeCargoIntoCompanyNode — a dissolved holder', () => {
     expect(result.links.some((l) => 'holderDissolved' in l)).toBe(false);
   });
 });
+
+// A LONG-LIVED officer node — the corporate-officer node the graph drew because
+// this company holds a seat somewhere — can carry edges that are NOT cargo: an
+// ownership edge to a company it is sole shareholder of, or an inbound ownership
+// edge from its own owner. Folding that node into the company node must MOVE
+// those edges to the company node, never drop them with the node.
+describe('mergeCargoIntoCompanyNode — non-cargo edges on the officer node', () => {
+  const graphWithOwnership = () => {
+    const g = baseGraph();
+    g.nodes.push({ id: 'company:owned', name: 'OWNED SL', type: 'spanish-company-group' });
+    g.nodes.push({ id: 'company:parent', name: 'PARENT SL', type: 'spanish-company-group' });
+    g.links.push({
+      id: 'ownership-officer-acme-sa-company:owned',
+      source: 'officer-acme-sa',
+      target: 'company:owned',
+      type: 'ownership',
+      relationship: 'Socio único',
+      category: 'socio_unico',
+    });
+    g.links.push({
+      id: 'ownership-company:parent-officer-acme-sa',
+      source: 'company:parent',
+      target: 'officer-acme-sa',
+      type: 'ownership',
+      relationship: 'Socio único',
+      category: 'socio_unico',
+    });
+    return g;
+  };
+
+  it('re-sources an outbound ownership edge at the company node', () => {
+    const out = mergeCargoIntoCompanyNode(graphWithOwnership(), 'company:acme', 'officer-acme-sa');
+    const owned = out.links.filter((l) => l.type === 'ownership' && l.target === 'company:owned');
+    expect(owned).toHaveLength(1);
+    expect(owned[0].source).toBe('company:acme');
+    expect(owned[0].relationship).toBe('Socio único');
+  });
+
+  it('re-targets an inbound ownership edge at the company node', () => {
+    const out = mergeCargoIntoCompanyNode(graphWithOwnership(), 'company:acme', 'officer-acme-sa');
+    const parent = out.links.filter((l) => l.type === 'ownership' && l.source === 'company:parent');
+    expect(parent).toHaveLength(1);
+    expect(parent[0].target).toBe('company:acme');
+  });
+
+  it('leaves no link referencing the removed officer node', () => {
+    const out = mergeCargoIntoCompanyNode(graphWithOwnership(), 'company:acme', 'officer-acme-sa');
+    expect(
+      out.links.some((l) => l.source === 'officer-acme-sa' || l.target === 'officer-acme-sa')
+    ).toBe(false);
+  });
+
+  it('does not tag relocated non-cargo edges, so undo keeps the ownership', () => {
+    const merged = mergeCargoIntoCompanyNode(graphWithOwnership(), 'company:acme', 'officer-acme-sa');
+    const undone = undoCargoUnify(merged, 'company:acme');
+    expect(undone.links.filter((l) => l.type === 'ownership')).toHaveLength(2);
+  });
+
+  it('drops a non-cargo edge that would become a self-loop on the company node', () => {
+    const g = graphWithOwnership();
+    g.links.push({
+      id: 'ownership-officer-acme-sa-company:acme',
+      source: 'officer-acme-sa',
+      target: 'company:acme',
+      type: 'ownership',
+      relationship: 'Socio único',
+      category: 'socio_unico',
+    });
+    const out = mergeCargoIntoCompanyNode(g, 'company:acme', 'officer-acme-sa');
+    expect(out.links.some((l) => l.source === 'company:acme' && l.target === 'company:acme')).toBe(false);
+  });
+
+  it('does not duplicate a non-cargo edge the company node already carries', () => {
+    const g = graphWithOwnership();
+    g.links.push({
+      id: 'ownership-company:acme-company:owned',
+      source: 'company:acme',
+      target: 'company:owned',
+      type: 'ownership',
+      relationship: 'Socio único',
+      category: 'socio_unico',
+    });
+    const out = mergeCargoIntoCompanyNode(g, 'company:acme', 'officer-acme-sa');
+    expect(
+      out.links.filter((l) => l.type === 'ownership' && l.target === 'company:owned')
+    ).toHaveLength(1);
+  });
+
+  it('handles d3-mutated non-cargo links whose endpoints are node objects', () => {
+    const g = graphWithOwnership();
+    g.links = g.links.map((l) =>
+      l.type === 'ownership'
+        ? { ...l, source: g.nodes.find((n) => n.id === (l.source.id || l.source)), target: g.nodes.find((n) => n.id === (l.target.id || l.target)) }
+        : l
+    );
+    const out = mergeCargoIntoCompanyNode(g, 'company:acme', 'officer-acme-sa');
+    const owned = out.links.filter((l) => l.type === 'ownership' && (l.target.id || l.target) === 'company:owned');
+    expect(owned).toHaveLength(1);
+    expect(owned[0].source).toBe('company:acme');
+  });
+
+  it('is idempotent for non-cargo edges', () => {
+    const once = mergeCargoIntoCompanyNode(graphWithOwnership(), 'company:acme', 'officer-acme-sa');
+    const twice = mergeCargoIntoCompanyNode(once, 'company:acme', 'officer-acme-sa');
+    expect(twice.links).toHaveLength(once.links.length);
+    expect(twice.nodes).toHaveLength(once.nodes.length);
+  });
+});
