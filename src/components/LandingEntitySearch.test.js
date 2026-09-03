@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLandingSearchHref } from './LandingEntitySearch';
+import { buildLandingSearchHref, landingGraphRequestFromHref } from './LandingEntitySearch';
 
 describe('buildLandingSearchHref', () => {
   it('deep-links a selected company into the graph', () => {
@@ -128,5 +128,30 @@ describe('buildLandingSearchHref — owners the company index cannot answer for'
 
     expect(href).toContain('type=company');
     expect(href).toContain('gk=H%3AM-584035');
+  });
+});
+
+describe('landingGraphRequestFromHref', () => {
+  it('turns the landing deep link into embedded graph props', () => {
+    expect(landingGraphRequestFromHref(
+      '/app/?search=NURNBERG+CONSULTING+SL&type=company&source=home_search&gk=grp_abc123'
+    )).toEqual({
+      name: 'NURNBERG CONSULTING SL',
+      searchType: 'company',
+      groupKey: 'grp_abc123',
+      source: 'home_search',
+    });
+  });
+
+  it('preserves officer and shareholder routes', () => {
+    expect(landingGraphRequestFromHref('/app/?search=ANA+GARCIA&type=officer&source=home_search'))
+      .toMatchObject({ name: 'ANA GARCIA', searchType: 'officer' });
+    expect(landingGraphRequestFromHref('/app/?search=HOLDING+LTD&type=shareholder&source=home_search'))
+      .toMatchObject({ name: 'HOLDING LTD', searchType: 'shareholder' });
+  });
+
+  it('rejects generic app links because compact mode needs a selected entity', () => {
+    expect(landingGraphRequestFromHref('/app/?source=home_hero')).toBeNull();
+    expect(landingGraphRequestFromHref('/pricing')).toBeNull();
   });
 });

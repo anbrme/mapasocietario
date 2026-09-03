@@ -86,6 +86,24 @@ export function buildLandingSearchHref(option, lang = 'en') {
   return `/app/?${params.toString()}`;
 }
 
+export function landingGraphRequestFromHref(href) {
+  if (typeof href !== 'string' || !href.startsWith('/app/')) return null;
+  const queryIndex = href.indexOf('?');
+  const params = new URLSearchParams(queryIndex >= 0 ? href.slice(queryIndex + 1) : '');
+  const name = (params.get('search') || '').trim();
+  if (!name) return null;
+  const requestedType = params.get('type');
+  const searchType = requestedType === 'officer' || requestedType === 'shareholder'
+    ? requestedType
+    : 'company';
+  return {
+    name,
+    searchType,
+    groupKey: params.get('gk') || undefined,
+    source: params.get('source') || 'home_search',
+  };
+}
+
 export default function LandingEntitySearch({ lang = 'en', navigate }) {
   const copy = COPY[lang] || COPY.en;
   const [inputValue, setInputValue] = React.useState('');

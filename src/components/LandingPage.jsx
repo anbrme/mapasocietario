@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Button, Link, Paper, Chip, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import { Box, Typography, Button, Link, Paper, Chip, Accordion, AccordionSummary, AccordionDetails, Dialog, useMediaQuery } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -17,13 +17,17 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
 import FeedbackWidget from './FeedbackWidget';
 import HeroNetwork from './HeroNetwork';
-import LandingEntitySearch from './LandingEntitySearch';
+import LandingEntitySearch, { landingGraphRequestFromHref } from './LandingEntitySearch';
+import SpanishCompanyNetworkGraph from './SpanishCompanyNetworkGraph';
+import { isNativeApp } from '../services/listedCompaniesNav';
+import { NATIVE_BACK_EVENT } from '../hooks/useAndroidBackButton';
 import { LANDING_COPY } from './landingCopy';
 import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE, SAMPLE_REPORT_URL } from '../copy/freeFirstReport';
 import { siteNav } from '../utils/siteNav';
@@ -117,8 +121,12 @@ function useLandingTheme() {
 // for it via ?guide=1. Computed synchronously so we never flash the guide
 // before redirecting a returning visitor to the workspace. usePageTracking
 // asks the same question to keep the skipped view out of GA4.
-function shouldRedirectReturning() {
+function shouldRedirectReturning(nativeApp = false) {
   if (typeof window === 'undefined') return false;
+  // The installed app is a product surface, not a one-shot marketing visit.
+  // Keep its entity picker available on every launch so a selection can open
+  // the same compact graph overlay used by mobile web.
+  if (nativeApp) return false;
   return isReturningGuideVisit({ search: window.location.search, storage: window.localStorage });
 }
 
@@ -126,7 +134,12 @@ export default function LandingPage({ lang = 'en' }) {
   const copy = LANDING_COPY[lang];
   const offer = FREE_FIRST_REPORT_COPY[lang] || FREE_FIRST_REPORT_COPY.en;
   const navigate = useNavigate();
+  const appTheme = useTheme();
   const landingTheme = useLandingTheme();
+  const isMobileGraphViewport = useMediaQuery('(max-width:1023px)');
+  const nativeApp = React.useMemo(() => isNativeApp(), []);
+  const useMobileGraphOverlay = nativeApp || isMobileGraphViewport;
+  const [mobileGraphRequest, setMobileGraphRequest] = React.useState(null);
 
   // The language switcher renders outside the wrapping link group, so split it
   // out rather than positioning it with ml:auto inside the flow.
@@ -137,7 +150,7 @@ export default function LandingPage({ lang = 'en' }) {
   // First-timers (and crawlers, which have no localStorage) see the guide, so
   // SEO and first impressions are untouched. The /app header "How it works"
   // icon and /?guide=1 always bring the guide back.
-  const [redirecting] = React.useState(shouldRedirectReturning);
+  const [redirecting] = React.useState(() => shouldRedirectReturning(nativeApp));
 
   React.useEffect(() => {
     if (redirecting) {
@@ -169,11 +182,51 @@ export default function LandingPage({ lang = 'en' }) {
   const appHref = lang === 'es' ? '/app/?lang=es' : '/app/';
   const graphHref = (placement) => `${appHref}${appHref.includes('?') ? '&' : '?'}source=home_${placement}`;
   const demoHref = `/app/?search=${encodeURIComponent(DEMO_COMPANY)}${lang === 'es' ? '&lang=es' : ''}&source=home_demo`;
+  const openLandingDestination = React.useCallback((href) => {
+    const request = landingGraphRequestFromHref(href);
+    if (useMobileGraphOverlay && request) {
+      setMobileGraphRequest(request);
+      trackEvent('mobile_landing_graph_opened', {
+        language: lang,
+        entry_source: request.source,
+        entity_type: request.searchType,
+        native_app: nativeApp,
+      });
+      return;
+    }
+    navigate(href);
+  }, [lang, nativeApp, navigate, useMobileGraphOverlay]);
   const openGraph = (placement) => {
     trackEvent('home_graph_click', { placement, language: lang });
     navigate(graphHref(placement));
   };
-  const trackDemoClick = () => trackEvent('home_graph_click', { placement: 'demo', language: lang });
+  const openDemoGraph = (event) => {
+    trackEvent('home_graph_click', { placement: 'demo', language: lang });
+    if (!useMobileGraphOverlay) return;
+    event.preventDefault();
+    openLandingDestination(demoHref);
+  };
+  const closeMobileGraph = React.useCallback(() => {
+    trackEvent('mobile_landing_graph_closed', {
+      language: lang,
+      entry_source: mobileGraphRequest?.source || 'unknown',
+      native_app: nativeApp,
+    });
+    setMobileGraphRequest(null);
+  }, [lang, mobileGraphRequest?.source, nativeApp]);
+
+  // Capacitor's hardware/gesture Back event is not browser history: the graph
+  // overlay lives in React state on the landing route. Consume the event here
+  // so Back closes the graph and returns to the picker instead of exiting.
+  React.useEffect(() => {
+    if (!mobileGraphRequest || !nativeApp) return undefined;
+    const handleNativeBack = (event) => {
+      event.preventDefault();
+      closeMobileGraph();
+    };
+    window.addEventListener(NATIVE_BACK_EVENT, handleNativeBack);
+    return () => window.removeEventListener(NATIVE_BACK_EVENT, handleNativeBack);
+  }, [closeMobileGraph, mobileGraphRequest, nativeApp]);
 
   // Returning visitor: render nothing while the effect redirects to /app.
   if (redirecting) return null;
@@ -268,7 +321,7 @@ export default function LandingPage({ lang = 'en' }) {
               >
                 {copy.hero.intro}
               </Typography>
-              <LandingEntitySearch lang={lang} navigate={navigate} />
+              <LandingEntitySearch lang={lang} navigate={openLandingDestination} />
               <Box sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, flexWrap: 'wrap', gap: 1.25 }}>
                 <Button
                   variant="text"
@@ -291,7 +344,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <Box
                   component="a"
                   href={demoHref}
-                  onClick={trackDemoClick}
+                  onClick={openDemoGraph}
                   aria-label={copy.howItWorks.demoCta}
                   sx={{
                     display: 'block', position: 'relative', width: '100%', aspectRatio: '16 / 9',
@@ -303,7 +356,7 @@ export default function LandingPage({ lang = 'en' }) {
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                 <Typography variant="caption" sx={{ color: 'text.disabled' }}>{copy.howItWorks.demoCaption}</Typography>
-                <Link href={demoHref} onClick={trackDemoClick} variant="caption" sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                <Link href={demoHref} onClick={openDemoGraph} variant="caption" sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
                   {copy.howItWorks.demoCta}
                 </Link>
               </Box>
@@ -770,6 +823,65 @@ export default function LandingPage({ lang = 'en' }) {
         </Box>
       </Box>
       <FeedbackWidget lang={lang} />
+      <ThemeProvider theme={appTheme}>
+        <Dialog
+          open={Boolean(mobileGraphRequest)}
+          onClose={closeMobileGraph}
+          fullScreen
+          aria-label={lang === 'es' ? 'Grafo de relaciones' : 'Relationship graph'}
+          PaperProps={{
+            sx: {
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              bgcolor: 'background.paper',
+            },
+          }}
+        >
+          <Box
+            sx={{
+              flexShrink: 0,
+              minHeight: 56,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.5,
+              pt: 'env(safe-area-inset-top)',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Typography
+              component="h2"
+              variant="subtitle2"
+              sx={{ flex: 1, minWidth: 0, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {mobileGraphRequest?.name || ''}
+            </Typography>
+            <Button
+              size="small"
+              startIcon={<ArrowBackIcon />}
+              onClick={closeMobileGraph}
+              sx={{ minHeight: 38, textTransform: 'none', whiteSpace: 'nowrap' }}
+            >
+              {lang === 'es' ? 'Cerrar' : 'Close'}
+            </Button>
+          </Box>
+          {mobileGraphRequest && (
+            <SpanishCompanyNetworkGraph
+              visible
+              embedded
+              initialCompanyName={mobileGraphRequest.name}
+              initialSearchType={mobileGraphRequest.searchType}
+              initialGroupKey={mobileGraphRequest.groupKey}
+              language={lang}
+              entrySource={`${mobileGraphRequest.source}_mobile_overlay`}
+              forceCompactMode={nativeApp}
+            />
+          )}
+        </Dialog>
+      </ThemeProvider>
     </ThemeProvider>
   );
 }

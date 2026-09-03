@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isNativeApp } from '../services/listedCompaniesNav';
 
+export const NATIVE_BACK_EVENT = 'mapa-societario:native-back';
+
 /**
  * Android hardware/gesture back handling for the native app.
  *
@@ -26,6 +28,10 @@ export default function useAndroidBackButton() {
         if (cancelled) return;
         // App.addListener resolves to a handle with .remove().
         App.addListener('backButton', () => {
+          // Stateful overlays (such as the compact landing graph) can consume
+          // Back before the route-level fallback navigates or exits the app.
+          const event = new Event(NATIVE_BACK_EVENT, { cancelable: true });
+          if (!window.dispatchEvent(event)) return;
           if (window.location.pathname === '/') {
             App.exitApp();
           } else {

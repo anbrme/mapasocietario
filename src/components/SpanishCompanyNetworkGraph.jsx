@@ -1480,6 +1480,7 @@ const SpanishCompanyNetworkGraph = ({
   language = 'es',
   embedded = false,
   entrySource = 'direct',
+  forceCompactMode = false,
 }) => {
   const uiLanguage = language === 'en' ? 'en' : 'es';
   const text = SEARCH_COPY[uiLanguage];
@@ -1924,7 +1925,9 @@ const SpanishCompanyNetworkGraph = ({
   // A profile deep-link has already answered the search question. On a narrow
   // embedded canvas, showing the full desktop search/filter workbench above
   // the result leaves almost no room for the result itself.
-  const isCompactEmbed = embedded && isCompactViewport && Boolean(initialCompanyName);
+  const isCompactEmbed = embedded
+    && (isCompactViewport || forceCompactMode)
+    && Boolean(initialCompanyName);
   const compactDefaultsAppliedRef = useRef(false);
   const compactReadyTrackedRef = useRef(false);
 

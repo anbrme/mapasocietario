@@ -28,7 +28,6 @@ const AlertsManagePage = lazy(() => import('./components/AlertsManagePage'));
 import { FilterProvider } from './contexts/FilterProvider';
 import usePageTracking from './hooks/usePageTracking';
 import useAndroidBackButton from './hooks/useAndroidBackButton';
-import { isNativeApp } from './services/listedCompaniesNav';
 import './index.css';
 
 // Build marker, injected at build time from the git short SHA (see
@@ -167,13 +166,6 @@ if (ddSessionId && /^cs_(test|live|free)_[A-Za-z0-9_]{10,}$/.test(ddSessionId)) 
   } else {
     window.location.replace(`/order/${ddSessionId}`);
   }
-}
-
-// Native app launches land on the search screen, not the marketing landing
-// page. Rewrite (not redirect) only at launch so in-app navigation to "/"
-// (graph breadcrumb) still reaches the landing page with the other options.
-if (isNativeApp() && window.location.pathname === '/') {
-  window.history.replaceState(null, '', '/app/');
 }
 
 // A lazily-imported route chunk (DueDiligence, Pricing, OrderStatus, …) can
