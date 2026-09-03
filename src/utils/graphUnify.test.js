@@ -383,3 +383,33 @@ describe('mergeCargoIntoCompanyNode — non-cargo edges on the officer node', ()
     expect(twice.nodes).toHaveLength(once.nodes.length);
   });
 });
+
+// Which cargo targets did THIS unify introduce? The link-shape heuristic gets it
+// wrong when the unify runs from the officer side: there the cargo companies were
+// already on the canvas (they ARE the officer search result) and their only edges
+// ran through the officer node, so nothing marks them as independent. The caller
+// knows the truth — it can hand over the node ids that existed beforehand.
+describe('mergeCargoIntoCompanyNode — preexistingNodeIds', () => {
+  it('never tags a cargo target that was already on the canvas', () => {
+    const out = mergeCargoIntoCompanyNode(baseGraph(), 'company:acme', 'officer-acme-sa', {
+      preexistingNodeIds: new Set(['company:acme', 'officer-acme-sa', 'company:target-a']),
+    });
+    expect(out.nodes.find((n) => n.id === 'company:target-a').__cargoUnifyFor).toBeUndefined();
+    // target-b was NOT on the canvas before — this unify brought it in.
+    expect(out.nodes.find((n) => n.id === 'company:target-b').__cargoUnifyFor).toBe('company:acme');
+  });
+
+  it('undo keeps the pre-existing cargo companies and drops only the ones it introduced', () => {
+    const merged = mergeCargoIntoCompanyNode(baseGraph(), 'company:acme', 'officer-acme-sa', {
+      preexistingNodeIds: new Set(['company:acme', 'officer-acme-sa', 'company:target-a']),
+    });
+    const undone = undoCargoUnify(merged, 'company:acme');
+    expect(undone.nodes.map((n) => n.id)).toContain('company:target-a');
+    expect(undone.nodes.map((n) => n.id)).not.toContain('company:target-b');
+  });
+
+  it('falls back to the link-shape heuristic when no set is given', () => {
+    const out = mergeCargoIntoCompanyNode(baseGraph(), 'company:acme', 'officer-acme-sa');
+    expect(out.nodes.find((n) => n.id === 'company:target-a').__cargoUnifyFor).toBe('company:acme');
+  });
+});

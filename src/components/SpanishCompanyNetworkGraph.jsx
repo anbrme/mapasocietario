@@ -91,7 +91,7 @@ import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { hasIncoherentCapital } from '../utils/capitalCoherence';
 import { latestEventType } from '../utils/latestEventType';
-import { normalizeCompanyName, displayCompanyName } from '../utils/companyName';
+import { normalizeCompanyName, displayCompanyName, isSameUnifiableEntity } from '../utils/companyName';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
 import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
 import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
@@ -1487,6 +1487,13 @@ const SpanishCompanyNetworkGraph = ({
 
   // Graph state
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+  // Latest graph, for callbacks that must read the canvas as it stood BEFORE
+  // they start adding to it — the unify paths, which may only mark for deletion
+  // the nodes they themselves introduced. See mergeCargoIntoCompanyNode.
+  const graphDataRef = useRef(graphData);
+  useEffect(() => {
+    graphDataRef.current = graphData;
+  }, [graphData]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const fgRef = useRef();
@@ -4239,6 +4246,9 @@ const SpanishCompanyNetworkGraph = ({
     setIsLoading(true);
     setIsUnifying(true);
     setError(null);
+    // Everything on the canvas right now predates this unify, so undo must
+    // never delete it — only the cargo nodes the reverse lookup is about to add.
+    const preexistingNodeIds = new Set(graphDataRef.current.nodes.map(n => n.id));
     try {
       const data = await spanishCompaniesService.expandOfficerV3(companyName);
       if (data.success && Array.isArray(data.officers) && data.officers.length > 0) {
@@ -4246,7 +4256,9 @@ const SpanishCompanyNetworkGraph = ({
         await addOfficerToGraph(data.officers, companyName);
         const officerNodeId = officerIdFor(companyName);
         // Relocate those cargo links onto the company node and drop the officer node.
-        setGraphData(prev => mergeCargoIntoCompanyNode(prev, companyNodeId, officerNodeId));
+        setGraphData(prev =>
+          mergeCargoIntoCompanyNode(prev, companyNodeId, officerNodeId, { preexistingNodeIds })
+        );
         // Bring the new cargo nodes into view. In a restored layout every
         // existing node is pinned, so the additions spawn at the centroid and
         // can sit outside the current viewport. Fit once early, and again once
@@ -4583,49 +4595,144 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates]);
 
+  // Load a company's OWN registry record (board + sole shareholder) into the
+  // graph, anchored at `anchorNode`. Shared by the company double-click and by
+  // the corporate-officer promotion below, which needs the identical fetch for
+  // an entity the graph currently holds as an officer node.
+  // Returns { loaded, isDissolved }.
+  const loadCompanyRecordIntoGraph = useCallback(
+    async (rawName, anchorNode, groupKeyHint = null) => {
+      const companyName = (rawName || '').trim();
+      if (!companyName) return { loaded: false, isDissolved: false };
+      // Use borme_companies_v3 for clean, pre-aggregated officers with
+      // explicit active/resigned status. Resolve a stable group_key first
+      // (preferring one already on the node) so an ambiguous name binds to the
+      // correct entity rather than a fuzzy-name match.
+      const groupKey = await spanishCompaniesService.resolveCompanyGroupKey(
+        companyName,
+        groupKeyHint
+      );
+      const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName, { groupKey });
+      if (!v3.company) return { loaded: false, isDissolved: false };
+
+      const company = await applyPendingOfficerEvents(v3.company);
+      const baseEntries = await v3DocsToCappedEntries([company], officersPerCompany);
+      const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
+      await addCompanyWithOfficersToGraph(entries, anchorNode, aliasMap);
+      return { loaded: true, isDissolved: !!v3.company.is_dissolved };
+    },
+    [addCompanyWithOfficersToGraph, fetchWithNameChangeRelations, officersPerCompany]
+  );
+
   // Expand company node to show its officers
   const expandCompanyNode = useCallback(
     async companyNode => {
       try {
-        const companyName = companyNode.name.trim();
-        // Use borme_companies_v3 for clean, pre-aggregated officers with
-        // explicit active/resigned status. Resolve a stable group_key first
-        // (preferring one already on the node) so an ambiguous name binds to the
-        // correct entity rather than a fuzzy-name match.
-        const groupKey = await spanishCompaniesService.resolveCompanyGroupKey(
-          companyName,
+        const { loaded, isDissolved } = await loadCompanyRecordIntoGraph(
+          companyNode.name,
+          companyNode,
           companyNode.groupKey || null
         );
-        const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName, { groupKey });
-        if (v3.company) {
-          const company = await applyPendingOfficerEvents(v3.company);
-          const baseEntries = await v3DocsToCappedEntries([company], officersPerCompany);
-          const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
-          await addCompanyWithOfficersToGraph(entries, companyNode, aliasMap);
-          // Stamp isDissolved on the company node so enrichLinksWithEventDates can
-          // mark its officer links as companyDissolved (mirrors handleSearch path).
-          if (v3.company.is_dissolved) {
-            const nodeId = companyNode.id;
-            setGraphData(prev => {
-              const nextNodes = prev.nodes.map(n =>
-                n.id === nodeId && !n.isDissolved ? { ...n, isDissolved: true } : n
-              );
-              return {
-                ...prev,
-                nodes: nextNodes,
-                links: rebindLinksAfterNodeUpdate(prev.links, prev.nodes, nextNodes),
-              };
-            });
-          }
-          return true;
+        if (!loaded) return false;
+        // Stamp isDissolved on the company node so enrichLinksWithEventDates can
+        // mark its officer links as companyDissolved (mirrors handleSearch path).
+        if (isDissolved) {
+          const nodeId = companyNode.id;
+          setGraphData(prev => {
+            const nextNodes = prev.nodes.map(n =>
+              n.id === nodeId && !n.isDissolved ? { ...n, isDissolved: true } : n
+            );
+            return {
+              ...prev,
+              nodes: nextNodes,
+              links: rebindLinksAfterNodeUpdate(prev.links, prev.nodes, nextNodes),
+            };
+          });
         }
-        return false;
+        return true;
       } catch (err) {
         console.error('Error expanding company node:', err);
         return false;
       }
     },
-    [addCompanyWithOfficersToGraph, fetchWithNameChangeRelations, officersPerCompany]
+    [loadCompanyRecordIntoGraph]
+  );
+
+  // Expand a node that is a COMPANY the graph currently draws as an officer —
+  // an audit firm, a corporate administrador, a holding sitting on a board.
+  //
+  // Expanding it as an officer alone answers "where else does it hold a seat?"
+  // and stops there: its own board and its sole shareholder are never fetched,
+  // because that side of the entity lives in a company node the graph has not
+  // loaded. So run BOTH lookups and fold the officer node into the company node
+  // — the same one-node end state "Unificar cargos" produces from the company
+  // side, reached from the officer side.
+  const expandCorporateOfficerNode = useCallback(
+    async officerNode => {
+      const entityName = (officerNode.name || '').trim();
+      // The canvas as it stands BEFORE this expansion adds anything: the cargo
+      // companies already here are the user's graph, and undoing the fold must
+      // never delete them (they are typically the officer search that put this
+      // node on screen in the first place).
+      const preexistingNodeIds = new Set(graphDataRef.current.nodes.map(n => n.id));
+      // Seats it holds elsewhere: the existing reverse lookup, unchanged.
+      const heldSeats = await expandOfficerNode(officerNode);
+
+      let ownRecord = false;
+      try {
+        const { loaded, isDissolved } = await loadCompanyRecordIntoGraph(
+          entityName,
+          officerNode,
+          officerNode.groupKey || null
+        );
+        ownRecord = loaded;
+        if (loaded) {
+          const officerNodeId = officerNode.id;
+          setGraphData(prev => {
+            // The company node just loaded — or one already on the canvas for
+            // the same entity, which is precisely the duplicate this folds away.
+            const companyNode = prev.nodes.find(
+              n => n.type !== 'officer' && isSameUnifiableEntity(n.name, entityName)
+            );
+            if (!companyNode) return prev;
+            const merged = mergeCargoIntoCompanyNode(prev, companyNode.id, officerNodeId, {
+              preexistingNodeIds,
+            });
+            return {
+              ...merged,
+              nodes: merged.nodes.map(n =>
+                n.id === companyNode.id
+                  ? {
+                      ...n,
+                      expanded: true,
+                      // This fold IS the expansion, not a view the user chose,
+                      // so it is not offered back as "Deshacer fusión": undoing
+                      // it would half-undo the double-click.
+                      promotedFromOfficer: true,
+                      ...(isDissolved && { isDissolved: true }),
+                    }
+                  : n
+              ),
+            };
+          });
+          // The officer node no longer exists — drop any pin it held.
+          setPinnedNodeIds(prev => {
+            if (!prev.has(officerNodeId)) return prev;
+            const next = new Set(prev);
+            next.delete(officerNodeId);
+            return next;
+          });
+        }
+      } catch (err) {
+        // The entity may hold seats without its own doc in the company index
+        // (a foreign parent, a name the registry never published as a company).
+        // The officer expansion above still stands — never sink it.
+        console.error('Error loading corporate officer own record:', err);
+      }
+
+      return heldSeats || ownRecord;
+    },
+    [expandOfficerNode, loadCompanyRecordIntoGraph]
   );
 
   // Expand a node (called on double-click)
@@ -4646,7 +4753,10 @@ const SpanishCompanyNetworkGraph = ({
         let found = false;
 
         if (node.type === 'officer') {
-          found = await expandOfficerNode(node);
+          // A company holding a seat is still a company: expand both sides.
+          found = isCompanyOfficer(node.name || '')
+            ? await expandCorporateOfficerNode(node)
+            : await expandOfficerNode(node);
         } else if (node.type === 'company' || node.type === 'spanish-company-group') {
           found = await expandCompanyNode(node);
         }
@@ -4681,7 +4791,15 @@ const SpanishCompanyNetworkGraph = ({
         setIsLoading(false);
       }
     },
-    [expandOfficerNode, expandCompanyNode, graphInteractionParams, isCompactEmbed, text]
+    [
+      expandOfficerNode,
+      expandCorporateOfficerNode,
+      expandCompanyNode,
+      isCompanyOfficer,
+      graphInteractionParams,
+      isCompactEmbed,
+      text,
+    ]
   );
 
   // handleNodeClick is defined after handleNodeRightClick (below) for mobile touch support
@@ -4711,9 +4829,12 @@ const SpanishCompanyNetworkGraph = ({
   // presence (cargoCount > 0) waiting to be unified. A unified node takes
   // precedence. `.unified` on the returned node tells the toggle which way it sits,
   // so one control both unifies and undoes — re-toggleable, never disappears.
+  //
+  // A node promoted by double-clicking a corporate officer is skipped: its fold is
+  // the expansion itself, so there is nothing to toggle back to.
   const cargoToggleNode = React.useMemo(
     () =>
-      graphData.nodes.find(n => n.unified) ||
+      graphData.nodes.find(n => n.unified && !n.promotedFromOfficer) ||
       graphData.nodes.find(n => n.type !== 'officer' && n.cargoCount > 0) ||
       null,
     [graphData.nodes]
@@ -7186,6 +7307,18 @@ const SpanishCompanyNetworkGraph = ({
       ctx.fill();
       ctx.restore();
       ctx.stroke();
+
+      // A UNIFIED node is two things at once: a company (the square) that also
+      // holds seats elsewhere (the officer circle). Draw the officer circle
+      // INSIDE the company square instead of replacing one shape with the
+      // other — the entity never stops reading as the officer it also is.
+      if (node.unified) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius * 0.95, 0, 2 * Math.PI, false);
+        ctx.strokeStyle = nodeColors.officer_company;
+        ctx.lineWidth = 1.75;
+        ctx.stroke();
+      }
 
       // Deputy/PEP chip on officer nodes that match a Congreso deputy.
       if (node.type === 'officer') {
@@ -10589,7 +10722,7 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.cargoBadge(contextNode.cargoCount)}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.unified && (
+          {contextNode && contextNode.unified && !contextNode.promotedFromOfficer && (
             <MenuItem
               onClick={() => {
                 runContextAction('undo_unify_cargos', () => {

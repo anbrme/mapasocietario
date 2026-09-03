@@ -18,6 +18,12 @@
  * already present in `graphData`; this helper then RELOCATES those links and drops
  * the now-redundant officer node. The cargo target company nodes are left in place.
  *
+ * The unify also runs in the OTHER direction — double-clicking a corporate officer
+ * node loads that entity's own registry record and folds the officer node into it —
+ * and there the officer node is long-lived, so it can carry edges that are not
+ * cargo (an ownership edge in either direction). Those are re-pointed at the company
+ * node too, untagged, since the entity is the same node now.
+ *
  * Pure & idempotent: applying it twice yields the same `{nodes, links}` (after the
  * first pass the officer node is gone, so the second pass is a no-op).
  */
@@ -35,9 +41,13 @@ const roleKey = (link) => (link && link.relationship ? String(link.relationship)
  * @param {{nodes: Array, links: Array}} graphData - current graph (post officer-expansion).
  * @param {string} companyNodeId - id of the loaded COMPANY node to unify onto.
  * @param {string} officerNodeId - id of the separate OFFICER node built by addOfficerToGraph.
+ * @param {{preexistingNodeIds?: Set<string>}} [options] - `preexistingNodeIds`: the node
+ *   ids already on the canvas before this unify started adding to it. Cargo targets in
+ *   that set are never tagged, so undo cannot delete a company the user already had.
+ *   Omitted, the link-shape heuristic below decides.
  * @returns {{nodes: Array, links: Array}} new graph with cargo edges re-attached to the company node.
  */
-export function mergeCargoIntoCompanyNode(graphData, companyNodeId, officerNodeId) {
+export function mergeCargoIntoCompanyNode(graphData, companyNodeId, officerNodeId, options) {
   const nodes = Array.isArray(graphData && graphData.nodes) ? graphData.nodes : [];
   const links = Array.isArray(graphData && graphData.links) ? graphData.links : [];
 
@@ -55,11 +65,21 @@ export function mergeCargoIntoCompanyNode(graphData, companyNodeId, officerNodeI
       idOf(l.target) !== companyNodeId
   );
 
-  // Everything that does NOT touch the officer node is kept verbatim. This drops
-  // the officer node's own edges (cargo edges are re-created below; any officer
-  // ownership edges are intentionally discarded with the node).
+  // Everything that does NOT touch the officer node is kept verbatim. The
+  // officer node's own edges are re-created below: cargo edges as relocated
+  // cargo, everything else (ownership in either direction) re-pointed at the
+  // company node — same entity, so an edge that reached the officer node must
+  // reach the company node, never vanish with the node.
   const keptLinks = links.filter(
     (l) => idOf(l.source) !== officerNodeId && idOf(l.target) !== officerNodeId
+  );
+
+  // Non-cargo edges on the officer node. A cargo edge that pointed back at the
+  // company itself is NOT in here (it is a self-loop and stays dropped).
+  const officerOtherLinks = links.filter(
+    (l) =>
+      (idOf(l.source) === officerNodeId || idOf(l.target) === officerNodeId) &&
+      !(l.type === 'officer-company' && idOf(l.source) === officerNodeId)
   );
 
   // Seed dedup with cargo edges already sourced at the company node so a repeat
@@ -94,18 +114,56 @@ export function mergeCargoIntoCompanyNode(graphData, companyNodeId, officerNodeI
     });
   });
 
-  // A cargo target company "existed independently" if it appears in a link that
-  // does NOT touch the officer node (keptLinks). Those we must NOT tag — undo must
-  // never delete them. Cargo targets that are reachable ONLY through the officer's
-  // cargo edges were introduced solely for this unify → tag them.
+  // Re-point the non-cargo edges. They are deliberately left UNTAGGED: undo
+  // restores the amber affordance but never brings the officer node back, so a
+  // tagged ownership edge would be deleted with nothing left to carry it. The
+  // ownership belongs to the entity, and the entity is now the company node.
+  const relocatedOther = [];
+  const edgeKey = (l, sourceId, targetId) =>
+    `${l.type || ''}::${sourceId}::${targetId}::${roleKey(l)}`;
+  const seenOther = new Set(
+    keptLinks.map((l) => edgeKey(l, idOf(l.source), idOf(l.target)))
+  );
+  officerOtherLinks.forEach((l) => {
+    const isOutbound = idOf(l.source) === officerNodeId;
+    const otherEnd = isOutbound ? l.target : l.source;
+    // Both ends resolve to the company node — the entity cannot own itself.
+    if (idOf(otherEnd) === companyNodeId) return;
+    const sourceId = isOutbound ? companyNodeId : idOf(l.source);
+    const targetId = isOutbound ? idOf(l.target) : companyNodeId;
+    const key = edgeKey(l, sourceId, targetId);
+    if (seenOther.has(key)) return;
+    seenOther.add(key);
+    const suffix = (l.type || 'link').replace(/[^a-z0-9]/gi, '') || 'link';
+    relocatedOther.push({
+      ...l,
+      id: `${suffix}-${sourceId}-${targetId}`,
+      ...(isOutbound ? { source: companyNodeId } : { target: companyNodeId }),
+    });
+  });
+
+  // Which cargo targets did THIS unify introduce? Only those may be tagged, since
+  // undo deletes what it tagged. When the caller passes the ids that were on the
+  // canvas beforehand, that answer is exact. The link-shape fallback — "reachable
+  // only through the officer node" — is right when the officer node and its cargo
+  // nodes were built by the unify itself, but wrong when the unify runs from the
+  // officer side: there the cargo companies ARE the officer search result, and
+  // their only edges run through the officer node, so nothing marks them.
+  const preexistingNodeIds = options && options.preexistingNodeIds;
   const cargoTargetIds = new Set(officerCargoLinks.map((l) => idOf(l.target)));
   const independentlyConnected = new Set();
-  keptLinks.forEach((l) => {
-    const s = idOf(l.source);
-    const t = idOf(l.target);
-    if (cargoTargetIds.has(s)) independentlyConnected.add(s);
-    if (cargoTargetIds.has(t)) independentlyConnected.add(t);
-  });
+  if (preexistingNodeIds) {
+    cargoTargetIds.forEach((id) => {
+      if (preexistingNodeIds.has(id)) independentlyConnected.add(id);
+    });
+  } else {
+    keptLinks.forEach((l) => {
+      const s = idOf(l.source);
+      const t = idOf(l.target);
+      if (cargoTargetIds.has(s)) independentlyConnected.add(s);
+      if (cargoTargetIds.has(t)) independentlyConnected.add(t);
+    });
+  }
 
   const newNodes = nodes
     .filter((n) => n.id !== officerNodeId)
@@ -129,7 +187,7 @@ export function mergeCargoIntoCompanyNode(graphData, companyNodeId, officerNodeI
       return n;
     });
 
-  return { nodes: newNodes, links: [...keptLinks, ...relocated] };
+  return { nodes: newNodes, links: [...keptLinks, ...relocated, ...relocatedOther] };
 }
 
 /**
