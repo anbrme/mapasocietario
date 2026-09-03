@@ -2855,16 +2855,18 @@ const SpanishCompanyNetworkGraph = ({
               pinnedIds.push(companyId);
               setPinnedNodeIds(prev => new Set([...prev, companyId]));
             });
-            // Make the searched company card visible as soon as the graph first
-            // renders. Subsequent node clicks still replace this selection, so
-            // every company remains directly inspectable without auto-opening a
-            // modal or navigating away.
+            // Desktop keeps the searched company selected so its inspector is
+            // immediately available. Compact mobile starts with an unobstructed
+            // graph instead: its bottom sheet is a deliberate tap-a-node action,
+            // not part of the initial result load.
             const firstLoadedName = normalizeCompanyName(
               merged[0].name || merged[0].company_name || ''
             );
             const resolvedFirstName =
               aliasMap?.get(firstLoadedName.toUpperCase()) || firstLoadedName;
-            setActiveNodeId(companyNameToId(resolvedFirstName));
+            if (!isCompactEmbed) {
+              setActiveNodeId(companyNameToId(resolvedFirstName));
+            }
             // Build a map of nodeId→isDissolved from the raw v3 results so we can
             // stamp the dissolved flag on company graph nodes. This is the only
             // point in the search path where is_dissolved is available without an
