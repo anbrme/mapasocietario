@@ -424,8 +424,11 @@ const T = {
     subsEmpty: 'Sin subvenciones públicas registradas para este NIF.',
     subsError: 'No se pudieron cargar las subvenciones.',
     subsRetry: 'Reintentar',
-    subsTotalShown: 'Total de las concesiones mostradas',
+    subsTotal: 'Total de las concesiones',
+    subsTotalPartial: 'Total de las {0} concesiones sumadas',
     subsTotalCount: 'concesiones en total',
+    subsRules: 'Bases reguladoras',
+    subsRulesTitle: 'Norma que regula la convocatoria. No menciona a la empresa.',
     subsThAmount: 'Importe',
     subsThBody: 'Órgano concedente',
     subsThProgramme: 'Convocatoria',
@@ -688,8 +691,11 @@ const T = {
     subsEmpty: 'No public subsidies on record for this tax ID.',
     subsError: 'Could not load the subsidies.',
     subsRetry: 'Retry',
-    subsTotalShown: 'Total of the awards shown',
+    subsTotal: 'Total of the awards',
+    subsTotalPartial: 'Total of the {0} awards summed',
     subsTotalCount: 'awards in total',
+    subsRules: 'Scheme rules',
+    subsRulesTitle: 'The regulation governing the scheme. It does not name the company.',
     subsThAmount: 'Amount',
     subsThBody: 'Granting body',
     subsThProgramme: 'Programme',
@@ -1843,8 +1849,11 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
       empty: t.subsEmpty,
       error: t.subsError,
       retry: t.subsRetry,
-      totalShown: t.subsTotalShown,
+      total: t.subsTotal,
+      totalPartial: t.subsTotalPartial,
       totalCount: t.subsTotalCount,
+      rules: t.subsRules,
+      rulesTitle: t.subsRulesTitle,
       thDate: t.thDate,
       thAmount: t.subsThAmount,
       thBody: t.subsThBody,
@@ -1878,7 +1887,15 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
             var list=j.concessions||[];
             if(!list.length){note(L.empty);return}
             var sum=document.createElement('p');sum.className='more';
-            sum.textContent=L.totalShown+': '+eur(j.total_amount_shown||0)+' \\u00b7 '+j.count+' '+L.totalCount;
+            // The sum used to cover only the rows on screen while the count
+            // beside it covered the whole register -- Mercadona read
+            // "32,804,904 EUR . 23 awards" over a sum of 20. The backend now
+            // walks the pages and says how many awards the figure covers, so
+            // the label only claims partiality when the page cap actually bit.
+            var covers=typeof j.amount_covers==='number'?j.amount_covers:null;
+            var partial=covers!==null&&typeof j.count==='number'&&covers<j.count;
+            var lead=partial?L.totalPartial.replace('{0}',String(covers)):L.total;
+            sum.textContent=lead+': '+eur(j.total_amount_shown||0)+' \\u00b7 '+j.count+' '+L.totalCount;
             body.appendChild(sum);
             var table=document.createElement('table');table.className='t';
             var thead=document.createElement('thead');var trh=document.createElement('tr');
@@ -1891,9 +1908,27 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
                 var td=document.createElement('td');td.textContent=v;tr.appendChild(td)});
               var tdP=document.createElement('td');
               var label=c.programme||c.instrument||'';
-              if(c.source_url&&/^https?:\\/\\//.test(c.source_url)){
-                var a=document.createElement('a');a.href=c.source_url;a.rel='nofollow noopener';a.target='_blank';a.textContent=label;tdP.appendChild(a);
-              }else{tdP.textContent=label}
+              // The row title links to the convocatoria, the SNPSAP record
+              // for the scheme this award came from -- one click from its
+              // beneficiary list. It used to link to urlBR,
+              // the scheme's enabling regulation: identical for every
+              // beneficiary and naming none, so a reader following it from a
+              // Mercadona row landed on Real Decreto 147/2019 and found no
+              // Mercadona. The origin is re-checked here as well as in the
+              // backend -- the last hop before the DOM is the one that
+              // actually decides where a reader goes (see _awards.js).
+              if(c.convocatoria_url&&c.convocatoria_url.indexOf('https://www.infosubvenciones.es/')===0){
+                var a=document.createElement('a');a.href=c.convocatoria_url;a.rel='nofollow noopener';a.target='_blank';a.textContent=label;tdP.appendChild(a);
+              }else{tdP.appendChild(document.createTextNode(label))}
+              // The regulation is still worth reaching, but only under a label
+              // that says what it is.
+              if(c.rules_url&&/^https?:\\/\\//.test(c.rules_url)){
+                var rw=document.createElement('span');rw.className='muted';
+                rw.appendChild(document.createTextNode(' \\u00b7 '));
+                var rl=document.createElement('a');rl.href=c.rules_url;rl.rel='nofollow noopener';rl.target='_blank';
+                rl.textContent=L.rules;rl.title=L.rulesTitle;
+                rw.appendChild(rl);tdP.appendChild(rw);
+              }
               tr.appendChild(tdP);tbody.appendChild(tr);
             });
             table.appendChild(tbody);body.appendChild(table);
