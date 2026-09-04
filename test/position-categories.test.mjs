@@ -48,6 +48,29 @@ test('board-family abbreviations map to their categories (Telefónica regression
   }
 });
 
+test('fused dot-less organ forms map to Vocal / Comisión', () => {
+  // The registry runs "<role> DE comité <x>" together with no separator, so
+  // ORGAN_CONTEXT finds no COM / C.AUD token — only the fused rule catches them.
+  // Backend twin: tests_position_categories.py.
+  for (const pos of ['MICOAUDI', 'MECONORE', 'MICORIES', 'SECOAUDI', 'SECONORE',
+                     'MIECONSOCGER', 'MIEMCONSASE', 'SECORIES', 'MICOEMPA',
+                     'SECOEMPA', 'PRECOMAUDIT', 'PRECOAUDI', 'PRECOMNOMRE']) {
+    assert.equal(positionCategoryFor(pos), 'Vocal / Comisión', pos);
+  }
+});
+
+test('fused-form lookalikes are NOT organ roles', () => {
+  // One character away from the codes above: the member/secretary prefix must be
+  // followed IMMEDIATELY by CO. mancomunado = joint-signing regime, mediador
+  // concursal = insolvency mediator, síndico = bankruptcy trustee.
+  for (const [pos, cat] of [['MANCOM.', 'Otros'], ['MED.CONCUSAL', 'Otros'],
+                            ['MEDIAD.CONCU', 'Otros'], ['SINDICO', 'Otros'],
+                            ['MIEMBRO', 'Otros'], ['SECRETARIO', 'Secretario'],
+                            ['SECR.NO CONS', 'Secretario'], ['SEC.CONSEJO', 'Secretario']]) {
+    assert.equal(positionCategoryFor(pos), cat, pos);
+  }
+});
+
 test('comisión / junta organ roles map to Vocal / Comisión', () => {
   // Chairs, vice-chairs, secretaries, members and suplentes OF an organ
   // (comisión, junta directiva, consejo rector) are organ roles, not

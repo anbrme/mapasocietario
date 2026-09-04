@@ -54,7 +54,15 @@ export const positionCategoryFor = pos => {
   // "COMS.SEGUIM.") and fused chair/secretary forms (PRECOMAUDIT, SECOAUDI)
   // are organ roles too.
   if (/^COMS?[.\s]/.test(p)) return 'Vocal / Comisión';
-  if (/^(PRE|SEC|VP|VS)CO/.test(p)) return 'Vocal / Comisión';
+  // Fused (dot-less) organ forms: the registry runs "presidente/secretario/
+  // miembro DE comité …" together with no separator, so ORGAN_CONTEXT's COM /
+  // C.AUD tokens never fire — PRECOMAUDIT, SECOAUDI, MICOAUDI, MECONORE. Every
+  // SEPARATED variant (M.Com.Ej, Mie.Com.Ejcr, Mro.Coms.Ctr) already resolves via
+  // COM. The member-side prefixes (MI/MIE/MIEM/ME = miembro) must be followed
+  // IMMEDIATELY by CO, which is what keeps the lookalikes MANCOM. (mancomunado)
+  // and MED.CONCUSAL (mediador concursal) out. Keep in lockstep with the backend
+  // port borme_v3_enricher/position_categories.py.
+  if (/^(PRE|SEC|SE|VP|VS|MI|MIE|MIEM|ME)CO/.test(p)) return 'Vocal / Comisión';
   if (
     ORGAN_CONTEXT.test(p) &&
     ORGAN_ROLE_PREFIX.test(p) &&
