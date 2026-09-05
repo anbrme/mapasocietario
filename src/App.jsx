@@ -14,7 +14,7 @@ import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph'
 import { ThemeModeToggle } from './theme/ThemeModeToggle';
 import { DATA_MAINTENANCE } from './config/dataMaintenance';
 import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
-import { openListedCompanies } from './services/listedCompaniesNav';
+import { isNativeApp, openListedCompanies } from './services/listedCompaniesNav';
 import { trackEvent, trackUserManualDownload } from './utils/track';
 import {
   getBrowserLanguage,
@@ -353,6 +353,7 @@ export default function App() {
         initialGroupKey={initialGroupKey}
         language={language}
         entrySource={graphEntrySource}
+        forceCompactMode={isNativeApp()}
       />
     </Box>
   );

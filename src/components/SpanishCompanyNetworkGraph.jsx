@@ -92,6 +92,7 @@ import { extractVisibleScope } from '../utils/relationshipScope';
 import { hasIncoherentCapital } from '../utils/capitalCoherence';
 import { latestEventType } from '../utils/latestEventType';
 import { normalizeCompanyName, displayCompanyName, isSameUnifiableEntity } from '../utils/companyName';
+import { mobileGraphMode } from '../utils/mobileGraphMode';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
 import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
 import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
@@ -1929,14 +1930,31 @@ const SpanishCompanyNetworkGraph = ({
 
   const theme = useTheme();
   const isCompactViewport = useMediaQuery('(max-width:1023px)');
-  // A profile deep-link has already answered the search question. On a narrow
-  // embedded canvas, showing the full desktop search/filter workbench above
-  // the result leaves almost no room for the result itself.
-  const isCompactEmbed = embedded
-    && (isCompactViewport || forceCompactMode)
-    && Boolean(initialCompanyName);
+  // A narrow embedded canvas becomes the compact graph as soon as it has a
+  // result. This covers both deep links (which arrive with initialCompanyName)
+  // and a selection made from the initially-empty /app search screen. Keep the
+  // search panel only while that canvas is empty.
+  const {
+    active: isCompactEmbed,
+    allowAutomaticPanels,
+  } = mobileGraphMode({
+    embedded,
+    compactViewport: isCompactViewport,
+    forceCompactMode,
+    initialCompanyName,
+    nodeCount: graphData.nodes.length,
+  });
   const compactDefaultsAppliedRef = useRef(false);
   const compactReadyTrackedRef = useRef(false);
+
+  // A search that begins in the full empty-state workbench can queue the
+  // desktop inspector in the same turn that its first result switches the
+  // canvas into compact mode. Clear that queued state on the transition. This
+  // does not interfere with an inspector the user explicitly opens later by
+  // tapping a node, because isCompactEmbed remains true after the transition.
+  useEffect(() => {
+    if (isCompactEmbed) closeInspector();
+  }, [closeInspector, isCompactEmbed]);
 
   useEffect(() => {
     if (!isCompactEmbed || compactDefaultsAppliedRef.current) return;
@@ -2864,7 +2882,7 @@ const SpanishCompanyNetworkGraph = ({
             );
             const resolvedFirstName =
               aliasMap?.get(firstLoadedName.toUpperCase()) || firstLoadedName;
-            if (!isCompactEmbed) {
+            if (allowAutomaticPanels) {
               setActiveNodeId(companyNameToId(resolvedFirstName));
             }
             // Build a map of nodeId→isDissolved from the raw v3 results so we can
@@ -8533,7 +8551,7 @@ const SpanishCompanyNetworkGraph = ({
     setSearchQuery(displayName);
     await handleSearch(searchKey, true, 'company', value.id || null);
 
-    // Open the inspector on the company the user just asked for. Everything we
+    // On desktop, open the inspector on the company the user just asked for. Everything we
     // sell lives in its footer — the priced DD button, the data-quality
     // guarantee and the sample PDF — but it only opened on a second, separate
     // click on the node. Over the 28 days to 2026-08-20, 94 users selected a
@@ -8554,11 +8572,15 @@ const SpanishCompanyNetworkGraph = ({
     const previewName = (value.has_new_name && value.new_company_name)
       ? value.new_company_name
       : displayName;
-    openDataPreview({
-      name: previewName,
-      type: 'spanish-company-group',
-      groupKey: value.id || null,
-    });
+    // Compact mobile deliberately starts with the unobstructed graph. Its
+    // inspector is opened by the next explicit tap on a node.
+    if (allowAutomaticPanels) {
+      openDataPreview({
+        name: previewName,
+        type: 'spanish-company-group',
+        groupKey: value.id || null,
+      });
+    }
   };
 
   // Shared search panel content
@@ -10941,7 +10963,15 @@ const SpanishCompanyNetworkGraph = ({
         />
 
         <Ibex35MarketSidebar
-          open={Boolean(focusedIbexSeed) && !snapshotMode && !ibexSidebarDismissed && !apoderadosSidebar.open && !previewOpen && !isAndroidNativeApp()}
+          open={Boolean(focusedIbexSeed)
+            && !snapshotMode
+            && !ibexSidebarDismissed
+            && !apoderadosSidebar.open
+            && !previewOpen
+            // Market data is useful context on desktop, but auto-opening its
+            // sidebar covers most of a phone canvas before the graph is ready.
+            // Compact/mobile surfaces keep it opt-in.
+            && allowAutomaticPanels}
           seedEntry={focusedIbexSeed}
           lang={uiLanguage}
           onClose={() => setIbexSidebarDismissed(true)}
