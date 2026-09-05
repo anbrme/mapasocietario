@@ -47,6 +47,10 @@ export default function MonitorRequestDialog({
   open,
   onClose,
   companyName,
+  // The node's entity-assembly key, when it has one. Passed straight through:
+  // it is what lets the resulting alert be reopened as the RIGHT company later,
+  // which the display name cannot guarantee. Absent is normal, never an error.
+  groupKey = null,
   jurisdiction = 'ES',
   language = 'en',
 }) {
@@ -67,7 +71,7 @@ export default function MonitorRequestDialog({
     setState('sending');
     setErrorKey(null);
     try {
-      await requestMonitoring({ email, entityName: companyName, jurisdiction });
+      await requestMonitoring({ email, entityName: companyName, jurisdiction, groupKey });
       trackEvent('monitor_request_sent', { language });
       setState('sent');
     } catch (e) {

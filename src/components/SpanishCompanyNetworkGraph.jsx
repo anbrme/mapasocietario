@@ -1620,6 +1620,8 @@ const SpanishCompanyNetworkGraph = ({
   const [nodeContextMenu, setNodeContextMenu] = useState(null); // { mouseX, mouseY, nodeId }
   // Company whose monitoring dialog is open, or null. Held separately from
   // contextNode because the menu closes the moment the dialog opens.
+  // { name, groupKey } | null — the key rides along so the alert this creates
+  // can be reopened as the right company, which the name alone cannot promise.
   const [monitorCompany, setMonitorCompany] = useState(null);
   const [investigationSet, setInvestigationSet] = useState(() => new Set());
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -10581,7 +10583,8 @@ const SpanishCompanyNetworkGraph = ({
 
         <MonitorRequestDialog
           open={!!monitorCompany}
-          companyName={monitorCompany || ''}
+          companyName={monitorCompany?.name || ''}
+          groupKey={monitorCompany?.groupKey || null}
           language={uiLanguage}
           onClose={() => setMonitorCompany(null)}
         />
@@ -10689,7 +10692,10 @@ const SpanishCompanyNetworkGraph = ({
             <MenuItem
               onClick={() => {
                 trackGraphToolbarAction('monitor_request');
-                setMonitorCompany(contextNode.name);
+                setMonitorCompany({
+                  name: contextNode.name,
+                  groupKey: contextNode.groupKey || null,
+                });
                 closeNodeContextMenu();
               }}
             >
