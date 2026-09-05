@@ -262,6 +262,54 @@ describe('requestMonitoring group_key', () => {
   });
 });
 
+describe('watchlistSeeds change counting', () => {
+  // What makes the link worth reopening. "Since you last looked" is measured
+  // against last_viewed_at, which the backend stamps on read and reports as
+  // the PREVIOUS visit — so the first time a set is opened after a change,
+  // that change is still counted.
+
+  const view = (lastViewedAt, events) => ({
+    watchlists: [{ id: 5, label: 'P', last_viewed_at: lastViewedAt }],
+    alerts: [{
+      entity_name: 'ACME SL', group_key: 'H:M-1', active: true,
+      watchlist_id: 5, events,
+    }],
+  });
+
+  test('counts only events detected after the last visit', () => {
+    const seeds = watchlistSeeds(view('2026-09-01T00:00:00Z', [
+      { detected_at: '2026-09-03T00:00:00Z', title: 'new' },
+      { detected_at: '2026-08-20T00:00:00Z', title: 'old' },
+    ]), 5);
+    expect(seeds[0].changeCount).toBe(1);
+  });
+
+  test('a set never opened counts every event', () => {
+    // last_viewed_at is null until the first visit. Treating that as "nothing
+    // is new" would hide the very changes that arrived while they waited.
+    const seeds = watchlistSeeds(view(null, [
+      { detected_at: '2026-09-03T00:00:00Z' },
+      { detected_at: '2026-08-20T00:00:00Z' },
+    ]), 5);
+    expect(seeds[0].changeCount).toBe(2);
+  });
+
+  test('a quiet company reports zero, not undefined', () => {
+    const seeds = watchlistSeeds(view('2026-09-01T00:00:00Z', []), 5);
+    expect(seeds[0].changeCount).toBe(0);
+  });
+
+  test('an unparseable date is counted as new rather than dropped', () => {
+    // Silently discarding a filing because its timestamp was malformed is the
+    // one failure this must not have: the reader would be told nothing
+    // happened when something did.
+    const seeds = watchlistSeeds(view('2026-09-01T00:00:00Z', [
+      { detected_at: 'not-a-date' },
+    ]), 5);
+    expect(seeds[0].changeCount).toBe(1);
+  });
+});
+
 describe('requestWatchlist', () => {
   const twoCompanies = [
     { name: 'TELEFONICA SA', groupKey: 'H:M-1234' },

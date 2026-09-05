@@ -268,10 +268,48 @@ export async function fetchWatchlistView(token) {
  */
 export function watchlistSeeds(view, watchlistId = null) {
   const alerts = Array.isArray(view?.alerts) ? view.alerts : [];
+  const lastViewedAt = lastViewedFor(view, watchlistId);
   return alerts
     .filter(a => a && a.active && a.group_key)
     .filter(a => watchlistId == null || a.watchlist_id === watchlistId)
-    .map(a => ({ name: a.entity_name, groupKey: a.group_key }));
+    .map(a => ({
+      name: a.entity_name,
+      groupKey: a.group_key,
+      changeCount: countSince(a.events, lastViewedAt),
+    }));
+}
+
+/**
+ * When this set was last opened, as epoch ms, or null if never.
+ *
+ * The backend stamps last_viewed_at on read but reports the PREVIOUS visit,
+ * so a change that arrived between two visits is still counted on the second.
+ */
+function lastViewedFor(view, watchlistId) {
+  const lists = Array.isArray(view?.watchlists) ? view.watchlists : [];
+  const match = watchlistId == null ? lists[0] : lists.find(w => w?.id === watchlistId);
+  const parsed = Date.parse(match?.last_viewed_at ?? '');
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * How many filings arrived since a moment.
+ *
+ * Two deliberate leniencies, both erring toward showing a change rather than
+ * hiding one. A set never opened (null) counts everything, because treating
+ * "no visit yet" as "nothing is new" would hide exactly the changes that
+ * accumulated while the reader waited. And an unparseable timestamp counts as
+ * new: silently dropping a filing because its date was malformed would tell
+ * someone nothing happened when something did, which is the one failure this
+ * cannot have.
+ */
+function countSince(events, sinceMs) {
+  if (!Array.isArray(events)) return 0;
+  if (sinceMs == null) return events.length;
+  return events.filter(e => {
+    const at = Date.parse(e?.detected_at ?? '');
+    return Number.isNaN(at) || at > sinceMs;
+  }).length;
 }
 
 // Mirrors MAX_WATCHLIST_COMPANIES in the backend. Duplicated deliberately: the

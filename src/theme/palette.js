@@ -72,7 +72,7 @@ export const DARK_TOKENS = deepFreeze({
       cargoText: '#1a1206',
     },
     chip: { active: '#f59e0b', former: '#9ca3af', outline: '#ffffff' },
-    ring: { investigation: '#7c4dff', merged: '#f59e0b' },
+    ring: { investigation: '#7c4dff', merged: '#f59e0b', changed: '#22d3ee' },
     marker: { noteOutline: '#f8fafc', noteGlyph: '#0f172a' },
     noteFlag: {
       none: '#94a3b8',
@@ -138,7 +138,7 @@ export const LIGHT_TOKENS = deepFreeze({
     // outline that pops on the light canvas" the note marker already
     // solved this with (final review, finding 5).
     chip: { active: '#b45309', former: '#64748b', outline: '#1e293b' },
-    ring: { investigation: '#6d28d9', merged: '#b45309' },
+    ring: { investigation: '#6d28d9', merged: '#b45309', changed: '#0891b2' },
     marker: { noteOutline: '#1e293b', noteGlyph: '#ffffff' },
     noteFlag: {
       none: '#475569',

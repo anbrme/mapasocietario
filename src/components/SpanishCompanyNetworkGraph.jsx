@@ -1635,6 +1635,9 @@ const SpanishCompanyNetworkGraph = ({
   const [nodeContextMenu, setNodeContextMenu] = useState(null); // { mouseX, mouseY, nodeId }
   // Company whose monitoring dialog is open, or null. Held separately from
   // contextNode because the menu closes the moment the dialog opens.
+  // group_key -> number of filings since this set was last opened. Drives the
+  // on-canvas marker; empty for every graph that is not a watchlist.
+  const [watchlistChanges, setWatchlistChanges] = useState(() => new Map());
   const [watchlistOpen, setWatchlistOpen] = useState(false);
 
   // { name, groupKey } | null — the key rides along so the alert this creates
@@ -2392,6 +2395,13 @@ const SpanishCompanyNetworkGraph = ({
           setError(text.watchlistEmpty);
           return;
         }
+        // Keyed by group_key so the marker survives the graph rebuilding its
+        // node objects — node identity here is the entity, not the instance.
+        const changes = new Map(
+          seeds.filter(sd => sd.changeCount > 0).map(sd => [sd.groupKey, sd.changeCount])
+        );
+        setWatchlistChanges(changes);
+
         let loaded = 0;
         for (const seed of seeds) {
           try {
@@ -2406,6 +2416,29 @@ const SpanishCompanyNetworkGraph = ({
           setError(text.watchlistEmpty);
           return;
         }
+        // Stamp the entity key onto the nodes the loader just created.
+        //
+        // loadCompanyRecordIntoGraph takes a group_key as a HINT for its own
+        // lookup but does not put it on the node, and the search path stamps
+        // it separately. Without this a watchlist-seeded node carries no key
+        // at all, so expanding it would re-resolve the company by fuzzy name —
+        // the precise failure group_key exists to prevent — and the
+        // changed-since marker below would have nothing to match on.
+        const keyByName = new Map(
+          seeds.map(sd => [(sd.name || '').trim().toUpperCase(), sd.groupKey])
+        );
+        setGraphData(prev => ({
+          links: prev.links,
+          nodes: prev.nodes.map(n => {
+            // isMonitorableNode, not a literal 'company' check: this loader
+            // creates 'spanish-company-group' nodes, so testing for 'company'
+            // silently matches nothing.
+            if (n.groupKey || !isMonitorableNode(n)) return n;
+            const key = keyByName.get((n.name || '').trim().toUpperCase());
+            return key ? { ...n, groupKey: key } : n;
+          }),
+        }));
+
         setSearchQuery('');
         trackEvent('watchlist_opened', {
           entry_source: entrySource,
@@ -7582,6 +7615,40 @@ const SpanishCompanyNetworkGraph = ({
         ctx.restore();
       }
 
+      // Changed since this watchlist was last opened.
+      //
+      // Drawn ON the node rather than summarised in a panel, deliberately: an
+      // interpretation block above the graph was measured driving people out
+      // of it, and a bare count of what is wrong reads as an alarm. Here the
+      // mark sits on top of its own evidence — click the node and the filing
+      // that caused it is right there — so it needs no room to justify itself.
+      const changeCount = node.groupKey ? watchlistChanges.get(node.groupKey) : 0;
+      if (changeCount > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius + 4.5, 0, 2 * Math.PI);
+        ctx.strokeStyle = graphPalette.ring.changed;
+        ctx.lineWidth = 2.5 / globalScale;
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        // The count, because "something moved" and "eleven things moved" are
+        // different sentences and only one of them is worth interrupting a day.
+        const badgeR = Math.max(3.2, nodeRadius * 0.55);
+        const bx = node.x + nodeRadius * 0.78;
+        const by = node.y - nodeRadius * 0.78;
+        ctx.beginPath();
+        ctx.arc(bx, by, badgeR, 0, 2 * Math.PI);
+        ctx.fillStyle = graphPalette.ring.changed;
+        ctx.fill();
+        ctx.fillStyle = graphPalette.marker.noteGlyph;
+        ctx.font = `600 ${Math.max(3, badgeR * 1.25)}px "IBM Plex Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(changeCount > 9 ? '9+' : changeCount), bx, by);
+        ctx.restore();
+      }
+
       // Private analyst-note marker. It stays visually separate from registry
       // status colours and is always fully opaque, even when Pathfinder dims
       // the underlying network.
@@ -7607,7 +7674,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, nodeDegrees, deadEndNodeIds]
+    [watchlistChanges, nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, nodeDegrees, deadEndNodeIds]
   );
 
   const linkCanvasObject = useCallback(
