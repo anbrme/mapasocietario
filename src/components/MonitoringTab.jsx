@@ -147,9 +147,23 @@ export default function MonitoringTab({ adminKey }) {
           <HealthCard health={data.health} />
 
           <Box sx={{ display: 'flex', gap: 3, mb: 3, flexWrap: 'wrap' }}>
+            {/* Companies watched and people watching are different numbers,
+                and a watchlist makes them diverge by up to 25x. Reporting only
+                the first read as reach and overstated it every time someone
+                used a set. */}
             <Typography variant="body2">
-              <strong>{data.active_count}</strong> active
+              <strong>{data.active_count}</strong> companies watched
             </Typography>
+            <Typography variant="body2">
+              <strong>{data.active_subscribers ?? '—'}</strong>{' '}
+              {data.active_subscribers === 1 ? 'subscriber' : 'subscribers'}
+            </Typography>
+            {data.watchlist_count > 0 && (
+              <Typography variant="body2" color="text.secondary">
+                <strong>{data.watchlist_count}</strong>{' '}
+                {data.watchlist_count === 1 ? 'list' : 'lists'}
+              </Typography>
+            )}
             <Typography variant="body2" color="text.secondary">
               <strong>{data.pending_unconfirmed}</strong> requested but never confirmed
             </Typography>
@@ -206,6 +220,7 @@ export default function MonitoringTab({ adminKey }) {
                 <TableHead>
                   <TableRow>
                     <TableCell>Company</TableCell>
+                    <TableCell>List</TableCell>
                     <TableCell>Source</TableCell>
                     <TableCell>Country</TableCell>
                     <TableCell>Subscriber</TableCell>
@@ -219,6 +234,15 @@ export default function MonitoringTab({ adminKey }) {
                   {monitored.map((m) => (
                     <TableRow key={m.id}>
                       <TableCell sx={{ fontWeight: 600 }}>{m.entity_name}</TableCell>
+                      {/* Without this, eight rows from ONE signup look like
+                          eight signups. Most rows are standalone and predate
+                          watchlists entirely, so an em dash is the common and
+                          correct answer, not a gap. */}
+                      <TableCell sx={{ fontSize: '0.8rem' }}>
+                        {m.watchlist_label
+                          ? <Chip size="small" label={m.watchlist_label} variant="outlined" />
+                          : <Box component="span" sx={{ color: 'text.secondary' }}>—</Box>}
+                      </TableCell>
                       <TableCell>{sourceLabel(m)}</TableCell>
                       <TableCell>{m.country || '—'}</TableCell>
                       <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
