@@ -16,6 +16,8 @@ import {
   requestManageLink,
   requestMonitoring,
   stopMonitoring,
+  fetchWatchlistView,
+  watchlistSeeds,
 } from './monitoringService';
 
 const ok = (body) => ({ ok: true, status: 200, json: async () => body });
@@ -255,6 +257,67 @@ describe('requestMonitoring group_key', () => {
     await expect(
       requestMonitoring({ email: 'a@example.com', entityName: 'ACME SL' })
     ).resolves.toBeTruthy();
+  });
+});
+
+describe('fetchWatchlistView', () => {
+  // The graph entry needs both halves: the sets (to name and pick one) and the
+  // rows (to seed it). fetchMonitoring returns only the rows, so it cannot
+  // answer "which set am I looking at".
+
+  test('returns the sets alongside the rows', async () => {
+    global.fetch = vi.fn(() =>
+      Promise.resolve(
+        ok({
+          alerts: [{ id: 1, entity_name: 'ACME SL', group_key: 'H:M-1', watchlist_id: 5 }],
+          watchlists: [{ id: 5, label: 'Proveedores' }],
+        })
+      )
+    );
+    const view = await fetchWatchlistView('tok');
+    expect(view.watchlists[0].label).toBe('Proveedores');
+    expect(view.alerts[0].group_key).toBe('H:M-1');
+  });
+
+  test('an older backend without watchlists still yields usable rows', async () => {
+    // Absent is not an error: the field only exists after the set API ships,
+    // and a client that threw here would break every existing manage link.
+    global.fetch = vi.fn(() => Promise.resolve(ok({ alerts: [{ id: 1 }] })));
+    const view = await fetchWatchlistView('tok');
+    expect(view.watchlists).toEqual([]);
+    expect(view.alerts).toHaveLength(1);
+  });
+
+  test('refuses an empty token without a round trip', async () => {
+    await expect(fetchWatchlistView('  ')).rejects.toBeInstanceOf(MonitoringRequestError);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('watchlistSeeds', () => {
+  test('keeps only active rows that can actually be drawn', async () => {
+    // An unconfirmed row is not a subscription yet, and a row with no
+    // group_key cannot be opened as a specific company — seeding it would
+    // fuzzy-match a sibling, which is the bug group_key exists to prevent.
+    const seeds = watchlistSeeds({
+      alerts: [
+        { entity_name: 'A SL', group_key: 'H:M-1', active: true, watchlist_id: 5 },
+        { entity_name: 'B SL', group_key: null, active: true, watchlist_id: 5 },
+        { entity_name: 'C SL', group_key: 'H:M-3', active: false, watchlist_id: 5 },
+        { entity_name: 'D SL', group_key: 'H:M-4', active: true, watchlist_id: 9 },
+      ],
+    }, 5);
+    expect(seeds.map(s => s.name)).toEqual(['A SL']);
+  });
+
+  test('with no set named, takes every drawable row', async () => {
+    const seeds = watchlistSeeds({
+      alerts: [
+        { entity_name: 'A SL', group_key: 'H:M-1', active: true, watchlist_id: 5 },
+        { entity_name: 'D SL', group_key: 'H:M-4', active: true, watchlist_id: 9 },
+      ],
+    }, null);
+    expect(seeds).toHaveLength(2);
   });
 });
 

@@ -171,6 +171,16 @@ export default function App() {
     const value = (new URLSearchParams(window.location.search).get('gk') || '').trim();
     return value || undefined;
   }, []);
+  // A view token from a monitoring email: /app?watchlist=<token>. The graph
+  // resolves it to the companies the address watches and seeds them all, so
+  // the link in the inbox reopens the set rather than a single company.
+  // Deliberately not validated for shape here — only the backend can say
+  // whether a token is real, and guessing at a format would reject valid ones.
+  const initialWatchlistToken = React.useMemo(() => {
+    const value = (new URLSearchParams(window.location.search).get('watchlist') || '').trim();
+    return value || undefined;
+  }, []);
+
   // Set by the graph overlay on /empresa, which frames this app in a dialog.
   // The company page has its own title, breadcrumb and language switch, so the
   // nav bar here would be a second set of the same controls inside a box.
@@ -351,6 +361,7 @@ export default function App() {
         initialCompanyName={initialSearch}
         initialSearchType={initialSearchType}
         initialGroupKey={initialGroupKey}
+        initialWatchlistToken={initialWatchlistToken}
         language={language}
         entrySource={graphEntrySource}
         forceCompactMode={isNativeApp()}

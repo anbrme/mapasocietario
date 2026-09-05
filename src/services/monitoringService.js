@@ -222,3 +222,54 @@ export async function stopMonitoring(token, alertId) {
   }
   return response.json().catch(() => ({ success: true }));
 }
+
+// --- watchlists ------------------------------------------------------------
+
+/**
+ * The full manage-page payload: the sets AND the rows.
+ *
+ * fetchMonitoring returns only the rows, which is all the list view needs.
+ * A graph needs both — the sets to name and choose one, the rows to seed it.
+ */
+export async function fetchWatchlistView(token) {
+  const clean = (token || '').trim();
+  if (!clean) throw new MonitoringRequestError('missing_token', 0);
+
+  let response;
+  try {
+    response = await fetch(`${API_URL}${VIEW_PATH}?t=${encodeURIComponent(clean)}`);
+  } catch {
+    throw new MonitoringRequestError('network_error', 0);
+  }
+  if (!response.ok) {
+    throw new MonitoringRequestError('view_failed', response.status);
+  }
+  const data = await response.json().catch(() => ({}));
+  return {
+    alerts: Array.isArray(data.alerts) ? data.alerts : [],
+    // Absent is not an error. The field only exists once the set API is
+    // deployed, and every manage link minted before that returns without it.
+    watchlists: Array.isArray(data.watchlists) ? data.watchlists : [],
+  };
+}
+
+/**
+ * The rows of one set that can actually be drawn, as { name, groupKey }.
+ *
+ * Two exclusions, both deliberate:
+ *  - inactive rows, because an unconfirmed request is not a subscription yet
+ *    and drawing it would show someone a set they never agreed to;
+ *  - rows with no group_key, because a name alone fuzzy-matches siblings and
+ *    splits on a comma — seeding one would draw a DIFFERENT company and say
+ *    nothing about it. Silently drawing the wrong entity is worse than
+ *    drawing one fewer.
+ *
+ * Pass watchlistId null to take every drawable row the token can see.
+ */
+export function watchlistSeeds(view, watchlistId = null) {
+  const alerts = Array.isArray(view?.alerts) ? view.alerts : [];
+  return alerts
+    .filter(a => a && a.active && a.group_key)
+    .filter(a => watchlistId == null || a.watchlist_id === watchlistId)
+    .map(a => ({ name: a.entity_name, groupKey: a.group_key }));
+}

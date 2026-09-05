@@ -85,7 +85,7 @@ import HubIcon from '@mui/icons-material/Hub';
 import DDCheckoutDialog from './DDCheckoutDialog';
 import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE } from '../copy/freeFirstReport';
 import MonitorRequestDialog from './MonitorRequestDialog';
-import { isMonitorableNode } from '../services/monitoringService';
+import { isMonitorableNode, fetchWatchlistView, watchlistSeeds } from '../services/monitoringService';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
@@ -334,6 +334,11 @@ const SEARCH_COPY = {
     importGraph: 'Import graph snapshot',
     importedSnapshot: 'Imported snapshot',
     restoredSession: 'Restored session',
+    watchlistEmpty: 'This watchlist has no companies to draw yet. Confirm the link in your email first.',
+    watchlistPartial: (loaded, total) =>
+      `Loaded ${loaded} of ${total} companies. The rest could not be reached — try again in a moment.`,
+    watchlistLinkExpired: 'That watchlist link has expired. Request a new one from your monitoring page.',
+    watchlistFailed: 'Could not open the watchlist. Please try again in a moment.',
     snapshotExported: count => `Graph snapshot exported (${count} nodes).`,
     snapshotImported: (nodes, links) => `Snapshot imported: ${nodes} nodes and ${links} links.`,
     snapshotEmpty: 'Add at least one node before exporting a snapshot.',
@@ -693,6 +698,11 @@ const SEARCH_COPY = {
     importGraph: 'Importar instantánea del grafo',
     importedSnapshot: 'Instantánea importada',
     restoredSession: 'Sesión restaurada',
+    watchlistEmpty: 'Esta lista aún no tiene empresas que dibujar. Confirma antes el enlace de tu correo.',
+    watchlistPartial: (loaded, total) =>
+      `Se han cargado ${loaded} de ${total} empresas. El resto no ha respondido — inténtalo de nuevo en un momento.`,
+    watchlistLinkExpired: 'Ese enlace de la lista ha caducado. Pide uno nuevo desde tu página de monitorización.',
+    watchlistFailed: 'No se ha podido abrir la lista. Inténtalo de nuevo en un momento.',
     snapshotExported: count => `Instantánea exportada (${count} nodos).`,
     snapshotImported: (nodes, links) => `Instantánea importada: ${nodes} nodos y ${links} enlaces.`,
     snapshotEmpty: 'Añade al menos un nodo antes de exportar una instantánea.',
@@ -1477,6 +1487,7 @@ const SpanishCompanyNetworkGraph = ({
   initialOfficerData,
   initialCompanyName,
   initialGroupKey,
+  initialWatchlistToken,
   initialSearchType,
   language = 'es',
   embedded = false,
@@ -2346,6 +2357,69 @@ const SpanishCompanyNetworkGraph = ({
                    initialGroupKey || null, 'deep_link');
     }
   }, [initialCompanyName, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A watchlist link from a monitoring email: /app?watchlist=<token>.
+  //
+  // The set is arbitrary and user-assembled, so its members are UNRELATED
+  // until someone expands one — which is why this seeds them as separate
+  // companies rather than searching for a subject and drawing its
+  // neighbourhood. Unexpected edges appearing between two of them is the
+  // finding the set exists to surface, and it must be discovered, not assumed.
+  //
+  // Members load one at a time through the same path a node expansion uses, so
+  // each arrives with live officers and current status. Sequential on purpose:
+  // the loader merges into shared graph state, and a parallel burst would both
+  // race that merge and hammer the API with N simultaneous profile fetches.
+  const watchlistSeededRef = useRef(false);
+  useEffect(() => {
+    if (!initialWatchlistToken || watchlistSeededRef.current) return;
+    if (!visible && !embedded) return;
+    watchlistSeededRef.current = true;
+
+    (async () => {
+      setIsLoading(true);
+      try {
+        const view = await fetchWatchlistView(initialWatchlistToken);
+        // No set named in the URL: draw everything the token can see.
+        const seeds = watchlistSeeds(view, null);
+        if (seeds.length === 0) {
+          setError(text.watchlistEmpty);
+          return;
+        }
+        let loaded = 0;
+        for (const seed of seeds) {
+          try {
+            const result = await loadCompanyRecordIntoGraph(seed.name, null, seed.groupKey);
+            if (result?.loaded) loaded += 1;
+          } catch {
+            // One unreachable company must not cost the reader the other
+            // thirteen. Counted, not thrown.
+          }
+        }
+        if (loaded === 0) {
+          setError(text.watchlistEmpty);
+          return;
+        }
+        setSearchQuery('');
+        trackEvent('watchlist_opened', {
+          entry_source: entrySource,
+          requested: seeds.length,
+          loaded,
+        });
+        if (loaded < seeds.length) {
+          setSnapshotNotice(text.watchlistPartial(loaded, seeds.length));
+        }
+      } catch (e) {
+        // A spent or forged token is the common case here, and it is not an
+        // outage: say the link expired rather than blaming the network.
+        setError(e?.status === 404 || e?.status === 401
+          ? text.watchlistLinkExpired
+          : text.watchlistFailed);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [initialWatchlistToken, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refetch when the per-company officer cap ("Cargos/empresa") changes, so
   // the selector is live — e.g. raise it to 500 to pull in apoderados without
@@ -8306,8 +8380,13 @@ const SpanishCompanyNetworkGraph = ({
       return undefined;
     }
 
+    // A watchlist token belongs here for the same reason a deep link does:
+    // the reader asked for a specific graph. Offering to restore an unrelated
+    // saved session on top of it is a question with a wrong answer — accepting
+    // replaces the very set they clicked through from their inbox to see.
     const hasInitialRequest = Boolean(
       initialCompanyData || initialOfficerData || initialCompanyName
+      || initialWatchlistToken
     );
     if (hasInitialRequest) {
       autosaveReadyRef.current = true;
