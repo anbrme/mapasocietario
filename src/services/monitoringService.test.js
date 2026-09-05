@@ -217,6 +217,47 @@ describe('requestMonitoring', () => {
   });
 });
 
+describe('requestMonitoring group_key', () => {
+  // The link key. A watchlist can only be drawn as a graph if each alert says
+  // WHICH company it means, and entity_name cannot say that — it fuzzy-matches
+  // siblings and splits on a comma.
+
+  test('sends the group key when the node carries one', async () => {
+    await requestMonitoring({
+      email: 'a@example.com',
+      entityName: 'TELEFONICA SA',
+      groupKey: 'H:M-1234',
+    });
+    expect(lastBody().group_key).toBe('H:M-1234');
+  });
+
+  test('omits the field entirely when the node has no key', async () => {
+    // Absent and null mean the same thing to the backend, but a payload that
+    // never claims a key is honest about a node that never had one.
+    await requestMonitoring({ email: 'a@example.com', entityName: 'ACME SL' });
+    expect('group_key' in lastBody()).toBe(false);
+  });
+
+  test('omits a blank key rather than sending an empty string', async () => {
+    // The column rejects a blank outright: it reads as resolved and links
+    // nowhere.
+    await requestMonitoring({
+      email: 'a@example.com',
+      entityName: 'ACME SL',
+      groupKey: '   ',
+    });
+    expect('group_key' in lastBody()).toBe(false);
+  });
+
+  test('a missing key never blocks the subscription', async () => {
+    // Monitoring works on the name. The key is an enhancement and must never
+    // become a precondition.
+    await expect(
+      requestMonitoring({ email: 'a@example.com', entityName: 'ACME SL' })
+    ).resolves.toBeTruthy();
+  });
+});
+
 describe('activateMonitoring', () => {
   beforeEach(() => { global.fetch = vi.fn(); });
   afterEach(() => { vi.restoreAllMocks(); });

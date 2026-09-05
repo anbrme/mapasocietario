@@ -30,9 +30,19 @@ export class MonitoringRequestError extends Error {
   }
 }
 
-export async function requestMonitoring({ email, entityName, jurisdiction = 'ES' }) {
+export async function requestMonitoring({
+  email,
+  entityName,
+  jurisdiction = 'ES',
+  groupKey = null,
+}) {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanName = (entityName || '').trim();
+  // The entity-assembly key, when the node carries one. Optional on purpose:
+  // monitoring matches on the name, and plenty of nodes never resolve a key —
+  // so a missing one must never block a subscription. It exists so the alert
+  // can later be OPENED as a node, which a name cannot do.
+  const cleanGroupKey = typeof groupKey === 'string' ? groupKey.trim() : '';
 
   if (!EMAIL_RE.test(cleanEmail)) {
     throw new MonitoringRequestError('invalid_email', 0);
@@ -50,6 +60,10 @@ export async function requestMonitoring({ email, entityName, jurisdiction = 'ES'
         email: cleanEmail,
         entity_name: cleanName,
         jurisdiction,
+        // Omitted rather than sent as null: absent and null mean the same
+        // thing to the backend, but a payload that never claims a key is
+        // honest about a node that never had one.
+        ...(cleanGroupKey ? { group_key: cleanGroupKey } : {}),
       }),
     });
   } catch (e) {
