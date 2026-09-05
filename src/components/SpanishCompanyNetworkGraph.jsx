@@ -85,8 +85,10 @@ import HubIcon from '@mui/icons-material/Hub';
 import DDCheckoutDialog from './DDCheckoutDialog';
 import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE } from '../copy/freeFirstReport';
 import MonitorRequestDialog from './MonitorRequestDialog';
+import WatchlistRequestDialog from './WatchlistRequestDialog';
 import { isMonitorableNode, fetchWatchlistView, watchlistSeeds } from '../services/monitoringService';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { hasIncoherentCapital } from '../utils/capitalCoherence';
@@ -334,6 +336,7 @@ const SEARCH_COPY = {
     importGraph: 'Import graph snapshot',
     importedSnapshot: 'Imported snapshot',
     restoredSession: 'Restored session',
+    watchCompanies: 'Watch these companies (free)',
     watchlistEmpty: 'This watchlist has no companies to draw yet. Confirm the link in your email first.',
     watchlistPartial: (loaded, total) =>
       `Loaded ${loaded} of ${total} companies. The rest could not be reached — try again in a moment.`,
@@ -698,6 +701,7 @@ const SEARCH_COPY = {
     importGraph: 'Importar instantánea del grafo',
     importedSnapshot: 'Instantánea importada',
     restoredSession: 'Sesión restaurada',
+    watchCompanies: 'Vigilar estas empresas (gratis)',
     watchlistEmpty: 'Esta lista aún no tiene empresas que dibujar. Confirma antes el enlace de tu correo.',
     watchlistPartial: (loaded, total) =>
       `Se han cargado ${loaded} de ${total} empresas. El resto no ha respondido — inténtalo de nuevo en un momento.`,
@@ -1631,6 +1635,8 @@ const SpanishCompanyNetworkGraph = ({
   const [nodeContextMenu, setNodeContextMenu] = useState(null); // { mouseX, mouseY, nodeId }
   // Company whose monitoring dialog is open, or null. Held separately from
   // contextNode because the menu closes the moment the dialog opens.
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
+
   // { name, groupKey } | null — the key rides along so the alert this creates
   // can be reopened as the right company, which the name alone cannot promise.
   const [monitorCompany, setMonitorCompany] = useState(null);
@@ -8251,6 +8257,30 @@ const SpanishCompanyNetworkGraph = ({
     officerDeputyMatches,
   ]);
 
+  // What "watch these companies" means: every monitorable company the reader
+  // can currently see. filteredGraphData is already past the status/role
+  // filters and the manually hidden nodes, which is exactly the promise the
+  // button makes — what you see is what you watch. People are excluded by
+  // isMonitorableNode: BORME publishes filings for companies, not for
+  // individuals.
+  //
+  // Deduped by group_key so the same company reached twice on the canvas is
+  // one subscription rather than two rows firing on one filing.
+  const watchableCompanies = React.useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const node of filteredGraphData.nodes) {
+      if (!isMonitorableNode(node)) continue;
+      const name = (node.name || '').trim();
+      if (!name) continue;
+      const key = node.groupKey || name.toUpperCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ name, groupKey: node.groupKey || null });
+    }
+    return out;
+  }, [filteredGraphData.nodes]);
+
   const exportGraphSnapshot = useCallback(() => {
     if (graphData.nodes.length === 0) {
       setError(text.snapshotEmpty);
@@ -9787,6 +9817,20 @@ const SpanishCompanyNetworkGraph = ({
               <RefreshIcon />
             </IconButton>
           </Tooltip>
+          <Tooltip title={text.watchCompanies}>
+            <span>
+              <IconButton
+                onClick={() => {
+                  trackGraphToolbarAction('watchlist_request');
+                  setWatchlistOpen(true);
+                }}
+                size="small"
+                disabled={watchableCompanies.length === 0 || isSearching || isLoading || loadingMore || loadingSubsidiaries}
+              >
+                <BookmarksIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
           <Tooltip title={text.exportGraph}>
             <span>
               <IconButton
@@ -10659,6 +10703,13 @@ const SpanishCompanyNetworkGraph = ({
             ))
           )}
         </Menu>
+
+        <WatchlistRequestDialog
+          open={watchlistOpen}
+          companies={watchableCompanies}
+          language={uiLanguage}
+          onClose={() => setWatchlistOpen(false)}
+        />
 
         <MonitorRequestDialog
           open={!!monitorCompany}
