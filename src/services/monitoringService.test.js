@@ -18,6 +18,8 @@ import {
   stopMonitoring,
   fetchWatchlistView,
   watchlistSeeds,
+  requestWatchlist,
+  MAX_WATCHLIST_COMPANIES,
 } from './monitoringService';
 
 const ok = (body) => ({ ok: true, status: 200, json: async () => body });
@@ -257,6 +259,79 @@ describe('requestMonitoring group_key', () => {
     await expect(
       requestMonitoring({ email: 'a@example.com', entityName: 'ACME SL' })
     ).resolves.toBeTruthy();
+  });
+});
+
+describe('requestWatchlist', () => {
+  const twoCompanies = [
+    { name: 'TELEFONICA SA', groupKey: 'H:M-1234' },
+    { name: 'ACME SL' },
+  ];
+
+  test('sends the label and every company', async () => {
+    await requestWatchlist({
+      email: 'a@example.com', label: 'Proveedores', companies: twoCompanies,
+    });
+    const body = lastBody();
+    expect(body.label).toBe('Proveedores');
+    expect(body.companies).toHaveLength(2);
+    expect(body.companies[0]).toEqual({
+      entity_name: 'TELEFONICA SA', group_key: 'H:M-1234',
+    });
+  });
+
+  test('a company with no key sends the name alone', async () => {
+    // Absent, not null: the backend treats them identically, but a payload
+    // that never claims a key is honest about a node that never had one.
+    await requestWatchlist({
+      email: 'a@example.com', label: 'P', companies: twoCompanies,
+    });
+    expect('group_key' in lastBody().companies[1]).toBe(false);
+  });
+
+  test('refuses a malformed address without a round trip', async () => {
+    await expect(
+      requestWatchlist({ email: 'nope', label: 'P', companies: twoCompanies })
+    ).rejects.toMatchObject({ message: 'invalid_email' });
+    expect(calls).toHaveLength(0);
+  });
+
+  test('refuses an unnamed set without a round trip', async () => {
+    await expect(
+      requestWatchlist({ email: 'a@example.com', label: '  ', companies: twoCompanies })
+    ).rejects.toMatchObject({ message: 'missing_label' });
+    expect(calls).toHaveLength(0);
+  });
+
+  test('refuses an empty set without a round trip', async () => {
+    await expect(
+      requestWatchlist({ email: 'a@example.com', label: 'P', companies: [] })
+    ).rejects.toMatchObject({ message: 'empty_watchlist' });
+    expect(calls).toHaveLength(0);
+  });
+
+  test('refuses a set past the cap rather than letting the server truncate', async () => {
+    // Silently sending 40 and having the server take 25 would leave the reader
+    // believing they watch fifteen companies that nobody is watching.
+    const many = Array.from({ length: MAX_WATCHLIST_COMPANIES + 1 },
+                            (_, i) => ({ name: `CO ${i} SL` }));
+    await expect(
+      requestWatchlist({ email: 'a@example.com', label: 'P', companies: many })
+    ).rejects.toMatchObject({ message: 'watchlist_too_large' });
+    expect(calls).toHaveLength(0);
+  });
+
+  test('drops duplicates so one company is never watched twice in a set', async () => {
+    await requestWatchlist({
+      email: 'a@example.com',
+      label: 'P',
+      companies: [
+        { name: 'ACME SL', groupKey: 'H:M-1' },
+        { name: 'ACME SL', groupKey: 'H:M-1' },
+        { name: 'OTRA SL', groupKey: 'H:M-2' },
+      ],
+    });
+    expect(lastBody().companies).toHaveLength(2);
   });
 });
 

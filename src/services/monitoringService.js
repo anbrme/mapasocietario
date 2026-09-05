@@ -273,3 +273,70 @@ export function watchlistSeeds(view, watchlistId = null) {
     .filter(a => watchlistId == null || a.watchlist_id === watchlistId)
     .map(a => ({ name: a.entity_name, groupKey: a.group_key }));
 }
+
+// Mirrors MAX_WATCHLIST_COMPANIES in the backend. Duplicated deliberately: the
+// client must be able to refuse an oversized set BEFORE sending it, because a
+// server that silently kept the first 25 of 40 would leave the reader believing
+// they watch fifteen companies nobody is watching.
+export const MAX_WATCHLIST_COMPANIES = 25;
+
+/**
+ * Ask to watch a set of companies. Like requestMonitoring, a resolved call
+ * means "the request was accepted" and never "you are now watching": the
+ * confirmation click is what activates it — one click for the whole set.
+ *
+ * @param {{name: string, groupKey?: string|null}[]} companies
+ */
+export async function requestWatchlist({ email, label, companies, jurisdiction = 'ES' }) {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!EMAIL_RE.test(cleanEmail)) {
+    throw new MonitoringRequestError('invalid_email', 0);
+  }
+  const cleanLabel = (label || '').trim();
+  if (!cleanLabel) {
+    throw new MonitoringRequestError('missing_label', 0);
+  }
+
+  // One company twice is one subscription, and sending it twice would create
+  // two rows that both fire on the same filing.
+  const seen = new Set();
+  const payload = [];
+  for (const entry of Array.isArray(companies) ? companies : []) {
+    const name = (entry?.name || '').trim();
+    if (!name) continue;
+    const groupKey = typeof entry?.groupKey === 'string' ? entry.groupKey.trim() : '';
+    const dedupeKey = groupKey || name.toUpperCase();
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    payload.push({ entity_name: name, ...(groupKey ? { group_key: groupKey } : {}) });
+  }
+
+  if (payload.length === 0) {
+    throw new MonitoringRequestError('empty_watchlist', 0);
+  }
+  if (payload.length > MAX_WATCHLIST_COMPANIES) {
+    throw new MonitoringRequestError('watchlist_too_large', 0);
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API_URL}/bormes/v3/alerts/watchlist/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: cleanEmail,
+        label: cleanLabel,
+        jurisdiction,
+        companies: payload,
+      }),
+    });
+  } catch {
+    // Never swallowed: a silent failure leaves someone waiting for an email
+    // that was never sent.
+    throw new MonitoringRequestError('network_error', 0);
+  }
+  if (!response.ok) {
+    throw new MonitoringRequestError('request_failed', response.status);
+  }
+  return response.json().catch(() => ({ success: true }));
+}
