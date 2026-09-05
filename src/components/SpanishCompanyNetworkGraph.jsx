@@ -279,6 +279,8 @@ const SEARCH_COPY = {
     filterNodes: 'Filter nodes and notes',
     filterPlaceholder: 'e.g. Garcia, relevant manager',
     mobileFilters: 'Filters',
+    mobileAddCompany: 'Add company',
+    mobileAddCompanyHint: 'Search for another company or person to add to this graph. Your existing companies and connections stay here.',
     mobileMoreTools: 'More tools',
     mobileHint: 'Tap a node for details · pinch to zoom',
     mobileMoreToolsHint: 'Advanced search, import/export and investigation tools are available in the full application.',
@@ -644,6 +646,8 @@ const SEARCH_COPY = {
     filterNodes: 'Filtrar nodos y notas',
     filterPlaceholder: 'ej: Garcia, directivo relevante',
     mobileFilters: 'Filtros',
+    mobileAddCompany: 'Añadir empresa',
+    mobileAddCompanyHint: 'Busca otra empresa o persona para añadirla a este grafo. Las empresas y conexiones que ya has cargado se conservan.',
     mobileMoreTools: 'Más herramientas',
     mobileHint: 'Toca un nodo para ver sus datos · pellizca para ampliar',
     mobileMoreToolsHint: 'La búsqueda avanzada, importación/exportación y herramientas de investigación están disponibles en la aplicación completa.',
@@ -1582,7 +1586,7 @@ const SpanishCompanyNetworkGraph = ({
   const [labelFilterText, setLabelFilterText] = useState('');
   const [statusFilters, setStatusFilters] = useState(new Set()); // 'active' | 'ceased'
   const [positionFilters, setPositionFilters] = useState(new Set());
-  const [compactPanel, setCompactPanel] = useState(null); // null | 'filters' | 'tools'
+  const [compactPanel, setCompactPanel] = useState(null); // null | 'search' | 'filters' | 'tools'
   const [isSearching, setIsSearching] = useState(false);
   // Per-company cap on officer nodes; apoderados truncated newest-first.
   const [officersPerCompany, setOfficersPerCompany] = useState(100);
@@ -2860,6 +2864,7 @@ const SpanishCompanyNetworkGraph = ({
     const trackSearchResult = (resultState, resultCount = 0) => {
       if (analyticsOrigin === 'settings_refetch') return;
       if (resultState === 'success') {
+        setCompactPanel(current => current === 'search' ? null : current);
         lastSuccessfulSearchAtRef.current = Date.now();
         if (!activationTrackedRef.current) {
           activationTrackedRef.current = true;
@@ -8690,6 +8695,7 @@ const SpanishCompanyNetworkGraph = ({
       });
       lastSuccessfulSearchAtRef.current = Date.now();
       setSearchQuery('');
+      setCompactPanel(current => current === 'search' ? null : current);
       return;
     }
 
@@ -8761,6 +8767,270 @@ const SpanishCompanyNetworkGraph = ({
     }
   };
 
+  // Both layouts use the same entity selection and additive graph search.
+  const entitySearchContent = (
+    <>
+      <Autocomplete
+        freeSolo
+        autoHighlight
+        disabled={isCompactEmbed && isSearching}
+        options={autocompleteOptions}
+        loading={autocompleteLoading}
+        inputValue={searchQuery}
+        value={selectedAutocomplete}
+        filterOptions={x => x}
+        onInputChange={(event, newValue, reason) => {
+          setSearchQuery(newValue);
+          if (reason === 'input') {
+            if (newValue && !searchTypingTrackedRef.current) {
+              searchTypingTrackedRef.current = true;
+              trackEvent('graph_search_typing_started', {
+                entry_source: entrySource,
+                time_to_type_ms: Date.now() - graphEnteredAtRef.current,
+              });
+            }
+            setLastSearchContext(null);
+            setSelectedAutocomplete(null);
+            handleAutocomplete(newValue);
+          } else if (reason === 'clear') {
+            setLastSearchContext(null);
+            setAutocompleteOptions([]);
+          }
+        }}
+        onChange={(event, value) => {
+          if (value && typeof value === 'object') {
+            applySelectedOption(value, 'autocomplete');
+          } else if (typeof value === 'string') {
+            // Free-typed text (freeSolo) is not a real entity — never search it.
+            setSearchQuery(value);
+            setSelectedAutocomplete(null);
+          }
+        }}
+        getOptionLabel={option => {
+          if (typeof option === 'string') return option;
+          return option.label || option.value || '';
+        }}
+        isOptionEqualToValue={(option, value) => {
+          if (typeof value === 'string') return option.label === value;
+          return option.label === value?.label;
+        }}
+        renderOption={(props, option) => {
+          // An officer suggestion's `type` is 'officer'/'officer_sole_shareholder'
+          // regardless of whether the officer itself is a company (e.g. a
+          // corporate administrador like "CAJAMAR GESTION SGIIC SA"), so fall
+          // back to the name-based legal-entity check to pick the right icon.
+          const isCompanyLike =
+            option.type === 'company' || isCorporateName(option.name || option.label);
+          const listedBadge = listedBadgeFor(option.name || option.label, uiLanguage);
+          return (
+          <Box component="li" {...props} key={option.label + (option.cif || '')}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, width: '100%' }}>
+              {option.type === 'sole_shareholder' ? (
+                <AccountTreeIcon sx={{ fontSize: 16, color: 'warning.main', mt: 0.3 }} />
+              ) : isCompanyLike ? (
+                <BusinessIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.3 }} />
+              ) : (
+                <PersonIcon sx={{ fontSize: 16, color: 'info.main', mt: 0.3 }} />
+              )}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                  <Typography variant="body2">{displayCompanyName(option.name || option.label)}</Typography>
+                  {listedBadge && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: '0.65rem',
+                        color: 'success.dark',
+                        bgcolor: 'success.light',
+                        px: 0.6,
+                        py: 0.1,
+                        borderRadius: 0.5,
+                      }}
+                    >
+                      {listedBadge.label}
+                    </Typography>
+                  )}
+                  {option.type === 'sole_shareholder' && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: '0.65rem',
+                        color: 'warning.dark',
+                        bgcolor: 'warning.light',
+                        px: 0.6,
+                        py: 0.1,
+                        borderRadius: 0.5,
+                      }}
+                    >
+                      {text.soleShareholder}
+                    </Typography>
+                  )}
+                  {option._deputyMatch?.deputy && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        color: option._deputyMatch.deputy.FECHABAJA
+                          ? 'text.secondary'
+                          : 'warning.dark',
+                        bgcolor: option._deputyMatch.deputy.FECHABAJA
+                          ? 'grey.100'
+                          : 'warning.light',
+                        px: 0.6,
+                        py: 0.1,
+                        borderRadius: 0.5,
+                      }}
+                    >
+                      🏛️ {option._deputyMatch.deputy.FECHABAJA ? text.formerCongressDeputy : text.congressDeputy}
+                      {option._deputyMatch.deputy.FORMACIONELECTORAL
+                        ? ` · ${option._deputyMatch.deputy.FORMACIONELECTORAL}`
+                        : ''}
+                    </Typography>
+                  )}
+                </Box>
+                {option.type === 'sole_shareholder' &&
+                  ((option.owns_total || 0) > 0 || (option.owns && option.owns.length > 0)) && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', fontStyle: 'italic' }}
+                    >
+                      {text.whollyOwned(option.owns_total || option.owns?.length || 0)}
+                    </Typography>
+                  )}
+                {option.is_alias && option.original_name && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    {text.previous}: {option.original_name}
+                  </Typography>
+                )}
+                {option.has_new_name && option.new_company_name && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    {uiLanguage === 'en' ? 'Now' : 'Ahora'}: {option.new_company_name}
+                  </Typography>
+                )}
+                {option.type === 'company' && option.cif && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    {option.cif}
+                  </Typography>
+                )}
+                {/* Every row that carries a cargo count shows it — including a
+                    `sole_shareholder` row that inherited one when its officer
+                    twin folded in. Excluding that type hid the directorship of
+                    an individual who is also a socio único. */}
+                {option.company_count != null && option.company_count > 0 && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      {uiLanguage === 'en'
+                        ? `${option.company_count} compan${option.company_count === 1 ? 'y' : 'ies'} (${text.role.toLowerCase()})`
+                        : `${option.company_count} empresa${option.company_count !== 1 ? 's' : ''} (cargo)`}
+                      {/* Vigente/cesado split, same semantics (and colors) as the
+                          graph legend. Only when the backend supplied the split
+                          AND some seat is ceased — all-active adds no signal. */}
+                      {option.company_count_active != null &&
+                        option.company_count_active < option.company_count && (
+                          <>
+                            {' · '}
+                            {option.company_count_active > 0 && (
+                              <Box component="span" sx={{ color: 'success.main' }}>
+                                {option.company_count_active}{' '}
+                                {uiLanguage === 'en' ? 'active' : `vigente${option.company_count_active !== 1 ? 's' : ''}`}
+                              </Box>
+                            )}
+                            {option.company_count_active > 0 && ' · '}
+                            <Box component="span" sx={{ color: 'error.main' }}>
+                              {option.company_count - option.company_count_active}{' '}
+                              {uiLanguage === 'en'
+                                ? 'ceased'
+                                : `cesado${option.company_count - option.company_count_active !== 1 ? 's' : ''}`}
+                            </Box>
+                          </>
+                        )}
+                    </Typography>
+                  )}
+                {option.is_sole_shareholder &&
+                  ((option.owns_total || 0) > 0 || (option.owns && option.owns.length > 0)) && (
+                    <Typography
+                      variant="caption"
+                      sx={{ display: 'block', color: 'warning.dark', fontStyle: 'italic' }}
+                    >
+                      {text.whollyOwned(option.owns_total || option.owns?.length || 0)}
+                    </Typography>
+                  )}
+              </Box>
+            </Box>
+          </Box>
+          );
+        }}
+        sx={{
+          flexGrow: 1,
+          minWidth: 200,
+          '& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'primary.main',
+          },
+          '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'accent.primary',
+          },
+          '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'primary.main',
+            borderWidth: 2,
+          },
+        }}
+        renderInput={params => (
+          <TextField
+            {...params}
+            size="small"
+            autoFocus={autoFocusSearch || compactPanel === 'search'}
+            placeholder={text.searchUnifiedPlaceholder}
+            onFocus={() => {
+              if (searchFocusTrackedRef.current) return;
+              // graph_search_focus measures a DECISION — the visitor chose to
+              // start searching, and time_to_focus_ms is how long they looked
+              // first. Autofocus is not that decision: counting it would fire
+              // the event for every arrival at ~0ms and make both the count
+              // and the timing meaningless. The funnel is unaffected either
+              // way; its "Started a search" stage is
+              // graph_search_typing_started, which is typing, not focus.
+              // Return WITHOUT arming the ref: the visitor has not focused
+              // yet, and when they do that focus must still be counted.
+              if (autoFocusSearch && Date.now() - graphEnteredAtRef.current < 1000) return;
+              searchFocusTrackedRef.current = true;
+              trackEvent('graph_search_focus', {
+                entry_source: entrySource,
+                time_to_focus_ms: Date.now() - graphEnteredAtRef.current,
+              });
+            }}
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: (
+                <>
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                  {params.InputProps.startAdornment}
+                </>
+              ),
+              endAdornment: (
+                <>
+                  {autocompleteLoading || isSearching ? <CircularProgress size={20} /> : null}
+                  {params.InputProps.endAdornment}
+                </>
+              ),
+            }}
+          />
+        )}
+      />
+
+      <Button
+        variant="contained"
+        onClick={() => autocompleteOptions.length > 0 && applySelectedOption(autocompleteOptions[0], 'search_button')}
+        disabled={isSearching || autocompleteOptions.length === 0}
+        startIcon={isSearching ? <CircularProgress size={16} /> : <SearchIcon />}
+      >
+        {text.search}
+      </Button>
+    </>
+  );
+
   // Shared search panel content
   const searchPanelContent = (
     <Paper sx={{ p: 1, px: 1.5, m: embedded ? 0 : 2, mb: 0 }}>
@@ -8824,263 +9094,7 @@ const SpanishCompanyNetworkGraph = ({
           </Select>
         </FormControl>
 
-        <Autocomplete
-          freeSolo
-          autoHighlight
-          options={autocompleteOptions}
-          loading={autocompleteLoading}
-          inputValue={searchQuery}
-          value={selectedAutocomplete}
-          filterOptions={x => x}
-          onInputChange={(event, newValue, reason) => {
-            setSearchQuery(newValue);
-            if (reason === 'input') {
-              if (newValue && !searchTypingTrackedRef.current) {
-                searchTypingTrackedRef.current = true;
-                trackEvent('graph_search_typing_started', {
-                  entry_source: entrySource,
-                  time_to_type_ms: Date.now() - graphEnteredAtRef.current,
-                });
-              }
-              setLastSearchContext(null);
-              setSelectedAutocomplete(null);
-              handleAutocomplete(newValue);
-            } else if (reason === 'clear') {
-              setLastSearchContext(null);
-              setAutocompleteOptions([]);
-            }
-          }}
-          onChange={(event, value) => {
-            if (value && typeof value === 'object') {
-              applySelectedOption(value, 'autocomplete');
-            } else if (typeof value === 'string') {
-              // Free-typed text (freeSolo) is not a real entity — never search it.
-              setSearchQuery(value);
-              setSelectedAutocomplete(null);
-            }
-          }}
-          getOptionLabel={option => {
-            if (typeof option === 'string') return option;
-            return option.label || option.value || '';
-          }}
-          isOptionEqualToValue={(option, value) => {
-            if (typeof value === 'string') return option.label === value;
-            return option.label === value?.label;
-          }}
-          renderOption={(props, option) => {
-            // An officer suggestion's `type` is 'officer'/'officer_sole_shareholder'
-            // regardless of whether the officer itself is a company (e.g. a
-            // corporate administrador like "CAJAMAR GESTION SGIIC SA"), so fall
-            // back to the name-based legal-entity check to pick the right icon.
-            const isCompanyLike =
-              option.type === 'company' || isCorporateName(option.name || option.label);
-            const listedBadge = listedBadgeFor(option.name || option.label, uiLanguage);
-            return (
-            <Box component="li" {...props} key={option.label + (option.cif || '')}>
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, width: '100%' }}>
-                {option.type === 'sole_shareholder' ? (
-                  <AccountTreeIcon sx={{ fontSize: 16, color: 'warning.main', mt: 0.3 }} />
-                ) : isCompanyLike ? (
-                  <BusinessIcon sx={{ fontSize: 16, color: 'primary.main', mt: 0.3 }} />
-                ) : (
-                  <PersonIcon sx={{ fontSize: 16, color: 'info.main', mt: 0.3 }} />
-                )}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                    <Typography variant="body2">{displayCompanyName(option.name || option.label)}</Typography>
-                    {listedBadge && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          fontSize: '0.65rem',
-                          color: 'success.dark',
-                          bgcolor: 'success.light',
-                          px: 0.6,
-                          py: 0.1,
-                          borderRadius: 0.5,
-                        }}
-                      >
-                        {listedBadge.label}
-                      </Typography>
-                    )}
-                    {option.type === 'sole_shareholder' && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          fontSize: '0.65rem',
-                          color: 'warning.dark',
-                          bgcolor: 'warning.light',
-                          px: 0.6,
-                          py: 0.1,
-                          borderRadius: 0.5,
-                        }}
-                      >
-                        {text.soleShareholder}
-                      </Typography>
-                    )}
-                    {option._deputyMatch?.deputy && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          fontSize: '0.65rem',
-                          fontWeight: 600,
-                          color: option._deputyMatch.deputy.FECHABAJA
-                            ? 'text.secondary'
-                            : 'warning.dark',
-                          bgcolor: option._deputyMatch.deputy.FECHABAJA
-                            ? 'grey.100'
-                            : 'warning.light',
-                          px: 0.6,
-                          py: 0.1,
-                          borderRadius: 0.5,
-                        }}
-                      >
-                        🏛️ {option._deputyMatch.deputy.FECHABAJA ? text.formerCongressDeputy : text.congressDeputy}
-                        {option._deputyMatch.deputy.FORMACIONELECTORAL
-                          ? ` · ${option._deputyMatch.deputy.FORMACIONELECTORAL}`
-                          : ''}
-                      </Typography>
-                    )}
-                  </Box>
-                  {option.type === 'sole_shareholder' &&
-                    ((option.owns_total || 0) > 0 || (option.owns && option.owns.length > 0)) && (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: 'block', fontStyle: 'italic' }}
-                      >
-                        {text.whollyOwned(option.owns_total || option.owns?.length || 0)}
-                      </Typography>
-                    )}
-                  {option.is_alias && option.original_name && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      {text.previous}: {option.original_name}
-                    </Typography>
-                  )}
-                  {option.has_new_name && option.new_company_name && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      {uiLanguage === 'en' ? 'Now' : 'Ahora'}: {option.new_company_name}
-                    </Typography>
-                  )}
-                  {option.type === 'company' && option.cif && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      {option.cif}
-                    </Typography>
-                  )}
-                  {/* Every row that carries a cargo count shows it — including a
-                      `sole_shareholder` row that inherited one when its officer
-                      twin folded in. Excluding that type hid the directorship of
-                      an individual who is also a socio único. */}
-                  {option.company_count != null && option.company_count > 0 && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        {uiLanguage === 'en'
-                          ? `${option.company_count} compan${option.company_count === 1 ? 'y' : 'ies'} (${text.role.toLowerCase()})`
-                          : `${option.company_count} empresa${option.company_count !== 1 ? 's' : ''} (cargo)`}
-                        {/* Vigente/cesado split, same semantics (and colors) as the
-                            graph legend. Only when the backend supplied the split
-                            AND some seat is ceased — all-active adds no signal. */}
-                        {option.company_count_active != null &&
-                          option.company_count_active < option.company_count && (
-                            <>
-                              {' · '}
-                              {option.company_count_active > 0 && (
-                                <Box component="span" sx={{ color: 'success.main' }}>
-                                  {option.company_count_active}{' '}
-                                  {uiLanguage === 'en' ? 'active' : `vigente${option.company_count_active !== 1 ? 's' : ''}`}
-                                </Box>
-                              )}
-                              {option.company_count_active > 0 && ' · '}
-                              <Box component="span" sx={{ color: 'error.main' }}>
-                                {option.company_count - option.company_count_active}{' '}
-                                {uiLanguage === 'en'
-                                  ? 'ceased'
-                                  : `cesado${option.company_count - option.company_count_active !== 1 ? 's' : ''}`}
-                              </Box>
-                            </>
-                          )}
-                      </Typography>
-                    )}
-                  {option.is_sole_shareholder &&
-                    ((option.owns_total || 0) > 0 || (option.owns && option.owns.length > 0)) && (
-                      <Typography
-                        variant="caption"
-                        sx={{ display: 'block', color: 'warning.dark', fontStyle: 'italic' }}
-                      >
-                        {text.whollyOwned(option.owns_total || option.owns?.length || 0)}
-                      </Typography>
-                    )}
-                </Box>
-              </Box>
-            </Box>
-            );
-          }}
-          sx={{
-            flexGrow: 1,
-            minWidth: 200,
-            '& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'primary.main',
-            },
-            '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'accent.primary',
-            },
-            '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'primary.main',
-              borderWidth: 2,
-            },
-          }}
-          renderInput={params => (
-            <TextField
-              {...params}
-              size="small"
-              autoFocus={autoFocusSearch}
-              placeholder={text.searchUnifiedPlaceholder}
-              onFocus={() => {
-                if (searchFocusTrackedRef.current) return;
-                // graph_search_focus measures a DECISION — the visitor chose to
-                // start searching, and time_to_focus_ms is how long they looked
-                // first. Autofocus is not that decision: counting it would fire
-                // the event for every arrival at ~0ms and make both the count
-                // and the timing meaningless. The funnel is unaffected either
-                // way; its "Started a search" stage is
-                // graph_search_typing_started, which is typing, not focus.
-                // Return WITHOUT arming the ref: the visitor has not focused
-                // yet, and when they do that focus must still be counted.
-                if (autoFocusSearch && Date.now() - graphEnteredAtRef.current < 1000) return;
-                searchFocusTrackedRef.current = true;
-                trackEvent('graph_search_focus', {
-                  entry_source: entrySource,
-                  time_to_focus_ms: Date.now() - graphEnteredAtRef.current,
-                });
-              }}
-              InputProps={{
-                ...params.InputProps,
-                startAdornment: (
-                  <>
-                    <InputAdornment position="start">
-                      <SearchIcon color="action" />
-                    </InputAdornment>
-                    {params.InputProps.startAdornment}
-                  </>
-                ),
-                endAdornment: (
-                  <>
-                    {autocompleteLoading || isSearching ? <CircularProgress size={20} /> : null}
-                    {params.InputProps.endAdornment}
-                  </>
-                ),
-              }}
-            />
-          )}
-        />
-
-        <Button
-          variant="contained"
-          onClick={() => autocompleteOptions.length > 0 && applySelectedOption(autocompleteOptions[0], 'search_button')}
-          disabled={isSearching || autocompleteOptions.length === 0}
-          startIcon={isSearching ? <CircularProgress size={16} /> : <SearchIcon />}
-        >
-          {text.search}
-        </Button>
+        {entitySearchContent}
         {graphData.nodes.some(n => n.type === 'company' || n.type === 'spanish-company-group') && (
           <Tooltip
             title={FREE_FIRST_REPORT_CODE
@@ -10150,7 +10164,7 @@ const SpanishCompanyNetworkGraph = ({
           </Tooltip>
         )}
 
-        {isCompactEmbed && compactPanel && (
+        {isCompactEmbed && (compactPanel === 'filters' || compactPanel === 'tools') && (
           <Paper
             role="dialog"
             aria-label={compactPanel === 'filters' ? text.mobileFilters : text.mobileMoreTools}
@@ -11679,15 +11693,28 @@ const SpanishCompanyNetworkGraph = ({
               display: 'flex',
               alignItems: 'center',
               gap: 0.5,
+              flexWrap: 'wrap',
             }}
           >
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SearchIcon />}
+              disabled={isSearching}
+              onClick={() => {
+                trackGraphToolbarAction('add_company');
+                closeInspector();
+                setActiveNodeId(null);
+                setSearchQuery('');
+                setSelectedAutocomplete(null);
+                setAutocompleteOptions([]);
+                setError(null);
+                setCompactPanel('search');
+              }}
+              sx={{ mr: 'auto', minHeight: 44, textTransform: 'none', whiteSpace: 'nowrap' }}
             >
-              {text.mobileHint}
-            </Typography>
+              {text.mobileAddCompany}
+            </Button>
             <Button
               size="small"
               startIcon={<TuneIcon />}
@@ -11711,6 +11738,9 @@ const SpanishCompanyNetworkGraph = ({
             >
               <SettingsIcon fontSize="small" />
             </IconButton>
+            <Typography variant="caption" color="text.secondary" sx={{ width: '100%' }}>
+              {text.mobileHint}
+            </Typography>
           </Box>
         )}
         {/* Search loading state is rendered INSIDE the graph container
@@ -11718,6 +11748,36 @@ const SpanishCompanyNetworkGraph = ({
             viewport — the search panel above stays visible. */}
         {graphAreaContent}
         {nodeManagementOverlays}
+        <Dialog
+          open={isCompactEmbed && compactPanel === 'search'}
+          onClose={() => setCompactPanel(null)}
+          fullWidth
+          maxWidth="sm"
+          aria-labelledby="mobile-graph-search-title"
+          aria-describedby="mobile-graph-search-description"
+          sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' } }}
+          PaperProps={{ sx: { m: 1.5, mt: 'max(16px, env(safe-area-inset-top))', width: 'calc(100% - 24px)' } }}
+        >
+          <DialogTitle id="mobile-graph-search-title" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography component="span" sx={{ flex: 1, fontWeight: 700 }}>{text.mobileAddCompany}</Typography>
+            <IconButton aria-label={text.close} onClick={() => setCompactPanel(null)}>
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <Typography id="mobile-graph-search-description" variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {text.mobileAddCompanyHint}
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {entitySearchContent}
+            </Box>
+            {error && (
+              <Alert severity={typeof error === 'object' ? 'info' : 'error'} sx={{ mt: 1 }} onClose={() => setError(null)}>
+                {typeof error === 'object' ? error.message : error}
+              </Alert>
+            )}
+          </DialogContent>
+        </Dialog>
         <DDCheckoutDialog
           open={ddCheckoutOpen}
           onClose={() => setDdCheckoutOpen(false)}
