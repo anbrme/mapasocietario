@@ -58,6 +58,24 @@ export const STUDIES = [
         '205,077 capital operations show that governance change is registered in the same filing as the capital operation, and almost nowhere else.',
     },
   },
+  {
+    id: 'madrid-directorships-concentration',
+    dataFile: 'directorships-madrid.json',
+    paths: {
+      es: '/estudios/cargos-administracion-madrid',
+      en: '/en/studies/madrid-directorships',
+    },
+    es: {
+      title: 'Quién ocupa los cargos: concentración y fragmentación en la administración societaria madrileña',
+      blurb:
+        'Trece instantáneas anuales (2013–2025) de los cargos de administración de las empresas madrileñas: el 1 % superior de administradores pasa del 8,4 % al 11,6 % de los cargos mientras la red sigue fragmentada. Con comparativa provincial.',
+    },
+    en: {
+      title: 'Who holds the seats: concentration and fragmentation in Madrid’s corporate administration',
+      blurb:
+        'Thirteen annual snapshots (2013–2025) of directorships at Madrid companies: the top 1% of directors go from 8.4% to 11.6% of seats while the network stays fragmented. With a province comparison.',
+    },
+  },
 ];
 
 /** Canonical, trailing-slashed path for a study page. */
