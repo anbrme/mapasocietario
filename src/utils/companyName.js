@@ -40,6 +40,12 @@ const LEGAL_FORM_DOTLESS = [
 ].map(([pat, code]) => [new RegExp(`\\s+${pat}\\.?\\s*$`, 'i'), ` ${code}`]);
 
 /**
+ * The canonical dotless legal-form codes canonLegalForm can emit. A name whose
+ * last token is one of these is a company, whatever else it looks like.
+ */
+export const LEGAL_FORM_CODES = new Set(LEGAL_FORM_DOTLESS.map(([, repl]) => repl.trim()));
+
+/**
  * Rewrite a trailing legal-form suffix (any spelling: long "SOCIEDAD
  * LIMITADA", dotted "S.L.", spaced "S. L.", dotless "SL") to its dotless
  * canonical code. Different forms stay distinct (SL != SA != SLU).

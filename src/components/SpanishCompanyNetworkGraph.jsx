@@ -122,7 +122,12 @@ import AIInvestigationGate from './AIInvestigationGate';
 import { investigationLaunchState, entitlementChipLabel, buildInvestigationContext, loadToken, INVESTIGATION_CAP } from '../utils/aiInvestigationClient';
 import { isCorporateName } from '../utils/legalEntity';
 import { detectCargoPresence } from '../utils/cargoDetection';
-import { officerNodeKey, officerIdFor } from '../utils/officerNodeKey';
+import {
+  officerNodeKey,
+  officerIdFor,
+  findOfficerNode,
+  resolveOfficerNodeId,
+} from '../utils/officerNodeKey';
 import { mergeEntitySuggestions } from '../utils/entitySuggestions';
 import { classifyEntitySelection, ownedCompaniesFromHint } from '../utils/entitySelection';
 import { reconcileOfficersWithEvents } from '../utils/pendingOfficerEvents';
@@ -2342,7 +2347,7 @@ const SpanishCompanyNetworkGraph = ({
         addOfficerToGraph(entries, initialOfficerData.name);
       }
       // Pin initial officer node
-      const officerId = officerIdFor(initialOfficerData.name);
+      const officerId = resolveOfficerNodeId(graphDataRef.current.nodes, initialOfficerData.name);
       setPinnedNodeIds(prev => new Set([...prev, officerId]));
     }
   }, [visible, initialCompanyData, initialOfficerData]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -2910,7 +2915,7 @@ const SpanishCompanyNetworkGraph = ({
           await addOfficerToGraph(data.officers, query);
           trackSearchResult('success', fetchedCount);
           // Pin the officer node so it survives filtering
-          const officerId = officerIdFor(query);
+          const officerId = resolveOfficerNodeId(graphDataRef.current.nodes, query);
           setPinnedNodeIds(prev => new Set([...prev, officerId]));
           setLastSearchContext({
             query,
@@ -3117,7 +3122,7 @@ const SpanishCompanyNetworkGraph = ({
         const fetchedCount = data.officers?.length || 0;
         if (data.success && fetchedCount > 0) {
           await addOfficerToGraph(data.officers, context.query);
-          const officerId = officerIdFor(context.query);
+          const officerId = resolveOfficerNodeId(graphDataRef.current.nodes, context.query);
           setPinnedNodeIds(prev => new Set([...prev, officerId]));
           setLastSearchContext(prev =>
             prev
@@ -3375,11 +3380,8 @@ const SpanishCompanyNetworkGraph = ({
             existingNode = findCompanyNode(newNodes, shName, shId) || null;
             if (existingNode) shId = existingNode.id;
           } else {
-            const nameKey = officerNodeKey(shName);
             shId = officerIdFor(shName);
-            existingNode = newNodes.find(
-              n => n.type === 'officer' && officerNodeKey(n.name) === nameKey
-            );
+            existingNode = findOfficerNode(newNodes, shName) || null;
             if (existingNode) shId = existingNode.id;
           }
 
@@ -3938,20 +3940,16 @@ const SpanishCompanyNetworkGraph = ({
 
             let officerRingIdx = 0;
             allOfficersList.forEach(officer => {
-              // Create a normalized name for consistent node identification
-              const normalizedName = officerNodeKey(officer.name);
               const officerId = officerIdFor(officer.name);
+              // Per-(officer, position) effective-category key — same key shape as
+              // officerEffectiveCategory above.
+              const normalizedName = officerNodeKey(officer.name);
 
-              // Check if officer already exists by name (not just ID) - also check existing graph data
-              let officerNode = newNodes.find(
-                n => n.type === 'officer' && officerNodeKey(n.name) === normalizedName
-              );
-
-              // Also check in the existing graph data (prevData.nodes)
+              // Already on the canvas under ANY spelling (legal form, filing
+              // order)? Check the nodes being built, then the existing graph.
+              let officerNode = findOfficerNode(newNodes, officer.name);
               if (!officerNode) {
-                officerNode = prevData.nodes.find(
-                  n => n.type === 'officer' && officerNodeKey(n.name) === normalizedName
-                );
+                officerNode = findOfficerNode(prevData.nodes, officer.name);
                 if (officerNode) {
                   // If found in existing data, add it to newNodes to work with
                   officerNode = { ...officerNode };
@@ -4171,11 +4169,10 @@ const SpanishCompanyNetworkGraph = ({
 
           // Create the officer node first - use parameter instead of state
           const officerName = officerNameParam || results[0]?.name || 'Unknown Officer';
-          const normalizedOfficerName = officerNodeKey(officerName);
-          const officerId = officerIdFor(officerName);
-
-          // Check if officer already exists
-          let officerNode = newNodes.find(n => n.id === officerId);
+          // Reuse the node already on the canvas for this person, under any
+          // filing order of the name; otherwise mint the id for this spelling.
+          let officerNode = findOfficerNode(newNodes, officerName);
+          const officerId = officerNode ? officerNode.id : officerIdFor(officerName);
           if (!officerNode) {
             const isCompany = isCompanyOfficer(officerName);
             const officerPosition = ringPosition({
@@ -4321,7 +4318,7 @@ const SpanishCompanyNetworkGraph = ({
           // Officer may be a sole shareholder of other companies that don't appear here.
           const officerName = (officerNameParam || '').trim();
           if (officerName) {
-            const officerId = officerIdFor(officerName);
+            const officerId = resolveOfficerNodeId(graphDataRef.current.nodes, officerName);
             addOwnedCompaniesForEntity(officerName, officerId, 'person');
           }
         }
@@ -4432,7 +4429,7 @@ const SpanishCompanyNetworkGraph = ({
         ? existingCompany.id
         : isCompanyKind
           ? companyNameToId(cleanName)
-          : officerIdFor(cleanName);
+          : resolveOfficerNodeId(graphDataRef.current.nodes, cleanName);
 
       setGraphData(prev => {
         if (prev.nodes.find(n => n.id === entityId)) return prev;

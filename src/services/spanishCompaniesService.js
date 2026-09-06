@@ -12,10 +12,10 @@
 import { positionCategoryFor } from '../utils/positionCategories';
 import {
   canonLegalForm,
-  isSameUnifiableEntity,
   looksLikeGroupKey,
   selectGroupKeyId,
 } from '../utils/companyName';
+import { isSameOfficerIdentity } from '../utils/officerNodeKey';
 import { API_URL } from '../config';
 import { officerQueryVariants } from '../utils/ibex35Match';
 import { createRequestCache } from '../utils/requestCache';
@@ -764,18 +764,17 @@ class SpanishCompaniesService {
     const data = mergeExpandOfficerPages(pages);
 
     // The API does substring matching — "PIÑEIRO GOMEZ JOSE" also returns
-    // "PIÑEIRO GOMEZ JOSE MANUEL". Filter to exact name match client-side.
-    // Compare via isSameUnifiableEntity — entityNameKey (legal-form canonical
-    // AND punctuation-fold) plus the curated listed-entity equality that also
-    // catches a filing which printed a listed company with NO legal form
-    // ("BANCO SANTANDER" as APODERADO):
-    // v3 stores corporate officers under the printed spelling ("BANCO
-    // SANTANDER SA") while the canonical company name keeps the BORME comma
-    // ("BANCO SANTANDER, SA") — the old canonLegalForm-only comparison
-    // silently dropped all 95 of the bank's seats and unify no-opped.
+    // "PIÑEIRO GOMEZ JOSE MANUEL". Filter to exact identity client-side via
+    // isSameOfficerIdentity: entityNameKey (legal-form canonical AND
+    // punctuation-fold) plus the curated listed-entity equality for corporate
+    // officers ("BANCO SANTANDER" / "BANCO SANTANDER SA" / "BANCO SANTANDER,
+    // SA" — the old canonLegalForm-only compare dropped all 95 of the bank's
+    // seats), plus filing-order rotation for people ("JOSE GABINO SANCHEZ
+    // DELGADO" / "SANCHEZ DELGADO JOSE GABINO" — the entity rule alone dropped
+    // 2 of that director's 5 seats).
     if (exactMatch && data.officers) {
       data.officers = data.officers.filter(entry =>
-        isSameUnifiableEntity(entry.officer_name || entry.name || '', officerName)
+        isSameOfficerIdentity(entry.officer_name || entry.name || '', officerName)
       );
     }
 
