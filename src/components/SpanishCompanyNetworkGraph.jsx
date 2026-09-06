@@ -94,6 +94,7 @@ import { extractVisibleScope } from '../utils/relationshipScope';
 import { hasIncoherentCapital } from '../utils/capitalCoherence';
 import { latestEventType } from '../utils/latestEventType';
 import { normalizeCompanyName, displayCompanyName, isSameUnifiableEntity } from '../utils/companyName';
+import { findCompanyNode } from '../utils/companyNodeLookup';
 import { mobileGraphMode } from '../utils/mobileGraphMode';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
 import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
@@ -3223,11 +3224,7 @@ const SpanishCompanyNetworkGraph = ({
           if (entityKind === 'person' && c.shareholder_type && c.shareholder_type !== 'individual') return;
 
           const cId = companyNameToId(cName);
-          const targetUpper = normalizeCompanyName(cName).toUpperCase();
-          let existing = newNodes.find(
-            n => n.id === cId ||
-              (n.type === 'spanish-company-group' && normalizeCompanyName(n.name).toUpperCase() === targetUpper)
-          );
+          let existing = findCompanyNode(newNodes, cName, cId);
           const resolvedId = existing ? existing.id : cId;
           if (resolvedId === entityId) return;
           const ownedGroupKey = ownedGroupKeys[idx] || null;
@@ -3375,11 +3372,7 @@ const SpanishCompanyNetworkGraph = ({
           let existingNode = null;
           if (isCompanyShareholder) {
             shId = companyNameToId(shName);
-            const target = normalizeCompanyName(shName).toUpperCase();
-            existingNode = newNodes.find(
-              n => n.id === shId ||
-                (n.type === 'spanish-company-group' && normalizeCompanyName(n.name).toUpperCase() === target)
-            );
+            existingNode = findCompanyNode(newNodes, shName, shId) || null;
             if (existingNode) shId = existingNode.id;
           } else {
             const nameKey = officerNodeKey(shName);
@@ -3686,11 +3679,7 @@ const SpanishCompanyNetworkGraph = ({
           // Pre-count genuinely new companies
           const newCompanyCount = groupedCompanies.filter(([cn]) => {
             const cid = companyNameToId(cn);
-            return !newNodes.find(
-              n => n.id === cid ||
-                (n.type === 'spanish-company-group' &&
-                  normalizeCompanyName(n.name).toUpperCase() === cn.toUpperCase())
-            );
+            return !findCompanyNode(newNodes, cn, cid);
           }).length;
 
           // For expansions (has anchor node), cluster away; for initial search, ring around center
@@ -3708,13 +3697,9 @@ const SpanishCompanyNetworkGraph = ({
           groupedCompanies.forEach(([companyName, summary]) => {
             let companyId = companyNameToId(companyName);
 
-            // Check if company already exists by ID or by normalized name — only skip node creation, still extract officers
-            const companyExists = newNodes.find(
-              n =>
-                n.id === companyId ||
-                (n.type === 'spanish-company-group' &&
-                  normalizeCompanyName(n.name).toUpperCase() === companyName.toUpperCase())
-            );
+            // Already on the canvas (by id, or by legal-form-insensitive name)?
+            // Only skip node creation — officers are still extracted.
+            const companyExists = findCompanyNode(newNodes, companyName, companyId);
 
             // Use existing node's ID for links (may differ from generated ID if name varied)
             if (companyExists) {
@@ -4437,9 +4422,17 @@ const SpanishCompanyNetworkGraph = ({
       if (!entityName) return null;
       const isCompanyKind = entityKind === 'company';
       const cleanName = isCompanyKind ? normalizeCompanyName(entityName) : entityName.trim();
-      const entityId = isCompanyKind
-        ? companyNameToId(cleanName)
-        : officerIdFor(cleanName);
+      // A company picked under one spelling ("FAMILY SERVIT SOCIEDAD
+      // LIMITADA") may already be on the canvas under another ("FAMILY SERVIT
+      // SL"): bind to that node instead of minting a hollow twin beside it.
+      const existingCompany = isCompanyKind
+        ? findCompanyNode(graphDataRef.current.nodes, cleanName, companyNameToId(cleanName))
+        : null;
+      const entityId = existingCompany
+        ? existingCompany.id
+        : isCompanyKind
+          ? companyNameToId(cleanName)
+          : officerIdFor(cleanName);
 
       setGraphData(prev => {
         if (prev.nodes.find(n => n.id === entityId)) return prev;
@@ -4613,11 +4606,7 @@ const SpanishCompanyNetworkGraph = ({
           const newCompanyCount = companyEntries.filter(group => {
             const cn = normalizeCompanyName(group.name || 'Unknown Company');
             const cid = companyNameToId(cn);
-            return !newNodes.find(
-              n => n.id === cid ||
-                (n.type === 'spanish-company-group' &&
-                  normalizeCompanyName(n.name).toUpperCase() === cn.toUpperCase())
-            );
+            return !findCompanyNode(newNodes, cn, cid);
           }).length;
           const expandOfficerCluster = computeClusterHub({
             anchor: officerAnchor,
@@ -4631,13 +4620,8 @@ const SpanishCompanyNetworkGraph = ({
             const companyName = normalizeCompanyName(group.name || 'Unknown Company');
             let companyId = companyNameToId(companyName);
 
-            // Check if this company is already in the graph (by ID or normalized name)
-            const existingCompany = newNodes.find(
-              n =>
-                n.id === companyId ||
-                (n.type === 'spanish-company-group' &&
-                  normalizeCompanyName(n.name).toUpperCase() === companyName.toUpperCase())
-            );
+            // Already on the canvas (by id, or by legal-form-insensitive name)?
+            const existingCompany = findCompanyNode(newNodes, companyName, companyId);
             if (existingCompany) {
               companyId = existingCompany.id;
             }
