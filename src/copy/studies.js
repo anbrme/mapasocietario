@@ -68,12 +68,12 @@ export const STUDIES = [
     es: {
       title: 'Quién ocupa los cargos: concentración y fragmentación en la administración societaria española',
       blurb:
-        'Un millón de empresas, trece instantáneas anuales (2013–2025) y las 52 provincias: el 1 % de administradores con más cargos gana peso, sobre todo en Madrid, mientras la red de administradores compartidos sigue fragmentada.',
+        'Un millón de empresas con inscripciones recientes, trece instantáneas anuales (2013–2025) y las 52 provincias: el 1 % de administradores con más cargos gana peso, sobre todo en Madrid, mientras la red de administradores compartidos sigue fragmentada.',
     },
     en: {
       title: 'Who holds the seats: concentration and fragmentation in Spain’s corporate administration',
       blurb:
-        'One million companies, thirteen annual snapshots (2013–2025) and all 52 provinces: the 1% of directors with the most seats gain ground, above all in Madrid, while the network of shared directors stays fragmented.',
+        'One million recently filing companies, thirteen annual snapshots (2013–2025) and all 52 provinces: the 1% of directors with the most seats gain ground, above all in Madrid, while the network of shared directors stays fragmented.',
     },
   },
 ];

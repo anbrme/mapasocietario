@@ -86,9 +86,9 @@ const T = {
   es: (f) => ({
     htmlLang: 'es', ogLocale: 'es_ES',
     title: `${STUDY.es.title} | Mapa Societario`,
-    desc: `${f.companies} empresas activas, trece instantáneas anuales (${FIRST}–${LAST}) y las 52 provincias: el 1 % de administradores con más cargos pasa del ${f.top1First} al ${f.top1Last} de los cargos en España y del ${f.mTop1First} al ${f.mTop1Last} en Madrid, mientras solo el ${f.giantLast} de las empresas forma parte del mayor componente conexo.`,
+    desc: `${f.companies} empresas con inscripciones recientes en el BORME, trece instantáneas anuales (${FIRST}–${LAST}) y las 52 provincias: el 1 % de administradores con más cargos pasa del ${f.top1First} al ${f.top1Last} de los cargos en España y del ${f.mTop1First} al ${f.mTop1Last} en Madrid, mientras solo el ${f.giantLast} de las empresas forma parte del mayor componente conexo.`,
     crumbHome: 'Mapa Societario', crumbHub: 'Estudios', kicker: 'Investigación original · BORME · Edición provisional',
-    dek: `${f.companies} empresas activas y ${f.pairs} pares empresa–administrador en ${LAST}, reconstruidos a partir del BORME como un único grafo nacional. El 1 % de administradores con más cargos gana peso, del ${f.top1First} al ${f.top1Last}; en Madrid la subida es tres veces mayor, del ${f.mTop1First} al ${f.mTop1Last}, mientras Barcelona no se mueve. La red de administradores compartidos sigue fragmentada en todas partes.`,
+    dek: `${f.companies} empresas con alguna inscripción en el BORME en los últimos cinco años y ${f.pairs} pares empresa–administrador en ${LAST}, reconstruidos como un único grafo nacional. El 1 % de administradores con más cargos gana peso, del ${f.top1First} al ${f.top1Last}; en Madrid la subida es tres veces mayor, del ${f.mTop1First} al ${f.mTop1Last}, mientras Barcelona no se mueve. La red de administradores compartidos sigue fragmentada en todas partes.`,
     publishedLabel: 'Publicado el', dataLabel: 'Datos a', editionLabel: 'Edición',
     heroes: [
       { n: f.top1Last, t: `de los cargos en España en manos del <strong>1 % superior</strong> de administradores en ${LAST} (${f.top1First} en ${FIRST})`, hi: true },
@@ -171,9 +171,9 @@ const T = {
   en: (f) => ({
     htmlLang: 'en', ogLocale: 'en_GB',
     title: `${STUDY.en.title} | Mapa Societario`,
-    desc: `${f.companies} active companies, thirteen annual snapshots (${FIRST}–${LAST}) and all 52 provinces: the 1% of directors with the most seats go from ${f.top1First} to ${f.top1Last} of seats in Spain and from ${f.mTop1First} to ${f.mTop1Last} in Madrid, while only ${f.giantLast} of companies belong to the largest connected component.`,
+    desc: `${f.companies} companies with a recent BORME filing, thirteen annual snapshots (${FIRST}–${LAST}) and all 52 provinces: the 1% of directors with the most seats go from ${f.top1First} to ${f.top1Last} of seats in Spain and from ${f.mTop1First} to ${f.mTop1Last} in Madrid, while only ${f.giantLast} of companies belong to the largest connected component.`,
     crumbHome: 'Mapa Societario', crumbHub: 'Studies', kicker: 'Original research · BORME · Provisional edition',
-    dek: `${f.companies} active companies and ${f.pairs} company–director pairs in ${LAST}, reconstructed from BORME as one national graph. The 1% of directors with the most seats gain ground, from ${f.top1First} to ${f.top1Last}; in Madrid the rise is three times larger, from ${f.mTop1First} to ${f.mTop1Last}, while Barcelona does not move. The network of shared directors stays fragmented everywhere.`,
+    dek: `${f.companies} companies with a BORME filing in the last five years and ${f.pairs} company–director pairs in ${LAST}, reconstructed as one national graph. The 1% of directors with the most seats gain ground, from ${f.top1First} to ${f.top1Last}; in Madrid the rise is three times larger, from ${f.mTop1First} to ${f.mTop1Last}, while Barcelona does not move. The network of shared directors stays fragmented everywhere.`,
     publishedLabel: 'Published', dataLabel: 'Data as of', editionLabel: 'Edition',
     heroes: [
       { n: f.top1Last, t: `of seats in Spain held by the <strong>top 1%</strong> of directors in ${LAST} (${f.top1First} in ${FIRST})`, hi: true },
