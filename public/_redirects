@@ -23,3 +23,8 @@
 /order/*       /app-shell  200
 /alerts/*      /app-shell  200
 /es/alerts/*   /app-shell  200
+
+# 2026-09-06: the directorships study was published for a few hours under a
+# Madrid-only slug before it was reframed as the Spain-wide study.
+/estudios/cargos-administracion-madrid/*  /estudios/cargos-administracion-espana/:splat  301
+/en/studies/madrid-directorships/*  /en/studies/spain-directorships/:splat  301

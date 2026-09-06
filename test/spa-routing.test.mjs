@@ -86,8 +86,12 @@ test('_redirects has no SPA catch-all, and 404.html exists to take its place', (
 test('prerender writes the shell the rewrites point at', () => {
   const prerender = read('scripts/prerender.mjs');
   assert.match(prerender, /writeFileSync\(path\.join\(distDir, 'app-shell\.html'\)/);
+  // Only the 200 rewrites must land on the shell; a 301 is a moved page, not a
+  // client route, and points at its new canonical URL.
+  const spaRewrites = rewrites.filter(([, , status]) => status === '200');
+  assert.ok(spaRewrites.length > 0, '_redirects has no SPA rewrites at all');
   assert.ok(
-    rewrites.every(([, destination]) => destination === SPA_SHELL),
+    spaRewrites.every(([, destination]) => destination === SPA_SHELL),
     `_redirects points somewhere other than ${SPA_SHELL}, which prerender.mjs is what produces`,
   );
 });

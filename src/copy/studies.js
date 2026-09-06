@@ -59,21 +59,21 @@ export const STUDIES = [
     },
   },
   {
-    id: 'madrid-directorships-concentration',
-    dataFile: 'directorships-madrid.json',
+    id: 'spain-directorships-concentration',
+    dataFile: 'directorships-spain.json',
     paths: {
-      es: '/estudios/cargos-administracion-madrid',
-      en: '/en/studies/madrid-directorships',
+      es: '/estudios/cargos-administracion-espana',
+      en: '/en/studies/spain-directorships',
     },
     es: {
-      title: 'Quién ocupa los cargos: concentración y fragmentación en la administración societaria madrileña',
+      title: 'Quién ocupa los cargos: concentración y fragmentación en la administración societaria española',
       blurb:
-        'Trece instantáneas anuales (2013–2025) de los cargos de administración de las empresas madrileñas: el 1 % superior de administradores pasa del 8,4 % al 11,6 % de los cargos mientras la red sigue fragmentada. Con comparativa provincial.',
+        'Un millón de empresas, trece instantáneas anuales (2013–2025) y las 52 provincias: el 1 % de administradores con más cargos gana peso, sobre todo en Madrid, mientras la red de administradores compartidos sigue fragmentada.',
     },
     en: {
-      title: 'Who holds the seats: concentration and fragmentation in Madrid’s corporate administration',
+      title: 'Who holds the seats: concentration and fragmentation in Spain’s corporate administration',
       blurb:
-        'Thirteen annual snapshots (2013–2025) of directorships at Madrid companies: the top 1% of directors go from 8.4% to 11.6% of seats while the network stays fragmented. With a province comparison.',
+        'One million companies, thirteen annual snapshots (2013–2025) and all 52 provinces: the 1% of directors with the most seats gain ground, above all in Madrid, while the network of shared directors stays fragmented.',
     },
   },
 ];

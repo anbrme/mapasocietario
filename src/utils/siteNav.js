@@ -34,6 +34,9 @@ export function siteNav(lang = 'en') {
     connectClaude: es ? '/es/conectar-claude/' : '/connect-claude/',
     // Registry glossary — prerendered static route per language.
     glossary: es ? '/es/glosario/' : '/glossary/',
+    // Data studies hub — build-time static pages (scripts/generate-studies-hub.mjs),
+    // NOT SPA routes: callers must full-page load (isStaticNav).
+    studies: es ? '/estudios/' : '/en/studies/',
     dashboard: '/dashboard/',
     // Manage everything an address monitors. Deliberately reachable with no
     // token — the page offers to mail a fresh one — which is the whole point:
@@ -58,6 +61,12 @@ export function siteNav(lang = 'en') {
 // True for the static .html destinations (need a full-page load, not SPA routing).
 export function isHtmlNav(url) {
   return url.includes('.html');
+}
+
+// True for build-time static directories that the SPA router does not know
+// (the studies hub and study pages). Same treatment as .html: full-page load.
+export function isStaticNav(url) {
+  return /^\/(estudios|en\/studies)\//.test(url);
 }
 
 export function isExternalNav(url) {

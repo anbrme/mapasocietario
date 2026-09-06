@@ -1,13 +1,14 @@
 /**
- * Build-time generator for the Madrid directorships study:
- *   ES → dist/estudios/cargos-administracion-madrid/index.html
- *   EN → dist/en/studies/madrid-directorships/index.html
+ * Build-time generator for the directorships study (Spain, one national graph,
+ * with Madrid as the standout and every province compared):
+ *   ES → dist/estudios/cargos-administracion-espana/index.html
+ *   EN → dist/en/studies/spain-directorships/index.html
  *
- * Every figure comes from src/data/directorships-madrid.json, assembled by
+ * Every figure comes from src/data/directorships-spain.json, assembled by
  * ncdata-bormes/studies_wip/madrid_interlock/build_snapshot.py from the dated
- * panel outputs (Madrid panel, one national graph, every province). Prose
- * numbers are computed here from that snapshot, never typed, so a rerun of the
- * panel cannot leave stale text behind.
+ * panel outputs (national graph, Madrid panel, all 52 provinces). Prose numbers
+ * are computed here from that snapshot, never typed, so a rerun of the panel
+ * cannot leave stale text behind.
  *
  * Standalone documents, like the other study pages, so Cloudflare Pages serves
  * them directly. Runs in POSTBUILD, after `vite build` empties dist/.
@@ -22,16 +23,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const SITE = 'https://mapasocietario.es';
 
-const STUDY = STUDIES.find((s) => s.id === 'madrid-directorships-concentration');
+const STUDY = STUDIES.find((s) => s.id === 'spain-directorships-concentration');
 const D = JSON.parse(readFileSync(path.join(root, 'src/data', STUDY.dataFile), 'utf8'));
-const CSV_NAME = { es: 'cargos-administracion-madrid.csv', en: 'madrid-directorships.csv' };
+const CSV_NAME = { es: 'cargos-administracion-espana.csv', en: 'spain-directorships.csv' };
 const csvHref = (lang) => `${STUDY.paths[lang]}/${CSV_NAME[lang]}`;
 
 const FIRST = D.first_year, LAST = D.last_year;
-const first = D.panel[0], last = D.panel[D.panel.length - 1];
-if (first.year !== FIRST || last.year !== LAST) throw new Error('directorships snapshot: panel years do not match first_year/last_year');
+const POPS = { ES: D.national, MAD: D.panel };
+for (const rows of Object.values(POPS)) {
+  if (rows[0].year !== FIRST || rows[rows.length - 1].year !== LAST) throw new Error('directorships snapshot: panel years do not match first_year/last_year');
+}
+const nFirst = D.national[0], nLast = D.national[D.national.length - 1];
+const mFirst = D.panel[0], mLast = D.panel[D.panel.length - 1];
 
-// Spanish writes 11,62 % and 330.187; English writes 11.62% and 330,187.
+// Spanish writes 11,62 % and 987.436; English writes 11.62% and 987,436.
 const num = (v, lang, dp = 1) => {
   const s = Number(v).toFixed(dp);
   return lang === 'es' ? s.replace('.', ',') : s;
@@ -56,20 +61,23 @@ function provinceFacts(lang) {
 }
 
 const F = (lang) => {
-  const b = last.B, a = first.B, pf = provinceFacts(lang);
+  const a = nFirst.B, b = nLast.B, ma = mFirst.B, mb = mLast.B, pf = provinceFacts(lang);
   return {
-    pairs: int(b.pairs, lang), companies: int(b.companies, lang), officers: int(b.officers, lang),
+    // Spain
+    companies: int(b.companies, lang), pairs: int(b.pairs, lang), officers: int(b.officers, lang),
     top1First: pct(a.top1pct, lang, 2), top1Last: pct(b.top1pct, lang, 2), top1Change: num((b.top1pct - a.top1pct) * 100, lang, 2),
-    bxFirst: pct(first.BX.top1pct, lang, 2), bxLast: pct(last.BX.top1pct, lang, 2),
+    bxFirst: pct(nFirst.BX.top1pct, lang, 2), bxLast: pct(nLast.BX.top1pct, lang, 2),
     giniFirst: num(a.gini, lang, 3), giniLast: num(b.gini, lang, 3),
-    tcGiniFirst: num(first.TC.gini, lang, 3), tcGiniLast: num(last.TC.gini, lang, 3),
-    unknownFirst: pct(1 - first.BX.pairs / a.pairs, lang, 1), unknownLast: pct(1 - last.BX.pairs / b.pairs, lang, 1),
-    interlockedLast: pct(b.interlocked, lang, 1), giantLast: pct(b.giant, lang, 1), giantRndLast: pct(b.giant_rnd_mean, lang, 1),
+    tcGiniFirst: num(nFirst.TC.gini, lang, 3), tcGiniLast: num(nLast.TC.gini, lang, 3),
+    unknownFirst: pct(1 - nFirst.BX.pairs / a.pairs, lang, 1), unknownLast: pct(1 - nLast.BX.pairs / b.pairs, lang, 1),
+    interlockedLast: pct(b.interlocked, lang, 1), giantFirst: pct(a.giant, lang, 1), giantLast: pct(b.giant, lang, 1), giantRndLast: pct(b.giant_rnd_mean, lang, 1),
     ratioFirst: pct(a.giant / a.giant_rnd_mean, lang, 0), ratioLast: pct(b.giant / b.giant_rnd_mean, lang, 0),
     ppcFirst: num(a.pairs_per_company, lang, 2), ppcLast: num(b.pairs_per_company, lang, 2),
-    natTop1First: pct(D.national[0].B.top1pct, lang, 2), natTop1Last: pct(D.national[D.national.length - 1].B.top1pct, lang, 2),
-    natGiant: pct(D.national[D.national.length - 1].B.giant, lang, 1), natGiantRnd: pct(D.national[D.national.length - 1].B.giant_rnd_mean, lang, 1),
-    natCompanies: int(D.national[D.national.length - 1].B.companies, lang),
+    // Madrid
+    mTop1First: pct(ma.top1pct, lang, 2), mTop1Last: pct(mb.top1pct, lang, 2), mTop1Change: num((mb.top1pct - ma.top1pct) * 100, lang, 2),
+    mGiniFirst: num(ma.gini, lang, 3), mGiniLast: num(mb.gini, lang, 3),
+    mCompanies: int(mb.companies, lang), mInterlockedLast: pct(mb.interlocked, lang, 1), mGiantLast: pct(mb.giant, lang, 1), mGiantRndLast: pct(mb.giant_rnd_mean, lang, 1),
+    mShare: pct(mb.pairs / b.pairs, lang, 0),
     pf,
   };
 };
@@ -78,44 +86,45 @@ const T = {
   es: (f) => ({
     htmlLang: 'es', ogLocale: 'es_ES',
     title: `${STUDY.es.title} | Mapa Societario`,
-    desc: `Trece instantáneas anuales (${FIRST}–${LAST}) de los cargos de administración de las empresas madrileñas: el 1 % superior de administradores pasa del ${f.top1First} al ${f.top1Last} de los cargos mientras solo el ${f.giantLast} de las empresas forma parte del mayor componente conexo.`,
+    desc: `${f.companies} empresas activas, trece instantáneas anuales (${FIRST}–${LAST}) y las 52 provincias: el 1 % de administradores con más cargos pasa del ${f.top1First} al ${f.top1Last} de los cargos en España y del ${f.mTop1First} al ${f.mTop1Last} en Madrid, mientras solo el ${f.giantLast} de las empresas forma parte del mayor componente conexo.`,
     crumbHome: 'Mapa Societario', crumbHub: 'Estudios', kicker: 'Investigación original · BORME · Edición provisional',
-    dek: `${f.pairs} pares empresa–administrador activos en Madrid en ${LAST}. El 1 % superior de los administradores ocupa el ${f.top1Last} de los cargos, frente al ${f.top1First} en ${FIRST}; la red de administradores compartidos sigue fragmentada. Una comparativa provincial muestra que la subida es, sobre todo, madrileña.`,
+    dek: `${f.companies} empresas activas y ${f.pairs} pares empresa–administrador en ${LAST}, reconstruidos a partir del BORME como un único grafo nacional. El 1 % de administradores con más cargos gana peso, del ${f.top1First} al ${f.top1Last}; en Madrid la subida es tres veces mayor, del ${f.mTop1First} al ${f.mTop1Last}, mientras Barcelona no se mueve. La red de administradores compartidos sigue fragmentada en todas partes.`,
     publishedLabel: 'Publicado el', dataLabel: 'Datos a', editionLabel: 'Edición',
     heroes: [
-      { n: f.top1Last, t: `de los cargos en manos del <strong>1 % superior</strong> de administradores en ${LAST} (${f.top1First} en ${FIRST})`, hi: true },
-      { n: f.interlockedLast, t: `de las empresas comparten al menos un administrador con otra empresa`, hi: false },
-      { n: f.giantLast, t: `de las empresas pertenecen al mayor componente conexo, frente a un ${f.giantRndLast} esperado al azar`, hi: true },
+      { n: f.top1Last, t: `de los cargos en España en manos del <strong>1 % superior</strong> de administradores en ${LAST} (${f.top1First} en ${FIRST})`, hi: true },
+      { n: f.mTop1Last, t: `en Madrid, la provincia donde más ha subido (${f.mTop1First} en ${FIRST})`, hi: true },
+      { n: f.giantLast, t: `de las empresas españolas pertenecen al mayor componente conexo, frente a un ${f.giantRndLast} esperado al azar`, hi: false },
     ],
-    s1eye: '01 · Concentración', s1h: 'Una cuota mayor en la cúspide',
+    s1eye: '01 · Concentración', s1h: 'Una cuota mayor en la cúspide, sobre todo en Madrid',
     s1: [
-      `<p class="lede">Cada relación empresa–administrador cuenta una sola vez. Los gráficos siguen instantáneas reconstruidas a cierre de año de las empresas madrileñas con inscripciones recientes.</p>`,
-      `<p>El 1 % superior de los administradores ocupaba el <strong>${f.top1First}</strong> de los cargos observados en ${FIRST} y el <strong>${f.top1Last}</strong> en ${LAST}, un aumento de ${f.top1Change} puntos porcentuales. El índice de Gini de cargos por administrador pasa de ${f.giniFirst} a ${f.giniLast}.</p>`,
-      `<p>Al excluir los cargos cuyo inicio nunca se observó la dirección se mantiene: del ${f.bxFirst} al ${f.bxLast}. Es una prueba de sensibilidad, no una corrección: la cobertura histórica sigue siendo incompleta.</p>`,
+      `<p class="lede">Cada relación empresa–administrador cuenta una sola vez. Los gráficos siguen instantáneas reconstruidas a cierre de año de las empresas con inscripciones recientes; España es un único grafo, no la suma de las provincias.</p>`,
+      `<p>En España, el 1 % de administradores con más cargos ocupaba el <strong>${f.top1First}</strong> de los cargos observados en ${FIRST} y el <strong>${f.top1Last}</strong> en ${LAST}, ${f.top1Change} puntos más. El índice de Gini de cargos por administrador pasa de ${f.giniFirst} a ${f.giniLast}.</p>`,
+      `<p>Madrid concentra el ${f.mShare} de los pares y explica la mayor parte del movimiento: allí el 1 % superior pasa del <strong>${f.mTop1First}</strong> al <strong>${f.mTop1Last}</strong> (${f.mTop1Change} puntos; Gini de ${f.mGiniFirst} a ${f.mGiniLast}). Al excluir los cargos cuyo inicio nunca se observó, la dirección nacional se mantiene: del ${f.bxFirst} al ${f.bxLast}.</p>`,
     ],
-    cap1: `Cuota de cargos del 1 % de administradores con más cargos, empresas madrileñas con inscripciones recientes (B), ${FIRST}–${LAST}. La línea discontinua (BX) excluye los cargos cuyo inicio no se observó. Mueva el cursor o use el control deslizante para elegir el año.`,
+    cap1: `Cuota de cargos del 1 % de administradores con más cargos, empresas con inscripciones recientes (variante B), ${FIRST}–${LAST}. Línea continua: España como un solo grafo. Línea discontinua: Madrid. Mueva el cursor o use el control deslizante para elegir el año.`,
     play: 'Reproducir', pause: 'Pausar', yearLabel: 'Año',
-    note1: `<b>Lo que esto no demuestra.</b> La concentración por sí sola no distingue entre prestadores de servicios profesionales, grupos empresariales, vehículos de inversión o cambios en la estructura de gobierno. Sin la cola (administradores persona jurídica y administradores con más de ${D.heavy_threshold} cargos en toda España en esa fecha) el Gini pasa de ${f.tcGiniFirst} a ${f.tcGiniLast}: la mayor parte del movimiento está en la cola.`,
-    s2eye: '02 · Conectividad', s2h: 'La conectividad tiene límites',
+    note1: `<b>Lo que esto no demuestra.</b> La concentración por sí sola no distingue entre prestadores de servicios profesionales, grupos empresariales, vehículos de inversión o cambios en la estructura de gobierno. Sin la cola (administradores persona jurídica y administradores con más de ${D.heavy_threshold} cargos en toda España en esa fecha) el Gini nacional pasa de ${f.tcGiniFirst} a ${f.tcGiniLast}: la mayor parte del movimiento está en la cola.`,
+    s2eye: '02 · Provincias', s2h: 'La misma lente, provincia a provincia',
     s2: [
-      `<p>En ${LAST}, el ${f.interlockedLast} de las empresas comparte un administrador con otra empresa, pero solo el ${f.giantLast} pertenece al mayor componente conexo. Los cargos por empresa bajaron de ${f.ppcFirst} a ${f.ppcLast}.</p>`,
-      `<p>El componente observado equivale al ${f.ratioFirst} de su referencia aleatoria en ${FIRST} y al ${f.ratioLast} en ${LAST}. La red está persistentemente fragmentada respecto a esa referencia; no se está fragmentando más.</p>`,
-    ],
-    netTitle: 'El mayor componente conexo', netIntro: 'Empresas conectadas mediante cadenas de administradores compartidos, como proporción de todas las empresas de la población seleccionada.',
-    full: 'Población completa', trimmed: 'Sin la cola', observed: 'Observado', random: 'Media aleatoria', range: 'Rango de 10 extracciones', start: 'Punto de partida', selected: 'Instantánea seleccionada',
-    cap2: `La referencia aleatoria conserva el número de cargos de cada empresa y de cada administrador y recompone quién se sienta dónde. El rango muestra diez extracciones; no es un intervalo de confianza.`,
-    s3eye: '03 · Provincias', s3h: 'La misma lente, provincia a provincia',
-    s3: [
-      `<p>Cada provincia se reconstruye con las mismas reglas y el mismo año. España es un único grafo nacional, no la suma de las provincias: un administrador que une una empresa madrileña con una barcelonesa cuenta una vez allí y ninguna en cada provincia.</p>`,
-      `<p>La subida es sobre todo madrileña: Madrid gana ${f.pf.deltaFmt(f.pf.madrid.delta)} puntos entre ${FIRST} y ${LAST}, ${esc(f.pf.flat.name)} se mantiene plana y ${f.pf.down} de las ${f.pf.n} provincias con al menos 2.000 empresas bajan. En el grafo nacional, con ${f.natCompanies} empresas, el 1 % superior pasa del ${f.natTop1First} al ${f.natTop1Last}. La tabla siguiente recalcula la comparativa para el año seleccionado.</p>`,
+      `<p>Cada provincia se reconstruye con las mismas reglas y el mismo año. Un administrador que une una empresa madrileña con una barcelonesa cuenta en el grafo nacional y en ninguna de las dos provincias, por eso España no es la suma de sus filas.</p>`,
+      `<p>Madrid gana ${f.pf.deltaFmt(f.pf.madrid.delta)} puntos entre ${FIRST} y ${LAST}; ${esc(f.pf.flat.name)} se mantiene plana y ${f.pf.down} de las ${f.pf.n} provincias con al menos 2.000 empresas bajan. La tabla recalcula la comparativa para el año seleccionado.</p>`,
     ],
     provCols: ['Provincia', 'Empresas', '1 % superior', 'Δ 1 % sup. desde ' + FIRST, 'Gini', 'Interconectadas', 'Mayor componente', 'Observado ÷ aleatorio', 'Excluidas por la regla de cierre'],
     spainRow: 'España (un solo grafo)', sortHint: 'Pulse un encabezado para ordenar', tblCap: 'Población B, año seleccionado. * Menos de 2.000 empresas: solo tres extracciones aleatorias, léase con cautela.',
     summary: 'De las {n} provincias con al menos 2.000 empresas, la cuota del 1 % superior sube más de un punto en {up} y baja en {down} entre ' + FIRST + ' y {year}. La mayor subida es la de {top}, {delta} puntos; {flat} se mantiene plana.',
-    cap3: `Comparativa provincial para el año seleccionado. La cuota del 1 % superior y el mayor componente dependen del tamaño de la población: compare entre provincias el cociente observado ÷ aleatorio y el Gini, no la cuota bruta del componente. La regla de cierre administrativo se publica de forma muy desigual según el registro (última columna).`,
+    cap2: `Comparativa provincial para el año seleccionado. La cuota del 1 % superior y el mayor componente dependen del tamaño de la población: compare entre provincias el cociente observado ÷ aleatorio y el Gini, no la cuota bruta del componente. La regla de cierre administrativo se publica de forma muy desigual según el registro (última columna).`,
+    s3eye: '03 · Conectividad', s3h: 'La conectividad tiene límites',
+    s3: [
+      `<p>En ${LAST}, el ${f.interlockedLast} de las empresas españolas comparte un administrador con otra empresa, pero solo el ${f.giantLast} pertenece al mayor componente conexo (${f.giantFirst} en ${FIRST}). Los cargos por empresa bajaron de ${f.ppcFirst} a ${f.ppcLast}.</p>`,
+      `<p>El componente observado equivale al ${f.ratioFirst} de su referencia aleatoria en ${FIRST} y al ${f.ratioLast} en ${LAST}. La red está persistentemente fragmentada respecto a esa referencia; no se está fragmentando más. En Madrid el componente es mayor, ${f.mGiantLast} frente a ${f.mGiantRndLast} al azar, con la misma proporción.</p>`,
+    ],
+    netTitle: 'El mayor componente conexo', netIntro: 'Empresas conectadas mediante cadenas de administradores compartidos, como proporción de todas las empresas de la población seleccionada.',
+    pops: { ES: 'España', MAD: 'Madrid' },
+    full: 'Población completa', trimmed: 'Sin la cola', observed: 'Observado', random: 'Media aleatoria', range: 'Rango de las extracciones', start: 'Punto de partida', selected: 'Instantánea seleccionada',
+    cap3: `La referencia aleatoria conserva el número de cargos de cada empresa y de cada administrador y recompone quién se sienta dónde. El rango muestra las extracciones (cinco para España, diez para Madrid); no es un intervalo de confianza.`,
     s4eye: '04 · Explorador', s4h: 'Cambie la lente',
-    s4: [`<p>Trece instantáneas anuales, cinco definiciones de población y nueve medidas, todas del mismo panel fechado.</p>`],
-    exVariant: 'Definición de población', exMetric: 'Medida', exChange: 'Variación desde ' + FIRST, exCols: ['Año', 'Pares', 'Empresas¹', 'Administradores', 'Pares / empresa', '1 % superior', 'Gini', 'Interconectadas', 'Mayor componente'],
+    s4: [`<p>Dos poblaciones, trece instantáneas anuales, cinco definiciones de población y nueve medidas, todas del mismo panel fechado.</p>`],
+    exPop: 'Ámbito', exVariant: 'Definición de población', exMetric: 'Medida', exChange: 'Variación desde ' + FIRST, exCols: ['Año', 'Pares', 'Empresas¹', 'Administradores', 'Pares / empresa', '1 % superior', 'Gini', 'Interconectadas', 'Mayor componente'],
     cap4: `¹ Empresas que conservan al menos un par. En TC y TL, los porcentajes de red usan todas las empresas de B, incluidas las que quedan sin pares. Los administradores pueden ser personas físicas o administradores persona jurídica.`,
     s5eye: '05 · Método', s5h: 'La evidencia, con sus límites',
     methods: [
@@ -125,10 +134,10 @@ const T = {
       ]],
       ['¿En qué difieren las cinco variantes de población?', [
         'A: todos los pares abiertos, excluidas las empresas disueltas, extinguidas o dadas de baja. B: A más una inscripción en el año en curso o en los cuatro anteriores y ningún cierre administrativo sin levantar. BX: B sin los cargos de inicio desconocido. TC: B sin administradores persona jurídica ni administradores con más de ' + D.heavy_threshold + ' cargos en toda España en esa fecha. TL: como TC, pero con el recuento histórico de empresas por administrador (usa información futura).',
-        'En TC y TL, las empresas que quedan sin pares permanecen como nodos aislados del grafo.',
+        'En TC y TL, las empresas que quedan sin pares permanecen como nodos aislados del grafo. El grafo nacional y las provincias se calculan con las mismas reglas que el panel de Madrid.',
       ]],
       ['¿Cuánta historia falta?', [
-        `Los registros comienzan en 2009. En B, el ${f.unknownFirst} de los pares en ${FIRST} y el ${f.unknownLast} en ${LAST} son cargos cuyo inicio nunca se observó. Iniciar la serie en ${FIRST} no elimina esa censura por la izquierda; BX es una comprobación de sensibilidad, no una corrección.`,
+        `Los registros comienzan en 2009. En la población B nacional, el ${f.unknownFirst} de los pares en ${FIRST} y el ${f.unknownLast} en ${LAST} son cargos cuyo inicio nunca se observó. Iniciar la serie en ${FIRST} no elimina esa censura por la izquierda; BX es una comprobación de sensibilidad, no una corrección.`,
         'La regla de cinco años puede excluir empresas en funcionamiento con gobierno sin cambios. Una inscripción reciente no prueba actividad económica.',
       ]],
       ['¿Cómo deben leerse los gráficos?', [
@@ -136,19 +145,19 @@ const T = {
         'La referencia aleatoria fija las dos secuencias de grados (pares por empresa y por administrador), recompone las aristas sin duplicados y aplica una ronda completa de intercambios que conservan los grados. Diez extracciones en Madrid, cinco en el grafo nacional y en las provincias.',
       ]],
       ['¿Qué sigue abierto?', [
-        'Los cierres administrativos (Hacienda y NIF) se publican de forma muy desigual según el registro: afectan al 0,2 % de las empresas madrileñas frente a más del 30 % en Las Palmas o Tarragona. La regla es casi inoperante en Madrid y no es comparable entre provincias. Madrid es la provincia registral de la empresa; los vínculos a través de otras provincias solo aparecen en el grafo nacional.',
+        'Los cierres administrativos (Hacienda y NIF) se publican de forma muy desigual según el registro: afectan al 0,2 % de las empresas madrileñas frente a más del 30 % en Las Palmas o Tarragona. La regla es casi inoperante en Madrid y no es comparable entre provincias. La provincia es la provincia registral de la empresa; los vínculos entre provincias solo aparecen en el grafo nacional.',
         'Están previstas muestras de validación contra inscripciones de origen, el análisis de flujos de nombramientos (adónde van los nuevos cargos) y cohortes de constitución. Todavía no se ha establecido ningún mecanismo de «administración profesional».',
       ]],
     ],
     limH: 'Datos y limitaciones',
     lims: [
       'El BORME recoge <strong>actos jurídicos inscritos</strong>, no la situación económica de una empresa. Todo lo anterior es descriptivo: <strong>no se hace ninguna afirmación causal</strong>.',
-      'La identidad de las personas se reconstruye a partir del nombre publicado; el BORME no incluye identificadores personales. Los homónimos pueden inflar las carteras grandes y la conectividad.',
+      'La identidad de las personas se reconstruye a partir del nombre publicado; el BORME no incluye identificadores personales. Los homónimos pueden inflar las carteras grandes y la conectividad, más en un grafo de un millón de empresas que en una provincia.',
       'El año 2026, incompleto, se excluye. Los valores anteriores a ' + FIRST + ' no se muestran porque la ventana de observación todavía se estaba llenando.',
     ],
     ctaH: 'Explora cualquier empresa española', ctaP: 'El estudio mira el conjunto. La herramienta hace lo mismo con una sola empresa: busca una sociedad o un administrador y explora sus vínculos en un grafo interactivo.', ctaB: 'Abrir el buscador →',
     foot: 'Datos: Boletín Oficial del Registro Mercantil (BORME), 2009–2026. Análisis independiente elaborado mediante procesos automatizados; puede contener errores u omisiones. No es el Registro Mercantil y no emite certificaciones.',
-    csvHead: ['Año', 'Variante', 'Pares', 'Empresas', 'Administradores', 'Pares por empresa', 'Cuota 1 % superior', 'Gini', 'Interconectadas', 'Mayor componente', 'Mayor componente (media aleatoria)'],
+    csvHead: ['Ámbito', 'Año', 'Variante', 'Pares', 'Empresas', 'Administradores', 'Pares por empresa', 'Cuota 1 % superior', 'Gini', 'Interconectadas', 'Mayor componente', 'Mayor componente (media aleatoria)'],
     variants: { A: 'Todos los pares abiertos', B: 'Empresas con inscripciones recientes', BX: 'Sensibilidad: inicio conocido', TC: 'Recorte contemporáneo', TL: 'Recorte histórico' },
     variantNotes: {
       A: 'Pares de administración abiertos reconstruidos, excluidas las empresas disueltas, extinguidas o dadas de baja.',
@@ -162,44 +171,45 @@ const T = {
   en: (f) => ({
     htmlLang: 'en', ogLocale: 'en_GB',
     title: `${STUDY.en.title} | Mapa Societario`,
-    desc: `Thirteen annual snapshots (${FIRST}–${LAST}) of directorships at Madrid companies: the top 1% of directors go from ${f.top1First} to ${f.top1Last} of seats while only ${f.giantLast} of companies belong to the largest connected component.`,
+    desc: `${f.companies} active companies, thirteen annual snapshots (${FIRST}–${LAST}) and all 52 provinces: the 1% of directors with the most seats go from ${f.top1First} to ${f.top1Last} of seats in Spain and from ${f.mTop1First} to ${f.mTop1Last} in Madrid, while only ${f.giantLast} of companies belong to the largest connected component.`,
     crumbHome: 'Mapa Societario', crumbHub: 'Studies', kicker: 'Original research · BORME · Provisional edition',
-    dek: `${f.pairs} active company–director pairs in Madrid in ${LAST}. The top 1% of directors hold ${f.top1Last} of seats, up from ${f.top1First} in ${FIRST}; the network of shared directors stays fragmented. A province comparison shows the rise is largely a Madrid story.`,
+    dek: `${f.companies} active companies and ${f.pairs} company–director pairs in ${LAST}, reconstructed from BORME as one national graph. The 1% of directors with the most seats gain ground, from ${f.top1First} to ${f.top1Last}; in Madrid the rise is three times larger, from ${f.mTop1First} to ${f.mTop1Last}, while Barcelona does not move. The network of shared directors stays fragmented everywhere.`,
     publishedLabel: 'Published', dataLabel: 'Data as of', editionLabel: 'Edition',
     heroes: [
-      { n: f.top1Last, t: `of seats held by the <strong>top 1%</strong> of directors in ${LAST} (${f.top1First} in ${FIRST})`, hi: true },
-      { n: f.interlockedLast, t: `of companies share at least one director with another company`, hi: false },
-      { n: f.giantLast, t: `of companies belong to the largest connected component, against ${f.giantRndLast} expected at random`, hi: true },
+      { n: f.top1Last, t: `of seats in Spain held by the <strong>top 1%</strong> of directors in ${LAST} (${f.top1First} in ${FIRST})`, hi: true },
+      { n: f.mTop1Last, t: `in Madrid, the province with the largest rise (${f.mTop1First} in ${FIRST})`, hi: true },
+      { n: f.giantLast, t: `of Spanish companies belong to the largest connected component, against ${f.giantRndLast} expected at random`, hi: false },
     ],
-    s1eye: '01 · Concentration', s1h: 'A larger share at the top',
+    s1eye: '01 · Concentration', s1h: 'A larger share at the top, above all in Madrid',
     s1: [
-      `<p class="lede">Each company–director relationship counts once. The charts follow reconstructed year-end snapshots of recently filing Madrid companies.</p>`,
-      `<p>The top 1% of directors held <strong>${f.top1First}</strong> of observed seats in ${FIRST} and <strong>${f.top1Last}</strong> in ${LAST}, an increase of ${f.top1Change} percentage points. The Gini index of seats per director moves from ${f.giniFirst} to ${f.giniLast}.</p>`,
-      `<p>Excluding seats whose start was never observed gives the same direction, ${f.bxFirst} to ${f.bxLast}. That is sensitivity evidence, not a correction: historical coverage remains incomplete.</p>`,
+      `<p class="lede">Each company–director relationship counts once. The charts follow reconstructed year-end snapshots of recently filing companies; Spain is one graph, not the sum of its provinces.</p>`,
+      `<p>In Spain, the 1% of directors with the most seats held <strong>${f.top1First}</strong> of observed seats in ${FIRST} and <strong>${f.top1Last}</strong> in ${LAST}, ${f.top1Change} points more. The Gini index of seats per director moves from ${f.giniFirst} to ${f.giniLast}.</p>`,
+      `<p>Madrid holds ${f.mShare} of the pairs and accounts for most of the movement: there the top 1% goes from <strong>${f.mTop1First}</strong> to <strong>${f.mTop1Last}</strong> (${f.mTop1Change} points; Gini from ${f.mGiniFirst} to ${f.mGiniLast}). Excluding seats whose start was never observed, the national direction holds: ${f.bxFirst} to ${f.bxLast}.</p>`,
     ],
-    cap1: `Share of seats held by the 1% of directors with the most seats, recently filing Madrid companies (B), ${FIRST}–${LAST}. The dashed line (BX) excludes seats whose start was never observed. Move over the chart or use the slider to pick a year.`,
+    cap1: `Share of seats held by the 1% of directors with the most seats, recently filing companies (variant B), ${FIRST}–${LAST}. Solid line: Spain as one graph. Dashed line: Madrid. Move over the chart or use the slider to pick a year.`,
     play: 'Play', pause: 'Pause', yearLabel: 'Year',
-    note1: `<b>What this does not establish.</b> Concentration alone cannot distinguish professional service providers from business groups, ownership vehicles or changes in governance structure. Without the tail (corporate officers and directors holding more than ${D.heavy_threshold} seats nationwide at that date) the Gini moves from ${f.tcGiniFirst} to ${f.tcGiniLast}: most of the movement is in the tail.`,
-    s2eye: '02 · Connectivity', s2h: 'Connectivity has limits',
+    note1: `<b>What this does not establish.</b> Concentration alone cannot distinguish professional service providers from business groups, ownership vehicles or changes in governance structure. Without the tail (corporate officers and directors holding more than ${D.heavy_threshold} seats nationwide at that date) the national Gini moves from ${f.tcGiniFirst} to ${f.tcGiniLast}: most of the movement is in the tail.`,
+    s2eye: '02 · Provinces', s2h: 'The same lens, province by province',
     s2: [
-      `<p>In ${LAST}, ${f.interlockedLast} of companies share a director with another company, but only ${f.giantLast} belong to the largest connected component. Seats per company fell from ${f.ppcFirst} to ${f.ppcLast}.</p>`,
-      `<p>The observed component is ${f.ratioFirst} of its random benchmark in ${FIRST} and ${f.ratioLast} in ${LAST}. The network is persistently fragmented relative to that benchmark; it is not becoming more fragmented.</p>`,
-    ],
-    netTitle: 'The largest connected component', netIntro: 'Companies connected through chains of shared directors, as a share of all companies in the selected population.',
-    full: 'Full population', trimmed: 'Tail removed', observed: 'Observed', random: 'Random mean', range: '10-draw range', start: 'Starting point', selected: 'Selected snapshot',
-    cap2: `The benchmark keeps every company’s and every director’s number of seats and rewires who sits where. The range shows ten draws; it is not a confidence interval.`,
-    s3eye: '03 · Provinces', s3h: 'The same lens, province by province',
-    s3: [
-      `<p>Every province is reconstructed with the same rules and the same year. Spain is one national graph, not the sum of the provinces: a director who links a Madrid company to a Barcelona company counts once there and not at all in either province.</p>`,
-      `<p>The rise is largely a Madrid story: Madrid gains ${f.pf.deltaFmt(f.pf.madrid.delta)} points between ${FIRST} and ${LAST}, ${esc(f.pf.flat.name)} is flat, and ${f.pf.down} of the ${f.pf.n} provinces with at least 2,000 companies fall. In the national graph, across ${f.natCompanies} companies, the top 1% share goes from ${f.natTop1First} to ${f.natTop1Last}. The table below recomputes the comparison for the selected year.</p>`,
+      `<p>Every province is reconstructed with the same rules and the same year. A director who links a Madrid company to a Barcelona company counts in the national graph and in neither province, which is why Spain is not the sum of its rows.</p>`,
+      `<p>Madrid gains ${f.pf.deltaFmt(f.pf.madrid.delta)} points between ${FIRST} and ${LAST}; ${esc(f.pf.flat.name)} is flat and ${f.pf.down} of the ${f.pf.n} provinces with at least 2,000 companies fall. The table recomputes the comparison for the selected year.</p>`,
     ],
     provCols: ['Province', 'Companies', 'Top 1%', 'Δ top 1% since ' + FIRST, 'Gini', 'Interlocked', 'Largest component', 'Observed ÷ random', 'Removed by closure rule'],
     spainRow: 'Spain (one graph)', sortHint: 'Click a heading to sort', tblCap: 'Population B, selected year. * Fewer than 2,000 companies: three random draws only, read with care.',
     summary: 'Among the {n} provinces with at least 2,000 companies, the top 1% share rose by more than one point in {up} and fell in {down} between ' + FIRST + ' and {year}. The largest rise is {top}, {delta} points; {flat} is flat.',
-    cap3: `Province comparison for the selected year. The top 1% share and the largest component scale with population size: compare the observed ÷ random ratio and the Gini across provinces, not the raw component share. The administrative-closure rule is published very unevenly across registries (last column).`,
+    cap2: `Province comparison for the selected year. The top 1% share and the largest component scale with population size: compare the observed ÷ random ratio and the Gini across provinces, not the raw component share. The administrative-closure rule is published very unevenly across registries (last column).`,
+    s3eye: '03 · Connectivity', s3h: 'Connectivity has limits',
+    s3: [
+      `<p>In ${LAST}, ${f.interlockedLast} of Spanish companies share a director with another company, but only ${f.giantLast} belong to the largest connected component (${f.giantFirst} in ${FIRST}). Seats per company fell from ${f.ppcFirst} to ${f.ppcLast}.</p>`,
+      `<p>The observed component is ${f.ratioFirst} of its random benchmark in ${FIRST} and ${f.ratioLast} in ${LAST}. The network is persistently fragmented relative to that benchmark; it is not becoming more fragmented. Madrid's component is larger, ${f.mGiantLast} against ${f.mGiantRndLast} at random, with the same ratio.</p>`,
+    ],
+    netTitle: 'The largest connected component', netIntro: 'Companies connected through chains of shared directors, as a share of all companies in the selected population.',
+    pops: { ES: 'Spain', MAD: 'Madrid' },
+    full: 'Full population', trimmed: 'Tail removed', observed: 'Observed', random: 'Random mean', range: 'Range of the draws', start: 'Starting point', selected: 'Selected snapshot',
+    cap3: `The benchmark keeps every company’s and every director’s number of seats and rewires who sits where. The range shows the draws (five for Spain, ten for Madrid); it is not a confidence interval.`,
     s4eye: '04 · Explorer', s4h: 'Change the lens',
-    s4: [`<p>Thirteen annual snapshots, five population definitions and nine measures, all from the same dated panel.</p>`],
-    exVariant: 'Population definition', exMetric: 'Measure', exChange: 'Change since ' + FIRST, exCols: ['Year', 'Pairs', 'Companies¹', 'Officers', 'Pairs / company', 'Top 1%', 'Gini', 'Interlocked', 'Largest component'],
+    s4: [`<p>Two populations, thirteen annual snapshots, five population definitions and nine measures, all from the same dated panel.</p>`],
+    exPop: 'Scope', exVariant: 'Population definition', exMetric: 'Measure', exChange: 'Change since ' + FIRST, exCols: ['Year', 'Pairs', 'Companies¹', 'Officers', 'Pairs / company', 'Top 1%', 'Gini', 'Interlocked', 'Largest component'],
     cap4: `¹ Companies retaining at least one pair. For TC and TL, graph percentages use all B companies, including companies left with no retained pairs. Officers may be natural persons or corporate administrators.`,
     s5eye: '05 · Method', s5h: 'The evidence, with its limits',
     methods: [
@@ -209,10 +219,10 @@ const T = {
       ]],
       ['How do the five population variants differ?', [
         'A: all open pairs, excluding dissolved, extinct or deregistered companies. B: A plus a filing in the current or preceding four years and no unlifted administrative closure. BX: B without unknown-start seats. TC: B without corporate officers and without directors holding more than ' + D.heavy_threshold + ' seats nationwide at that date. TL: as TC, but using the lifetime count of companies per director (uses future information).',
-        'For TC and TL, companies left with no pairs stay as isolated graph nodes.',
+        'For TC and TL, companies left with no pairs stay as isolated graph nodes. The national graph and the provinces use the same rules as the Madrid panel.',
       ]],
       ['How much history is missing?', [
-        `Records start in 2009. In B, ${f.unknownFirst} of pairs in ${FIRST} and ${f.unknownLast} in ${LAST} are seats whose start was never observed. Starting the series in ${FIRST} does not eliminate that left-censoring; BX is a sensitivity check, not a correction.`,
+        `Records start in 2009. In the national B population, ${f.unknownFirst} of pairs in ${FIRST} and ${f.unknownLast} in ${LAST} are seats whose start was never observed. Starting the series in ${FIRST} does not eliminate that left-censoring; BX is a sensitivity check, not a correction.`,
         'The five-year recency rule can exclude functioning companies with unchanged governance. Recent filing is not proof of economic activity.',
       ]],
       ['How should the charts be read?', [
@@ -220,19 +230,19 @@ const T = {
         'The random benchmark fixes both degree sequences (pairs per company and per director), rewires the edges without duplicates and applies one full round of degree-preserving swaps. Ten draws for Madrid, five for the national graph and the provinces.',
       ]],
       ['What remains open?', [
-        'Administrative closures (tax and NIF) are published very unevenly across registries: they touch 0.2% of Madrid companies against more than 30% in Las Palmas or Tarragona. The rule is close to inert in Madrid and not comparable across provinces. Madrid is the company’s registry province; links through other provinces appear only in the national graph.',
+        'Administrative closures (tax and NIF) are published very unevenly across registries: they touch 0.2% of Madrid companies against more than 30% in Las Palmas or Tarragona. The rule is close to inert in Madrid and not comparable across provinces. The province is the company’s registry province; links between provinces appear only in the national graph.',
         'Validation samples against source filings, an appointment-flow analysis (where new seats go) and incorporation cohorts are planned. No “professional administration” mechanism has yet been established.',
       ]],
     ],
     limH: 'Data and limitations',
     lims: [
       'BORME records <strong>registered legal acts</strong>, not a company’s economic situation. Everything above is descriptive: <strong>no causal claim is made</strong>.',
-      'Person identity is reconstructed from the published name; BORME carries no personal identifiers. Namesakes can inflate large portfolios and connectivity.',
+      'Person identity is reconstructed from the published name; BORME carries no personal identifiers. Namesakes can inflate large portfolios and connectivity, more so in a graph of a million companies than in one province.',
       'The incomplete year 2026 is excluded. Values before ' + FIRST + ' are not shown because the observation window was still filling.',
     ],
     ctaH: 'Explore any Spanish company', ctaP: 'The study looks at the whole. The tool does the same for a single company: search a company or a director and explore their links in an interactive graph.', ctaB: 'Open the search →',
     foot: 'Data: Boletín Oficial del Registro Mercantil (BORME), 2009–2026. Independent analysis produced through automated processes; it may contain errors or omissions. Not the Registro Mercantil, and it issues no certificates.',
-    csvHead: ['Year', 'Variant', 'Pairs', 'Companies', 'Officers', 'Pairs per company', 'Top 1% share', 'Gini', 'Interlocked', 'Largest component', 'Largest component (random mean)'],
+    csvHead: ['Scope', 'Year', 'Variant', 'Pairs', 'Companies', 'Officers', 'Pairs per company', 'Top 1% share', 'Gini', 'Interlocked', 'Largest component', 'Largest component (random mean)'],
     variants: { A: 'All open pairs', B: 'Recently filing companies', BX: 'Known-start sensitivity', TC: 'Contemporaneous trim', TL: 'Lifetime trim' },
     variantNotes: {
       A: 'Reconstructed open directorship pairs, excluding companies treated as dissolved, extinct or deregistered.',
@@ -258,7 +268,7 @@ const STUDY_STYLE = `
 .timeline output{font-size:15px;color:var(--ink);font-weight:600;min-width:3.2em;text-align:right}
 .net-bars{margin-top:12px}
 .net-year{padding:16px 0;border-top:1px solid var(--rule-2)}
-.net-h{display:flex;align-items:baseline;gap:12px;margin-bottom:10px}
+.net-h{display:flex;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap}
 .net-h b{font:600 24px/1 "IBM Plex Serif",Georgia,serif}
 .net-h small{font-size:12.5px;color:var(--ink-3)}
 .bar-line{display:grid;grid-template-columns:110px 1fr 70px;align-items:center;gap:12px;margin:6px 0;font-size:13px}
@@ -270,6 +280,7 @@ const STUDY_STYLE = `
 .range{display:block;font-size:12px;color:var(--ink-3);margin-top:6px}
 .net-axis{display:grid;grid-template-columns:110px 1fr 70px;font:400 11px/1 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink-3)}
 .net-axis div{display:flex;justify-content:space-between}
+.ctrls.net{gap:10px}
 th button{all:unset;cursor:pointer;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit}
 th button:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
 th[aria-sort=ascending] button:after{content:" ↑"}th[aria-sort=descending] button:after{content:" ↓"}
@@ -279,7 +290,7 @@ tr.sel td{background:var(--rule-2)}
 .prov-summary{font-size:16px;color:var(--ink);margin:0 0 6px}
 .sel-row{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
 .sel-row label{display:flex;flex-direction:column;gap:5px;font:500 11.5px/1.4 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
-.sel-row select{font:400 14px/1.3 "IBM Plex Sans",sans-serif;padding:7px 10px;border:1px solid var(--rule);border-radius:3px;background:var(--raise);color:var(--ink);min-width:220px}
+.sel-row select{font:400 14px/1.3 "IBM Plex Sans",sans-serif;padding:7px 10px;border:1px solid var(--rule);border-radius:3px;background:var(--raise);color:var(--ink);min-width:200px}
 .ex-sum{display:flex;gap:26px;flex-wrap:wrap;margin:14px 0 0;font:400 12px/1.4 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink-3)}
 .ex-sum b{display:block;font-size:18px;color:var(--ink);font-weight:600}
 .ex-note{font-size:13px;color:var(--ink-3);margin:8px 0 0}
@@ -300,9 +311,9 @@ function heroes(t) {
 
 function csvFor(t, lang) {
   const rows = [t.csvHead];
-  for (const r of D.panel) for (const v of ['A', 'B', 'BX', 'TC', 'TL']) {
+  for (const [pop, panel] of Object.entries(POPS)) for (const r of panel) for (const v of ['A', 'B', 'BX', 'TC', 'TL']) {
     const x = r[v];
-    rows.push([r.year, v, x.pairs, x.companies, x.officers, num(x.pairs_per_company, lang, 3), num(x.top1pct, lang, 4), num(x.gini, lang, 4), num(x.interlocked, lang, 4), num(x.giant, lang, 4), num(x.giant_rnd_mean, lang, 4)]);
+    rows.push([t.pops[pop], r.year, v, x.pairs, x.companies, x.officers, num(x.pairs_per_company, lang, 3), num(x.top1pct, lang, 4), num(x.gini, lang, 4), num(x.interlocked, lang, 4), num(x.giant, lang, 4), num(x.giant_rnd_mean, lang, 4)]);
   }
   return toCsv(rows);
 }
@@ -311,10 +322,10 @@ function csvFor(t, lang) {
 function chartPayload(t, lang) {
   return {
     lang, first: FIRST, last: LAST,
-    panel: D.panel, national: D.national, provinces: D.provinces,
+    pops: POPS, provinces: D.provinces,
     labels: {
       pct: lang === 'es' ? ' %' : '%',
-      variants: t.variants, variantNotes: t.variantNotes, metrics: t.metrics,
+      pops: t.pops, variants: t.variants, variantNotes: t.variantNotes, metrics: t.metrics,
       observed: t.observed, random: t.random, range: t.range, start: t.start, selected: t.selected,
       spainRow: t.spainRow, summary: t.summary, play: t.play, pause: t.pause,
     },
@@ -356,6 +367,9 @@ const figure = (inner, cap, wide = false) => `<figure class="fig${wide ? ' wide'
     <figcaption>${esc(cap)}</figcaption>
   </div></figure>`;
 
+const tablist = (id, label, items, selected) => `<div role="tablist" id="${id}" aria-label="${esc(label)}">${items.map(([k, v]) =>
+  `<button role="tab" aria-selected="${k === selected ? 'true' : 'false'}" data-k="${k}">${esc(v)}</button>`).join('')}</div>`;
+
 function provinceTable(t) {
   return `<p class="prov-summary" id="prov-summary"></p>
     <div class="tbl-wrap"><table><caption>${esc(t.tblCap)} ${esc(t.sortHint)}.</caption>
@@ -364,10 +378,11 @@ function provinceTable(t) {
 }
 
 function explorer(t) {
-  const opts = (obj, sel) => Object.entries(obj).map(([k, v]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${esc(k === v ? v : `${k} · ${v}`)}</option>`).join('');
+  const opt = (k, v, sel) => `<option value="${k}"${k === sel ? ' selected' : ''}>${esc(v)}</option>`;
   return `<div class="sel-row">
-      <label>${esc(t.exVariant)}<select id="ex-variant">${opts(t.variants, 'B')}</select></label>
-      <label>${esc(t.exMetric)}<select id="ex-metric">${Object.entries(t.metrics).map(([k, v]) => `<option value="${k}"${k === 'top1pct' ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label>
+      <label>${esc(t.exPop)}<select id="ex-pop">${Object.entries(t.pops).map(([k, v]) => opt(k, v, 'ES')).join('')}</select></label>
+      <label>${esc(t.exVariant)}<select id="ex-variant">${Object.entries(t.variants).map(([k, v]) => opt(k, `${k} · ${v}`, 'B')).join('')}</select></label>
+      <label>${esc(t.exMetric)}<select id="ex-metric">${Object.entries(t.metrics).map(([k, v]) => opt(k, v, 'top1pct')).join('')}</select></label>
     </div>
     <p class="ex-note" id="ex-note"></p>
     <div class="readout" id="r-ex"></div>
@@ -436,19 +451,19 @@ ${gaSnippet()}
     <div class="plot"><svg id="s-conc" role="img" aria-label="${esc(t.cap1)}"></svg></div>
     <div class="timeline"><button type="button" class="play" id="year-play" aria-pressed="false">${esc(t.play)}</button><span>${FIRST}</span>
       <input type="range" id="year-range" min="${FIRST}" max="${LAST}" step="1" value="${LAST}" aria-label="${esc(t.yearLabel)}"><span>${LAST}</span><output for="year-range" class="year-out">${LAST}</output></div>
-    <div class="key"><span><i style="background:var(--stamp)"></i>B · ${esc(t.variants.B)}</span><span><i style="background:var(--ink-3)"></i>BX · ${esc(t.variants.BX)}</span></div>`, t.cap1))}
+    <div class="key"><span><i style="background:var(--stamp)"></i>${esc(t.pops.ES)} · B</span><span><i style="background:var(--amber)"></i>${esc(t.pops.MAD)} · B</span></div>`, t.cap1))}
   <div class="wrap"><div class="col"><div class="note">${t.note1}</div></div></div>
 
-  ${section(t.s2eye, t.s2h, t.s2, figure(`
-    <div class="ctrls"><h3 style="margin:0">${esc(t.netTitle)}</h3>
-      <div role="tablist" id="net-tabs" aria-label="${esc(t.full)} / ${esc(t.trimmed)}" style="margin-left:auto">
-        <button role="tab" aria-selected="true" data-k="B">${esc(t.full)}</button>
-        <button role="tab" aria-selected="false" data-k="TC">${esc(t.trimmed)}</button></div></div>
+  ${section(t.s2eye, t.s2h, t.s2, figure(provinceTable(t), t.cap2, true))}
+
+  ${section(t.s3eye, t.s3h, t.s3, figure(`
+    <div class="ctrls net"><h3 style="margin:0">${esc(t.netTitle)}</h3>
+      <span style="margin-left:auto"></span>
+      ${tablist('net-pop', t.exPop, Object.entries(t.pops), 'ES')}
+      ${tablist('net-var', `${t.full} / ${t.trimmed}`, [['B', t.full], ['TC', t.trimmed]], 'B')}</div>
     <p style="font-size:14px;color:var(--ink-2)">${esc(t.netIntro)}</p>
     <div class="net-axis"><span></span><div><span>0%</span><span>10%</span><span>20%</span><span>30%</span><span>40%</span></div><span></span></div>
-    <div class="net-bars" id="net-bars"></div>`, t.cap2))}
-
-  ${section(t.s3eye, t.s3h, t.s3, figure(provinceTable(t), t.cap3, true))}
+    <div class="net-bars" id="net-bars"></div>`, t.cap3))}
 
   ${section(t.s4eye, t.s4h, t.s4, figure(explorer(t), t.cap4, true))}
 

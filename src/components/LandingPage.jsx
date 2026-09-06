@@ -807,6 +807,9 @@ export default function LandingPage({ lang = 'en' }) {
             <Link href={nav.glossary} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.glossary}
             </Link>
+            <Link href={nav.studies} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+              {copy.footer.studies}
+            </Link>
             <Link href="https://ncdata.eu" target="_blank" rel="noopener" variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.ncdata}
             </Link>

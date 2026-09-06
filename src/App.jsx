@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import SpanishCompanyNetworkGraph from './components/SpanishCompanyNetworkGraph';
 import { ThemeModeToggle } from './theme/ThemeModeToggle';
 import { DATA_MAINTENANCE } from './config/dataMaintenance';
-import { siteNav, isHtmlNav, isExternalNav } from './utils/siteNav';
+import { siteNav, isHtmlNav, isExternalNav, isStaticNav } from './utils/siteNav';
 import { isNativeApp, openListedCompanies } from './services/listedCompaniesNav';
 import { trackEvent, trackUserManualDownload } from './utils/track';
 import {
@@ -42,6 +42,7 @@ const APP_COPY = {
       reports: 'Due Diligence reports',
       connectClaude: 'Use in Claude',
       glossary: 'Registry glossary',
+      studies: 'Data studies',
       pricing: 'Pricing',
       about: 'About',
       faq: 'FAQ',
@@ -70,6 +71,7 @@ const APP_COPY = {
       reports: 'Informes due diligence',
       connectClaude: 'Usar en Claude',
       glossary: 'Glosario registral',
+      studies: 'Estudios de datos',
       pricing: 'Precios',
       about: 'Acerca de',
       listed: 'Empresas del IBEX 35',
@@ -117,7 +119,7 @@ export default function App() {
     // (full-page load on web, in-app Custom Tab on native), never client-route.
     if (url === nav.listed) { openListedCompanies(language); return; }
     if (isExternalNav(url)) { window.location.assign(url); return; }
-    if (isHtmlNav(url)) window.location.assign(url);
+    if (isHtmlNav(url) || isStaticNav(url)) window.location.assign(url);
     else navigate(url);
   };
   const navItems = [
@@ -139,6 +141,7 @@ export default function App() {
     { label: copy.menu.reports, url: nav.reports },
     { label: copy.menu.connectClaude, url: nav.connectClaude },
     { label: copy.menu.glossary, url: nav.glossary },
+    { label: copy.menu.studies, url: nav.studies },
     { label: copy.menu.pricing, url: nav.pricing },
     null,
     { label: copy.menu.about, url: nav.about },
