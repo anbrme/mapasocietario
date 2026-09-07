@@ -126,6 +126,12 @@ describe.each([['dark', DARK_TOKENS], ['light', LIGHT_TOKENS]])('%s tokens', (mo
     }
   });
 
+  it('gives the graph a canvas distinct from the page, so the viewport has a frame', () => {
+    // Dark always had this (#0d1220 on #0a0e1a). Light shipped with the canvas
+    // equal to the page background, so the graph had no visible edge.
+    expect(tokens.graph.surface.canvas).not.toBe(tokens.background.default);
+  });
+
   it('keeps the expanded node distinguishable from an appointment link', () => {
     expect(tokens.graph.node.expanded).not.toBe(tokens.graph.link.appointment);
   });

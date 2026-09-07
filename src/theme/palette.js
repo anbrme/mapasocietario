@@ -91,8 +91,11 @@ export const LIGHT_TOKENS = deepFreeze({
   background: { default: '#f8fafc', paper: '#ffffff' },
   graph: {
     surface: {
-      canvas: '#f8fafc',
-      // Slightly lighter than the canvas so a node reads as a white card on
+      // One step below background.default (#f8fafc) so the viewport has an
+      // edge, as dark's #0d1220 has against #0a0e1a; equal to the page it had
+      // no frame at all.
+      canvas: '#f1f5f9',
+      // Lighter than the canvas so a node reads as a white card on
       // off-white, preserving the hollow-node language.
       nodeFill: '#ffffff',
       label: '#1e293b',

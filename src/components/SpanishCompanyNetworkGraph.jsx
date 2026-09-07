@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { graphInk } from '../theme/graphInk';
 import { debounce } from 'lodash';
 import { forceCollide } from 'd3-force';
 import {
@@ -2042,6 +2043,8 @@ const SpanishCompanyNetworkGraph = ({
   }), [containerDimensions, reservedInspectorWidth, reservedDockHeight]);
   canvasDimensionsRef.current = canvasDimensions;
   const graphPalette = theme.palette.graph;
+  // Per-mode alphas for node tint and link ink (see src/theme/graphInk.js).
+  const ink = graphInk(theme.palette.mode);
 
   // Node colors and shapes
   // Snake_case keys are kept: they are matched against node type strings
@@ -7425,7 +7428,7 @@ const SpanishCompanyNetworkGraph = ({
       }
       ctx.fill();
       ctx.save();
-      ctx.globalAlpha = isDeadEnd ? 0.10 : 0.45;
+      ctx.globalAlpha = isDeadEnd ? ink.deadEndTintAlpha : ink.nodeTintAlpha;
       ctx.fillStyle = color;
       ctx.fill();
       ctx.restore();
@@ -7662,7 +7665,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [watchlistChanges, nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, nodeDegrees, deadEndNodeIds]
+    [watchlistChanges, nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, ink, nodeDegrees, deadEndNodeIds]
   );
 
   const linkCanvasObject = useCallback(
@@ -7721,7 +7724,7 @@ const SpanishCompanyNetworkGraph = ({
       } else if (sharedHighlightIds) {
         ctx.globalAlpha = touchesShared ? 1.0 : PATH_DIM_ALPHA;
       } else {
-        ctx.globalAlpha = 0.78;
+        ctx.globalAlpha = ink.linkAlpha;
       }
 
       // Draw link — dashed for officers from a previous company name and ownership links
@@ -7860,7 +7863,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, graphPalette]
+    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, graphPalette, ink]
   );
 
   // Graph controls
