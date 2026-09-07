@@ -5,6 +5,7 @@ import {
   isStableCompanyGroupKey,
   shouldPromoteCompany,
   shouldValidateCompany,
+  repointStaleSlug,
 } from '../functions/empresa/_demand.js';
 import { applyIndexDecision, isAllowedOrigin, validateDemandPayload } from '../functions/api/company-demand.js';
 
@@ -203,4 +204,52 @@ test('a renamed company fails the slug round-trip and is not promoted', async ()
     assert.equal(decision.promoted, false);
     assert.equal(decision.reason, 'not_verified');
   } finally { restore(); }
+});
+
+// ---------------------------------------------------------------------------
+// Stale-slug self-heal (render path)
+// ---------------------------------------------------------------------------
+
+function healDb(changesPerRun) {
+  const calls = [];
+  const db = {
+    prepare(sql) {
+      return {
+        bind(...args) {
+          return {
+            async run() {
+              calls.push({ sql, args });
+              return { meta: { changes: changesPerRun[calls.length - 1] ?? 0 } };
+            },
+          };
+        },
+      };
+    },
+  };
+  return { db, calls };
+}
+
+test('a stale promoted slug is re-pointed to the live slug when that slug is free', async () => {
+  const { db, calls } = healDb([1]);
+  const outcome = await repointStaleSlug(db, { groupKey: 'H:C-1', slug: 'r-cable-sa', canonicalName: 'R CABLE, S.A.' });
+  assert.equal(outcome, 'repointed');
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /SET slug = \?, canonical_name = \?/);
+  assert.match(calls[0].sql, /NOT EXISTS/);
+  assert.deepEqual(calls[0].args, ['r-cable-sa', 'R CABLE, S.A.', 'H:C-1', 'r-cable-sa', 'H:C-1']);
+});
+
+test('a stale promoted slug is demoted when another promoted row already owns the live slug', async () => {
+  const { db, calls } = healDb([0, 1]);
+  const outcome = await repointStaleSlug(db, { groupKey: 'H:C-1', slug: 'r-cable-sa', canonicalName: 'R CABLE, S.A.' });
+  assert.equal(outcome, 'demoted');
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].sql, /SET status = 'candidate', promoted_at = NULL/);
+  assert.deepEqual(calls[1].args, ['H:C-1']);
+});
+
+test('the self-heal never throws into the render path', async () => {
+  const db = { prepare() { throw new Error('D1 down'); } };
+  const outcome = await repointStaleSlug(db, { groupKey: 'H:C-1', slug: 'x', canonicalName: 'X' });
+  assert.equal(outcome, 'failed');
 });

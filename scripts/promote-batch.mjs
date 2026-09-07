@@ -10,6 +10,16 @@
  *   node scripts/promote-batch.mjs sql
  *   node scripts/promote-batch.mjs apply   --yes
  *
+ *   node scripts/promote-batch.mjs resync  [--out resync-out] [--pace-ms 1000]   then apply --yes
+ *
+ * resync — walks EVERY promoted row, re-verifies it against the live API and
+ *          emits UPDATEs that move a row whose name no longer round-trips to
+ *          its slug (e.g. an "(R.M. …)" suffix cleaned out of the name after
+ *          promotion) onto the live slug, or demote it when that slug is taken
+ *          or the company no longer verifies. Needs no ES tunnel. Such pages
+ *          render `noindex` yet stay in the sitemap until this runs (or until
+ *          a crawl hits the page and the render-path self-heal fires).
+ *
  * fetch  — pulls eligible candidates from Elasticsearch (via SSH tunnel),
  *          over-fetching 3× the target so verification losses don't shrink
  *          the batch.
@@ -37,6 +47,7 @@ import {
   isEligibleCandidate,
   rankAndDedupe,
   promotionSqlChunks,
+  resyncSqlChunks,
   MIN_PUBLICATIONS,
   RECENT_ACTIVITY_CUTOFF,
 } from './promote-batch-lib.mjs';
@@ -56,6 +67,10 @@ function argValue(flag, fallback) {
 }
 const OUT_DIR = argValue('--out', 'batch-promotion-out');
 const TARGET_SIZE = Number(argValue('--size', 2000));
+// Delay after each live-API call per worker. The public API bans an IP for a
+// while after a burst (~1,500 calls in ten minutes tripped it on 2026-09-07),
+// and a ban surfaces as `api_error`, which stalls a stage; slow beats banned.
+const PACE_MS = Number(argValue('--pace-ms', 1000));
 const ES_URL = argValue('--es', process.env.ES_URL || 'http://localhost:9201');
 // ES behind the tunnel requires basic auth: pass ES_AUTH="user:password" via
 // env (e.g. command-substituted from the server's /etc/default/borme-search)
@@ -147,23 +162,45 @@ async function promotedSlugsFromD1() {
   return new Set((parsed?.[0]?.results || []).map((row) => row.slug));
 }
 
-/** Live verification — mirrors the demand endpoint's validateCompanyProfile. */
-async function verifyCandidate(candidate) {
-  const profile = await fetchJson(
-    `${API_BASE}/bormes/v3/company?group_key=${encodeURIComponent(candidate.group_key)}`,
-  ).catch(() => null);
+/**
+ * Live profile for one registry identity, from the deployed API (the source
+ * of truth). Returns the eligible live candidate plus its canonical name, or a
+ * rejection reason.
+ */
+async function liveProfile(groupKey) {
+  const url = `${API_BASE}/bormes/v3/company?group_key=${encodeURIComponent(groupKey)}`;
+  let profile = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const response = await fetch(url).catch(() => null);
+    if (response?.ok) {
+      profile = await response.json().catch(() => null);
+      if (profile) break;               // an unparseable 200 is transient too
+    } else if (response && response.status === 404) {
+      break;
+    }
+    // 429 / 5xx / network: back off (5s floor, see the CI rate-limit lesson)
+    // and retry; give up as api_error, never as not_found — the resync stage
+    // would otherwise demote a perfectly good row because of a throttle.
+    if (attempt === 3) return { ok: false, reason: 'api_error' };
+    await new Promise((resolve) => setTimeout(resolve, 5_000 * (attempt + 1)));
+  }
   const company = profile?.company;
   if (!company) return { ok: false, reason: 'not_found' };
 
   const returnedKey = company._id || company.id || company.group_key || '';
-  if (returnedKey && returnedKey !== candidate.group_key) return { ok: false, reason: 'key_mismatch' };
+  if (returnedKey && returnedKey !== groupKey) return { ok: false, reason: 'key_mismatch' };
 
   const canonicalName = company.company_name || company.company_name_normalized || '';
-  if (!canonicalName || nameToSlug(canonicalName) !== candidate.slug) {
-    return { ok: false, reason: 'slug_mismatch' };
-  }
+  if (!canonicalName) return { ok: false, reason: 'no_name' };
+  return { ok: true, canonicalName, live: candidateFromDoc(company, groupKey) };
+}
 
-  const live = candidateFromDoc(company, candidate.group_key);
+/** Live verification — mirrors the demand endpoint's validateCompanyProfile. */
+async function verifyCandidate(candidate) {
+  const result = await liveProfile(candidate.group_key);
+  if (!result.ok) return result;
+  const { canonicalName, live } = result;
+  if (nameToSlug(canonicalName) !== candidate.slug) return { ok: false, reason: 'slug_mismatch' };
   if (!isEligibleCandidate(live)) return { ok: false, reason: 'gate_failed_live' };
 
   return {
@@ -178,6 +215,58 @@ async function verifyCandidate(candidate) {
       capital: live.capital,
     },
   };
+}
+
+async function promotedRowsFromD1() {
+  const { stdout } = await execFileAsync('npx', [
+    'wrangler', 'd1', 'execute', D1_NAME, '--remote', '--json',
+    '--command', "SELECT group_key, slug FROM company_index_candidates WHERE status = 'promoted'",
+  ], { maxBuffer: 64 * 1024 * 1024 });
+  return JSON.parse(stdout)?.[0]?.results || [];
+}
+
+// Promoted rows come from TWO paths — this batch tool and organic demand
+// (functions/api/company-demand.js), whose gate is lighter (no NIF, capital or
+// officer requirement). Resync therefore checks identity and slug drift ONLY;
+// re-applying the batch gate here would demote Acerinox, Iberdrola, Mercadona…
+async function stageResync() {
+  await mkdir(OUT_DIR, { recursive: true });
+  const promoted = await promotedRowsFromD1();
+  console.log(`Re-verifying ${promoted.length} promoted rows against ${API_BASE}…`);
+  const stale = [];
+  const counts = { unchanged: 0, repoint: 0, demote: {} };
+  let cursor = 0;
+  async function worker() {
+    while (cursor < promoted.length) {
+      const row = promoted[cursor++];
+      const result = await liveProfile(row.group_key);
+      await new Promise((resolve) => setTimeout(resolve, PACE_MS));   // pace the live API
+      if (!result.ok && result.reason === 'api_error') {
+        counts.api_error = (counts.api_error || 0) + 1;            // leave the row alone
+      } else if (!result.ok) {
+        counts.demote[result.reason] = (counts.demote[result.reason] || 0) + 1;
+        stale.push({ group_key: row.group_key, slug: null, name: null, was: row.slug, reason: result.reason });
+      } else if (nameToSlug(result.canonicalName) === row.slug) {
+        counts.unchanged += 1;
+      } else {
+        counts.repoint += 1;
+        stale.push({ group_key: row.group_key, slug: nameToSlug(result.canonicalName), name: result.canonicalName, was: row.slug, reason: 'slug_changed' });
+      }
+      const done = cursor;
+      if (done % 200 === 0) console.log(`… ${done}/${promoted.length}: ${JSON.stringify(counts)}`);
+    }
+  }
+  await Promise.all(Array.from({ length: VERIFY_CONCURRENCY }, worker));
+
+  await writeFile(join(OUT_DIR, 'stale.json'), JSON.stringify(stale, null, 1));
+  const chunks = resyncSqlChunks(stale);
+  for (const [index, chunk] of chunks.entries()) {
+    const file = join(OUT_DIR, `resync-${String(index + 1).padStart(3, '0')}.sql`);
+    await writeFile(file, `${chunk}\n`);
+    console.log(`Wrote ${file}`);
+  }
+  console.log(`\n${JSON.stringify(counts)} → ${stale.length} rows to heal (${OUT_DIR}/stale.json). Apply with:`);
+  console.log(`  node scripts/promote-batch.mjs apply --out ${OUT_DIR} --yes`);
 }
 
 async function stageVerify() {
@@ -235,8 +324,8 @@ async function stageApply() {
     console.error('apply writes to PRODUCTION D1 — re-run with --yes to confirm.');
     process.exit(1);
   }
-  const files = (await readdir(OUT_DIR)).filter((f) => /^promote-\d+\.sql$/.test(f)).sort();
-  if (!files.length) throw new Error(`No promote-*.sql files in ${OUT_DIR} — run the sql stage first.`);
+  const files = (await readdir(OUT_DIR)).filter((f) => /^(promote|resync)-\d+\.sql$/.test(f)).sort();
+  if (!files.length) throw new Error(`No promote-*.sql / resync-*.sql files in ${OUT_DIR} — run the sql or resync stage first.`);
   for (const file of files) {
     console.log(`Applying ${file}…`);
     const { stdout } = await execFileAsync('npx', [
@@ -253,10 +342,10 @@ async function stageApply() {
   console.log(`  ${JSON.parse(stdout)?.[0]?.results?.[0]?.n}`);
 }
 
-const stages = { fetch: stageFetch, verify: stageVerify, sql: stageSql, apply: stageApply };
+const stages = { fetch: stageFetch, verify: stageVerify, sql: stageSql, apply: stageApply, resync: stageResync };
 const stage = stages[process.argv[2]];
 if (!stage) {
-  console.error(`Usage: node scripts/promote-batch.mjs <fetch|verify|sql|apply> [--size N] [--es URL] [--out DIR] [--yes]`);
+  console.error(`Usage: node scripts/promote-batch.mjs <fetch|verify|sql|apply|resync> [--size N] [--es URL] [--out DIR] [--yes]`);
   process.exit(1);
 }
 stage().catch((error) => {

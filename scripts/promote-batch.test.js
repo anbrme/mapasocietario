@@ -5,6 +5,7 @@ import {
   rankAndDedupe,
   promotionSql,
   promotionSqlChunks,
+  resyncSql,
 } from './promote-batch-lib.mjs';
 
 const richDoc = {
@@ -146,5 +147,23 @@ describe('reservedIdentities', () => {
     expect(r.slugs.has('bbva')).toBe(true); // curated slug
     expect(r.slugs.has('banco-bilbao-vizcaya-argentaria-sa')).toBe(true); // nameToSlug(v3Name)
     expect(r.slugs.has('nurnberg-consulting-sl')).toBe(true); // CURATED
+  });
+});
+
+describe('resyncSql', () => {
+  it('re-points a stale promoted slug in place, guarded against a foreign owner, then demotes if the slug did not move', () => {
+    const sql = resyncSql({ group_key: 'H:C-1', slug: 'r-cable-sa', name: "R CABLE, S.A." });
+    expect(sql).toContain("SET slug = 'r-cable-sa', canonical_name = 'R CABLE, S.A.'");
+    expect(sql).toContain("WHERE group_key = 'H:C-1' AND status = 'promoted'");
+    expect(sql).toContain("WHERE slug = 'r-cable-sa' AND status = 'promoted' AND group_key <> 'H:C-1'");
+    expect(sql).toContain("SET status = 'candidate', promoted_at = NULL");
+    expect(sql).toContain("WHERE group_key = 'H:C-1' AND status = 'promoted' AND slug <> 'r-cable-sa'");
+  });
+
+  it('emits a plain demotion when the company no longer verifies', () => {
+    const sql = resyncSql({ group_key: "H:C-'2", slug: null, name: null });
+    expect(sql).not.toContain('SET slug');
+    expect(sql).toContain("SET status = 'candidate', promoted_at = NULL");
+    expect(sql).toContain("WHERE group_key = 'H:C-''2' AND status = 'promoted'");
   });
 });

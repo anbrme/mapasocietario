@@ -108,6 +108,42 @@ ON CONFLICT(group_key) DO UPDATE SET
   validated_at = CURRENT_TIMESTAMP;`;
 }
 
+/**
+ * Heal one promoted row whose live name no longer round-trips to its slug
+ * (e.g. the backend cleaned an "(R.M. A CORUÑA)" suffix out of the name after
+ * promotion). Such a page renders `noindex` yet stays in the sitemap. Two
+ * independent statements, run in order:
+ *  1. re-point the row to the live slug, unless ANOTHER promoted row already
+ *     owns that slug (the promoted-slug unique index would reject it anyway);
+ *  2. demote the row if it still carries the old slug — i.e. step 1 was a
+ *     no-op because the slug was taken.
+ * A row that no longer verifies at all (`slug` null) is simply demoted.
+ */
+export function resyncSql(row) {
+  const groupKey = sqlString(row.group_key);
+  const demote = `UPDATE company_index_candidates
+SET status = 'candidate', promoted_at = NULL, validated_at = CURRENT_TIMESTAMP
+WHERE group_key = ${groupKey} AND status = 'promoted'`;
+  if (!row.slug) return `${demote};`;
+  const slug = sqlString(row.slug);
+  return `UPDATE company_index_candidates
+SET slug = ${slug}, canonical_name = ${sqlString(row.name)}, validated_at = CURRENT_TIMESTAMP
+WHERE group_key = ${groupKey} AND status = 'promoted'
+  AND NOT EXISTS (
+    SELECT 1 FROM company_index_candidates
+    WHERE slug = ${slug} AND status = 'promoted' AND group_key <> ${groupKey}
+  );
+${demote} AND slug <> ${slug};`;
+}
+
+export function resyncSqlChunks(rows, { chunkSize = 400 } = {}) {
+  const chunks = [];
+  for (let start = 0; start < rows.length; start += chunkSize) {
+    chunks.push(rows.slice(start, start + chunkSize).map(resyncSql).join('\n'));
+  }
+  return chunks;
+}
+
 /** Chunk rows into SQL file bodies small enough for wrangler d1 execute. */
 export function promotionSqlChunks(rows, { chunkSize = 400 } = {}) {
   const chunks = [];

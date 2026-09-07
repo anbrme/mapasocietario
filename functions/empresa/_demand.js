@@ -165,3 +165,31 @@ export async function demoteCompany(db, groupKey) {
      WHERE group_key = ?`,
   ).bind(groupKey).run();
 }
+
+/**
+ * Self-heal for a promoted page whose live name no longer round-trips to its
+ * slug (the page renders `noindex`, but the row still feeds the sitemap and
+ * the directorio hubs). Re-point the row to the live slug when that slug is
+ * free; otherwise demote it. Runs on the render path, so it must never throw.
+ * Mirrors scripts/promote-batch-lib.mjs resyncSql — keep the two in step.
+ */
+export async function repointStaleSlug(db, { groupKey, slug, canonicalName }) {
+  if (!db || !groupKey || !slug || !canonicalName) return 'skipped';
+  try {
+    const moved = await db.prepare(
+      `UPDATE company_index_candidates
+       SET slug = ?, canonical_name = ?, validated_at = CURRENT_TIMESTAMP
+       WHERE group_key = ? AND status = 'promoted'
+         AND NOT EXISTS (
+           SELECT 1 FROM company_index_candidates
+           WHERE slug = ? AND status = 'promoted' AND group_key <> ?
+         )`,
+    ).bind(slug, canonicalName, groupKey, slug, groupKey).run();
+    if (Number(moved?.meta?.changes || 0) > 0) return 'repointed';
+    await demoteCompany(db, groupKey);
+    return 'demoted';
+  } catch (error) {
+    console.error('[company-index] stale-slug heal failed:', error?.message || error);
+    return 'failed';
+  }
+}

@@ -18,7 +18,7 @@ import { renderConfirmationBlock } from './_confirmation.js';
 import { CONFIRMATIONS } from './_confirmations.js';
 import { buildTrademarksBlock } from './_trademarks.js';
 import { buildAwardsBlock } from './_awards.js';
-import { findPromotedCompanyBySlug } from './_demand.js';
+import { findPromotedCompanyBySlug, repointStaleSlug } from './_demand.js';
 // The canonical position classifier shared with the graph + officer-capping
 // service (backed by src/data/terms.json, swept by test/position-categories.test.mjs).
 // Pure module (no React/DOM/SPA deps — its purity is guarded by that node test),
@@ -2355,7 +2355,7 @@ function notFoundPage(slug, lang = 'es') {
 // Pages Function entrypoint (shared by both languages)
 // ---------------------------------------------------------------------------
 
-export async function handleCompany({ params, env }, lang = 'es') {
+export async function handleCompany({ params, env, waitUntil }, lang = 'es') {
   const slug = String(params.slug || '').toLowerCase();
   const resolved = resolveSlug(slug);
   // A demand-promoted company is resolved by its stable group_key and becomes
@@ -2490,6 +2490,17 @@ export async function handleCompany({ params, env }, lang = 'es') {
     // the index; the next demand signal re-validates and demotes the D1 row.
     const staleSlug = Boolean(promoted) && nameToSlug(company.company_name) !== slug;
     const noindex = isFallback || staleSlug;
+    if (staleSlug) {
+      // Heal the D1 row so the sitemap and hubs stop advertising a noindex
+      // URL: move it to the live slug, or demote it if that slug is taken.
+      // Off the response path — the crawler already gets the right robots tag.
+      const heal = repointStaleSlug(env?.SEO_DB, {
+        groupKey: promoted.group_key,
+        slug: nameToSlug(company.company_name),
+        canonicalName: company.company_name,
+      });
+      if (typeof waitUntil === 'function') waitUntil(heal); else await heal;
+    }
 
     const gleif = gleifResp && gleifResp.success ? gleifResp.data : null;
     const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex);
