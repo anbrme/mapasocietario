@@ -3,8 +3,10 @@ import { LANDING_EXAMPLES, exampleSearchOption } from './landingExamples';
 import { buildLandingSearchHref } from '../components/LandingEntitySearch';
 
 describe('LANDING_EXAMPLES — the example searches under the landing field', () => {
-  it('offers Endesa, Inditex and FTI Consulting, in that order', () => {
-    expect(LANDING_EXAMPLES.map(e => e.label)).toEqual(['Endesa', 'Inditex', 'FTI Consulting']);
+  it('offers Endesa, Inditex and Mercadona, in that order', () => {
+    // Examples are household names that are nobody's client: a client of the
+    // publisher must never be used as a demo subject.
+    expect(LANDING_EXAMPLES.map(e => e.label)).toEqual(['Endesa', 'Inditex', 'Mercadona']);
   });
 
   it('binds every example to a registry group key, never to a name search', () => {
