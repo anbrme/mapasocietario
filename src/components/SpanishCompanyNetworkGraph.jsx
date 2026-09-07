@@ -183,7 +183,7 @@ import { isAndroidNativeApp } from '../services/playBillingService';
 // Default label size in canvas units (fontSize = labelSize / zoom, floor 4px).
 // Was 4.5; raised one slider step because labels read small at the default
 // zoom, especially on the light canvas. A saved view keeps its own value.
-const DEFAULT_LABEL_SIZE = 5.5;
+const DEFAULT_LABEL_SIZE = 7.0;
 
 // Cloudflare Turnstile sitekey — shared with AIInvestigationGate. Gates the
 // anonymous enrichment-report submission from the public data preview.
