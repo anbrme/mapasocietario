@@ -31,6 +31,7 @@ import { NATIVE_BACK_EVENT } from '../hooks/useAndroidBackButton';
 import { LANDING_COPY } from './landingCopy';
 import { FREE_FIRST_REPORT_COPY, FREE_FIRST_REPORT_CODE, SAMPLE_REPORT_URL } from '../copy/freeFirstReport';
 import { siteNav } from '../utils/siteNav';
+import { landingTokens } from '../theme/landingTokens';
 import { statsService } from '../services/statsService';
 import { millionsLabel, REGISTRY_SCALE_RAW } from '../copy/registryScale';
 import { hubPath } from '../copy/studies';
@@ -66,11 +67,11 @@ const STEP_ICONS = [<SearchIcon />, <TouchAppIcon />, <PreviewIcon />, <Notifica
 const PROFESSIONAL_ICONS = [<FactCheckIcon />, <ManageSearchIcon />, <AccountBalanceIcon />];
 
 const navLinkSx = (link) => ({
-  color: link.highlight ? 'warning.light' : 'text.secondary',
+  color: link.highlight ? 'accent.warning' : 'text.secondary',
   fontWeight: 600,
   fontSize: { xs: '0.88rem', sm: '1rem' },
   textDecoration: 'none',
-  '&:hover': { color: 'primary.light', textDecoration: 'underline' },
+  '&:hover': { color: 'accent.primary', textDecoration: 'underline' },
 });
 
 const Section = ({ children, sx = {}, ...props }) => (
@@ -135,6 +136,8 @@ export default function LandingPage({ lang = 'en' }) {
   const offer = FREE_FIRST_REPORT_COPY[lang] || FREE_FIRST_REPORT_COPY.en;
   const navigate = useNavigate();
   const appTheme = useTheme();
+  // Mode-aware surfaces; text colours come from the palette (accent.* adapts).
+  const t = landingTokens(appTheme.palette.mode);
   const landingTheme = useLandingTheme();
   const isMobileGraphViewport = useMediaQuery('(max-width:1023px)');
   const nativeApp = React.useMemo(() => isNativeApp(), []);
@@ -251,7 +254,7 @@ export default function LandingPage({ lang = 'en' }) {
         <meta name="twitter:description" content={copy.meta.twitterDescription} />
       </Helmet>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', bgcolor: '#0a0e1a' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', bgcolor: t.page }}>
         {/* ---- HEADER NAV ----
              The language switcher lives in its own column rather than in the
              wrapping flow: with ml:auto it was the item that wrapped, stranding
@@ -296,7 +299,7 @@ export default function LandingPage({ lang = 'en' }) {
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1.15fr' }, gap: { xs: 4, md: 5 }, alignItems: 'center' }}>
             {/* Left: headline + CTA */}
             <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
-              <Typography variant="overline" sx={{ display: 'block', color: 'primary.light', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.72rem', mb: 1 }}>
+              <Typography variant="overline" sx={{ display: 'block', color: 'accent.primary', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.72rem', mb: 1 }}>
                 {copy.hero.eyebrow}
               </Typography>
               <Typography 
@@ -317,7 +320,7 @@ export default function LandingPage({ lang = 'en' }) {
                   step-by-step "How it works" text it currently lifts. */}
               <Typography
                 variant="body2"
-                sx={{ color: 'text.disabled', lineHeight: 1.6, fontSize: { xs: '0.95rem', sm: '1rem' }, mb: 3.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
+                sx={{ color: t.muted, lineHeight: 1.6, fontSize: { xs: '0.95rem', sm: '1rem' }, mb: 3.5, maxWidth: { xs: 600, md: 520 }, mx: { xs: 'auto', md: 0 } }}
               >
                 {copy.hero.intro}
               </Typography>
@@ -328,19 +331,19 @@ export default function LandingPage({ lang = 'en' }) {
                   size="small"
                   startIcon={<SearchIcon />}
                   onClick={() => openGraph('hero')}
-                  sx={{ textTransform: 'none', fontWeight: 650, color: 'primary.light' }}
+                  sx={{ textTransform: 'none', fontWeight: 650, color: 'accent.primary' }}
                 >
                   {copy.hero.openCta}
                 </Button>
               </Box>
-              <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, gap: 0.5, color: 'text.disabled', mt: 2 }}>
+              <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-start' }, gap: 0.5, color: t.muted, mt: 2 }}>
                 <BookmarkBorderIcon sx={{ fontSize: 15 }} /> {copy.hero.bookmarkTip}
               </Typography>
             </Box>
 
             {/* Right: live graph demo (graceful fallback until graph-demo.png exists) */}
             <Box>
-              <Box sx={{ borderRadius: 2, border: '1px solid rgba(20,184,166,0.18)', overflow: 'hidden', bgcolor: '#0d1220', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
+              <Box sx={{ borderRadius: 2, border: `1px solid ${t.tealBorderSoft}`, overflow: 'hidden', bgcolor: t.demoSurface, boxShadow: t.demoShadow }}>
                 <Box
                   component="a"
                   href={demoHref}
@@ -348,15 +351,15 @@ export default function LandingPage({ lang = 'en' }) {
                   aria-label={copy.howItWorks.demoCta}
                   sx={{
                     display: 'block', position: 'relative', width: '100%', aspectRatio: '16 / 9',
-                    background: 'radial-gradient(ellipse 70% 70% at 50% 45%, rgba(20,184,166,0.10) 0%, transparent 70%)',
+                    background: `radial-gradient(ellipse 70% 70% at 50% 45%, ${t.tealGlow} 0%, transparent 70%)`,
                   }}
                 >
-                  <HeroNetwork ariaLabel={copy.howItWorks.demoAlt} />
+                  <HeroNetwork ariaLabel={copy.howItWorks.demoAlt} mode={appTheme.palette.mode} />
                 </Box>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                <Typography variant="caption" sx={{ color: 'text.disabled' }}>{copy.howItWorks.demoCaption}</Typography>
-                <Link href={demoHref} onClick={openDemoGraph} variant="caption" sx={{ color: 'primary.light', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                <Typography variant="caption" sx={{ color: t.muted }}>{copy.howItWorks.demoCaption}</Typography>
+                <Link href={demoHref} onClick={openDemoGraph} variant="caption" sx={{ color: 'accent.primary', fontWeight: 700, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
                   {copy.howItWorks.demoCta}
                 </Link>
               </Box>
@@ -365,13 +368,13 @@ export default function LandingPage({ lang = 'en' }) {
         </Section>
 
         {/* ---- STATS / BY THE NUMBERS ---- */}
-        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(20,184,166,0.04)' }}>
+        <Box sx={{ width: '100%', borderTop: `1px solid ${t.hairline}`, borderBottom: `1px solid ${t.hairline}`, bgcolor: t.tealWash }}>
           <Section sx={{ py: { xs: 4, sm: 5 } }}>
             <SectionHeading heading={copy.stats.heading} sub={copy.stats.sub} />
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' }, gap: { xs: 2.5, sm: 2 } }}>
               {copy.stats.items.map((item) => (
                 <Box key={item.key} sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
-                  <Typography component="div" className="registry-ref" sx={{ fontWeight: 700, letterSpacing: '-0.01em', color: 'primary.light', fontSize: { xs: '2rem', sm: '2.45rem' }, lineHeight: 1.05 }}>
+                  <Typography component="div" className="registry-ref" sx={{ fontWeight: 700, letterSpacing: '-0.01em', color: 'accent.primary', fontSize: { xs: '2rem', sm: '2.45rem' }, lineHeight: 1.05 }}>
                     {millionsLabel(stats[STAT_FIELD[item.key]] ?? STAT_FALLBACK[STAT_FIELD[item.key]], lang)}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.4, display: 'block', mt: 0.5 }}>
@@ -388,7 +391,7 @@ export default function LandingPage({ lang = 'en' }) {
                 component="button"
                 type="button"
                 onClick={() => openListedCompanies(lang)}
-                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'accent.primary', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
               >
                 <ApartmentIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.listed}
               </Link>
@@ -396,19 +399,19 @@ export default function LandingPage({ lang = 'en' }) {
                 component="button"
                 type="button"
                 onClick={() => navigate(nav.dashboard)}
-                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'accent.primary', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
               >
                 <BarChartIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.dashboard}
               </Link>
               <Link
                 component="a"
                 href={hubPath(lang === 'en' ? 'en' : 'es')}
-                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'primary.light', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'accent.primary', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
               >
                 <HubIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.study}
               </Link>
             </Box>
-            <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', mt: 3, letterSpacing: '0.02em' }}>
+            <Typography variant="caption" sx={{ display: 'block', color: t.muted, mt: 3, letterSpacing: '0.02em' }}>
               {copy.stats.sinceLabel}{' '}
               <Box component="span" className="registry-ref" sx={{ color: 'text.secondary', fontWeight: 700 }}>{copy.stats.sinceValue}</Box>
             </Typography>
@@ -425,12 +428,12 @@ export default function LandingPage({ lang = 'en' }) {
               <Paper
                 key={item.key}
                 elevation={0}
-                sx={{ p: 2.75, bgcolor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 2, height: '100%' }}
+                sx={{ p: 2.75, bgcolor: t.panelBg, border: `1px solid ${t.panelBorder}`, borderRadius: 2, height: '100%' }}
               >
-                <Box sx={{ color: 'primary.light', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 25 } }}>
+                <Box sx={{ color: 'accent.primary', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 25 } }}>
                   {PROFESSIONAL_ICONS[index]}
                 </Box>
-                <Typography variant="overline" sx={{ color: 'text.disabled', fontWeight: 700, letterSpacing: '0.09em', fontSize: '0.68rem' }}>
+                <Typography variant="overline" sx={{ color: t.muted, fontWeight: 700, letterSpacing: '0.09em', fontSize: '0.68rem' }}>
                   {item.audience}
                 </Typography>
                 <Typography component="h3" variant="h6" sx={{ fontWeight: 700, mt: 0.25, mb: 1 }}>
@@ -453,14 +456,14 @@ export default function LandingPage({ lang = 'en' }) {
 
           {/* Data quality reads as evidence for the cards above, so it stays
               inside the same band instead of opening a second trust section. */}
-          <Box sx={{ mt: { xs: 4, sm: 5 }, pt: { xs: 3.5, sm: 4 }, borderTop: '1px solid rgba(255,255,255,0.09)' }}>
+          <Box sx={{ mt: { xs: 4, sm: 5 }, pt: { xs: 3.5, sm: 4 }, borderTop: `1px solid ${t.panelBorder}` }}>
             <Typography component="h3" variant="h6" sx={{ fontWeight: 700, letterSpacing: '-0.01em', mb: 3 }}>
               {copy.quality.heading}
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: { xs: 2.5, md: 3 }, columnGap: { md: 6 } }}>
               {copy.quality.items.map(item => (
                 <Box key={item.title} sx={{ display: 'flex', gap: 1.25 }}>
-                  <CheckCircleOutlineIcon sx={{ color: 'primary.light', fontSize: 19, mt: 0.25, flexShrink: 0 }} />
+                  <CheckCircleOutlineIcon sx={{ color: 'accent.primary', fontSize: 19, mt: 0.25, flexShrink: 0 }} />
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>{item.title}</Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>{item.desc}</Typography>
@@ -472,14 +475,14 @@ export default function LandingPage({ lang = 'en' }) {
         </Section>
 
         {/* ---- HOW IT WORKS ---- */}
-        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(255,255,255,0.015)' }}>
+        <Box sx={{ width: '100%', borderTop: `1px solid ${t.hairline}`, borderBottom: `1px solid ${t.hairline}`, bgcolor: t.panelBgSoft }}>
           <Section>
             <SectionHeading heading={copy.howItWorks.heading} sub={copy.howItWorks.sub} />
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
               {copy.howItWorks.steps.map((step, i) => (
-                <Box key={i} sx={{ p: 2.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.07)', bgcolor: 'rgba(255,255,255,0.02)' }}>
-                  <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: 'rgba(20,184,166,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 19 } }}>
+                <Box key={i} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${t.cardBorder}`, bgcolor: t.cardBg }}>
+                  <Box sx={{ width: 34, height: 34, borderRadius: '50%', bgcolor: t.tealWashStrong, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', mb: 1.5, '& .MuiSvgIcon-root': { fontSize: 19 } }}>
                     {STEP_ICONS[i]}
                   </Box>
                   <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.75 }}>{step.title}</Typography>
@@ -500,7 +503,7 @@ export default function LandingPage({ lang = 'en' }) {
                 variant="text"
                 size="small"
                 startIcon={<SaveAltIcon />}
-                sx={{ textTransform: 'none', fontWeight: 650, color: 'primary.light' }}
+                sx={{ textTransform: 'none', fontWeight: 650, color: 'accent.primary' }}
               >
                 {copy.hero.userGuidePdfCta}
               </Button>
@@ -515,8 +518,8 @@ export default function LandingPage({ lang = 'en' }) {
                 gridTemplateColumns: { xs: '1fr', sm: 'auto 1fr auto' },
                 alignItems: 'center',
                 gap: { xs: 2, sm: 2.5 },
-                bgcolor: 'rgba(20,184,166,0.07)',
-                border: '1px solid rgba(20,184,166,0.30)',
+                bgcolor: t.tealWashMid,
+                border: `1px solid ${t.tealBorder}`,
                 borderRadius: 2,
               }}
             >
@@ -525,8 +528,8 @@ export default function LandingPage({ lang = 'en' }) {
                   width: 48,
                   height: 48,
                   borderRadius: 2,
-                  bgcolor: 'rgba(20,184,166,0.14)',
-                  color: 'primary.light',
+                  bgcolor: t.tealWashSelected,
+                  color: 'accent.primary',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -538,7 +541,7 @@ export default function LandingPage({ lang = 'en' }) {
                 </Box>
               </Box>
               <Box>
-                <Typography variant="overline" sx={{ color: 'primary.light', fontWeight: 700, letterSpacing: '0.1em', fontSize: '0.7rem' }}>
+                <Typography variant="overline" sx={{ color: 'accent.primary', fontWeight: 700, letterSpacing: '0.1em', fontSize: '0.7rem' }}>
                   {copy.howItWorks.snapshot.eyebrow}
                 </Typography>
                 <Typography variant="body1" component="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -550,7 +553,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 1.5 }}>
                   {copy.howItWorks.snapshot.features.map((feature) => (
                     <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                      <CheckCircleOutlineIcon sx={{ fontSize: 15, color: 'primary.light' }} />
+                      <CheckCircleOutlineIcon sx={{ fontSize: 15, color: 'accent.primary' }} />
                       <Typography variant="caption" sx={{ color: 'text.primary', fontWeight: 600 }}>
                         {feature}
                       </Typography>
@@ -562,7 +565,7 @@ export default function LandingPage({ lang = 'en' }) {
                 <Chip
                   label={copy.howItWorks.snapshot.badge}
                   size="small"
-                  sx={{ bgcolor: 'rgba(255,255,255,0.07)', color: 'text.secondary', border: '1px solid rgba(255,255,255,0.10)' }}
+                  sx={{ bgcolor: t.chipMutedBg, color: 'text.secondary', border: `1px solid ${t.chipMutedBorder}` }}
                 />
                 <Button
                   variant="outlined"
@@ -582,19 +585,19 @@ export default function LandingPage({ lang = 'en' }) {
           <SectionHeading heading={copy.reports.heading} sub={copy.reports.sub} />
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5, alignItems: 'start' }}>
             {/* Due Diligence (paid) */}
-            <Paper elevation={0} sx={{ p: 3, bgcolor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.35)', borderRadius: 2, height: '100%' }}>
+            <Paper elevation={0} sx={{ p: 3, bgcolor: t.tealWashMid, border: `1px solid ${t.tealBorderStrong}`, borderRadius: 2, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <DescriptionIcon sx={{ color: 'primary.light' }} />
+                <DescriptionIcon sx={{ color: 'accent.primary' }} />
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.dd.title}</Typography>
               </Box>
-              <Chip label={copy.reports.dd.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(255,255,255,0.08)', color: 'text.primary', border: '1px solid rgba(255,255,255,0.15)', mb: 1.5 }} />
+              <Chip label={copy.reports.dd.badge} size="small" sx={{ fontWeight: 700, bgcolor: t.chipBg, color: 'text.primary', border: `1px solid ${t.chipBorder}`, mb: 1.5 }} />
               <Typography variant="body2" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.65, mb: 1.75 }}>
                 {copy.reports.dd.desc}
               </Typography>
               <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, mb: 2 }}>
                 {copy.reports.dd.bullets.map((b) => (
                   <Box component="li" key={b} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 0.75 }}>
-                    <CheckCircleOutlineIcon sx={{ fontSize: 16, color: 'success.light', mt: '2px', flexShrink: 0 }} />
+                    <CheckCircleOutlineIcon sx={{ fontSize: 16, color: 'accent.success', mt: '2px', flexShrink: 0 }} />
                     <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.55 }}>{b}</Typography>
                   </Box>
                 ))}
@@ -606,11 +609,11 @@ export default function LandingPage({ lang = 'en' }) {
                 <Box
                   sx={{
                     p: 1.5, mb: 2, borderRadius: 2,
-                    bgcolor: 'rgba(250,204,21,0.09)',
-                    border: '1px solid rgba(250,204,21,0.4)',
+                    bgcolor: t.amberWash,
+                    border: `1px solid ${t.amberBorder}`,
                   }}
                 >
-                  <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, color: 'warning.light', mb: 0.5 }}>
+                  <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, color: 'accent.warning', mb: 0.5 }}>
                     🎁 {offer.headline}
                   </Typography>
                   <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.5 }}>
@@ -635,7 +638,7 @@ export default function LandingPage({ lang = 'en' }) {
                   rel="noopener"
                   variant="outlined"
                   size="small"
-                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, color: 'primary.light', borderColor: 'rgba(255,255,255,0.28)', '&:hover': { borderColor: 'primary.light', bgcolor: 'rgba(255,255,255,0.06)' } }}
+                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, color: 'accent.primary', borderColor: t.outlineBorder, '&:hover': { borderColor: 'accent.primary', bgcolor: t.outlineHoverBg } }}
                 >
                   {copy.reports.dd.sampleCta}
                 </Button>
@@ -643,18 +646,18 @@ export default function LandingPage({ lang = 'en' }) {
             </Paper>
 
             {/* Relationship report (free) */}
-            <Paper elevation={0} sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, height: '100%' }}>
+            <Paper elevation={0} sx={{ p: 3, bgcolor: t.panelBgStrong, border: `1px solid ${t.panelBorderStrong}`, borderRadius: 2, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <HubIcon sx={{ color: 'text.secondary' }} />
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>{copy.reports.rel.title}</Typography>
               </Box>
-              <Chip label={copy.reports.rel.badge} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(255,255,255,0.08)', color: 'text.primary', border: '1px solid rgba(255,255,255,0.15)', mb: 1.5 }} />
+              <Chip label={copy.reports.rel.badge} size="small" sx={{ fontWeight: 700, bgcolor: t.chipBg, color: 'text.primary', border: `1px solid ${t.chipBorder}`, mb: 1.5 }} />
               <Typography variant="body2" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.65 }}>
                 {copy.reports.rel.desc}
               </Typography>
             </Paper>
           </Box>
-          <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', mt: 2.5, lineHeight: 1.6 }}>
+          <Typography variant="caption" sx={{ display: 'block', color: t.muted, mt: 2.5, lineHeight: 1.6 }}>
             {copy.reports.howToBuy}
           </Typography>
         </Section>
@@ -666,7 +669,7 @@ export default function LandingPage({ lang = 'en' }) {
              The single home for every caveat. Disclosure used to be scattered
              across the hero, the quality items, four FAQ answers and the
              footer; stating it once, in full, is both honester and lighter. */}
-        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', bgcolor: 'rgba(255,255,255,0.015)' }}>
+        <Box sx={{ width: '100%', borderTop: `1px solid ${t.hairline}`, borderBottom: `1px solid ${t.hairline}`, bgcolor: t.panelBgSoft }}>
           <Section>
             <SectionHeading heading={copy.limits.heading} sub={copy.limits.sub} />
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: { xs: 3.5, md: 6 }, alignItems: 'start' }}>
@@ -682,8 +685,8 @@ export default function LandingPage({ lang = 'en' }) {
                     {col.items.map(item => (
                       <Box component="li" key={item} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25, mb: 1.5 }}>
                         {col.icon === 'yes'
-                          ? <CheckCircleOutlineIcon sx={{ color: 'primary.light', fontSize: 18, mt: '3px', flexShrink: 0 }} />
-                          : <RemoveCircleOutlineIcon sx={{ color: 'text.disabled', fontSize: 18, mt: '3px', flexShrink: 0 }} />}
+                          ? <CheckCircleOutlineIcon sx={{ color: 'accent.primary', fontSize: 18, mt: '3px', flexShrink: 0 }} />
+                          : <RemoveCircleOutlineIcon sx={{ color: t.muted, fontSize: 18, mt: '3px', flexShrink: 0 }} />}
                         <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.65 }}>{item}</Typography>
                       </Box>
                     ))}
@@ -704,8 +707,8 @@ export default function LandingPage({ lang = 'en' }) {
                 elevation={0}
                 sx={{
                   bgcolor: 'transparent',
-                  borderTop: '1px solid rgba(255,255,255,0.07)',
-                  '&:last-of-type': { borderBottom: '1px solid rgba(255,255,255,0.07)' },
+                  borderTop: `1px solid ${t.cardBorder}`,
+                  '&:last-of-type': { borderBottom: `1px solid ${t.cardBorder}` },
                   '&:before': { display: 'none' },
                 }}
               >
@@ -721,9 +724,9 @@ export default function LandingPage({ lang = 'en' }) {
         </Section>
 
         {/* ---- BOOKMARK CALLOUT ---- */}
-        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,184,166,0.08) 0%, transparent 70%)' }}>
+        <Box sx={{ width: '100%', borderTop: `1px solid ${t.hairline}`, background: `radial-gradient(ellipse 80% 60% at 50% 50%, ${t.tealGlowWide} 0%, transparent 70%)` }}>
           <Section sx={{ textAlign: 'center' }}>
-            <BookmarkBorderIcon sx={{ fontSize: 36, color: 'primary.light', mb: 1.5 }} />
+            <BookmarkBorderIcon sx={{ fontSize: 36, color: 'accent.primary', mb: 1.5 }} />
             <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1.5, letterSpacing: '-0.02em' }}>
               {copy.bookmark.heading}
             </Typography>
@@ -732,7 +735,7 @@ export default function LandingPage({ lang = 'en' }) {
             </Typography>
             <Chip
               label={copy.bookmark.url}
-              sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.95rem', bgcolor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', mb: 2.5 }}
+              sx={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.95rem', bgcolor: t.codeBg, border: `1px solid ${t.codeBorder}`, mb: 2.5 }}
             />
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.25 }}>
               <Button
@@ -740,18 +743,18 @@ export default function LandingPage({ lang = 'en' }) {
                 size="large"
                 startIcon={<SearchIcon />}
                 onClick={() => openGraph('bookmark')}
-                sx={{ textTransform: 'none', fontWeight: 600, px: 4, py: 1.5, borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: '#0d9488' } }}
+                sx={{ textTransform: 'none', fontWeight: 600, px: 4, py: 1.5, borderRadius: 2, bgcolor: 'primary.main', '&:hover': { bgcolor: 'primary.dark' } }}
               >
                 {copy.bookmark.cta}
               </Button>
-              <Typography variant="caption" sx={{ color: 'text.disabled' }}>{copy.bookmark.shortcut}</Typography>
+              <Typography variant="caption" sx={{ color: t.muted }}>{copy.bookmark.shortcut}</Typography>
             </Box>
           </Section>
         </Box>
 
         {/* ---- TRUST + PROOF STRIP ---- */}
         <Section sx={{ textAlign: 'center', py: { xs: 4, sm: 5 } }}>
-          <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', maxWidth: 620, mx: 'auto', lineHeight: 1.6, mb: 2.5 }}>
+          <Typography variant="caption" sx={{ color: t.muted, display: 'block', maxWidth: 620, mx: 'auto', lineHeight: 1.6, mb: 2.5 }}>
             {copy.operatedBy}
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: { xs: 2, sm: 4 } }}>
@@ -773,15 +776,15 @@ export default function LandingPage({ lang = 'en' }) {
         </Section>
 
         {/* ---- FOOTER ---- */}
-        <Box sx={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.06)', py: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
-          <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.78rem', lineHeight: 1.5 }}>
+        <Box sx={{ width: '100%', borderTop: `1px solid ${t.hairline}`, py: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
+          <Typography variant="caption" sx={{ color: t.muted, fontSize: '0.78rem', lineHeight: 1.5 }}>
             &copy; {new Date().getFullYear()} Mapa Societario &middot; {copy.footer.productOf}{' '}
             <Link href="https://nurnbergconsulting.com" target="_blank" rel="noopener" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               Nurnberg Consulting SL
             </Link>
             {copy.footer.productOfSuffix}
           </Typography>
-          <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.78rem', lineHeight: 1.5, maxWidth: 760, px: 2 }}>
+          <Typography variant="caption" sx={{ color: t.muted, fontSize: '0.78rem', lineHeight: 1.5, maxWidth: 760, px: 2 }}>
             {copy.footer.basedOnPrefix}
             <Link href="https://www.boe.es" target="_blank" rel="noopener" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               Agencia Estatal Boletín Oficial del Estado
@@ -789,7 +792,7 @@ export default function LandingPage({ lang = 'en' }) {
             {copy.footer.basedOnSuffix}
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Link href={nav.reports} variant="caption" sx={{ fontSize: '0.78rem', color: 'warning.light', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+            <Link href={nav.reports} variant="caption" sx={{ fontSize: '0.78rem', color: 'accent.warning', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
               {copy.footer.ddReports}
             </Link>
             <Link href={nav.dashboard} variant="caption" sx={{ fontSize: '0.78rem', color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>

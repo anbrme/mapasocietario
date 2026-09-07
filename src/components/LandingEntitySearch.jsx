@@ -8,6 +8,7 @@ import {
   InputAdornment,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
@@ -18,6 +19,7 @@ import { classifyEntitySelection } from '../utils/entitySelection';
 import { trackEvent } from '../utils/track';
 import { initialFunnelState, stepFunnel } from '../utils/landingSearchFunnel';
 import { LANDING_EXAMPLES, exampleSearchOption } from '../copy/landingExamples';
+import { landingTokens } from '../theme/landingTokens';
 
 const COPY = {
   en: {
@@ -121,6 +123,7 @@ export function landingGraphRequestFromHref(href) {
 
 export default function LandingEntitySearch({ lang = 'en', navigate }) {
   const copy = COPY[lang] || COPY.en;
+  const tk = landingTokens(useTheme().palette.mode);
   const [inputValue, setInputValue] = React.useState('');
   const [options, setOptions] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
@@ -310,21 +313,20 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
               // neutral available on the navy ground, and focus stays teal so the
               // brand still signs the interaction.
               //
-              // Hardcoded for dark: themeMode.resolveThemeMode() returns the dark
-              // default for every non-/app route, so the landing page is dark-only
-              // by design and a light branch here would be dead code.
+              // The landing follows the system theme; surfaces come from
+              // landingTokens so the light variant is solid, not a white wash.
               //
               // Size is the second half of the same argument: the field is the
               // one thing on the first screen the visitor is meant to touch, so
               // it is drawn taller and larger than any surrounding control
               // rather than at the same body size as the paragraphs above it.
               '& .MuiOutlinedInput-root': {
-                bgcolor: 'rgba(255,255,255,0.12)',
+                bgcolor: tk.fieldBg,
                 borderRadius: 2,
                 fontSize: { xs: '1.02rem', sm: '1.1rem' },
                 py: 0.85,
-                '& fieldset': { borderColor: 'rgba(255,255,255,0.72)', borderWidth: 1.5 },
-                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.92)' },
+                '& fieldset': { borderColor: tk.fieldBorder, borderWidth: 1.5 },
+                '&:hover fieldset': { borderColor: tk.fieldBorderHover },
                 '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 2 },
               },
               // The Search button lives in the end adornment; MUI's default
@@ -332,7 +334,7 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
               '& .MuiOutlinedInput-root.MuiInputBase-adornedEnd': { pr: 1 },
               '& .MuiOutlinedInput-root .MuiAutocomplete-input': { py: 0.6 },
               '& .MuiInputBase-input::placeholder': { opacity: 0.75 },
-              '& .MuiFormHelperText-root': { color: feedback ? 'warning.light' : 'text.disabled', mx: 0.5 },
+              '& .MuiFormHelperText-root': { color: feedback ? 'accent.warning' : tk.muted, mx: 0.5 },
             }}
           />
         )}
@@ -348,10 +350,10 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
             clickable
             onClick={() => openExample(example)}
             sx={{
-              color: 'primary.light',
-              borderColor: 'rgba(20,184,166,0.45)',
+              color: 'accent.primary',
+              borderColor: tk.exampleChipBorder,
               fontWeight: 600,
-              '&:hover': { borderColor: 'primary.light', bgcolor: 'rgba(20,184,166,0.10)' },
+              '&:hover': { borderColor: 'accent.primary', bgcolor: tk.exampleChipHoverBg },
             }}
           />
         ))}

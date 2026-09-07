@@ -4,6 +4,7 @@ import {
   DEFAULT_MODE,
   STORAGE_KEY,
   isAppRoute,
+  isLandingRoute,
   normalizeMode,
   readStoredMode,
   resolveThemeMode,
@@ -123,5 +124,49 @@ describe('writeStoredMode', () => {
   it('does not throw when storage is unavailable', () => {
     expect(() => writeStoredMode(throwingStorage(), 'light')).not.toThrow();
     expect(() => writeStoredMode(null, 'light')).not.toThrow();
+  });
+});
+
+describe('isLandingRoute', () => {
+  it('matches the English and Spanish homepages, with or without a trailing slash', () => {
+    expect(isLandingRoute('/')).toBe(true);
+    expect(isLandingRoute('/es')).toBe(true);
+    expect(isLandingRoute('/es/')).toBe(true);
+  });
+
+  it('rejects the app, marketing routes and Spanish SEO pages under /es/', () => {
+    expect(isLandingRoute('/app')).toBe(false);
+    expect(isLandingRoute('/pricing')).toBe(false);
+    expect(isLandingRoute('/es/informes-due-diligence-empresas')).toBe(false);
+    expect(isLandingRoute(undefined)).toBe(false);
+  });
+});
+
+describe('resolveThemeMode — the landing follows the system theme', () => {
+  it('is light on the landing when the system prefers light', () => {
+    expect(resolveThemeMode({ stored: null, pathname: '/', systemPrefersLight: true })).toBe('light');
+    expect(resolveThemeMode({ stored: null, pathname: '/es/', systemPrefersLight: true })).toBe('light');
+  });
+
+  it('is dark on the landing when the system prefers dark or has no preference', () => {
+    expect(resolveThemeMode({ stored: null, pathname: '/', systemPrefersLight: false })).toBe('dark');
+    expect(resolveThemeMode({ stored: null, pathname: '/' })).toBe('dark');
+  });
+
+  it('lets the system, not the /app toggle, decide the landing', () => {
+    // The stored value is the workspace preference; the landing was asked to
+    // follow the operating system instead.
+    expect(resolveThemeMode({ stored: 'light', pathname: '/', systemPrefersLight: false })).toBe('dark');
+    expect(resolveThemeMode({ stored: 'dark', pathname: '/', systemPrefersLight: true })).toBe('light');
+  });
+
+  it('leaves the other marketing routes pinned dark whatever the system prefers', () => {
+    expect(resolveThemeMode({ stored: null, pathname: '/pricing', systemPrefersLight: true })).toBe('dark');
+    expect(resolveThemeMode({ stored: null, pathname: '/due-diligence', systemPrefersLight: true })).toBe('dark');
+  });
+
+  it('does not let the system preference leak into /app, which keeps its toggle', () => {
+    expect(resolveThemeMode({ stored: 'dark', pathname: '/app', systemPrefersLight: true })).toBe('dark');
+    expect(resolveThemeMode({ stored: 'light', pathname: '/app', systemPrefersLight: false })).toBe('light');
   });
 });
