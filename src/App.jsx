@@ -191,6 +191,13 @@ export default function App() {
     () => new URLSearchParams(window.location.search).get('embed') === '1',
     [],
   );
+  // ?full=1 — the compact mobile graph's "open full application" escape hatch.
+  // Without it that button reopened /app at phone width, which compacts itself
+  // again, so it never reached the tools it advertises.
+  const forceFullMode = React.useMemo(
+    () => new URLSearchParams(window.location.search).get('full') === '1',
+    [],
+  );
   const graphEntrySource = React.useMemo(() => {
     const value = new URLSearchParams(window.location.search).get('source') || '';
     return /^[a-z0-9_]{1,40}$/.test(value) ? value : 'direct';
@@ -289,7 +296,17 @@ export default function App() {
           {!DATA_MAINTENANCE.enabled && (
             <Typography
               variant="caption"
-              sx={{ color: 'success.main', fontWeight: 600, whiteSpace: 'nowrap' }}
+              sx={{
+                // Hidden below the same 1024px line the graph uses to switch to
+                // its compact surface: on a phone this line overlapped the
+                // breadcrumb beside it, and a status badge is not what the
+                // narrow bar is for.
+                display: 'none',
+                '@media (min-width:1024px)': { display: 'block' },
+                color: 'success.main',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
             >
               {copy.systemsOperational}
             </Typography>
@@ -368,6 +385,7 @@ export default function App() {
         language={language}
         entrySource={graphEntrySource}
         forceCompactMode={isNativeApp()}
+        forceFullMode={forceFullMode}
       />
     </Box>
   );

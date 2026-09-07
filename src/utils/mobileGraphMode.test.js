@@ -49,4 +49,28 @@ describe('mobileGraphMode', () => {
       nodeCount: 1,
     })).toEqual({ surface: true, active: true, allowAutomaticPanels: false });
   });
+
+  it('gives the compact surface a real escape hatch: an explicit full-mode request wins', () => {
+    // The "open full application" button in compact mode used to point at the
+    // same URL it was already showing, so on a phone it re-rendered the compact
+    // graph. It now carries ?full=1, which must beat both the viewport test and
+    // the native-app override.
+    expect(mobileGraphMode({
+      embedded: true,
+      compactViewport: true,
+      forceCompactMode: false,
+      forceFullMode: true,
+      initialCompanyName: 'ACERINOX SA',
+      nodeCount: 12,
+    })).toEqual({ surface: false, active: false, allowAutomaticPanels: true });
+
+    expect(mobileGraphMode({
+      embedded: true,
+      compactViewport: true,
+      forceCompactMode: true,
+      forceFullMode: true,
+      initialCompanyName: '',
+      nodeCount: 1,
+    }).surface).toBe(false);
+  });
 });

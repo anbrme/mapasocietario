@@ -1507,6 +1507,7 @@ const SpanishCompanyNetworkGraph = ({
   embedded = false,
   entrySource = 'direct',
   forceCompactMode = false,
+  forceFullMode = false,
 }) => {
   const uiLanguage = language === 'en' ? 'en' : 'es';
   const text = SEARCH_COPY[uiLanguage];
@@ -1973,6 +1974,7 @@ const SpanishCompanyNetworkGraph = ({
     embedded,
     compactViewport: isCompactViewport,
     forceCompactMode,
+    forceFullMode,
     initialCompanyName,
     nodeCount: graphData.nodes.length,
   });
@@ -7885,6 +7887,10 @@ const SpanishCompanyNetworkGraph = ({
     if (initialGroupKey) params.set('gk', initialGroupKey);
     params.set('lang', uiLanguage);
     params.set('source', 'mobile_embed_more_tools');
+    // Without this the link landed on /app at phone width, which compacts
+    // itself again — the button offered the full workbench and delivered the
+    // view the reader was already looking at. ?full=1 opts out of compaction.
+    params.set('full', '1');
     return `/app/?${params.toString()}`;
   }, [initialCompanyName, initialGroupKey, initialSearchType, uiLanguage]);
 
