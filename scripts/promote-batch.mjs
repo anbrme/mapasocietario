@@ -55,7 +55,6 @@ import { nameToSlug } from '../functions/empresa/_slug.js';
 
 const execFileAsync = promisify(execFile);
 
-const API_BASE = 'https://api.ncdata.eu';
 const D1_NAME = 'mapasocietario-seo';
 const VERIFY_CONCURRENCY = 6;
 const OVERFETCH_FACTOR = 3;
@@ -71,6 +70,15 @@ const TARGET_SIZE = Number(argValue('--size', 2000));
 // while after a burst (~1,500 calls in ten minutes tripped it on 2026-09-07),
 // and a ban surfaces as `api_error`, which stalls a stage; slow beats banned.
 const PACE_MS = Number(argValue('--pace-ms', 1000));
+// The live API is the source of truth for verification. It rate-limits per
+// caller (500/hour), which a 2,000-company batch blows through; the backend
+// exempts requests carrying the shared secret in X-Internal-Key, so pass
+// INTERNAL_API_KEY (from the server's /etc/default/borme-search) via env.
+// --api lets the stage hit the origin (https://rag.ncdata.eu) directly.
+const API_BASE = argValue('--api', process.env.API_BASE || 'https://api.ncdata.eu');
+const INTERNAL_HEADER = process.env.INTERNAL_API_KEY
+  ? { 'X-Internal-Key': process.env.INTERNAL_API_KEY }
+  : {};
 const ES_URL = argValue('--es', process.env.ES_URL || 'http://localhost:9201');
 // ES behind the tunnel requires basic auth: pass ES_AUTH="user:password" via
 // env (e.g. command-substituted from the server's /etc/default/borme-search)
@@ -80,9 +88,9 @@ const ES_AUTH_HEADER = process.env.ES_AUTH
   : {};
 
 async function fetchJson(url, options = {}) {
-  const withAuth = url.startsWith(ES_URL)
-    ? { ...options, headers: { ...(options.headers || {}), ...ES_AUTH_HEADER } }
-    : options;
+  const extra = url.startsWith(ES_URL) ? ES_AUTH_HEADER
+    : url.startsWith(API_BASE) ? INTERNAL_HEADER : {};
+  const withAuth = { ...options, headers: { ...(options.headers || {}), ...extra } };
   const response = await fetch(url, withAuth);
   if (!response.ok) throw new Error(`${url} → HTTP ${response.status}`);
   return response.json();
@@ -171,7 +179,7 @@ async function liveProfile(groupKey) {
   const url = `${API_BASE}/bormes/v3/company?group_key=${encodeURIComponent(groupKey)}`;
   let profile = null;
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const response = await fetch(url).catch(() => null);
+    const response = await fetch(url, { headers: INTERNAL_HEADER }).catch(() => null);
     if (response?.ok) {
       profile = await response.json().catch(() => null);
       if (profile) break;               // an unparseable 200 is transient too
@@ -284,13 +292,19 @@ async function stageVerify() {
 
   const verified = [];
   const rejected = {};
+  let retriedForThrottle = 0;
   let cursor = 0;
   async function worker() {
     while (cursor < shortlist.length && verified.length < TARGET_SIZE) {
       const candidate = shortlist[cursor++];
       const result = await verifyCandidate(candidate);
+      await new Promise((resolve) => setTimeout(resolve, PACE_MS));   // pace the live API
       if (result.ok) {
         verified.push(result.row);
+      } else if (result.reason === 'api_error' && !candidate.retried) {
+        // Throttled, not rejected: put it back at the end of the queue once.
+        shortlist.push({ ...candidate, retried: true });
+        retriedForThrottle += 1;
       } else {
         rejected[result.reason] = (rejected[result.reason] || 0) + 1;
       }
@@ -304,7 +318,7 @@ async function stageVerify() {
   const rows = verified.slice(0, TARGET_SIZE);
   await writeFile(join(OUT_DIR, 'verified.json'), JSON.stringify(rows, null, 1));
   console.log(`Verified ${rows.length}/${shortlist.length} candidates → ${OUT_DIR}/verified.json`);
-  console.log(`Rejections: ${JSON.stringify(rejected)}`);
+  console.log(`Rejections: ${JSON.stringify(rejected)}; re-queued after throttle: ${retriedForThrottle}`);
 }
 
 async function stageSql() {

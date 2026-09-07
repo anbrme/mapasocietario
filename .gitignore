@@ -19,6 +19,8 @@ confirmation-evidence.local.*
 .superpowers/
 .claude/worktrees/agent-ad36e71f8beb02e63/
 batch-promotion-out/
+batch2-out/
+resync-out/
 
 # Local wrangler state (pages dev / d1 simulation)
 .wrangler
