@@ -24,3 +24,11 @@ resync-out/
 
 # Local wrangler state (pages dev / d1 simulation)
 .wrangler
+
+# Deck/report generation scratch: pptx+pdf build artifacts, chart-data
+# snapshots, and the one-off .mjs scripts that produced them. All regenerable,
+# and a single run adds ~16MB across ~145 files. tmp/vc-deck was committed by
+# an earlier round before this rule existed.
+.chart-data-*/
+output/presentations/
+tmp/vc-deck*/
