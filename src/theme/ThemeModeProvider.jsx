@@ -15,6 +15,33 @@ const getStorage = () => {
   }
 };
 
+const LIGHT_SCHEME_QUERY = '(prefers-color-scheme: light)';
+
+// The operating-system colour scheme, live: the landing follows it, so a
+// visitor who switches their OS mid-visit sees the page follow.
+function useSystemPrefersLight() {
+  const [prefersLight, setPrefersLight] = useState(() => {
+    try {
+      return Boolean(window.matchMedia?.(LIGHT_SCHEME_QUERY).matches);
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    let media;
+    try {
+      media = window.matchMedia?.(LIGHT_SCHEME_QUERY);
+    } catch {
+      return undefined;
+    }
+    if (!media?.addEventListener) return undefined;
+    const onChange = event => setPrefersLight(event.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+  return prefersLight;
+}
+
 export function useThemeMode() {
   const value = useContext(ThemeModeContext);
   if (!value) throw new Error('useThemeMode must be used inside ThemeModeProvider');
@@ -26,8 +53,9 @@ export function useThemeMode() {
 export function ThemeModeProvider({ children }) {
   const { pathname } = useLocation();
   const [mode, setMode] = useState(() => readStoredMode(getStorage()));
+  const systemPrefersLight = useSystemPrefersLight();
 
-  const effectiveMode = resolveThemeMode({ stored: mode, pathname });
+  const effectiveMode = resolveThemeMode({ stored: mode, pathname, systemPrefersLight });
   const canToggle = isAppRoute(pathname);
 
   const toggleMode = useCallback(() => {

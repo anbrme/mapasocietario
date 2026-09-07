@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { landingTokens } from '../theme/landingTokens';
 
 /**
  * HeroNetwork — an ambient, living corporate-relationship graph for the hero.
@@ -22,9 +23,6 @@ import { useEffect, useRef } from 'react';
  * Self-contained canvas — no graph dependency, cheap to run.
  */
 
-const TEAL = '#14b8a6';
-const TEAL_LIGHT = '#2dd4bf';
-const SURFACE = '#0d1220';
 
 // Normalized layout (0..1) inside a padded region. Inditex group is public and
 // uncontroversial; company↔company edges assert only "connected", and people
@@ -48,10 +46,11 @@ const EDGES = [
   { a: 'ponte',   b: 'p3' },
 ];
 
-export default function HeroNetwork({ ariaLabel = 'Corporate relationship network' }) {
+export default function HeroNetwork({ ariaLabel = 'Corporate relationship network', mode = 'dark' }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
+    const tk = landingTokens(mode);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -114,7 +113,7 @@ export default function HeroNetwork({ ariaLabel = 'Corporate relationship networ
       for (const e of EDGES) {
         const a = pos[e.a];
         const b = pos[e.b];
-        ctx.strokeStyle = 'rgba(45,212,191,0.20)';
+        ctx.strokeStyle = tk.heroEdge;
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
@@ -126,8 +125,8 @@ export default function HeroNetwork({ ariaLabel = 'Corporate relationship networ
           const fx = a.x + (b.x - a.x) * p;
           const fy = a.y + (b.y - a.y) * p;
           const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, 7);
-          g.addColorStop(0, 'rgba(45,212,191,0.9)');
-          g.addColorStop(1, 'rgba(45,212,191,0)');
+          g.addColorStop(0, `rgba(${tk.heroPulse},0.9)`);
+          g.addColorStop(1, `rgba(${tk.heroPulse},0)`);
           ctx.fillStyle = g;
           ctx.beginPath();
           ctx.arc(fx, fy, 7, 0, Math.PI * 2);
@@ -143,11 +142,11 @@ export default function HeroNetwork({ ariaLabel = 'Corporate relationship networ
 
         ctx.save();
         if (n.hub) {
-          ctx.shadowColor = 'rgba(45,212,191,0.55)';
+          ctx.shadowColor = `rgba(${tk.heroPulse},0.55)`;
           ctx.shadowBlur = 18;
         }
-        ctx.fillStyle = SURFACE;
-        ctx.strokeStyle = n.hub ? TEAL_LIGHT : 'rgba(45,212,191,0.55)';
+        ctx.fillStyle = tk.demoSurface;
+        ctx.strokeStyle = n.hub ? tk.heroHubStroke : tk.heroNodeStroke;
         ctx.lineWidth = n.hub ? 2 : 1.25;
 
         if (n.type === 'company') {
@@ -166,16 +165,16 @@ export default function HeroNetwork({ ariaLabel = 'Corporate relationship networ
 
         const labelY = y + (n.type === 'company' ? (n.hub ? 18 : 14) : 12);
         if (n.type === 'company') {
-          ctx.fillStyle = n.hub ? 'rgba(236,240,243,0.95)' : 'rgba(214,222,228,0.78)';
+          ctx.fillStyle = n.hub ? tk.heroLabel : tk.heroLabelSubtle;
           ctx.font = `600 ${n.hub ? 13 : 11.5}px "IBM Plex Mono", monospace`;
           ctx.fillText(n.label, x, labelY);
           if (n.sub) {
-            ctx.fillStyle = 'rgba(45,212,191,0.7)';
+            ctx.fillStyle = `rgba(${tk.heroPulse},0.7)`;
             ctx.font = '500 10px "IBM Plex Mono", monospace';
             ctx.fillText(n.sub, x, labelY + 16);
           }
         } else {
-          ctx.fillStyle = 'rgba(150,162,172,0.8)';
+          ctx.fillStyle = tk.heroLabelRole;
           ctx.font = '500 10.5px "IBM Plex Mono", monospace';
           ctx.fillText(n.label, x, labelY);
         }
@@ -219,7 +218,7 @@ export default function HeroNetwork({ ariaLabel = 'Corporate relationship networ
       io.disconnect();
       ro.disconnect();
     };
-  }, []);
+  }, [mode]);
 
   return (
     <canvas

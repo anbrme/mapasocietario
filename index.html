@@ -16,19 +16,24 @@
     <script>
       // Stamps the theme on <html> before first paint, so a user who chose light
       // never sees a dark frame flash first. It must apply the SAME route rule as
-      // ThemeModeProvider: only /app may be light, or a stored light preference
-      // would briefly flash a light landing page.
+      // ThemeModeProvider: /app follows its stored toggle, the landing ('/',
+      // '/es') follows the operating system, everything else is dark.
       //
-      // This duplicates isAppRoute/STORAGE_KEY from src/theme/themeMode.js — an
-      // inline script runs before the module graph exists and cannot import them.
-      // src/theme/indexHtml.test.js pins the duplication.
+      // This duplicates isAppRoute/isLandingRoute/STORAGE_KEY from
+      // src/theme/themeMode.js — an inline script runs before the module graph
+      // exists and cannot import them. src/theme/indexHtml.test.js pins the
+      // duplication.
       (function () {
         try {
           var APP_ROUTE = '/app';
           var path = window.location.pathname;
           var isApp = path === APP_ROUTE || path === APP_ROUTE + '/';
+          var isLanding = path === '/' || path === '/es' || path === '/es/';
           var stored = window.localStorage.getItem('ms_theme_mode');
-          var mode = isApp && stored === 'light' ? 'light' : 'dark';
+          var systemLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+          var mode = 'dark';
+          if (isApp && stored === 'light') mode = 'light';
+          if (isLanding && systemLight) mode = 'light';
           document.documentElement.setAttribute('data-theme', mode);
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'dark');

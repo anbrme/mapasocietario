@@ -7,21 +7,32 @@ export const STORAGE_KEY = 'ms_theme_mode';
 export const THEME_MODES = Object.freeze(['light', 'dark']);
 export const DEFAULT_MODE = 'dark';
 
-// Only /app may be light. Marketing pages pin their own dark background, and
-// DueDiligencePage / OrderStatusPage / AdminPage layer translucent white panels
-// over the global dark — they become unreadable on a light background.
+// /app may be light via its toggle; the landing follows the operating system;
+// every other marketing page pins dark. DueDiligencePage / OrderStatusPage /
+// AdminPage layer translucent white panels over the global dark — they become
+// unreadable on a light background.
 export function isAppRoute(pathname) {
   if (typeof pathname !== 'string') return false;
   return pathname === APP_ROUTE || pathname === `${APP_ROUTE}/`;
+}
+
+export const LANDING_ROUTES = Object.freeze(['/', '/es', '/es/']);
+
+export function isLandingRoute(pathname) {
+  return typeof pathname === 'string' && LANDING_ROUTES.includes(pathname);
 }
 
 export function normalizeMode(value) {
   return THEME_MODES.includes(value) ? value : DEFAULT_MODE;
 }
 
-export function resolveThemeMode({ stored, pathname }) {
-  if (!isAppRoute(pathname)) return DEFAULT_MODE;
-  return normalizeMode(stored);
+// `systemPrefersLight` is the prefers-color-scheme media query, passed in so
+// this stays testable without a window. The stored value is the /app toggle
+// and never reaches the landing: it was asked to follow the system instead.
+export function resolveThemeMode({ stored, pathname, systemPrefersLight = false }) {
+  if (isAppRoute(pathname)) return normalizeMode(stored);
+  if (isLandingRoute(pathname)) return systemPrefersLight ? 'light' : DEFAULT_MODE;
+  return DEFAULT_MODE;
 }
 
 export function readStoredMode(storage) {

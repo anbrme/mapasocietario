@@ -24,6 +24,14 @@ describe('index.html pre-paint theme script', () => {
     expect(html).toMatch(/<meta[^>]*id="theme-color-meta"[^>]*>/);
   });
 
+  it('lets the landing follow the system colour scheme before first paint', () => {
+    // The provider applies the same rule after hydration; without this the
+    // pre-paint script would stamp dark and a light-system visitor would see
+    // a dark frame flash on the homepage.
+    expect(html).toContain('prefers-color-scheme: light');
+    expect(html).toContain("'/es'");
+  });
+
   it('runs the script before the app bundle so no dark frame is painted first', () => {
     expect(html.indexOf('data-theme')).toBeLessThan(html.indexOf('src="/src/main.jsx"'));
   });
