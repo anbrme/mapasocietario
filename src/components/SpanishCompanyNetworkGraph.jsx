@@ -180,6 +180,11 @@ import { matchIbexSeed, matchAllIbexNodes, listedBadgeFor, pinListedEntities, li
 import { getIbexCompanyData } from '../services/ibex35DashboardClient';
 import { isAndroidNativeApp } from '../services/playBillingService';
 
+// Default label size in canvas units (fontSize = labelSize / zoom, floor 4px).
+// Was 4.5; raised one slider step because labels read small at the default
+// zoom, especially on the light canvas. A saved view keeps its own value.
+const DEFAULT_LABEL_SIZE = 5.5;
+
 // Cloudflare Turnstile sitekey — shared with AIInvestigationGate. Gates the
 // anonymous enrichment-report submission from the public data preview.
 const REPORT_TURNSTILE_SITEKEY = '0x4AAAAAADp3WnZGNiZai_32';
@@ -1932,7 +1937,7 @@ const SpanishCompanyNetworkGraph = ({
   const [showShareholders, setShowShareholders] = useState(true);
   const [showPreviousShareholders, setShowPreviousShareholders] = useState(true);
   const [nodeSize, setNodeSize] = useState(9);
-  const [labelSize, setLabelSize] = useState(4.5);
+  const [labelSize, setLabelSize] = useState(DEFAULT_LABEL_SIZE);
   const [linkDistance, setLinkDistance] = useState(80);
   const [chargeStrength, setChargeStrength] = useState(-350);
   // Edge-length / spacing control. The layout PINS nodes (fx/fy) at deterministic
@@ -8408,7 +8413,7 @@ const SpanishCompanyNetworkGraph = ({
     setShowShareholders(view.showShareholders !== false);
     setShowPreviousShareholders(view.showPreviousShareholders !== false);
     setNodeSize(Math.min(28, Math.max(4, finiteOr(view.nodeSize, 9))));
-    setLabelSize(Math.min(18, Math.max(3, finiteOr(view.labelSize, 4.5))));
+    setLabelSize(Math.min(18, Math.max(3, finiteOr(view.labelSize, DEFAULT_LABEL_SIZE))));
     setLinkDistance(Math.max(1, finiteOr(view.linkDistance, 80)));
     setChargeStrength(finiteOr(view.chargeStrength, -350));
     setSpacing(importedSpacing);
