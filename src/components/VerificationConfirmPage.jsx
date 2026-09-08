@@ -19,6 +19,7 @@ import {
   TextField, RadioGroup, Radio, Alert, Divider,
 } from '@mui/material';
 import { Helmet } from 'react-helmet-async';
+import { uiModeFor, statusForMode, factLabel, displayValue } from '../verify/factUi.js';
 
 const COPY = {
   es: {
@@ -28,6 +29,9 @@ const COPY = {
     intro: (company) => `Revise cada dato de ${company}. Puede confirmarlo, corregirlo o marcarlo como no aplicable.`,
     seat: 'Cargo registral',
     confirm: 'Es correcto', correct: 'Corregir', na: 'No aplica',
+    consentsTitle: 'Lo que usted declara',
+    consentsLead: 'Estas tres declaraciones son el contenido jurídico de la confirmación. Léalas antes de marcarlas.',
+    privacyLink: 'Política de privacidad de la verificación',
     correctedValue: 'Valor correcto',
     consentAuthority: 'Declaro que ostento la autoridad indicada para hacer esta declaración en nombre de la sociedad.',
     consentPublication: 'Consiento la publicación de esta declaración con mi nombre y cargo registral.',
@@ -52,6 +56,9 @@ const COPY = {
     intro: (company) => `Review each fact about ${company}. You can confirm it, correct it, or mark it not applicable.`,
     seat: 'Registry position',
     confirm: 'Correct', correct: 'Amend', na: 'Not applicable',
+    consentsTitle: 'What you are declaring',
+    consentsLead: 'These three declarations are the legal substance of the confirmation. Please read them before ticking.',
+    privacyLink: 'Verification privacy policy',
     correctedValue: 'Correct value',
     consentAuthority: 'I hold the stated authority to make this statement on behalf of the company.',
     consentPublication: 'I consent to publication of this statement with my name and registry position.',
@@ -83,6 +90,11 @@ export default function VerificationConfirmPage({ lang = 'es' }) {
   const [draft, setDraft] = useState(null);      // { draft_hash, assertion, company_name, seat }
   const [consents, setConsents] = useState({});
   const [staleNotice, setStaleNotice] = useState(false);
+  // The status the REGISTRY derived for each fact, captured once. Confirming a
+  // fact restores this rather than forcing 'current' - insolvency derives
+  // 'none', and forcing 'current' declared insolvency in force on a solvent
+  // company.
+  const [derived, setDerived] = useState({});
   // Edits are serialised: two in flight from the same base_hash would each carry
   // only their own correction, and whichever landed last would drop the other.
   const [editing, setEditing] = useState(false);
@@ -97,6 +109,8 @@ export default function VerificationConfirmPage({ lang = 'es' }) {
         if (cancelled) return;
         if (!r.ok || !data.ok) { setState('failed'); return; }
         if (data.already_submitted) { setState('already'); return; }
+        setDerived(Object.fromEntries(
+          (data.assertion?.facts || []).map((f) => [f.fact_key, f.declared_status])));
         setDraft(data);
         setState('reviewing');
       } catch { if (!cancelled) setState('failed'); }
@@ -180,16 +194,22 @@ export default function VerificationConfirmPage({ lang = 'es' }) {
 
       {facts.map((f) => (
         <Paper key={f.fact_key} variant="outlined" sx={{ p: 2, mb: 1.5 }}>
-          <Typography variant="subtitle2">{f.fact_key}</Typography>
-          <Typography variant="body2" sx={{ mb: 1, opacity: 0.85 }}>{f.declared_value || '—'}</Typography>
+          <Typography variant="subtitle2">{factLabel(f.fact_key, lang)}</Typography>
+          <Typography variant="body2" sx={{ mb: 1, opacity: 0.85 }}>
+            {displayValue(f.fact_key, f.declared_value, lang)}
+          </Typography>
           <RadioGroup
             row
-            value={f.declared_status}
-            onChange={(e) => editFact(f.fact_key, e.target.value, f.declared_value)}
+            value={uiModeFor(f.declared_status)}
+            onChange={(e) => editFact(
+              f.fact_key,
+              statusForMode(e.target.value, derived[f.fact_key]),
+              f.declared_value,
+            )}
           >
-            <FormControlLabel value="current" control={<Radio size="small" />} label={t.confirm} />
-            <FormControlLabel value="corrected" control={<Radio size="small" />} label={t.correct} />
-            <FormControlLabel value="not_applicable" control={<Radio size="small" />} label={t.na} />
+            <FormControlLabel value="confirm" control={<Radio size="small" />} label={t.confirm} />
+            <FormControlLabel value="correct" control={<Radio size="small" />} label={t.correct} />
+            <FormControlLabel value="na" control={<Radio size="small" />} label={t.na} />
           </RadioGroup>
           {f.declared_status === 'corrected' && (
             <TextField
@@ -203,22 +223,38 @@ export default function VerificationConfirmPage({ lang = 'es' }) {
 
       <Divider sx={{ my: 3 }} />
 
-      {CONSENT_KEYS.map((key) => (
-        <FormControlLabel
-          key={key}
-          sx={{ display: 'block', mb: 1 }}
-          control={<Checkbox checked={!!consents[key]}
-            onChange={(e) => setConsents((c) => ({ ...c, [key]: e.target.checked }))} />}
-          label={t[`consent${key[0].toUpperCase()}${key.slice(1)}`]}
-        />
-      ))}
+      {/* The declarations are the legal substance of the whole exercise, so they
+          are framed as such rather than trailing the form as three checkboxes
+          someone scrolls past on the way to the button. */}
+      <Paper
+        variant="outlined"
+        sx={{ p: 2.5, mb: 2, borderWidth: 2, borderColor: 'primary.main' }}
+      >
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{t.consentsTitle}</Typography>
+        <Typography variant="body2" sx={{ mb: 1.5, opacity: 0.85 }}>{t.consentsLead}</Typography>
+        {CONSENT_KEYS.map((key) => (
+          <FormControlLabel
+            key={key}
+            sx={{ display: 'flex', alignItems: 'flex-start', mb: 1.25, ml: 0 }}
+            control={<Checkbox sx={{ pt: 0 }} checked={!!consents[key]}
+              onChange={(e) => setConsents((c) => ({ ...c, [key]: e.target.checked }))} />}
+            label={<Typography variant="body2">
+              {t[`consent${key[0].toUpperCase()}${key.slice(1)}`]}
+            </Typography>}
+          />
+        ))}
+      </Paper>
 
-      {/* The privacy notice sits beside the button, never behind a link: someone
+      {/* The notice sits beside the button, never only behind a link: someone
           attesting to their own company's data should see what is kept at the
-          moment they decide. */}
+          moment they decide. The full policy is linked for the detail. */}
       <Paper variant="outlined" sx={{ p: 2, my: 2, bgcolor: 'action.hover' }}>
         <Typography variant="subtitle2">{t.privacyTitle}</Typography>
         <Typography variant="caption" component="p">{t.privacy}</Typography>
+        <Typography variant="caption" component="p" sx={{ mt: 1 }}>
+          <a href={lang === 'en' ? '/verificacion/privacidad?lang=en' : '/verificacion/privacidad'}
+             target="_blank" rel="noreferrer noopener">{t.privacyLink}</a>
+        </Typography>
       </Paper>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

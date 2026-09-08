@@ -22,6 +22,8 @@ export const FORBIDDEN_PHRASES = [
   'verified company', 'empresa verificada',
 ];
 
+import { factLabel, displayValue } from './factUi.js';
+
 const esc = (s) =>
   String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -74,10 +76,11 @@ export function statusLine(view, lang = 'es') {
 export function renderAttestationHtml(view, companyName, lang = 'es') {
   const t = T[lang] || T.es;
 
+  // Raw keys and raw registry tokens are not a table a counterparty can read.
   const rows = (view.facts || []).map((f) => `<tr>
-      <td>${esc(f.fact_key)}</td>
-      <td>${esc(f.declared_value)}</td>
-      <td>${esc(f.registry_value_at_issue)}</td>
+      <td>${esc(factLabel(f.fact_key, lang))}</td>
+      <td>${esc(displayValue(f.fact_key, f.declared_value, lang))}</td>
+      <td>${esc(displayValue(f.fact_key, f.registry_value_at_issue, lang))}</td>
       <td>${esc(f.last_check_outcome || t.notChecked)}</td>
     </tr>`).join('');
 
