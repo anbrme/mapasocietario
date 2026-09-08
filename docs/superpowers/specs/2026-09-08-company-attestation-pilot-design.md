@@ -34,7 +34,7 @@ The June implementation (`functions/empresa/_confirmations.js`, `_confirmation.j
 | Backend | Pages Functions + new `VERIFY_DB` (D1) | `functions/feedback.js` already sends mail from a Pages Function via Cloudflare's Email Sending REST API; no dependency on `api.ncdata.eu` |
 | Identity binding | Internal `subject_id`; `group_key`/NIF/hoja are versioned *mappings* | `group_key` can change under entity reassembly, so it cannot be a primary key |
 | Scheduling | Separate cron Worker | Pages Functions have no scheduled handler |
-| Facts attested | representation, officers, address, insolvency, NIF; VAT and operational status as labelled non-suspending declarations | Each fact carries its own check source and its own consequence; see §5.4 |
+| Facts attested | representation, officers, address, insolvency, NIF; VAT and operational status as labelled declarations that change no status | Each fact carries its own check source and its own consequence; see §5.4 |
 | Cadence | fresh ≤ 90d from **acceptance**, nudge at 75d, amber to 180d, expired after | Statement age runs from the representative's acceptance, never from the operator's approval. Narrows the June design's 90/365 window |
 | Pilot visibility | `VERIFY_VISIBILITY=private`, viewer grants, `noindex` | Retain control until launch; the gate is a flag, not an architecture |
 | Deliverable | Attestation permalink as the core resource | The badge, the PDF and a counterparty API are all projections of it |
@@ -59,7 +59,7 @@ Two claims the earlier draft made and this one does not: matching a name to an o
 The audit chain is **tamper-evident, not tamper-proof**:
 
 1. **Append-only by convention (D1).** Weakest. Anyone with database access can rewrite a row and recompute the chain.
-2. **Evidence under an R2 bucket lock.** Protects against deletion and overwriting **while the rule is configured**. Cloudflare's own wording is "until the lock is explicitly removed" — a sufficiently privileged administrator can remove the protection. It defends against accident and against a compromised worker; it does not defend against the account owner. The lock is also **bounded, never indefinite** — an indefinite lock would make an erasure request impossible to honour (§9).
+2. **Evidence under an R2 bucket lock.** Protects against deletion and overwriting **while the rule is configured**. Cloudflare's own wording is "until the lock is explicitly removed" — a sufficiently privileged administrator can remove the protection. It defends against accident and against a compromised worker; it does not defend against the account owner. Because the rule is removable, it is also **bounded rather than indefinite**, and applied only to the sealed prefix — see §9.3 for why an indefinite lock is incoherent rather than merely disproportionate.
 3. **An external anchor for the chain head.** Publishing the head hash on our own endpoint anchors nothing, because we control that endpoint. The anchor is only worth what its *independent retention* is worth. For the pilot: the daily head is mailed to a mailbox on a provider we do not operate, retained there, and the documented verification procedure is to compare a claimed history against those retained checkpoints. The **anchoring interval is up to 24 hours**, so a tamper within the current day is outside its protection. The strong version — an RFC 3161 qualified timestamp — is deferred.
 
 External wording says *tamper-evident, with daily external checkpoints*. It never says *immutable*, and it never implies the operator cannot alter the store.
@@ -155,10 +155,14 @@ CREATE TABLE attestations (
   id                   TEXT PRIMARY KEY,  -- unguessable, public
   subject_id           TEXT NOT NULL REFERENCES subjects(subject_id),
   claimant_id          TEXT NOT NULL REFERENCES claimants(id),
+  invitation_id        TEXT NOT NULL UNIQUE REFERENCES invitations(id),
+                       -- UNIQUE is the enforcement: a second submission for the
+                       -- same invitation FAILS the insert, which rolls the batch
+                       -- back. An UPDATE matching zero rows would not (§6.4).
   method               TEXT NOT NULL CHECK (method IN ('email-confirmed','qes-signed')),
   status               TEXT NOT NULL CHECK (status IN
-                         ('pending_review','rejected','live','outdated','suspended',
-                          'expired','revoked','superseded')),
+                         ('pending_review','rejected','live','outdated',
+                          'under_review','disputed','expired','revoked','superseded')),
   representation_basis TEXT NOT NULL,
   seat_officer_name    TEXT,              -- the officers_active row matched
   seat_position        TEXT,
@@ -166,10 +170,14 @@ CREATE TABLE attestations (
   identity_snapshot    TEXT NOT NULL,     -- group_key/NIF/hoja/name AS OF acceptance
   assertion_hash       TEXT NOT NULL REFERENCES draft_assertions(hash),
   registry_snapshot    TEXT NOT NULL,     -- as of ACCEPTANCE, not of approval
-  evidence_key         TEXT NOT NULL,     -- R2 object key, locked prefix
-  evidence_hash        TEXT NOT NULL,
+  sealed_key           TEXT NOT NULL,     -- R2 key, evidence/sealed/ (locked)
+  sealed_hash          TEXT NOT NULL,
+  personal_key         TEXT,              -- R2 key, evidence/personal/ (unlocked)
+  personal_hash        TEXT,
   accepted_at          TEXT NOT NULL,     -- representative accepted; age runs from HERE
   expires_at           TEXT NOT NULL,     -- accepted_at + 180d, set at acceptance
+  last_verified_at     TEXT,              -- last SUCCESSFUL check; displayed publicly
+  consecutive_inconclusive INTEGER NOT NULL DEFAULT 0,
   approved_at          TEXT,              -- operator published it; NOT the age anchor
   reviewer             TEXT,              -- published (see §8); accountability, by design
   reviewed_at          TEXT,
@@ -181,6 +189,14 @@ CREATE TABLE attestations (
 
 CREATE UNIQUE INDEX idx_attestations_live
   ON attestations(subject_id) WHERE status = 'live';
+
+-- At most one CURRENT record per subject, whatever its status. This is what
+-- forces an approval to supersede the incumbent even when the incumbent is
+-- outdated or disputed — otherwise a stale record could later compete with
+-- its own successor.
+CREATE UNIQUE INDEX idx_attestations_current
+  ON attestations(subject_id)
+  WHERE status IN ('live','outdated','under_review','disputed','expired');
 ```
 
 `expires_at` is written **once**, at acceptance. Approval never recomputes it. This removes the double definition the first draft carried.
@@ -210,16 +226,28 @@ CREATE TABLE attestation_facts (
 | Fact | Source | Consequence of an adverse check |
 |---|---|---|
 | `representation` | borme | seat gone → `outdated` |
-| `officers` | borme | later change → `outdated`; wrong at issue → `suspended` |
-| `address` | borme | later move → `outdated`; wrong at issue → `suspended` |
+| `officers` | borme | see the classification rule below |
+| `address` | borme | see the classification rule below |
 | `insolvency` | borme | `is_in_concurso` becomes true → `outdated` (a new fact, not a lie) |
-| `nif` | borme | mismatch against `enriched_nif` → review, never automatic |
-| `vat_intraeu` | vies | **never suspends.** Rendered as "intra-EU VAT registration checked on <date>" |
+| `nif` | borme | mismatch against `enriched_nif` → `under_review`, never automatic |
+| `vat_intraeu` | vies | **never changes status.** Rendered as "intra-EU VAT registration checked on <date>" |
 | `operational` | none | **never checked.** Rendered explicitly as an unverifiable declaration |
+
+**Classification rule — event date is not publication date.** BORME carries both, and the difference decides whether a divergence is an accusation or a fact of life:
+
+| The contradicting event was… | Outcome | Status |
+|---|---|---|
+| **published before** acceptance | it was visible in the snapshot we took, so the declaration contradicted evidence in front of us | `contradicted_at_issue` → **disputed** |
+| **dated before** acceptance but **published after** | invisible to us and to the registry at the time; possible misstatement, but unprovable from our data | `inconclusive` → **under_review** |
+| **dated after** acceptance | the world changed; the statement is simply no longer current | `superseded_by_later_event` → **outdated** |
+
+Only the first row may ever be presented as an integrity concern.
+
+**Inconclusive checks do not act on first occurrence.** An unreachable API would otherwise flip every attestation at once. An inconclusive result records the outcome and increments `consecutive_inconclusive`; only at **three consecutive days** does the attestation move to `under_review`. Throughout, the page shows `last_verified_at` — the last *successful* check — which is what a reader actually needs.
 
 Two corrections from the review are load-bearing here. **VIES tests registration for intra-EU trade, not NIF validity** — a legitimate Spanish company not enrolled in the ROI returns invalid, and our own NIF crawler verified only 34% of real companies through VIES. Using it as a suspension trigger would have suspended most of the pilot. And **`is_dissolved = false` does not establish that a company trades**, so `operational` carries no check source at all and is labelled as a declaration.
 
-**Corrected facts.** A `corrected` declaration ("we moved on 20 September, pending publication") is an unverified forward claim. It is compared against the *declared* value, never against the registry-at-issue value — otherwise a manually approved correction would be suspended by the next cron run. It renders visually distinct from a confirmed fact, with an age: *claimed 20 Sep, not yet published as of <today>*. Prolonged silence is itself signal.
+**Corrected facts.** A `corrected` declaration ("we moved on 20 September, pending publication") is an unverified forward claim. It is compared against the *declared* value, never against the registry-at-issue value — otherwise a manually approved correction would be marked `disputed` by the next cron run. It renders visually distinct from a confirmed fact, with an age: *claimed 20 Sep, not yet published as of <today>*. Prolonged silence is itself signal.
 
 ### 5.5 Audit trail
 
@@ -272,17 +300,24 @@ CREATE TABLE view_grants (
 
 ```
 invited → draft accepted → pending_review → { rejected | live }
-live → { outdated | suspended | expired | revoked | superseded }
-outdated ⇄ live        (a reconfirmation or a reverting registry state)
-suspended ⇄ live       (review clears it)
+live → { outdated | under_review | disputed | expired | revoked }
+under_review → { live | disputed | revoked }      (reviewer or a successful check)
+outdated  → under_review                          (reviewer only, e.g. an erratum)
+any current state → superseded                    (a successor is approved)
 ```
 
-- **outdated** — the statement was true when made; the registry has since moved. Historically valid, **not fit for current reliance**. No wrongdoing implied, and the wording must not imply any.
-- **suspended** — an integrity concern: the statement appears to have been wrong *at the time it was made*, or a check is inconclusive and under review.
-- **rejected** — never published; visible to the submitter with a reason (§14.3).
-- **expired**, **revoked**, **superseded** — as before. Supersession demotes the incumbent and promotes the successor in a single `batch()`, because `idx_attestations_live` permits only one live record per subject.
+Two things the earlier draft conflated. **Availability is not integrity**, so the single `suspended` state splits; and **recovery is not reconfirmation**, so nothing returns to `live` by ageing.
 
-Reconciliation scans `live`, `outdated` **and** `suspended` — otherwise nothing could ever recover or expire once it left `live`.
+- **outdated** — a later registry event has moved past the statement. It is **not fit for current reliance**, and no wrongdoing is implied. It never returns to `live` on its own: only a reviewer may move it to `under_review` (an erratum or a corrected filing), and only a *new* attestation can restore a live record.
+- **under_review** — a check could not be completed, or a reviewer is examining something. This is an **availability or process** state, not an accusation, and the public wording must not read as one. It returns to `live` when a check succeeds.
+- **disputed** — an **integrity** concern: the declaration contradicts registry evidence that was visible when it was accepted (§5.4). It never auto-recovers; only a reviewer moves it to `live` (the check was wrong) or `revoked`.
+- **rejected** — never published; visible to the submitter with a reason (§14.3).
+- **expired**, **revoked** — terminal for reliance.
+- **superseded** — set when a successor is approved. Approval demotes **whatever the current record is — live, outdated, under_review, disputed or expired** — and promotes the successor, in one `batch()`. `idx_attestations_current` enforces this: without the demotion the insert fails and the batch rolls back.
+
+**A reconfirmation is always a new attestation.** It never revives an old one. The old record keeps its status and history for the audit lane.
+
+Reconciliation scans every current state, not just `live` — otherwise nothing could recover or expire once it left it.
 
 **Privacy by construction.** `claimants.email`, `identification_note`, `audit_events.detail` and evidence keys live only in tables the public projection never reads. The public lane reads `audit_events.public_summary` and nothing else.
 
@@ -292,7 +327,11 @@ Authority attaches to a **row in `officers_active`**, not to a name string. Matc
 
 ### 5.9 Canonical assertion
 
-Deterministic JSON — sorted keys, fixed number and date formats, explicit `nonce`, `accepted_at`, `expires_at` — over: the identity snapshot, the matched seat and `representation_basis`, every declared fact with value and status, the registry-snapshot digest, and the consent statements. Its SHA-256 is the `draft_assertions` primary key and the value a future qualified signature signs.
+A draft is built **before** acceptance, so it cannot contain the acceptance time or an expiry derived from it — including them would change the hash at the moment of acceptance and break accept-by-hash. The statement and the act of accepting it are therefore two records.
+
+**The assertion** — deterministic JSON, sorted keys, fixed number and date formats — over: a `nonce`, the `drafted_at` timestamp, the identity snapshot, the matched seat and `representation_basis`, every declared fact with value and status, the registry-snapshot digest, the consent statements, and the **validity rule** (`"valid_for_days": 180`) as a rule rather than a computed date. Its SHA-256 is the `draft_assertions` primary key, and it is the value a future qualified signature signs.
+
+**The acceptance receipt** — a separate record holding the assertion hash, the actual `accepted_at`, the `expires_at` computed from it by applying the rule, and the acceptance method. The receipt is what the audit chain records; the assertion hash never moves.
 
 ## 6. Flow and endpoints
 
@@ -304,6 +343,8 @@ For the pilot, **only the attester receives an invitation and accepts**. A prepa
 
 **2 — Prepare the draft.** `GET /api/verify/session?t=` reads the registry, builds the canonical assertion, **persists it as a `draft_assertions` row**, and returns it with its hash. The form renders exactly that draft.
 
+**2b — Edit.** Corrections are not a client-side detail: a representative who changes a fact is no longer accepting the draft they were served. `POST /api/verify/draft` takes the edited facts, **persists a new `draft_assertions` row**, marks the prior one `superseded_by` it, and returns the new hash. The form then renders the new draft. Acceptance always references a persisted draft that was rendered in full — never a client-assembled payload.
+
 **3 — Accept.** `POST /api/verify/submit` carries the draft hash. The server re-reads the registry and compares:
 
 - **No material change** → proceed.
@@ -311,12 +352,18 @@ For the pilot, **only the attester receives an invitation and accepts**. A prepa
 
 This is the reverse of the first draft's rule, which re-read at submit time and called the result "what they saw". It was not.
 
-**4 — Persist, in an order that survives partial failure.** Writes span R2 and D1, and D1's `batch()` is a SQL transaction that cannot enclose an R2 write. So:
+**4 — Persist, in an order that survives partial failure.** Writes span R2 and D1, and D1's `batch()` is a SQL transaction that cannot enclose an R2 write. Two mechanisms carry the guarantees:
 
-1. Write the evidence object to R2 under a key **derived from the draft hash** — idempotent, so a retry overwrites nothing and creates no duplicate.
-2. One D1 `batch()`: consume the token (`UPDATE invitations SET used_at = ? WHERE id = ? AND used_at IS NULL`, aborting the batch if it changes zero rows), insert the attestation, its facts, and the audit events.
+*Single acceptance per invitation is enforced by a constraint, not by a row count.* `attestations.invitation_id` is `UNIQUE`, so a second submission's **insert fails**, and a failing statement is what rolls a D1 batch back. A conditional `UPDATE ... WHERE used_at IS NULL` would not: an update matching zero rows is a *successful* statement in SQLite, so the batch would commit the rest. `invitations.used_at` is written in the same batch, but as a record of what happened — never as the enforcement.
 
-A crash between (1) and (2) leaves an orphan evidence object, which is harmless and swept by a periodic job. A crash inside (2) rolls the whole batch back and the token stays unconsumed, so the representative can retry the same link. **Approval re-reads the evidence object and verifies its hash before publishing** — an attestation whose evidence is missing or altered cannot go live.
+*The two evidence objects are written create-if-absent.* Both keys derive from the draft hash, so a retry addresses the same objects:
+
+1. `evidence/sealed/<hash>.json` and `evidence/personal/<hash>.json` are written with a conditional put (`onlyIf: { etagDoesNotMatch: '*' }`). If an object already exists, **read it and verify its digest** against the expected value: matching means a previous attempt got this far and we continue; not matching is a hard error that aborts the submission and raises an alert, because it means something wrote a different body under a hash-derived key.
+2. One D1 `batch()`: insert the attestation (whose `UNIQUE invitation_id` is the gate), its facts, `invitations.used_at`, and the audit events.
+
+Failure handling: a crash between (1) and (2) leaves orphan evidence objects, harmless and swept periodically; the representative retries the same link and step (1) verifies rather than rewrites. A crash inside (2) rolls the batch back entirely, so the link still works. **A retry after a successful commit returns the existing attestation** — the same id, HTTP 200 — rather than an error, because from the representative's side the submission did succeed.
+
+**Approval re-reads both evidence objects and verifies their digests before publishing.** An attestation whose evidence is missing or altered cannot go live.
 
 The response says **received, under review**. Never *verified*.
 
@@ -324,7 +371,7 @@ The response says **received, under review**. Never *verified*.
 
 **6 — Read.** `GET /verificacion/g/<grant_token>` returns HTML to a browser and JSON to a machine from the same record (§7).
 
-**7 — Reconcile (cron).** Daily over `live`, `outdated` and `suspended`. For each fact, the outcome is one of `consistent`, `superseded_by_later_event`, `contradicted_at_issue`, `pending_publication` or **`inconclusive`**. An unreachable API, a missing officer row, or an ambiguous subject mapping yields `inconclusive` — which raises a review item and **never** proves a contradiction. Status transitions follow §5.4. The job also nudges at 75 days, expires at 180, and publishes the daily chain anchor to its externally retained destination.
+**7 — Reconcile (cron).** Daily over every current state (`live`, `outdated`, `under_review`, `disputed`, `expired`). For each fact the outcome is one of `consistent`, `superseded_by_later_event`, `contradicted_at_issue`, `pending_publication` or **`inconclusive`**, classified by the event-date/publication-date rule in §5.4. An unreachable API, a missing officer row, or an ambiguous subject mapping yields `inconclusive`, which increments `consecutive_inconclusive` and escalates to `under_review` only at three — it **never** proves a contradiction. A successful check sets `last_verified_at` and resets the counter. The job also nudges at 75 days, expires at 180, and publishes the daily chain anchor to its externally retained destination.
 
 ## 7. Pilot visibility
 
@@ -346,7 +393,13 @@ Handling for token-bearing URLs: `Cache-Control: private, no-store`, `Referrer-P
 
 **`/empresa/<slug>` badge.** Reads the live attestation from D1 instead of `_confirmations.js`. These pages carry `s-maxage=86400`, so a status change would otherwise keep asserting itself for a day: pages carrying an attestation get a short TTL, *and* any status transition purges that page.
 
-**The attestation page.** Leads with **fitness for current reliance as of right now** — and states it separately from the statement's historical validity, because the two are different things. An `outdated` attestation reads *"This statement was accurate when made on 8 September. The registry has since recorded a change of address on 20 September, so it should not be relied on as current."* — not as a failure.
+**The attestation page.** Leads with **fitness for current reliance, qualified by when it was last successfully checked** — never "as of right now", which a daily job cannot support. It states this separately from what the statement itself was, because the two are different things.
+
+The wording must not assert accuracy we never established. An `outdated` attestation reads:
+
+> *"This statement was accepted on 8 September and was consistent with the registry evidence checked at that time. A subsequent registry event records a change of address on 20 September. The statement should no longer be treated as current. Last successfully checked: 7 October."*
+
+Not *"was accurate when made"* — we never established that. Throughout, prefer **"consistent with the registry evidence checked"** over any phrasing that implies verified truth.
 
 Below it, a four-column fact table: declared / registry at acceptance / registry today / outcome. Corrected facts render distinctly, with their unpublished age.
 
@@ -380,19 +433,25 @@ Redacting the personal half leaves the sealed half fully verifiable.
 | Personal evidence | email, `identification_note` | Same term, but erasable on request |
 | Transport artefacts | IP, user agent, headers | **None collected by default**; 12 months if a specific fraud reason arises |
 
-**Why five years:** it is the limitation period for personal actions under Spanish civil law (Art. 1964 CC, as reduced from fifteen by the 2015 reform). Bounding retention by exactly the window in which someone could bring a claim about a statement they relied on ties the term to the risk it exists to answer rather than to convenience. Código de Comercio art. 30 (six years, books and correspondence) is the alternative anchor if counsel prefers the commercial-records framing. **The reasoning is proposed; the term is pending counsel sign-off (§14.2), which must land before any external participant submits.**
+**Why five years:** Art. 1964 CC sets five years for personal actions, reduced from fifteen by the 2015 reform. It is a **proposed policy anchored on** that period, not a claim to match the litigation window precisely — accrual and interruption (Art. 1973 CC) both move the real boundary, so no fixed retention term can track it exactly. The value of the anchor is that it ties the term to the risk it exists to answer rather than to convenience. Código de Comercio art. 30 (six years, books and correspondence) is the alternative anchor if counsel prefers the commercial-records framing. **The reasoning is proposed; the term is pending counsel sign-off (§14.2), which must land before any external participant submits.**
 
 ### 9.3 The bucket lock must be bounded
 
-The earlier draft specified `--retention-indefinite` on `evidence/`. That is wrong, and not merely disproportionate: an indefinite lock makes an erasure request **technically impossible to honour**, because the lock prevents the deletion the request requires.
+The earlier draft specified `--retention-indefinite` on `evidence/`. Stating the objection precisely, because the first revision overstated it: §4.2 already establishes that a privileged administrator can remove a lock rule, so an indefinite lock never made erasure *impossible*. What it did was make erasure require **dismantling the retention guarantee for every object under the prefix** in order to delete one — trading the whole protection for a single request, which is incoherent rather than merely disproportionate.
 
-The rule therefore covers **only `evidence/sealed/`**, with `--retention-days` set to the term plus the maximum attestation life (retention runs from object creation, and an attestation lives up to 180 days) — roughly 2,100 days for the five-year option. `evidence/personal/` carries no lock rule at all.
+A bounded lock obstructs deletion too, for as long as it is active. That is acceptable for sealed evidence, whose retention is the point, and unacceptable for personal evidence, which must stay erasable. So the rule covers **only `evidence/sealed/`**, with `--retention-days` set to the term plus the maximum attestation life (retention runs from object creation, and an attestation lives up to 180 days) — roughly 2,100 days for the five-year option. **`evidence/personal/` carries no lock rule at all.**
 
 ### 9.4 Erasure
 
-On a valid erasure request covering the personal tier: replace the object's content, **keep its hash**, log the redaction as its own audit event, and mark the attestation *evidence redacted at the subject's request*. A reader learns that something was removed and when — more honest than a silent gap, and the chain stays intact.
+**Hashes, stated correctly.** Replacement bytes hash differently — a redacted object cannot "keep its hash". What is preserved is the **original digest, already committed to the audit chain** at submission time. Redaction is recorded as its own audit event, naming the original digest and the deletion, so the chain still proves that the evidence which existed was not swapped for something else. It cannot prove what that evidence said, and the spec must not imply otherwise.
 
-The public attestation record itself is not erased on request. It records a formal statement made in a business capacity by a person whose position is already on the public registry, and deleting it would destroy the audit lane that gives the product its meaning. That position rests on legitimate interest and needs the same counsel confirmation as the term.
+**Erasure and restriction must reach every store, not just one R2 object.** A request touches D1 (`claimants.email`, `identification_note`), `draft_assertions` (which embed declared values), `audit_events.detail`, both R2 prefixes, and any backup. The architecture must therefore support:
+
+- **Restriction** (GDPR Art. 18) as a first-class state — processing paused, record retained, public projection withdrawn — distinct from deletion.
+- **Redaction** at field level in D1, not only object deletion in R2.
+- **Withdrawal of the public projection** independently of the underlying record.
+
+**On refusing erasure of the public record.** The earlier draft asserted flatly that it is not erased. That overstates the position. A name already public in BORME **remains personal data**, and attributing a new statement to someone adds information beyond their registry position. Legitimate-interest processing is subject to objection (Art. 21) and erasure (Art. 17), whose exceptions must be *assessed* case by case rather than assumed. The design's position is that the record's integrity purpose weighs heavily — but it is a position to be argued, not a default, and it is part of what §14.2 puts to counsel.
 
 ### 9.5 Notice
 
@@ -406,15 +465,21 @@ The privacy notice appears **on the acceptance screen itself, beside the button*
 - Canonical-assertion determinism: same input → same hash, independent of key order.
 - Chain append and verify, **including detection of a tampered middle row**, and two concurrent appends against one head colliding on `idx_audit_events_prev_hash`.
 - Seat matching: rejects the subset case, accepts rotations, handles accents and `ñ`.
-- **Check-outcome classification, against a controlled registry fixture** — the heart of the suite. Each fact × each outcome: a later change yields `outdated`, a statement false at issue yields `suspended`, an unreachable source or missing row yields `inconclusive`, and a `corrected` declaration compared against its declared value yields `pending_publication` rather than a contradiction.
-- VIES negative never suspends anything.
+- **Check-outcome classification, against a controlled registry fixture** — the heart of the suite. Each fact × each outcome, driven by the event-date/publication-date rule: an event *published before* acceptance yields `disputed`; one *dated before but published after* yields `under_review`; one *dated after* yields `outdated`; an unreachable source or missing row yields `inconclusive`; and a `corrected` declaration compared against its declared value yields `pending_publication` rather than a contradiction.
+- An inconclusive check changes no status on the first or second occurrence, and escalates to `under_review` on the third; a success resets the counter and moves `last_verified_at`.
+- VIES negative never changes any status.
+- **Acceptance receipt separation:** the assertion hash is identical before and after acceptance; the receipt carries `accepted_at` and the expiry derived from the assertion's `valid_for_days` rule.
+- **Editing persists a new draft:** a corrected fact yields a fresh `draft_assertions` row with the prior marked superseded, and acceptance of a stale hash is refused.
+- **Single acceptance per invitation is enforced by the `UNIQUE` constraint**, proven by attempting a second insert and asserting the whole batch rolls back — not by inspecting a row count.
+- **Conditional evidence writes:** an existing object with a matching digest allows the submission to continue; a mismatching one aborts it.
+- **Supersession demotes a non-live incumbent** — approving a successor over an `outdated` or `disputed` record succeeds, and `idx_attestations_current` rejects the insert if the demotion is omitted.
 - Status decay at the 90 / 180 boundaries, anchored on `accepted_at`.
 - Draft supersession: a registry change between draft and submit returns 409 with a new draft.
 - Idempotent resubmission: the same draft hash twice produces one attestation and one evidence object.
 - Grant validation: unknown, expired and revoked all yield 404.
 - **Redaction as a property test** over generated records: no email, `identification_note`, audit `detail`, evidence key or grant token can appear in the public projection — with `reviewer` explicitly permitted.
 
-**Integration** against local D1: invite → draft → accept → review → live → later registry event → outdated → reconfirm → superseded; and separately, a contradiction-at-issue path to `suspended` and back via review.
+**Integration** against local D1: invite → draft → edit → accept → review → live → later registry event → outdated → reconfirm → superseded; a contradiction-at-issue path to `disputed` and back via reviewer decision; and a submission retried after a successful commit returning the same attestation id rather than an error.
 
 **Manual:** the full path on the operator's own company before any invitation is sent.
 
