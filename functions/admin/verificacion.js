@@ -60,17 +60,12 @@ export function onRequestGet() {
   <h2>Pendientes de revisión</h2>
   <div id="queue"></div>
 
-  <h2>Emitir enlace de consulta</h2>
-  <div class="card">
-    <div class="row">
-      <input id="gid" placeholder="attestation_id">
-      <input id="glabel" placeholder="etiqueta (p. ej. Banco X, onboarding)">
-      <button id="grant">Emitir</button>
-    </div>
-    <p class="muted">Cuenta accesos al enlace, no lectores: los enlaces se reenvían y los
-      escáneres de correo los abren solos.</p>
-    <div id="grantout"></div>
-  </div>
+  <h2>Declaraciones publicadas</h2>
+  <p class="muted">Emita un enlace por contraparte. No se envía ningún correo: el enlace se
+    muestra una sola vez y usted lo hace llegar. La etiqueta es una nota suya, nunca se muestra
+    a quien lo abre, y los accesos cuentan aperturas del enlace, no lectores.</p>
+  <div id="list"></div>
+  <div id="grantout"></div>
 </div>
 
 <script>
@@ -136,6 +131,57 @@ async function decide(id, decision) {
 }
 window.decide = decide;
 
+const STATUS_ES = { live: 'vigente', outdated: 'superada', under_review: 'en revisión',
+                    disputed: 'en disputa', expired: 'caducada' };
+
+function renderList(items) {
+  if (!items.length) { $('list').innerHTML = '<p class="muted">Ninguna publicada todavía.</p>'; return; }
+  $('list').innerHTML = items.map((a) => \`
+    <div class="card">
+      <strong>\${esc(a.display_name)}</strong>
+      <span class="muted">— \${esc(STATUS_ES[a.status] || a.status)}</span>
+      <p class="muted">\${esc(a.seat_officer_name || '')} \${esc(a.seat_position || '')} ·
+        aceptada \${esc((a.accepted_at || '').slice(0,10))} ·
+        caduca \${esc((a.expires_at || '').slice(0,10))} ·
+        última comprobación \${esc((a.last_verified_at || '—').slice(0,10))}</p>
+      \${a.status_reason ? '<p class="muted">' + esc(a.status_reason) + '</p>' : ''}
+      <p class="muted"><code>\${esc(a.id)}</code></p>
+      <div class="row">
+        <input placeholder="etiqueta (p. ej. Banco X, onboarding)" id="lbl-\${esc(a.id)}">
+        <button class="primary" onclick="issue('\${esc(a.id)}')">Emitir enlace</button>
+      </div>
+      \${a.grants.length ? '<table><thead><tr><th>Etiqueta</th><th>Emitido</th><th>Accesos</th>' +
+        '<th></th></tr></thead><tbody>' + a.grants.map((g) =>
+          '<tr><td>' + esc(g.label || '—') + '</td><td>' + esc((g.created_at||'').slice(0,10)) +
+          '</td><td>' + esc(g.access_count) + (g.last_access_at ? ' (' +
+            esc(g.last_access_at.slice(0,10)) + ')' : '') + '</td><td>' +
+          (g.revoked_at ? '<span class="muted">revocado</span>'
+            : '<button onclick="revoke(\'' + esc(a.id) + '\',\'' + esc(g.token_hash) +
+              '\')">Revocar</button>') + '</td></tr>').join('') + '</tbody></table>' : ''}
+    </div>\`).join('');
+}
+
+async function issue(id) {
+  const r = await api('/api/verify/admin/grant', { method: 'POST',
+    body: JSON.stringify({ attestation_id: id, label: $('lbl-' + id).value.trim() }) });
+  $('grantout').innerHTML = r.ok
+    ? '<div class="card"><p><strong>Enlace emitido — se muestra una sola vez.</strong></p>'
+      + '<p>ES <code>' + esc(r.data.url) + '</code></p>'
+      + '<p>EN <code>' + esc(r.data.url_en) + '</code></p>'
+      + '<p class="muted">Caduca ' + esc(r.data.expires_at) + '.</p></div>'
+    : '<p class="bad">' + esc(r.data.error || r.status) + '</p>';
+  if (r.ok) load();
+}
+window.issue = issue;
+
+async function revoke(id, hash) {
+  const r = await api('/api/verify/admin/grant', { method: 'POST',
+    body: JSON.stringify({ attestation_id: id, token_hash: hash, revoke: true }) });
+  if (!r.ok) $('grantout').innerHTML = '<p class="bad">' + esc(r.data.error || r.status) + '</p>';
+  load();
+}
+window.revoke = revoke;
+
 async function load() {
   const chain = await api('/api/verify/admin/chain');
   if (!chain.ok) { $('who').textContent = 'Token no válido'; $('app').hidden = true; return; }
@@ -144,23 +190,14 @@ async function load() {
   renderChain(chain.data);
   const q = await api('/api/verify/admin/queue');
   if (q.ok) renderQueue(q.data.items || []);
+  const a = await api('/api/verify/admin/attestations');
+  if (a.ok) renderList(a.data.items || []);
 }
 
 $('save').onclick = () => { token = $('tok').value.trim();
   sessionStorage.setItem(tokenKey, token); $('tok').value = ''; load(); };
 $('forget').onclick = () => { sessionStorage.removeItem(tokenKey); token = '';
   $('app').hidden = true; $('who').textContent = 'Olvidado'; };
-$('grant').onclick = async () => {
-  const r = await api('/api/verify/admin/grant', { method: 'POST',
-    body: JSON.stringify({ attestation_id: $('gid').value.trim(),
-                           label: $('glabel').value.trim() }) });
-  $('grantout').innerHTML = r.ok
-    ? '<p>ES <code>' + esc(r.data.url) + '</code><br>EN <code>' + esc(r.data.url_en)
-      + '</code><br><span class="muted">Caduca ' + esc(r.data.expires_at)
-      + '. Se muestra una sola vez.</span></p>'
-    : '<p class="bad">' + esc(r.data.error || r.status) + '</p>';
-};
-
 if (token) load();
 </script>
 </main></body></html>`;
