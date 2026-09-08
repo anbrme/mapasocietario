@@ -202,7 +202,19 @@ export default function App() {
     const value = new URLSearchParams(window.location.search).get('source') || '';
     return /^[a-z0-9_]{1,40}$/.test(value) ? value : 'direct';
   }, []);
+  const homeRedirectTrackedRef = React.useRef(false);
   const graphViewTrackedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (
+      graphEntrySource !== 'returning_home_redirect' ||
+      homeRedirectTrackedRef.current
+    ) return;
+    homeRedirectTrackedRef.current = true;
+    // AppRoutes has already queued /app's page_view in a layout effect. Keep
+    // this signal, but never let it be the first event in the GA4 session.
+    trackEvent('home_graph_auto_redirect', { language });
+  }, [graphEntrySource, language]);
 
   React.useEffect(() => {
     if (graphViewTrackedRef.current) return;

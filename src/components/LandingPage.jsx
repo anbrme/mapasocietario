@@ -157,7 +157,10 @@ export default function LandingPage({ lang = 'en' }) {
 
   React.useEffect(() => {
     if (redirecting) {
-      trackEvent('home_graph_auto_redirect', { language: lang });
+      // App records home_graph_auto_redirect after /app's layout-phase
+      // page_view. Sending it here made this custom event the first hit of a
+      // returning session because the skipped homepage deliberately has no
+      // page_view, leaving GA4 with a blank landing page / source.
       navigate(
         lang === 'es'
           ? '/app/?lang=es&source=returning_home_redirect'
