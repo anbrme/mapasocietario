@@ -23,6 +23,7 @@ const ConnectClaudePage = lazy(() => import('./components/ConnectClaudePage'));
 const OrderStatusPage = lazy(() => import('./components/OrderStatusPage'));
 const AdminPage = lazy(() => import('./components/AdminPage'));
 const AlertActivatePage = lazy(() => import('./components/AlertActivatePage'));
+const VerificationConfirmPage = lazy(() => import('./components/VerificationConfirmPage'));
 const AlertLinkActionPage = lazy(() => import('./components/AlertLinkActionPage'));
 const AlertsManagePage = lazy(() => import('./components/AlertsManagePage'));
 import { FilterProvider } from './contexts/FilterProvider';
@@ -115,6 +116,8 @@ function AppRoutes() {
       <Route path="/admin" element={<Suspense fallback={null}><AdminPage /></Suspense>} />
       {/* Landing for the monitoring confirmation email. Not prerendered and
           noindex — it is only ever reached from a single-use link. */}
+      <Route path="/verificacion/confirmar" element={<Suspense fallback={null}><VerificationConfirmPage lang="es" /></Suspense>} />
+      <Route path="/en/verification/confirm" element={<Suspense fallback={null}><VerificationConfirmPage lang="en" /></Suspense>} />
       <Route path="/alerts/activate" element={<Suspense fallback={null}><AlertActivatePage /></Suspense>} />
       <Route path="/es/alerts/activate" element={<Suspense fallback={null}><AlertActivatePage lang="es" /></Suspense>} />
       {/* Unsubscribe and resubscribe links carried in every alert digest.

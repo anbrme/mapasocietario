@@ -23,6 +23,10 @@
 /order/*       /app-shell  200
 /alerts/*      /app-shell  200
 /es/alerts/*   /app-shell  200
+# Attestation acceptance screen. The grant READ (/verificacion/g/*) is a
+# Pages Function and must NOT be rewritten to the shell.
+/verificacion/confirmar      /app-shell  200
+/en/verification/confirm     /app-shell  200
 
 # 2026-09-06: the directorships study was published for a few hours under a
 # Madrid-only slug before it was reframed as the Spain-wide study.
