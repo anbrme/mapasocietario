@@ -169,21 +169,34 @@ export async function reconcileAll(env) {
     }
   }
 
-  // The daily external checkpoint. Publishing the head where we control it
-  // anchors nothing on its own - the value is in it being retained OFF this
-  // system, which is what the mail below is for.
+  // The daily checkpoint. Writing the head into our own database anchors
+  // NOTHING - we control that row. The anchor is only worth what its retention
+  // OFF this system is worth, which is what the mail is for. So dispatched_to
+  // is left null here and set only once a message has actually been accepted:
+  // recording a dispatch that did not happen would be precisely the kind of
+  // overclaim this whole system exists to avoid.
   const head = await env.VERIFY_DB
     .prepare('SELECT seq, hash FROM audit_events ORDER BY seq DESC LIMIT 1').first();
   if (head) {
     const day = new Date().toISOString().slice(0, 10);
     await env.VERIFY_DB.prepare(
       `INSERT OR REPLACE INTO chain_anchors (day, head_seq, head_hash, published_at, dispatched_to)
-       VALUES (?,?,?,?,?)`)
-      .bind(day, head.seq, head.hash, new Date().toISOString(), env.REPORT_EMAIL_TO || null).run();
+       VALUES (?,?,?,?,NULL)`)
+      .bind(day, head.seq, head.hash, new Date().toISOString()).run();
     report.anchored = { day, seq: head.seq, hash: head.hash };
   }
 
   return report;
+}
+
+/**
+ * Records that the day's chain head actually left the system. Called only after
+ * the mail provider accepted the message.
+ */
+export async function markAnchorDispatched(env, day, to) {
+  await env.VERIFY_DB
+    .prepare('UPDATE chain_anchors SET dispatched_to = ? WHERE day = ?')
+    .bind(to, day).run();
 }
 
 async function mail(env, report) {
@@ -227,6 +240,14 @@ export default {
     ctx.waitUntil((async () => {
       const report = await reconcileAll(env);
       const mailed = await mail(env, report);
+      // Only a delivered checkpoint counts as an external anchor.
+      if (mailed === 'sent' && report.anchored) {
+        await markAnchorDispatched(env, report.anchored.day, env.REPORT_EMAIL_TO);
+      }
+      if (mailed !== 'sent') {
+        console.warn(`verification-reconciler: checkpoint NOT dispatched (${mailed}). `
+          + 'The chain head is unanchored outside this system until it is.');
+      }
       console.log(JSON.stringify({ ...report, mailed }));
     })());
   },
