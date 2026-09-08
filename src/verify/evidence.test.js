@@ -6,7 +6,9 @@ function fakeBucket(initial = {}) {
   return {
     store,
     async put(key, body, options) {
-      if (options?.onlyIf?.etagDoesNotMatch === '*' && key in store) return null;
+      // Mirrors R2: a failed precondition returns null rather than throwing.
+      const ifNoneMatch = options?.onlyIf?.get?.('If-None-Match');
+      if (ifNoneMatch === '*' && key in store) return null;
       store[key] = body;
       return { key };
     },

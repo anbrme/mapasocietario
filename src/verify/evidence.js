@@ -32,7 +32,16 @@ export function buildPersonalEvidence({ email, identificationNote, emailDomainBa
  * aborts loudly rather than overwriting evidence.
  */
 export async function putEvidenceOnce(bucket, key, body) {
-  const created = await bucket.put(key, body, { onlyIf: { etagDoesNotMatch: '*' } });
+  // `If-None-Match: *` is the documented, standard "only if absent" condition,
+  // and R2 accepts a Headers object for onlyIf. Deliberately NOT the
+  // R2Conditional `etagDoesNotMatch: '*'` form: `*` as a wildcard is not
+  // documented for an etag COMPARISON field, and if it were compared literally
+  // the put would succeed unconditionally and overwrite evidence — the exact
+  // failure this function exists to prevent. R2 returns null when the
+  // condition fails.
+  const created = await bucket.put(key, body, {
+    onlyIf: new Headers({ 'If-None-Match': '*' }),
+  });
   if (created) return 'created';
   const existing = await bucket.get(key);
   if (!existing) throw new Error('evidence_put_raced');
