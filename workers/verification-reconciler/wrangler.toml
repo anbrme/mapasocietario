@@ -1,0 +1,38 @@
+name = "mapasocietario-verification-reconciler"
+main = "src/index.js"
+compatibility_date = "2026-08-25"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+# Daily at 04:15 UTC. Early enough that a status change is visible before the
+# working day in Spain, late enough that the BORME ingestion for the previous
+# day has settled. Cron is always UTC and does not follow DST.
+[triggers]
+crons = ["15 4 * * *"]
+
+# The attestation store. Its own database, separate from mapasocietario-seo:
+# identity evidence deserves a smaller blast radius than page-demand counters.
+[[d1_databases]]
+binding = "VERIFY_DB"
+database_name = "mapasocietario-verify"
+database_id = "15330a44-ac7e-46ba-bd1f-bb1ba5291f4d"
+
+[vars]
+API_BASE = "https://api.ncdata.eu"
+SITE_BASE = "https://mapasocietario.es"
+REPORT_EMAIL_FROM = "verificacion@ncdata.eu"
+REPORT_EMAIL_TO = "mapasocietario@ncdata.eu"
+
+# Secrets (set via `wrangler secret put`, never in this file):
+#   INTERNAL_API_KEY - REQUIRED. The upstream rate limiter keys on the nginx
+#                      loopback address, so an unkeyed BATCH caller consumes the
+#                      SITE-WIDE per-worker budget and can take the public site
+#                      down with it. This worker refuses to run without it
+#                      rather than degrading into exactly that failure.
+#   CLOUDFLARE_EMAIL_API_TOKEN - OPTIONAL. Cloudflare API token with Email
+#                      Sending write, same token the Pages project uses. Without
+#                      it the reconciliation still runs and persists; only the
+#                      notification is skipped, and that is logged.
