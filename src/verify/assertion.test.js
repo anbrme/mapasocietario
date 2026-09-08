@@ -48,3 +48,40 @@ describe('addDays', () => {
     expect(addDays('2028-02-28T00:00:00Z', 2)).toBe('2028-03-01T00:00:00Z');
   });
 });
+
+// --- Regression: code review 2026-09-08 -------------------------------------
+
+import { CONSENTS_REQUIRED, consentsComplete } from './assertion.js';
+
+describe('consents (finding 1)', () => {
+  it('the assertion states what acceptance REQUIRES, never what was given', () => {
+    const a = buildAssertion(INPUT);
+    expect(a.consents_required).toEqual(CONSENTS_REQUIRED);
+    expect(a).not.toHaveProperty('consents');
+  });
+
+  it('the receipt records the consents actually given', () => {
+    const r = buildAcceptanceReceipt('h', '2026-09-08T11:30:00Z', 'email-confirmed',
+      { authority: true, publication: true, reconfirmation: true });
+    expect(r.consents).toEqual({ authority: true, publication: true, reconfirmation: true });
+  });
+
+  it('never records a consent that was not given', () => {
+    const r = buildAcceptanceReceipt('h', '2026-09-08T11:30:00Z', 'email-confirmed',
+      { authority: true });
+    expect(r.consents).toEqual({ authority: true, publication: false, reconfirmation: false });
+  });
+
+  it('coerces truthy junk to a real boolean rather than storing it', () => {
+    const r = buildAcceptanceReceipt('h', '2026-09-08T11:30:00Z', 'email-confirmed',
+      { authority: 'yes', publication: 1, reconfirmation: true });
+    expect(r.consents).toEqual({ authority: true, publication: true, reconfirmation: true });
+  });
+
+  it('consentsComplete gates on all three being exactly true', () => {
+    expect(consentsComplete({ authority: true, publication: true, reconfirmation: true })).toBe(true);
+    expect(consentsComplete({ authority: true, publication: true })).toBe(false);
+    expect(consentsComplete({ authority: true, publication: true, reconfirmation: 'yes' })).toBe(false);
+    expect(consentsComplete(undefined)).toBe(false);
+  });
+});

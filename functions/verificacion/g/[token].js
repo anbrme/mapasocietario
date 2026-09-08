@@ -65,7 +65,14 @@ export async function onRequestGet({ request, params, env }) {
       { status: 200, headers: privateHeaders() });
   }
 
-  const lang = url.pathname.startsWith('/en/') ? 'en' : 'es';
+  // This Function is mounted only at /verificacion/g/*, so a pathname test for
+  // '/en/' could never be true and the entire English rendering was unreachable
+  // in production. Language is an explicit parameter on the same resource.
+  const requested = (url.searchParams.get('lang') || '').toLowerCase();
+  const lang = requested === 'en' ? 'en'
+    : requested === 'es' ? 'es'
+    : (request.headers.get('accept-language') || '').toLowerCase().startsWith('en') ? 'en'
+    : 'es';
   const title = `${attestation.display_name} — Mapa Societario`;
   const html = `<!doctype html><html lang="${lang}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

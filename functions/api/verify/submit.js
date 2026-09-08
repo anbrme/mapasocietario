@@ -20,14 +20,14 @@
  * everything back.
  */
 import { assembleDraft } from '../../../src/verify/assemble.js';
-import { buildAcceptanceReceipt } from '../../../src/verify/assertion.js';
+import { buildAcceptanceReceipt, consentsComplete } from '../../../src/verify/assertion.js';
 import { newId, tokenHash } from '../../../src/verify/ids.js';
 import { canonicalJson, sha256Hex } from '../../../src/verify/hash.js';
 import {
   evidenceKeys, buildSealedEvidence, buildPersonalEvidence, putEvidenceOnce,
 } from '../../../src/verify/evidence.js';
 import {
-  jsonResponse, fetchCompanyByGroupKey, invitationForToken, currentGroupKey, auditStatement,
+  jsonResponse, fetchCompanyByGroupKey, invitationForToken, currentGroupKey, batchWithAudit,
 } from './_db.js';
 
 const notFound = () => jsonResponse({ ok: false, error: 'not_found' }, 404);
@@ -45,7 +45,7 @@ export async function onRequestPost({ request, env }) {
   const invitation = await invitationForToken(env, await tokenHash(token));
   if (!invitation) return notFound();
 
-  if (!consents.authority || !consents.publication || !consents.reconfirmation) {
+  if (!consentsComplete(consents)) {
     return jsonResponse({ ok: false, error: 'consents_required' }, 400);
   }
 
@@ -71,6 +71,7 @@ export async function onRequestPost({ request, env }) {
 
   const storedAssertion = JSON.parse(draft.canonical_json);
   const groupKey = await currentGroupKey(env, invitation.subject_id);
+  if (!groupKey) return jsonResponse({ ok: false, error: 'subject_unresolved' }, 409);
 
   // Re-read the registry and rebuild the assertion, REUSING the draft's nonce
   // and drafted_at so the only thing that can move the hash is the registry.
@@ -85,7 +86,6 @@ export async function onRequestPost({ request, env }) {
     seat: storedAssertion.seat,
     representationBasis: storedAssertion.representation_basis,
     declaredFacts: storedAssertion.facts,
-    consents: storedAssertion.consents,
     nonce: storedAssertion.nonce,
     draftedAt: storedAssertion.drafted_at,
   });
@@ -97,7 +97,7 @@ export async function onRequestPost({ request, env }) {
     const next = await assembleDraft({
       subjectId: invitation.subject_id, groupKey, company: fresh,
       seat: storedAssertion.seat, representationBasis: storedAssertion.representation_basis,
-      declaredFacts: storedAssertion.facts, consents: storedAssertion.consents,
+      declaredFacts: storedAssertion.facts,
       nonce: nextNonce, draftedAt: new Date().toISOString(),
     });
     await env.VERIFY_DB.batch([
@@ -117,13 +117,17 @@ export async function onRequestPost({ request, env }) {
   }
 
   const acceptedAt = new Date().toISOString();
-  const receipt = buildAcceptanceReceipt(draftHash, acceptedAt, 'email-confirmed');
+  // The consents the representative ACTUALLY gave. They used to be validated
+  // above and then dropped: the assertion carried a draft-time placeholder of
+  // all-false, so the hashed statement, the sealed evidence and the audit
+  // receipt all recorded that they had consented to nothing.
+  const receipt = buildAcceptanceReceipt(draftHash, acceptedAt, 'email-confirmed', consents);
   const identity = rebuilt.assertion.identity;
   const keys = evidenceKeys(draftHash);
 
   const sealedBody = buildSealedEvidence({
     assertion: rebuilt.assertion, registrySnapshot: fresh,
-    seat: storedAssertion.seat, identity, acceptedAt,
+    seat: storedAssertion.seat, identity, acceptedAt, receipt,
   });
   const personalBody = buildPersonalEvidence({
     email: invitation.email, identificationNote: invitation.identification_note,
@@ -147,8 +151,8 @@ export async function onRequestPost({ request, env }) {
         (id, subject_id, claimant_id, invitation_id, method, status, representation_basis,
          seat_officer_name, seat_position, seat_appointed_date, identity_snapshot,
          assertion_hash, registry_snapshot, sealed_key, sealed_hash, personal_key,
-         personal_hash, accepted_at, expires_at)
-       VALUES (?,?,?,?, 'email-confirmed','pending_review', ?, ?,?,?,?,?,?,?,?,?,?,?,?)`)
+         personal_hash, accepted_at, expires_at, acceptance_receipt)
+       VALUES (?,?,?,?, 'email-confirmed','pending_review', ?, ?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .bind(attestationId, invitation.subject_id, invitation.claimant_id, invitation.id,
             storedAssertion.representation_basis,
             storedAssertion.seat?.name ?? null, storedAssertion.seat?.position ?? null,
@@ -156,7 +160,7 @@ export async function onRequestPost({ request, env }) {
             draftHash, canonicalJson(fresh),
             keys.sealed, await sha256Hex(sealedBody),
             keys.personal, await sha256Hex(personalBody),
-            receipt.accepted_at, receipt.expires_at),
+            receipt.accepted_at, receipt.expires_at, JSON.stringify(receipt)),
   ];
 
   for (const fact of rebuilt.facts) {
@@ -170,19 +174,18 @@ export async function onRequestPost({ request, env }) {
             fact.check_source));
   }
 
+  // A record of what happened, never the enforcement.
   statements.push(
-    // A record of what happened, never the enforcement.
     env.VERIFY_DB.prepare('UPDATE invitations SET used_at = ? WHERE id = ?')
       .bind(acceptedAt, invitation.id),
-    await auditStatement(env, {
-      attestation_id: attestationId, subject_id: invitation.subject_id,
-      action: 'accepted', actor: 'representative',
-      detail: JSON.stringify({ receipt, sealed_key: keys.sealed, personal_key: keys.personal }),
-      public_summary: 'Accepted by the representative',
-    }),
   );
 
-  await env.VERIFY_DB.batch(statements);
+  await batchWithAudit(env, statements, {
+    attestation_id: attestationId, subject_id: invitation.subject_id,
+    action: 'accepted', actor: 'representative',
+    detail: JSON.stringify({ receipt, sealed_key: keys.sealed, personal_key: keys.personal }),
+    public_summary: 'Accepted by the representative',
+  });
 
   // "Received", never "verified": nothing is published until a review.
   return jsonResponse({ ok: true, attestation_id: attestationId, status: 'pending_review' });

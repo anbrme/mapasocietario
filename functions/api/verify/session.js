@@ -53,7 +53,6 @@ export async function onRequestGet({ request, env }) {
     seat,
     representationBasis: invitation.representation_basis,
     declaredFacts: [],
-    consents: { authority: false, publication: false, reconfirmation: false },
     nonce: newId('non'),
     draftedAt: new Date().toISOString(),
   });

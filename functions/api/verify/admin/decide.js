@@ -14,15 +14,23 @@
  * from when the operator got round to approving.
  */
 import { sha256Hex } from '../../../../src/verify/hash.js';
-import { requireAdmin, jsonResponse, auditStatement } from '../_db.js';
+import { requireAdmin, jsonResponse, batchWithAudit } from '../_db.js';
 
 const CURRENT_STATES = "('live','outdated','under_review','disputed','expired')";
 
-async function evidenceIntact(env, key, expectedHash) {
-  if (!key) return true;                       // personal evidence is optional
+/**
+ * 'absent' and 'altered' are materially different and must not be conflated.
+ * evidence/personal/ is deliberately unlocked so it stays erasable, so a subject
+ * who exercises erasure between acceptance and review makes that object absent.
+ * Treating that as tampering would make the attestation permanently
+ * unapprovable and would report a fulfilled erasure request as an integrity
+ * failure.
+ */
+async function evidenceState(env, key, expectedHash) {
+  if (!key) return 'none_recorded';
   const object = await env.VERIFY_EVIDENCE.get(key);
-  if (!object) return false;
-  return (await sha256Hex(await object.text())) === expectedHash;
+  if (!object) return 'absent';
+  return (await sha256Hex(await object.text())) === expectedHash ? 'intact' : 'altered';
 }
 
 export async function onRequestPost({ request, env }) {
@@ -56,31 +64,34 @@ export async function onRequestPost({ request, env }) {
   const now = new Date().toISOString();
 
   if (decision === 'reject') {
-    await env.VERIFY_DB.batch([
+    await batchWithAudit(env, [
       env.VERIFY_DB.prepare(
         `UPDATE attestations SET status='rejected', reviewer=?, reviewed_at=?, decision_note=?
           WHERE id = ?`).bind(reviewer, now, note, attestationId),
+    ], {
       // No public_summary: a rejected attestation was never published, so it has
       // no public history to add to.
-      await auditStatement(env, {
-        attestation_id: attestationId, subject_id: attestation.subject_id,
-        action: 'rejected', actor: reviewer,
-        detail: JSON.stringify({ note }), public_summary: null,
-      }),
-    ]);
+      attestation_id: attestationId, subject_id: attestation.subject_id,
+      action: 'rejected', actor: reviewer,
+      detail: JSON.stringify({ note }), public_summary: null,
+    });
     return jsonResponse({ ok: true, status: 'rejected' });
   }
 
-  const sealedOk = await evidenceIntact(env, attestation.sealed_key, attestation.sealed_hash);
-  const personalOk = await evidenceIntact(env, attestation.personal_key, attestation.personal_hash);
-  if (!sealedOk || !personalOk) {
-    return jsonResponse({
-      ok: false, error: 'evidence_missing_or_altered',
-      sealed_ok: sealedOk, personal_ok: personalOk,
-    }, 409);
+  const sealed = await evidenceState(env, attestation.sealed_key, attestation.sealed_hash);
+  const personal = await evidenceState(env, attestation.personal_key, attestation.personal_hash);
+
+  // Sealed evidence is bucket-locked, so anything but 'intact' is a real
+  // integrity problem and blocks publication.
+  if (sealed !== 'intact') {
+    return jsonResponse({ ok: false, error: `sealed_evidence_${sealed}`, sealed, personal }, 409);
+  }
+  // Personal evidence may legitimately be gone (erasure). Only ALTERATION blocks.
+  if (personal === 'altered') {
+    return jsonResponse({ ok: false, error: 'personal_evidence_altered', sealed, personal }, 409);
   }
 
-  await env.VERIFY_DB.batch([
+  await batchWithAudit(env, [
     env.VERIFY_DB.prepare(
       `UPDATE attestations SET status='superseded', superseded_by=?
         WHERE subject_id = ? AND id <> ? AND status IN ${CURRENT_STATES}`)
@@ -91,13 +102,12 @@ export async function onRequestPost({ request, env }) {
               last_verified_at=?
         WHERE id = ?`)
       .bind(now, reviewer, now, note || null, now, attestationId),
-    await auditStatement(env, {
-      attestation_id: attestationId, subject_id: attestation.subject_id,
-      action: 'approved', actor: reviewer,
-      detail: JSON.stringify({ note }),
-      public_summary: 'Reviewed and published',
-    }),
-  ]);
+  ], {
+    attestation_id: attestationId, subject_id: attestation.subject_id,
+    action: 'approved', actor: reviewer,
+    detail: JSON.stringify({ note, evidence: { sealed, personal } }),
+    public_summary: 'Reviewed and published',
+  });
 
-  return jsonResponse({ ok: true, status: 'live' });
+  return jsonResponse({ ok: true, status: 'live', evidence: { sealed, personal } });
 }

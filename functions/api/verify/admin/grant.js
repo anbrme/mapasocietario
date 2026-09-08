@@ -8,9 +8,11 @@
  * a link, and links get forwarded.
  */
 import { newToken, tokenHash } from '../../../../src/verify/ids.js';
-import { requireAdmin, jsonResponse, auditStatement } from '../_db.js';
+import { requireAdmin, jsonResponse, batchWithAudit } from '../_db.js';
 
 const DEFAULT_TTL_DAYS = 90;
+const MIN_TTL_DAYS = 1;
+const MAX_TTL_DAYS = 365;
 
 export async function onRequestPost({ request, env }) {
   if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
@@ -25,9 +27,16 @@ export async function onRequestPost({ request, env }) {
   if (body.revoke) {
     const hash = typeof body.token_hash === 'string' ? body.token_hash : '';
     if (!hash) return jsonResponse({ ok: false, error: 'token_hash_required' }, 400);
-    await env.VERIFY_DB.prepare(
-      'UPDATE view_grants SET revoked_at = ? WHERE token_hash = ? AND attestation_id = ?')
+    // The row count is checked: a mistyped hash, or one belonging to a different
+    // attestation, matched nothing and the operator was still told the link was
+    // dead - while it stayed live until its expiry, up to 90 days later.
+    const res = await env.VERIFY_DB.prepare(
+      `UPDATE view_grants SET revoked_at = ?
+        WHERE token_hash = ? AND attestation_id = ? AND revoked_at IS NULL`)
       .bind(new Date().toISOString(), hash, attestationId).run();
+    if (!res?.meta?.changes) {
+      return jsonResponse({ ok: false, error: 'grant_not_found_or_already_revoked' }, 404);
+    }
     return jsonResponse({ ok: true, revoked: true });
   }
 
@@ -43,22 +52,33 @@ export async function onRequestPost({ request, env }) {
   const token = newToken();
   const hash = await tokenHash(token);
   const label = typeof body.label === 'string' ? body.label.trim() : null;
-  const ttlDays = Number.isFinite(body.ttl_days) ? body.ttl_days : DEFAULT_TTL_DAYS;
+  // Number.isFinite alone accepted 0 and negatives, minting a grant that
+  // grantState() reports as expired on its first use while the endpoint
+  // cheerfully returned a URL.
+  const ttlDays = body.ttl_days === undefined ? DEFAULT_TTL_DAYS : body.ttl_days;
+  if (!Number.isFinite(ttlDays) || ttlDays < MIN_TTL_DAYS || ttlDays > MAX_TTL_DAYS) {
+    return jsonResponse({ ok: false, error: 'ttl_days_out_of_range',
+                          min: MIN_TTL_DAYS, max: MAX_TTL_DAYS }, 400);
+  }
   const expiresAt = new Date(Date.now() + ttlDays * 86_400_000).toISOString();
 
-  await env.VERIFY_DB.batch([
+  await batchWithAudit(env, [
     env.VERIFY_DB.prepare(
       `INSERT INTO view_grants (token_hash, attestation_id, label, issued_by, expires_at)
        VALUES (?,?,?,'admin',?)`).bind(hash, attestationId, label, expiresAt),
-    await auditStatement(env, {
-      attestation_id: attestationId, action: 'grant_issued', actor: 'operator',
-      detail: JSON.stringify({ label, expires_at: expiresAt }), public_summary: null,
-    }),
-  ]);
+  ], {
+    attestation_id: attestationId, action: 'grant_issued', actor: 'operator',
+    detail: JSON.stringify({ label, expires_at: expiresAt }), public_summary: null,
+  });
 
+  const base = `https://mapasocietario.es/verificacion/g/${token}`;
   return jsonResponse({
     ok: true, token_hash: hash, expires_at: expiresAt,
-    url: `https://mapasocietario.es/verificacion/g/${token}`,
+    url: base,
+    // The stated audience is a foreign professional, so the English rendering
+    // needs a reachable address. There is no /en/ grant route, so language is a
+    // query parameter on the same resource.
+    url_en: `${base}?lang=en`,
     local_url: `http://localhost:5173/verificacion/g/${token}`,
   });
 }

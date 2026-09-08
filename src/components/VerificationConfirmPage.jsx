@@ -38,6 +38,8 @@ const COPY = {
     stale: 'El registro cambió mientras revisaba. Esta es la declaración actualizada: compruébela de nuevo antes de aceptar.',
     failed: 'No hemos podido cargar esta declaración. Los enlaces caducan a las 72 horas.',
     consentsRequired: 'Marque las tres declaraciones para continuar.',
+    editFailed: 'No hemos podido guardar ese cambio. Inténtelo de nuevo.',
+    editRetry: 'Hemos recargado la declaración. Revise sus correcciones antes de aceptar.',
     already: 'Esta invitación ya se utilizó.',
     privacyTitle: 'Qué conservamos',
     privacy: 'Conservamos la declaración, la evidencia registral del momento y su nombre y cargo (ya públicos en el BORME) mientras la declaración sea consultable. Su correo y la nota de identificación se guardan por separado y puede solicitar su supresión escribiendo a mapasocietario@ncdata.eu.',
@@ -60,6 +62,8 @@ const COPY = {
     stale: 'The registry record changed while you were reviewing. Here is the updated statement — please check it again before accepting.',
     failed: "We couldn't load this statement. Links expire after 72 hours.",
     consentsRequired: 'Tick all three declarations to continue.',
+    editFailed: "We couldn't save that change. Please try again.",
+    editRetry: 'We reloaded the statement. Please check your corrections before accepting.',
     already: 'This invitation has already been used.',
     privacyTitle: 'What we keep',
     privacy: 'We keep the statement, the registry evidence as at that moment, and your name and position (already public in BORME) for as long as the statement is readable. Your email address and the identification note are stored separately and you can request their erasure at mapasocietario@ncdata.eu.',
@@ -79,6 +83,9 @@ export default function VerificationConfirmPage({ lang = 'es' }) {
   const [draft, setDraft] = useState(null);      // { draft_hash, assertion, company_name, seat }
   const [consents, setConsents] = useState({});
   const [staleNotice, setStaleNotice] = useState(false);
+  // Edits are serialised: two in flight from the same base_hash would each carry
+  // only their own correction, and whichever landed last would drop the other.
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!token) { setState('failed'); return; }
@@ -100,7 +107,9 @@ export default function VerificationConfirmPage({ lang = 'es' }) {
   // Any change to a fact goes to the server, which persists a NEW draft and
   // supersedes the old one. The screen only ever shows a server-held draft.
   const editFact = useCallback(async (factKey, declaredStatus, declaredValue) => {
-    if (!draft) return;
+    if (!draft || editing) return;
+    setEditing(true); setError('');
+    try {
     const r = await fetch('/api/verify/draft', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -111,8 +120,24 @@ export default function VerificationConfirmPage({ lang = 'es' }) {
       }),
     });
     const data = await r.json();
-    if (r.ok && data.ok) setDraft((d) => ({ ...d, draft_hash: data.draft_hash, assertion: data.assertion }));
-  }, [draft, token]);
+    if (r.ok && data.ok) {
+      setDraft((d) => ({ ...d, draft_hash: data.draft_hash, assertion: data.assertion }));
+      return;
+    }
+    // Silence here meant the radio reverted with no explanation and the
+    // representative could reasonably believe the correction had been recorded.
+    if (data.error === 'draft_superseded') {
+      const again = await fetch(`/api/verify/session?t=${encodeURIComponent(token)}`);
+      const fresh = await again.json();
+      if (again.ok && fresh.ok && fresh.draft_hash) { setDraft(fresh); setError(t.editRetry); return; }
+    }
+    setError(t.editFailed);
+    } catch {
+      setError(t.editFailed);
+    } finally {
+      setEditing(false);
+    }
+  }, [draft, token, editing, t]);
 
   const submit = useCallback(async () => {
     if (!CONSENT_KEYS.every((k) => consents[k])) { setError(t.consentsRequired); return; }

@@ -10,9 +10,11 @@
  */
 export const VALID_FOR_DAYS = 180;
 
+export const CONSENTS_REQUIRED = ['authority', 'publication', 'reconfirmation'];
+
 export function buildAssertion({
   identity, seat, representationBasis, facts,
-  registrySnapshotDigest, consents, nonce, draftedAt,
+  registrySnapshotDigest, nonce, draftedAt,
 }) {
   return {
     version: 1,
@@ -23,7 +25,10 @@ export function buildAssertion({
     seat,
     representation_basis: representationBasis,
     registry_snapshot_digest: registrySnapshotDigest,
-    consents,
+    // What acceptance WILL require - not what anyone has agreed to. The draft
+    // exists before acceptance, so it cannot carry given consents any more than
+    // it can carry accepted_at.
+    consents_required: CONSENTS_REQUIRED,
     facts: facts.map((f) => ({
       fact_key: f.fact_key,
       declared_status: f.declared_status,
@@ -38,11 +43,22 @@ export function addDays(iso, days) {
   return `${t.toISOString().slice(0, 19)}Z`;
 }
 
-export function buildAcceptanceReceipt(assertionHash, acceptedAtIso, method) {
+/**
+ * The record of the ACT of accepting: which statement, when, how, and what was
+ * consented to. The consents live here because this is where they were given -
+ * previously they were validated at submit and then discarded, so the sealed
+ * evidence recorded that the representative had consented to nothing.
+ */
+export function buildAcceptanceReceipt(assertionHash, acceptedAtIso, method, consents) {
   return {
     assertion_hash: assertionHash,
     accepted_at: acceptedAtIso,
     expires_at: addDays(acceptedAtIso, VALID_FOR_DAYS),
     method,
+    consents: Object.fromEntries(CONSENTS_REQUIRED.map((k) => [k, !!(consents || {})[k]])),
   };
 }
+
+// Every required consent actually given. Used as the submit gate.
+export const consentsComplete = (consents) =>
+  CONSENTS_REQUIRED.every((k) => (consents || {})[k] === true);

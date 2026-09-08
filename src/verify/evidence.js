@@ -15,9 +15,12 @@ export const evidenceKeys = (draftHash) => ({
   personal: `evidence/personal/${draftHash}.json`,
 });
 
-export function buildSealedEvidence({ assertion, registrySnapshot, seat, identity, acceptedAt }) {
+export function buildSealedEvidence({ assertion, registrySnapshot, seat, identity,
+                                      acceptedAt, receipt }) {
+  // The receipt is what makes this evidence of an ACT rather than of a draft:
+  // it carries the consents actually given and the computed expiry.
   return JSON.stringify({ assertion, registry_snapshot: registrySnapshot, seat, identity,
-                          accepted_at: acceptedAt });
+                          accepted_at: acceptedAt, receipt: receipt ?? null });
 }
 
 export function buildPersonalEvidence({ email, identificationNote, emailDomainBasis, acceptedAt }) {

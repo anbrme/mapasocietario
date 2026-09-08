@@ -12,6 +12,7 @@
  * the edit path needs as the evidence a declaration is compared against.
  */
 import { assembleDraft } from '../../../src/verify/assemble.js';
+import { validateEdits } from '../../../src/verify/facts.js';
 import { newId, tokenHash } from '../../../src/verify/ids.js';
 import { canonicalJson } from '../../../src/verify/hash.js';
 import { jsonResponse, invitationForToken, currentGroupKey } from './_db.js';
@@ -25,8 +26,14 @@ export async function onRequestPost({ request, env }) {
 
   const token = typeof body.t === 'string' ? body.t : '';
   const baseHash = typeof body.base_hash === 'string' ? body.base_hash : '';
-  const edits = Array.isArray(body.edits) ? body.edits : [];
   if (!token || !baseHash) return notFound();
+
+  // This endpoint is token-facing, not admin-facing. Unvalidated edits used to
+  // be copied verbatim into the assertion and only failed later, against a CHECK
+  // constraint, inside the batch that runs AFTER the R2 evidence is written.
+  const parsedEdits = validateEdits(body.edits);
+  if (!parsedEdits.ok) return jsonResponse({ ok: false, error: parsedEdits.reason }, 400);
+  const edits = parsedEdits.value;
 
   const invitation = await invitationForToken(env, await tokenHash(token));
   if (!invitation) return notFound();
@@ -41,6 +48,10 @@ export async function onRequestPost({ request, env }) {
   const company = JSON.parse(base.registry_snapshot);
   const priorAssertion = JSON.parse(base.canonical_json);
   const groupKey = await currentGroupKey(env, invitation.subject_id);
+  // Reachable by design: subject_identifiers exists precisely so a group_key can
+  // be re-pointed. Say so, rather than letting a null reach the registry fetch
+  // and surface as "the registry is unreachable".
+  if (!groupKey) return jsonResponse({ ok: false, error: 'subject_unresolved' }, 409);
 
   // Replay the declarations already made, then layer the new edits on top.
   const declaredFacts = [...priorAssertion.facts, ...edits];
@@ -52,23 +63,33 @@ export async function onRequestPost({ request, env }) {
     seat: priorAssertion.seat,
     representationBasis: priorAssertion.representation_basis,
     declaredFacts,
-    consents: priorAssertion.consents,
     nonce: newId('non'),
     draftedAt: new Date().toISOString(),
   });
 
   if (hash === baseHash) return jsonResponse({ ok: true, draft_hash: hash, assertion });
 
-  await env.VERIFY_DB.batch([
+  // The supersede is CONDITIONAL and its row count is checked. Without the
+  // guard, two edits fired a second apart both build from the same base, both
+  // "succeed", and whichever response lands last silently drops the other
+  // correction from the statement the representative then accepts.
+  const [, superseded] = await env.VERIFY_DB.batch([
     env.VERIFY_DB.prepare(
       `INSERT OR IGNORE INTO draft_assertions
         (hash, invitation_id, subject_id, canonical_json, registry_snapshot)
        VALUES (?,?,?,?,?)`)
       .bind(hash, invitation.id, invitation.subject_id,
             canonicalJson(assertion), base.registry_snapshot),
-    env.VERIFY_DB.prepare('UPDATE draft_assertions SET superseded_by = ? WHERE hash = ?')
+    env.VERIFY_DB.prepare(
+      'UPDATE draft_assertions SET superseded_by = ? WHERE hash = ? AND superseded_by IS NULL')
       .bind(hash, baseHash),
   ]);
+
+  if (!superseded?.meta?.changes) {
+    // Someone else superseded this base first. Tell the client to re-read
+    // rather than let two corrections race and one disappear.
+    return jsonResponse({ ok: false, error: 'draft_superseded' }, 409);
+  }
 
   return jsonResponse({ ok: true, draft_hash: hash, assertion });
 }

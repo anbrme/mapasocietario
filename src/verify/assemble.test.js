@@ -56,3 +56,23 @@ describe('assembleDraft', () => {
       .not.toBe((await assembleDraft(BASE)).hash);
   });
 });
+
+// --- Regression: code review 2026-09-08 -------------------------------------
+
+describe('drift baseline (finding 2)', () => {
+  it('does NOT move when only pipeline metadata changed overnight', async () => {
+    const evening = await assembleDraft({ ...BASE,
+      company: { ...COMPANY, processed_at: '2026-09-07T22:00:00', total_publications: 2 } });
+    const morning = await assembleDraft({ ...BASE,
+      company: { ...COMPANY, processed_at: '2026-09-08T03:00:00', total_publications: 3 } });
+    // Previously these differed, so accepting the next morning returned a 409
+    // telling the representative the registry had changed when it had not.
+    expect(morning.hash).toBe(evening.hash);
+  });
+
+  it('DOES move when a registry fact changed', async () => {
+    const moved = await assembleDraft({ ...BASE,
+      company: { ...COMPANY, current_address: 'C/ NUEVA 5' } });
+    expect(moved.hash).not.toBe((await assembleDraft(BASE)).hash);
+  });
+});

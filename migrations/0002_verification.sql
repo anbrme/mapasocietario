@@ -96,6 +96,10 @@ CREATE TABLE attestations (
   -- written ONCE here and never recomputed at review time.
   accepted_at              TEXT NOT NULL,
   expires_at               TEXT NOT NULL,
+  -- The record of the ACT: assertion hash, real acceptance time, computed
+  -- expiry, method, and the consents ACTUALLY given. Consents cannot live in
+  -- the assertion, which is drafted before anyone has agreed to anything.
+  acceptance_receipt       TEXT NOT NULL,
   last_verified_at         TEXT,
   consecutive_inconclusive INTEGER NOT NULL DEFAULT 0,
   approved_at              TEXT,

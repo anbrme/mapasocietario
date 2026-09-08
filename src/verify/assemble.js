@@ -9,7 +9,7 @@
  * differ and the drift check would fire every time, telling us nothing.
  */
 import { hashCanonical } from './hash.js';
-import { factsFromRegistry, applyEdits } from './facts.js';
+import { factsFromRegistry, applyEdits, projectRegistry } from './facts.js';
 import { buildAssertion } from './assertion.js';
 
 export function identitySnapshot({ subjectId, groupKey, company }) {
@@ -24,20 +24,22 @@ export function identitySnapshot({ subjectId, groupKey, company }) {
 
 export async function assembleDraft({
   subjectId, groupKey, company, seat, representationBasis,
-  declaredFacts, consents, nonce, draftedAt,
+  declaredFacts, nonce, draftedAt,
 }) {
   // Registry values always come from the CURRENT read; declarations are layered
   // on top. registry_value_at_issue is never overwritten by a declaration — it
   // is the evidence the declaration is compared against.
   const facts = applyEdits(factsFromRegistry(company), declaredFacts || []);
-  const registrySnapshotDigest = await hashCanonical(company);
+  // Hash the PROJECTION, not the raw upstream document: the latter carries
+  // processed_at/enriched_at/normalization_version, which move nightly with no
+  // registry event, so drift would fire constantly (see facts.projectRegistry).
+  const registrySnapshotDigest = await hashCanonical(projectRegistry(company));
   const assertion = buildAssertion({
     identity: identitySnapshot({ subjectId, groupKey, company }),
     seat,
     representationBasis,
     facts,
     registrySnapshotDigest,
-    consents,
     nonce,
     draftedAt,
   });

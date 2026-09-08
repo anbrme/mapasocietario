@@ -34,11 +34,18 @@ export function requireAdmin(request, env) {
 }
 
 /**
- * Every upstream call carries X-Internal-Key. The API rate limiter keys on the
- * nginx loopback address, so an unkeyed caller consumes the SITE-WIDE per-worker
- * bucket and can take the public site down with it.
+ * X-Internal-Key exempts a caller from the shared rate bucket, which keys on the
+ * nginx loopback address - so an unkeyed BATCH caller consumes the site-wide
+ * per-worker budget and can take the public site down with it.
+ *
+ * Interactive endpoints (a handful of calls a day, driven by a human clicking a
+ * link) may proceed unkeyed; a batch caller may not, and passes
+ * `requireInternalKey` so a missing secret fails loudly here instead of
+ * degrading into exactly the failure this comment describes.
  */
-export async function fetchCompanyByGroupKey(groupKey, env) {
+export async function fetchCompanyByGroupKey(groupKey, env, { requireInternalKey = false } = {}) {
+  if (!groupKey) throw new Error('subject_unresolved');
+  if (requireInternalKey && !env.INTERNAL_API_KEY) throw new Error('internal_api_key_missing');
   const response = await fetch(
     `${API_BASE}/bormes/v3/company?group_key=${encodeURIComponent(groupKey)}`,
     { headers: env.INTERNAL_API_KEY ? { 'X-Internal-Key': env.INTERNAL_API_KEY } : {} },
@@ -55,6 +62,31 @@ export async function fetchCompanyByGroupKey(groupKey, env) {
  * describes is worse than none. The unique index on prev_hash makes a
  * concurrent append fail rather than fork the chain; the caller retries.
  */
+/**
+ * Runs `statements` and an audit event in ONE batch, retrying when a concurrent
+ * writer wins the race for the chain head.
+ *
+ * idx_audit_events_prev_hash is UNIQUE, so two writers appending against the
+ * same head collide rather than forking the chain. Both this module and the
+ * migration documented a retry that did not exist: every caller invoked batch()
+ * bare, so the loser got an unhandled constraint violation and a 500 - and in
+ * submit's case, after the R2 evidence had already been written.
+ */
+export async function batchWithAudit(env, statements, auditEvent, attempts = 3) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const audit = await auditStatement(env, auditEvent);
+    try {
+      return await env.VERIFY_DB.batch([...statements, audit]);
+    } catch (e) {
+      const lostTheRace = /UNIQUE constraint failed:\s*audit_events\.prev_hash|idx_audit_events_prev_hash/i
+        .test(String(e && e.message ? e.message : e));
+      if (!lostTheRace || attempt === attempts) throw e;
+      // Rebuild against the new head on the next pass.
+    }
+  }
+  throw new Error('audit_chain_contention');
+}
+
 export async function auditStatement(env, event) {
   const head = await env.VERIFY_DB
     .prepare('SELECT hash FROM audit_events ORDER BY seq DESC LIMIT 1')

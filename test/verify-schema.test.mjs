@@ -46,14 +46,17 @@ function expectFailure(command, fragment) {
 const attestation = (id, invitation, status) => `INSERT INTO attestations
   (id, subject_id, claimant_id, invitation_id, method, status, representation_basis,
    identity_snapshot, assertion_hash, registry_snapshot, sealed_key, sealed_hash,
-   accepted_at, expires_at)
+   accepted_at, expires_at, acceptance_receipt)
   VALUES ('${id}','s1','c1','${invitation}','email-confirmed','${status}','sole_admin',
-   '{}','d1','{}','k','kh','2026-09-08T00:00:00Z','2027-03-07T00:00:00Z')`;
+   '{}','d1','{}','k','kh','2026-09-08T00:00:00Z','2027-03-07T00:00:00Z','{}')`;
 
 before(() => {
   if (!hasLocalD1) return;
-  for (const t of ['attestation_facts', 'attestations', 'draft_assertions', 'invitations',
-                   'claimants', 'subject_identifiers', 'subjects', 'audit_events']) {
+  // Order matters: D1 enforces foreign keys, and view_grants references
+  // attestations, so children go first or the delete is refused.
+  for (const t of ['view_grants', 'attestation_facts', 'attestations', 'draft_assertions',
+                   'invitations', 'claimants', 'subject_identifiers', 'subjects',
+                   'audit_events', 'chain_anchors']) {
     sql(`DELETE FROM ${t}`);
   }
   sql(`INSERT INTO subjects (subject_id, display_name) VALUES ('s1','Test SL')`);
@@ -96,4 +99,16 @@ test('the audit chain cannot fork on the same previous hash', opts, () => {
     `INSERT INTO audit_events (action, actor, prev_hash, hash)
      VALUES ('created','operator','0','h_b')`,
     'UNIQUE constraint failed');
+});
+
+test('an attestation cannot be written without its acceptance receipt', opts, () => {
+  // The receipt carries the consents actually given. A nullable column here
+  // would let the flow record an acceptance with no evidence of what was agreed.
+  expectFailure(`INSERT INTO attestations
+    (id, subject_id, claimant_id, invitation_id, method, status, representation_basis,
+     identity_snapshot, assertion_hash, registry_snapshot, sealed_key, sealed_hash,
+     accepted_at, expires_at)
+    VALUES ('a9','s1','c1','i2','email-confirmed','pending_review','sole_admin',
+     '{}','d1','{}','k','kh','2026-09-08T00:00:00Z','2027-03-07T00:00:00Z')`,
+    'NOT NULL constraint failed');
 });
