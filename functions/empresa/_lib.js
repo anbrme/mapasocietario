@@ -15,7 +15,7 @@ import { SEED, hojaGroupKey } from './_ibex35.js';
 import { resolveSlug } from './_resolve.js';
 import { nameToSlug, pickSlugMatch } from './_slug.js';
 import { renderConfirmationBlock } from './_confirmation.js';
-import { CONFIRMATIONS } from './_confirmations.js';
+import { liveAttestationFor } from './_attestation.js';
 import { buildTrademarksBlock } from './_trademarks.js';
 import { buildAwardsBlock } from './_awards.js';
 import { findPromotedCompanyBySlug, repointStaleSlug } from './_demand.js';
@@ -1546,7 +1546,7 @@ const graphHref = (name, groupKey) => {
   return `/app/?${params.toString().replace(/&/g, '&amp;')}`;
 };
 
-export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false) {
+export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false, attestation = null) {
   // For the hours between a filing reaching the event log and the aggregation
   // absorbing it, "Administradores y cargos vigentes" — and the JSON-LD employee
   // list Google reads — described the last AGGREGATION rather than the last
@@ -2104,7 +2104,7 @@ ${GA_SNIPPET}
   ${renameNotice}
   ${cotizadaBlock}
 
-  ${renderConfirmationBlock(CONFIRMATIONS[canonicalSlug], lang)}
+  ${renderConfirmationBlock(attestation, lang)}
 
   ${relationshipOverviewBlock}
 
@@ -2503,7 +2503,10 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es') {
     }
 
     const gleif = gleifResp && gleifResp.success ? gleifResp.data : null;
-    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex);
+    // Read after the company resolves, so it keys on the same group_key the
+    // rest of the page used. A failure here yields no badge rather than no page.
+    const attestation = await liveAttestationFor(env, graphGroupKey(company, seed));
+    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex, attestation);
     return new Response(html, {
       status: 200,
       headers: {

@@ -1,217 +1,102 @@
+/**
+ * The /empresa attestation panel. It now renders a REAL attestation read from
+ * VERIFY_DB rather than the hand-authored map it replaces, so these tests cover
+ * the wording constraints rather than the old record shape.
+ *
+ * nameIsOfficer moved to src/verify/seat.js as matchSeat, which binds to an
+ * officer ROW and rejects the subset match this file used to assert.
+ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { confirmationStatus, nameIsOfficer, renderConfirmationBlock, confirmationViewModel } from '../functions/empresa/_confirmation.js';
+import {
+  confirmationStatus, renderConfirmationBlock, confirmationViewModel,
+} from '../functions/empresa/_confirmation.js';
 
-const DAY = 86_400_000;
-const at = (iso, days) => Date.parse(iso + 'T00:00:00Z') + days * DAY;
-
-test('same-day confirmation is fresh, age 0', () => {
-  const s = confirmationStatus('2026-06-28', at('2026-06-28', 0));
-  assert.deepEqual(s, { ageDays: 0, level: 'fresh' });
+const NOW = Date.parse('2026-09-09T00:00:00Z');
+const att = (o = {}) => ({
+  id: 'att_x', status: 'live',
+  representative: { name: 'NURNBERG ALESSANDRO', position: 'ADM. UNICO' },
+  accepted_at: '2026-09-08T21:37:16Z',
+  reviewer: 'Alessandro Nürnberg', reviewed_at: '2026-09-08T21:38:00Z',
+  last_verified_at: '2026-09-08T21:37:16Z',
+  facts: [], history: [], ...o,
 });
 
-test('90 days is still fresh, 91 days flips to aging', () => {
-  assert.equal(confirmationStatus('2026-06-28', at('2026-06-28', 90)).level, 'fresh');
-  assert.equal(confirmationStatus('2026-06-28', at('2026-06-28', 91)).level, 'aging');
+test('same-day acceptance is fresh, age 0', () => {
+  const s = confirmationStatus('2026-09-09T00:00:00Z', NOW);
+  assert.equal(s.ageDays, 0);
+  assert.equal(s.level, 'fresh');
 });
 
-test('365 days is aging, 366 days flips to stale', () => {
-  assert.equal(confirmationStatus('2026-06-28', at('2026-06-28', 365)).level, 'aging');
-  assert.equal(confirmationStatus('2026-06-28', at('2026-06-28', 366)).level, 'stale');
+test('90 days is fresh, 91 flips to aging, 181 to stale', () => {
+  const at = (d) => confirmationStatus(new Date(NOW - d * 86400000).toISOString(), NOW).level;
+  assert.equal(at(90), 'fresh');
+  assert.equal(at(91), 'aging');
+  assert.equal(at(180), 'aging');
+  assert.equal(at(181), 'stale');
 });
 
-test('future or unparseable dates: never negative age; null on garbage', () => {
-  assert.equal(confirmationStatus('2026-06-28', at('2026-06-28', -5)).ageDays, 0);
-  assert.equal(confirmationStatus('not-a-date', Date.now()), null);
+test('future or unparseable timestamps: never negative, null on garbage', () => {
+  assert.equal(confirmationStatus('2027-01-01T00:00:00Z', NOW).ageDays, 0);
+  assert.equal(confirmationStatus('not a date', NOW), null);
 });
 
-test('representative matches officer across order and accents', () => {
-  assert.equal(nameIsOfficer('Alessandro Nürnberg', ['NURNBERG ALESSANDRO']), true);
+test('nothing renders without an attestation', () => {
+  for (const bad of [null, undefined, {}, { accepted_at: '2026-09-08T00:00:00Z' }]) {
+    assert.equal(renderConfirmationBlock(bad, 'es', NOW), '');
+    assert.equal(confirmationViewModel(bad, 'es', NOW), null);
+  }
 });
 
-test('representative is a subset of a longer officer name', () => {
-  assert.equal(nameIsOfficer('Alessandro Nürnberg', ['NURNBERG ALESSANDRO GIOVANNI']), true);
+test('the panel names the representative, the reviewer and the disclaimer', () => {
+  const html = renderConfirmationBlock(att(), 'es', NOW);
+  assert.match(html, /NURNBERG ALESSANDRO/);
+  assert.match(html, /ADM\. UNICO/);
+  assert.match(html, /Autoridad revisada por Alessandro Nürnberg/);
+  assert.match(html, /No verifica su identidad ni certifica que la declaración sea cierta/);
 });
 
-test('non-officer and empty inputs do not match', () => {
-  assert.equal(nameIsOfficer('María López', ['NURNBERG ALESSANDRO']), false);
-  assert.equal(nameIsOfficer('', ['NURNBERG ALESSANDRO']), false);
-  assert.equal(nameIsOfficer('Alessandro Nürnberg', []), false);
+test('the panel never claims identity, truth, or a live check', () => {
+  // The map this replaces said "La empresa confirma" on the strength of a name
+  // matching an officer row. These are the phrasings that overstate.
+  for (const lang of ['es', 'en']) {
+    for (const status of ['live', 'outdated']) {
+      const html = renderConfirmationBlock(att({ status }), lang, NOW).toLowerCase();
+      for (const phrase of ['identidad verificada', 'identity verified', 'la empresa confirma',
+                            'era exacta', 'was accurate', 'as of right now', 'inmutable',
+                            'immutable']) {
+        assert.ok(!html.includes(phrase), `${lang}/${status} must not say "${phrase}"`);
+      }
+    }
+  }
 });
 
-const REC = {
-  confirmedAt: '2026-06-28',
-  representative: 'Alessandro Nürnberg',
-  role: 'Administrador único',
-  affirms: [
-    { label: 'Administrador único: Alessandro Nürnberg', status: 'current' },
-    { label: 'Situación concursal', status: 'none' },
-  ],
-};
-
-test('missing or invalid record renders nothing', () => {
-  assert.equal(renderConfirmationBlock(null, 'es'), '');
-  assert.equal(renderConfirmationBlock({ confirmedAt: 'x' }, 'es'), '');
-  assert.equal(renderConfirmationBlock({ confirmedAt: 'x', representative: 'Bob' }, 'es'), '');
-});
-
-test('fresh ES panel names the representative and carries the disclaimer', () => {
-  const html = renderConfirmationBlock(REC, 'es', at('2026-06-28', 3));
-  assert.match(html, /cc cc-fresh/);
-  assert.match(html, /Confirmación de vigencia/);
-  assert.match(html, /Alessandro Nürnberg/);
-  assert.match(html, /hace 3 días/);
-  assert.match(html, /verifica la autoridad del representante/);
-  assert.match(html, /cc-none/); // the "sin constancia" chip
-});
-
-test('stale panel uses the aged line, not the fresh "confirmed by" line', () => {
-  const html = renderConfirmationBlock(REC, 'es', at('2026-06-28', 400));
-  assert.match(html, /cc cc-stale/);
-  assert.match(html, /Última confirmación hace 400 días/);
-  assert.doesNotMatch(html, /Confirmado actual por/);
-});
-
-test('EN panel renders English chrome', () => {
-  const html = renderConfirmationBlock(REC, 'en', at('2026-06-28', 1));
-  assert.match(html, /Currency confirmation/);
-  assert.match(html, /1 day ago/);
-});
-
-test('aging panel (100 days) uses cc-aging and the aged line', () => {
-  const html = renderConfirmationBlock(REC, 'es', at('2026-06-28', 100));
-  assert.match(html, /cc cc-aging/);
-  assert.match(html, /Última confirmación hace 100 días/);
-  assert.doesNotMatch(html, /Confirmado actual por/);
-});
-
-test('panel shows the verification method line when present (ES)', () => {
-  const rec = {
-    confirmedAt: '2026-06-28',
-    representative: 'Alessandro Nürnberg',
-    verification: 'email-from-tied-address',
-    affirms: [],
-  };
-  const html = renderConfirmationBlock(rec, 'es', at('2026-06-28', 1));
-  assert.match(html, /cc-method/);
-  assert.match(html, /Verificado por confirmación desde el email de la empresa/);
-});
-
-test('panel omits the method line when verification is absent', () => {
-  const rec = { confirmedAt: '2026-06-28', representative: 'X', affirms: [] };
-  const html = renderConfirmationBlock(rec, 'es', at('2026-06-28', 1));
-  assert.doesNotMatch(html, /cc-method/);
-});
-
-const VM_REC = {
-  confirmedAt: '2026-06-28',
-  representative: 'Alessandro Nürnberg',
-  role: 'Administrador único',
-  affirms: [
-    { label: 'Administrador único: Alessandro Nürnberg', status: 'current' },
-    { label: 'Situación concursal', status: 'none' },
-  ],
-};
-const atMs = (iso, days) => Date.parse(iso + 'T00:00:00Z') + days * 86_400_000;
-
-test('viewModel: missing/invalid record returns null', () => {
-  assert.equal(confirmationViewModel(null, 'es'), null);
-  assert.equal(confirmationViewModel({ confirmedAt: 'x', representative: 'Bob' }, 'es'), null);
-});
-
-test('viewModel: fresh ES has level, named status line, mapped facts, disclaimer', () => {
-  const vm = confirmationViewModel(VM_REC, 'es', atMs('2026-06-28', 3));
-  assert.equal(vm.level, 'fresh');
-  assert.match(vm.statusLine, /Confirmado actual por Alessandro Nürnberg/);
-  assert.match(vm.statusLine, /hace 3 días/);
-  assert.equal(vm.title, 'Confirmación de vigencia');
-  assert.equal(vm.facts.length, 2);
-  assert.deepEqual(
-    vm.facts.map((f) => f.status),
-    ['current', 'none'],
-  );
-  assert.equal(vm.facts[1].chipLabel, 'sin constancia');
-  assert.match(vm.asOf, /a fecha 28\/06\/2026/);
-  assert.match(vm.disclaimer, /verifica la autoridad del representante/);
-});
-
-test('viewModel: stale uses the aged line and has no asOf when no facts', () => {
-  const vm = confirmationViewModel(
-    { confirmedAt: '2026-06-28', representative: 'X', affirms: [] },
-    'es',
-    atMs('2026-06-28', 400),
-  );
+test('an outdated attestation is titled and styled as superseded, not as a failure', () => {
+  const vm = confirmationViewModel(att({ status: 'outdated',
+    status_reason: 'Se registró un cambio de domicilio el 20 de septiembre.' }), 'es', NOW);
   assert.equal(vm.level, 'stale');
-  assert.match(vm.statusLine, /Última confirmación hace 400 días/);
-  assert.equal(vm.asOf, null);
-  assert.equal(vm.facts.length, 0);
+  assert.match(vm.title, /superada/i);
+  assert.match(vm.statusLine, /ya no debe considerarse vigente/);
+  assert.doesNotMatch(vm.statusLine, /exacta|falsa|incorrecta/i);
 });
 
-test('viewModel: EN copy', () => {
-  const vm = confirmationViewModel(VM_REC, 'en', atMs('2026-06-28', 1));
-  assert.equal(vm.title, 'Currency confirmation');
-  assert.match(vm.statusLine, /1 day ago/);
-  assert.equal(vm.facts[0].chipLabel, 'current');
+test('the status line names the last SUCCESSFUL check, never "right now"', () => {
+  assert.match(confirmationViewModel(att(), 'es', NOW).statusLine,
+    /Última comprobación con éxito: 2026-09-08/);
+  assert.match(confirmationViewModel(att({ last_verified_at: null }), 'es', NOW).statusLine,
+    /no se ha comprobado desde su publicación/i);
 });
 
-test('viewModel: verifiedVia maps email-tied method to ES copy', () => {
-  const vm = confirmationViewModel(
-    { confirmedAt: '2026-06-28', representative: 'X', verification: 'email-from-tied-address', affirms: [] },
-    'es',
-    atMs('2026-06-28', 1),
-  );
-  assert.equal(vm.verifiedVia, 'Verificado por confirmación desde el email de la empresa');
+test('EN renders English chrome', () => {
+  const html = renderConfirmationBlock(att(), 'en', NOW);
+  assert.match(html, /Currency confirmation/);
+  assert.match(html, /Authority reviewed by/);
+  assert.match(html, /does not certify that the statement is true/);
 });
 
-test('viewModel: verifiedVia maps email-tied method to EN copy with curly apostrophe', () => {
-  const vm = confirmationViewModel(
-    { confirmedAt: '2026-06-28', representative: 'X', verification: 'email-from-tied-address', affirms: [] },
-    'en',
-    atMs('2026-06-28', 1),
-  );
-  assert.equal(vm.verifiedVia, `Verified by confirmation from the company’s email`);
-});
-
-test('viewModel: verifiedVia is null for registry-officer-match (default, not surfaced)', () => {
-  const vm = confirmationViewModel(
-    { confirmedAt: '2026-06-28', representative: 'X', verification: 'registry-officer-match', affirms: [] },
-    'en',
-    atMs('2026-06-28', 1),
-  );
-  assert.equal(vm.verifiedVia, null);
-});
-
-test('viewModel: verifiedVia is null for missing or unknown method', () => {
-  const base = { confirmedAt: '2026-06-28', representative: 'X', affirms: [] };
-  assert.equal(confirmationViewModel(base, 'es', atMs('2026-06-28', 1)).verifiedVia, null);
-  assert.equal(
-    confirmationViewModel({ ...base, verification: 'something-else' }, 'es', atMs('2026-06-28', 1)).verifiedVia,
-    null,
-  );
-});
-
-import { confirmationProvenanceError } from '../functions/empresa/_confirmation.js';
-
-test('provenance: email-tied record needs reviewer and evidenceRef', () => {
-  const ok = {
-    verification: 'email-from-tied-address',
-    reviewer: 'AN',
-    evidenceRef: 'CONF-2026-0001',
-  };
-  assert.equal(confirmationProvenanceError(ok), null);
-
-  assert.match(
-    confirmationProvenanceError({ verification: 'email-from-tied-address', evidenceRef: 'CONF-2026-0001' }),
-    /reviewer/,
-  );
-  assert.match(
-    confirmationProvenanceError({ verification: 'email-from-tied-address', reviewer: 'AN' }),
-    /evidenceRef/,
-  );
-});
-
-test('provenance: non-email-tied methods need no audit trail', () => {
-  assert.equal(confirmationProvenanceError({ verification: 'registry-officer-match' }), null);
-  assert.equal(confirmationProvenanceError({}), null);
-  assert.equal(confirmationProvenanceError(null), null);
+test('values are escaped rather than trusted', () => {
+  const html = renderConfirmationBlock(
+    att({ reviewer: '<script>alert(1)</script>' }), 'es', NOW);
+  assert.ok(!html.includes('<script>alert(1)</script>'));
+  assert.match(html, /&lt;script&gt;/);
 });

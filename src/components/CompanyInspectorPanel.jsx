@@ -33,7 +33,7 @@ import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import OfficerInspectorBody from './OfficerInspectorBody.jsx';
 import { FINDINGS_PANEL_ENABLED } from '../config';
 import { listedBadgeFor } from '../utils/ibex35Match';
-import { CONFIRMATIONS } from '../../functions/empresa/_confirmations.js';
+import { useCompanyAttestation } from '../hooks/useCompanyAttestation.js';
 import { nameToSlug } from '../../functions/empresa/_slug.js';
 import { fullCompanyPageHref } from '../../functions/empresa/_page_href.js';
 import { companyRecencyLine } from './companyRecencyLine';
@@ -87,6 +87,14 @@ const CompanyInspectorPanel = ({
   // previous company's open state over is how a card stops being predictable.
   const [detailOpen, setDetailOpen] = useState(false);
   useEffect(() => { setDetailOpen(false); }, [data?.name]);
+
+  // The attestation badge, fetched rather than bundled: attestations are
+  // database rows now. Resolution order mirrors graphGroupKey in _lib.js, and a
+  // node with no stable identity simply gets no badge. Called before the early
+  // return below, because hooks must be.
+  const attestation = useCompanyAttestation(
+    data?.type === 'company' ? (data?.group_key || data?._id || data?.id || null) : null,
+  );
 
   // Escape closes the panel — the modal gave users that for free; a non-modal
   // fixed Paper has no backdrop or focus trap, so it has to be wired by hand.
@@ -324,10 +332,7 @@ const CompanyInspectorPanel = ({
           });
           return (
             <Box>
-              <CurrencyConfirmationCard
-                rec={CONFIRMATIONS[nameToSlug(data.name)]}
-                lang={lang}
-              />
+              <CurrencyConfirmationCard rec={attestation} lang={lang} />
               {/* Overview section */}
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
                 <InfoIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: 'text-bottom' }} />
