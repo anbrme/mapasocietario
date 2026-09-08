@@ -9,3 +9,17 @@ pages_build_output_dir = "dist"
 binding = "SEO_DB"
 database_name = "mapasocietario-seo"
 database_id = "2e471c22-6478-4d55-b3c6-9d0fc279e6ba"
+
+# Attestation pilot. Deliberately a SEPARATE database from SEO_DB: identity
+# evidence deserves a smaller operational and privacy blast radius than
+# page-demand counters.
+[[d1_databases]]
+binding = "VERIFY_DB"
+database_name = "mapasocietario-verify"
+database_id = "15330a44-ac7e-46ba-bd1f-bb1ba5291f4d"
+
+# Evidence bundles. Two prefixes with different retention: evidence/sealed/ is
+# bucket-locked, evidence/personal/ must stay erasable and carries no lock rule.
+[[r2_buckets]]
+binding = "VERIFY_EVIDENCE"
+bucket_name = "mapasocietario-verify-evidence"

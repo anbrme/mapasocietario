@@ -32,3 +32,7 @@ resync-out/
 .chart-data-*/
 output/presentations/
 tmp/vc-deck*/
+
+# Local Pages dev secrets (VERIFY_ADMIN_TOKEN etc). Never committed.
+.dev.vars
+.dev.vars.*
