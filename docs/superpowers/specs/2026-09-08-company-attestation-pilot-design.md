@@ -59,7 +59,7 @@ Two claims the earlier draft made and this one does not: matching a name to an o
 The audit chain is **tamper-evident, not tamper-proof**:
 
 1. **Append-only by convention (D1).** Weakest. Anyone with database access can rewrite a row and recompute the chain.
-2. **Evidence under an R2 bucket lock.** Protects against deletion and overwriting **while the rule is configured**. Cloudflare's own wording is "until the lock is explicitly removed" — a sufficiently privileged administrator can remove the protection. It defends against accident and against a compromised worker; it does not defend against the account owner.
+2. **Evidence under an R2 bucket lock.** Protects against deletion and overwriting **while the rule is configured**. Cloudflare's own wording is "until the lock is explicitly removed" — a sufficiently privileged administrator can remove the protection. It defends against accident and against a compromised worker; it does not defend against the account owner. The lock is also **bounded, never indefinite** — an indefinite lock would make an erasure request impossible to honour (§9).
 3. **An external anchor for the chain head.** Publishing the head hash on our own endpoint anchors nothing, because we control that endpoint. The anchor is only worth what its *independent retention* is worth. For the pilot: the daily head is mailed to a mailbox on a provider we do not operate, retained there, and the documented verification procedure is to compare a claimed history against those retained checkpoints. The **anchoring interval is up to 24 hours**, so a tamper within the current day is outside its protection. The strong version — an RFC 3161 qualified timestamp — is deferred.
 
 External wording says *tamper-evident, with daily external checkpoints*. It never says *immutable*, and it never implies the operator cannot alter the store.
@@ -70,12 +70,12 @@ Spanish law distinguishes: a **sole administrator** represents the company alone
 
 Consequences for the pilot:
 
-- The attestation records a `representation_basis` — one of `sole_admin`, `joint_several_admin`, `joint_admin_pair`, `delegated_board_member`, `apoderado` — established by the reviewer, not inferred from the position string alone.
-- `joint_admin_pair` requires **two attesters** on the same assertion. If that proves impractical at pilot scale, that basis is excluded rather than fudged.
+- The attestation records a `representation_basis` — one of `sole_admin`, `joint_several_admin`, `delegated_board_member`, `apoderado` — established by the reviewer, not inferred from the position string alone.
+- **Joint administrators (`administradores mancomunados`) are excluded from the pilot.** They must act together, so an honest attestation needs two attesters on one assertion, and a two-attester flow is not worth building for twelve companies. The invite endpoint refuses them with that reason rather than accepting a single signature that would misstate the law.
 - An `apoderado` attestation must record the scope of the power relied on, and is presented as narrower on the public page.
 - The reviewer must record **how the person was independently identified** (a video call, a known prior relationship, a document seen) as free text. It is weak evidence; leaving it blank is weaker, and undocumented is worst.
 
-**Open tension (§13.1):** the natural pilot contact — a compliance officer at a large company — is usually not an officer of record. The design therefore separates the **attester** (holds representation power; named on the attestation) from the **preparer** (assembles the submission; recorded as evidence, never as authority). Whether large-company attesters will engage at all is the pilot's central commercial risk, and it is a question the pilot exists to answer.
+**Open tension (§14.1):** the natural pilot contact — a compliance officer at a large company — is usually not an officer of record. The design therefore separates the **attester** (holds representation power; named on the attestation) from the **preparer** (assembles the submission; recorded as evidence, never as authority). Whether large-company attesters will engage at all is the pilot's central commercial risk, and it is a question the pilot exists to answer.
 
 ## 5. Data model
 
@@ -115,8 +115,9 @@ CREATE TABLE claimants (
   email                TEXT NOT NULL,
   claimed_role         TEXT NOT NULL,
   representation_basis TEXT CHECK (representation_basis IN
-                         ('sole_admin','joint_several_admin','joint_admin_pair',
+                         ('sole_admin','joint_several_admin',
                           'delegated_board_member','apoderado')),
+                         -- joint (mancomunados) omitted deliberately: see §4.3
   identification_note  TEXT,              -- HOW the reviewer identified the person
   email_domain_basis   TEXT NOT NULL,     -- HOW the domain was tied to the company
   role                 TEXT NOT NULL DEFAULT 'attester'
@@ -278,7 +279,7 @@ suspended ⇄ live       (review clears it)
 
 - **outdated** — the statement was true when made; the registry has since moved. Historically valid, **not fit for current reliance**. No wrongdoing implied, and the wording must not imply any.
 - **suspended** — an integrity concern: the statement appears to have been wrong *at the time it was made*, or a check is inconclusive and under review.
-- **rejected** — never published; visible to the submitter with a reason (§13.3).
+- **rejected** — never published; visible to the submitter with a reason (§14.3).
 - **expired**, **revoked**, **superseded** — as before. Supersession demotes the incumbent and promotes the successor in a single `batch()`, because `idx_attestations_live` permits only one live record per subject.
 
 Reconciliation scans `live`, `outdated` **and** `suspended` — otherwise nothing could ever recover or expire once it left `live`.
@@ -357,7 +358,47 @@ Below it, a four-column fact table: declared / registry at acceptance / registry
 
 **Attestation #1 is Nürnberg Consulting**, run through the new flow — it closes the honesty gap in the current live record and dogfoods the representative's experience.
 
-## 9. Testing
+## 9. Data retention and erasure
+
+The audit chain verifies over **hashes, not content**. Evidence can therefore be redacted or deleted later and the chain still verifies: what is lost is the ability to *show* what the evidence was, not the ability to prove nothing was substituted in its place. Retention is consequently a policy decision, not an architectural constraint.
+
+### 9.1 Two evidence prefixes
+
+The parts of an evidence bundle carry very different risk, so they are stored separately and hashed into the chain separately.
+
+- **`evidence/sealed/<hash>.json`** — the canonical assertion, the registry snapshot, timestamps, method, and the attester's name and position. The name and position are **already public in BORME**; this records an act, it does not create exposure. Bucket-locked for the retention term.
+- **`evidence/personal/<hash>.json`** — email address, `identification_note`, and any transport artefacts. **Not locked.** Erasable.
+
+Redacting the personal half leaves the sealed half fully verifiable.
+
+### 9.2 Terms
+
+| Tier | Content | Term |
+|---|---|---|
+| Attestation record (public projection) | name, role, dates, facts, status history | Life of the service |
+| Sealed evidence | assertion, registry snapshot, timestamps | Attestation expiry **+ 5 years** |
+| Personal evidence | email, `identification_note` | Same term, but erasable on request |
+| Transport artefacts | IP, user agent, headers | **None collected by default**; 12 months if a specific fraud reason arises |
+
+**Why five years:** it is the limitation period for personal actions under Spanish civil law (Art. 1964 CC, as reduced from fifteen by the 2015 reform). Bounding retention by exactly the window in which someone could bring a claim about a statement they relied on ties the term to the risk it exists to answer rather than to convenience. Código de Comercio art. 30 (six years, books and correspondence) is the alternative anchor if counsel prefers the commercial-records framing. **The reasoning is proposed; the term is pending counsel sign-off (§14.2), which must land before any external participant submits.**
+
+### 9.3 The bucket lock must be bounded
+
+The earlier draft specified `--retention-indefinite` on `evidence/`. That is wrong, and not merely disproportionate: an indefinite lock makes an erasure request **technically impossible to honour**, because the lock prevents the deletion the request requires.
+
+The rule therefore covers **only `evidence/sealed/`**, with `--retention-days` set to the term plus the maximum attestation life (retention runs from object creation, and an attestation lives up to 180 days) — roughly 2,100 days for the five-year option. `evidence/personal/` carries no lock rule at all.
+
+### 9.4 Erasure
+
+On a valid erasure request covering the personal tier: replace the object's content, **keep its hash**, log the redaction as its own audit event, and mark the attestation *evidence redacted at the subject's request*. A reader learns that something was removed and when — more honest than a silent gap, and the chain stays intact.
+
+The public attestation record itself is not erased on request. It records a formal statement made in a business capacity by a person whose position is already on the public registry, and deleting it would destroy the audit lane that gives the product its meaning. That position rests on legitimate interest and needs the same counsel confirmation as the term.
+
+### 9.5 Notice
+
+The privacy notice appears **on the acceptance screen itself, beside the button** — not behind a link. Someone attesting to their own company's data should see what is kept, and for how long, at the moment they decide.
+
+## 10. Testing
 
 **Structural constraint:** vitest only scans `src/**/*.test.js` — which is why `functions/feedback.js` keeps its logic in `src/utils/`. All pure logic therefore lives in `src/verify/`, with Pages Functions as thin adapters over D1, mail and R2. Target ≥ 80%.
 
@@ -377,26 +418,26 @@ Below it, a four-column fact table: declared / registry at acceptance / registry
 
 **Manual:** the full path on the operator's own company before any invitation is sent.
 
-## 10. Rollout
+## 11. Rollout
 
 1. Migration + `VERIFY_DB` created and bound.
-2. Secrets (`VERIFY_ADMIN_TOKEN`, reuse `CLOUDFLARE_EMAIL_API_TOKEN`, `INTERNAL_API_KEY`); R2 bucket and lock rule on `evidence/`; the external checkpoint destination configured and confirmed receiving.
+2. Secrets (`VERIFY_ADMIN_TOKEN`, reuse `CLOUDFLARE_EMAIL_API_TOKEN`, `INTERNAL_API_KEY`); R2 bucket with a **bounded** lock rule on `evidence/sealed/` only (§9.3); the external checkpoint destination configured and confirmed receiving.
 3. `src/verify/` logic with tests; Pages Functions; admin UI.
 4. Cron worker deployed with `X-Internal-Key`.
 5. Attestation #1 (own company) end to end; retire `_confirmations.js` and `check-confirmations.mjs`.
-6. Retention decision and privacy notice settled **before** any external participant submits (§13.2).
+6. Counsel sign-off on the retention term and controller position, and the acceptance-screen privacy notice live — both **before** any external participant submits (§9, §14.2).
 7. Three friendly companies, then the remainder. `VERIFY_VISIBILITY` stays `private` throughout.
 
-## 11. Out of scope
+## 12. Out of scope
 
 - Certificate/QES signing (designed for; not built) and RFC 3161 qualified timestamping.
 - PDF attestation certificates — deferred until a participant asks; that ask is the demand signal.
 - Counterparty-facing lookup as a launched product (the JSON representation makes it a switch-flip later).
 - Self-serve claim flow; the viewer "request a confirmation" loop; any monetisation.
-- `joint_admin_pair` two-attester flow, if it proves impractical at pilot scale — excluded rather than approximated.
+- Joint administrators (`mancomunados`) and the two-attester flow they would require.
 - Cl@ve. Its published onboarding targets public-sector bodies and administrative procedures.
 
-## 12. Success criteria
+## 13. Success criteria
 
 Ordered by strength of evidence:
 
@@ -405,10 +446,9 @@ Ordered by strength of evidence:
 3. **Suspension and outdating are proven deterministically against a controlled registry fixture**, in the test suite — not by waiting for one of twelve companies to experience a real registry change. A real-world transition is welcome confirmation, never the gate.
 4. Attestation #1 completes end to end, and the live Nürnberg record no longer claims more than its evidence supports.
 
-## 13. Open questions
+## 14. Open questions
 
 1. **Whether large-company attesters will engage at all.** The pilot contact (a compliance officer) usually holds no representation power, so every attestation needs an attester with real authority to sign off. This is the central commercial risk; the attester/preparer split (§4.3) is the design's answer, not a resolution.
-2. **Evidence retention term and lawful basis**, settled before any external participant submits. Indefinite retention is not acceptable as a default merely because it is simpler. A term tied to the attestation's life plus a documented commercial-records period is the candidate to put to counsel; who acts as controller for the attestation record needs the same answer.
+2. **Counsel sign-off on §9**: the five-year term (Art. 1964 CC) versus the six-year commercial-records anchor (CCom art. 30), who acts as controller for the attestation record, and confirmation that the public record's legitimate-interest basis survives an erasure request. Gates external participation.
 3. Whether a rejected attestation is visible to its submitter, and in what words. Current assumption: yes, with a reason — refusing to say why is worse.
-4. Whether `joint_admin_pair` is in or out for the pilot; it needs a two-attester flow that may not be worth building for twelve companies.
-5. The external checkpoint destination and its retention: which mailbox, held by whom, and who can be asked to produce it.
+4. The external checkpoint destination and its retention: which mailbox, held by whom, and who can be asked to produce it.
