@@ -60,6 +60,39 @@ export function onRequestGet() {
   <h2>Pendientes de revisión</h2>
   <div id="queue"></div>
 
+  <h2>Invitar a una empresa</h2>
+  <p class="muted">Solo el representante de la empresa puede declarar. Busque la empresa,
+    elija a su representante de la lista del registro (el nombre debe coincidir con un cargo
+    vigente) y anote cómo lo ha identificado y por qué ese dominio de correo es suyo: eso no
+    lo puede deducir el sistema. Los administradores mancomunados quedan fuera del piloto.</p>
+  <div class="card">
+    <div class="row">
+      <input id="q" placeholder="nombre de la empresa (p. ej. WAYPORT ADVISORS)">
+      <button id="search">Buscar</button>
+    </div>
+    <div id="hits"></div>
+    <div id="inviteform" hidden>
+      <p><strong id="chosen"></strong> <span class="muted" id="chosengk"></span></p>
+      <div class="row">
+        <select id="rep"></select>
+        <select id="basis">
+          <option value="sole_admin">Administrador único</option>
+          <option value="joint_several_admin">Administrador solidario</option>
+          <option value="delegated_board_member">Consejero delegado</option>
+          <option value="apoderado">Apoderado</option>
+        </select>
+      </div>
+      <div class="row">
+        <input id="email" placeholder="correo del representante" type="email">
+        <input id="role" placeholder="cargo declarado (p. ej. Administrador único)">
+      </div>
+      <input id="idnote" placeholder="cómo ha identificado a esta persona (obligatorio)">
+      <input id="dombasis" placeholder="por qué ese dominio es de la empresa (obligatorio)">
+      <div class="row"><button class="primary" id="invite">Emitir invitación</button></div>
+      <div id="inviteout"></div>
+    </div>
+  </div>
+
   <h2>Declaraciones publicadas</h2>
   <p class="muted">Emita un enlace por contraparte. No se envía ningún correo: el enlace se
     muestra una sola vez y usted lo hace llegar. La etiqueta es una nota suya, nunca se muestra
@@ -131,6 +164,39 @@ async function decide(id, decision) {
 }
 window.decide = decide;
 
+let chosenGk = null;
+
+async function search() {
+  const q = $('q').value.trim();
+  if (q.length < 3) return;
+  $('hits').innerHTML = '<p class="muted">Buscando…</p>';
+  const r = await api('/api/verify/admin/lookup?q=' + encodeURIComponent(q));
+  if (!r.ok) { $('hits').innerHTML = '<p class="bad">' + esc(r.data.error || r.status) + '</p>'; return; }
+  const items = r.data.items || [];
+  $('hits').innerHTML = items.length ? items.map((c, i) =>
+    '<p><button onclick="choose(' + i + ')">Elegir</button> <strong>' + esc(c.name) +
+    '</strong> <span class="muted">' + esc(c.province || '') + ' · ' +
+    (c.officers.length ? c.officers.length + ' cargo(s) vigente(s)' : 'sin cargos vigentes') +
+    '</span></p>').join('') : '<p class="muted">Sin resultados.</p>';
+  window.__hits = items;
+}
+
+function choose(i) {
+  const c = window.__hits[i];
+  chosenGk = c.group_key;
+  $('chosen').textContent = c.name;
+  $('chosengk').textContent = c.group_key;
+  // Only a registry-listed officer can be invited: the endpoint refuses anyone
+  // whose name does not match a seat, so the name is picked, never typed.
+  $('rep').innerHTML = c.officers.length
+    ? c.officers.map((o) => '<option value="' + esc(o.name) + '">' + esc(o.name) + ' — ' +
+        esc(o.position || '') + '</option>').join('')
+    : '<option value="">sin cargos vigentes</option>';
+  $('inviteform').hidden = false;
+  $('inviteout').innerHTML = '';
+}
+window.choose = choose;
+
 const STATUS_ES = { live: 'vigente', outdated: 'superada', under_review: 'en revisión',
                     disputed: 'en disputa', expired: 'caducada' };
 
@@ -156,8 +222,11 @@ function renderList(items) {
           '</td><td>' + esc(g.access_count) + (g.last_access_at ? ' (' +
             esc(g.last_access_at.slice(0,10)) + ')' : '') + '</td><td>' +
           (g.revoked_at ? '<span class="muted">revocado</span>'
-            : '<button onclick="revoke(\'' + esc(a.id) + '\',\'' + esc(g.token_hash) +
-              '\')">Revocar</button>') + '</td></tr>').join('') + '</tbody></table>' : ''}
+            // Data attributes rather than an inline handler: quoting an id
+            // inside an attribute inside a template literal collapses one level
+            // of escaping and silently emits a broken call.
+            : '<button data-revoke="' + esc(g.token_hash) + '" data-att="' + esc(a.id) +
+              '">Revocar</button>') + '</td></tr>').join('') + '</tbody></table>' : ''}
     </div>\`).join('');
 }
 
@@ -182,6 +251,12 @@ async function revoke(id, hash) {
 }
 window.revoke = revoke;
 
+// One delegated listener for every revoke button, present and future.
+$('list').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-revoke]');
+  if (b) revoke(b.dataset.att, b.dataset.revoke);
+});
+
 async function load() {
   const chain = await api('/api/verify/admin/chain');
   if (!chain.ok) { $('who').textContent = 'Token no válido'; $('app').hidden = true; return; }
@@ -193,6 +268,28 @@ async function load() {
   const a = await api('/api/verify/admin/attestations');
   if (a.ok) renderList(a.data.items || []);
 }
+
+$('search').onclick = search;
+$('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
+$('invite').onclick = async () => {
+  const r = await api('/api/verify/invite', { method: 'POST', body: JSON.stringify({
+    group_key: chosenGk,
+    declared_name: $('rep').value,
+    email: $('email').value.trim(),
+    claimed_role: $('role').value.trim(),
+    representation_basis: $('basis').value,
+    identification_note: $('idnote').value.trim(),
+    email_domain_basis: $('dombasis').value.trim(),
+  }) });
+  $('inviteout').innerHTML = r.ok
+    ? '<div class="card"><p><strong>Invitación emitida — el enlace se muestra una sola vez.</strong></p>'
+      + '<p><code>' + esc(r.data.confirm_url) + '</code></p>'
+      + '<p class="muted">Caduca ' + esc(r.data.expires_at) + '. Cargo verificado: '
+      + esc(r.data.seat.name) + ' — ' + esc(r.data.seat.position)
+      + '. No se envía ningún correo: hágalo llegar usted.</p></div>'
+    : '<p class="bad">' + esc(r.data.error || r.status)
+      + (r.data.officers ? ' · cargos vigentes: ' + esc(r.data.officers.join('; ')) : '') + '</p>';
+};
 
 $('save').onclick = () => { token = $('tok').value.trim();
   sessionStorage.setItem(tokenKey, token); $('tok').value = ''; load(); };
