@@ -62,3 +62,49 @@ describe('presentation', () => {
     expect(displayValue('vat_intraeu', undefined, 'en')).toBe('—');
   });
 });
+
+// --- Regression: found by walking the acceptance screen ---------------------
+
+import { factKind, declarationValueFor } from './factUi.js';
+
+describe('a declaration-only fact must be selectable (found in use)', () => {
+  it('operational has no registry basis and is a declaration', () => {
+    expect(factKind('operational')).toBe('declaration');
+  });
+
+  it('declaring it produces a REAL status, not the inert derived one', () => {
+    // The bug: statusForMode('confirm', 'not_applicable') returned
+    // 'not_applicable', so choosing "Es correcto" on "Sociedad activa y
+    // operativa" snapped straight back to "No aplica" and could never be picked.
+    expect(statusForMode('declare', 'not_applicable')).toBe('current');
+  });
+
+  it('offers declare rather than confirm for a declaration', () => {
+    expect(uiModeFor('not_applicable', 'operational')).toBe('na');
+    expect(uiModeFor('current', 'operational')).toBe('declare');
+  });
+
+  it('still offers confirm for a registry-derived fact', () => {
+    expect(uiModeFor('current', 'address')).toBe('confirm');
+    expect(uiModeFor('none', 'insolvency')).toBe('confirm');
+  });
+
+  it('carries a value of its own, since the registry has none', () => {
+    expect(declarationValueFor('operational')).toBe('active_trading');
+    expect(displayValue('operational', 'active_trading', 'es'))
+      .toBe('La sociedad está activa y en funcionamiento');
+    expect(displayValue('operational', 'active_trading', 'en'))
+      .toBe('The company is active and trading');
+  });
+
+  it('vat_intraeu is OUR check, never the representative’s declaration', () => {
+    expect(factKind('vat_intraeu')).toBe('platform_check');
+  });
+
+  it('every registry fact still round-trips through confirm', () => {
+    for (const [k, s] of [['address', 'current'], ['insolvency', 'none'],
+                          ['nif', 'current'], ['officers', 'current']]) {
+      expect(statusForMode(uiModeFor(s, k), s)).toBe(s);
+    }
+  });
+});

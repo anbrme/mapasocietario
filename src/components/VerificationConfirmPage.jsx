@@ -19,7 +19,8 @@ import {
   TextField, RadioGroup, Radio, Alert, Divider,
 } from '@mui/material';
 import { Helmet } from 'react-helmet-async';
-import { uiModeFor, statusForMode, factLabel, displayValue } from '../verify/factUi.js';
+import { uiModeFor, statusForMode, factLabel, displayValue, factKind, declarationValueFor }
+  from '../verify/factUi.js';
 
 const COPY = {
   es: {
@@ -29,6 +30,9 @@ const COPY = {
     intro: (company) => `Revise cada dato de ${company}. Puede confirmarlo, corregirlo o marcarlo como no aplicable.`,
     seat: 'Cargo registral',
     confirm: 'Es correcto', correct: 'Corregir', na: 'No aplica',
+    declare: 'Sí, lo declaro', decline: 'Prefiero no declararlo',
+    checkNote: 'Lo comprobamos nosotros contra VIES. No es algo que usted declare.',
+    declarationNote: 'El registro no recoge este dato. Es una declaración suya, y así se publicará.',
     consentsTitle: 'Lo que usted declara',
     consentsLead: 'Estas tres declaraciones son el contenido jurídico de la confirmación. Léalas antes de marcarlas.',
     privacyLink: 'Política de privacidad de la verificación',
@@ -56,6 +60,9 @@ const COPY = {
     intro: (company) => `Review each fact about ${company}. You can confirm it, correct it, or mark it not applicable.`,
     seat: 'Registry position',
     confirm: 'Correct', correct: 'Amend', na: 'Not applicable',
+    declare: 'Yes, I declare this', decline: 'Prefer not to declare',
+    checkNote: 'We check this ourselves against VIES. It is not something you declare.',
+    declarationNote: 'The registry does not hold this. It is your own declaration, and will be published as one.',
     consentsTitle: 'What you are declaring',
     consentsLead: 'These three declarations are the legal substance of the confirmation. Please read them before ticking.',
     privacyLink: 'Verification privacy policy',
@@ -192,34 +199,72 @@ export default function VerificationConfirmPage({ lang = 'es' }) {
 
       {staleNotice && <Alert severity="warning" sx={{ mb: 2 }}>{t.stale}</Alert>}
 
-      {facts.map((f) => (
+      {facts.map((f) => {
+        const kind = factKind(f.fact_key);
+        return (
         <Paper key={f.fact_key} variant="outlined" sx={{ p: 2, mb: 1.5 }}>
           <Typography variant="subtitle2">{factLabel(f.fact_key, lang)}</Typography>
           <Typography variant="body2" sx={{ mb: 1, opacity: 0.85 }}>
             {displayValue(f.fact_key, f.declared_value, lang)}
           </Typography>
-          <RadioGroup
-            row
-            value={uiModeFor(f.declared_status)}
-            onChange={(e) => editFact(
-              f.fact_key,
-              statusForMode(e.target.value, derived[f.fact_key]),
-              f.declared_value,
-            )}
-          >
-            <FormControlLabel value="confirm" control={<Radio size="small" />} label={t.confirm} />
-            <FormControlLabel value="correct" control={<Radio size="small" />} label={t.correct} />
-            <FormControlLabel value="na" control={<Radio size="small" />} label={t.na} />
-          </RadioGroup>
-          {f.declared_status === 'corrected' && (
-            <TextField
-              fullWidth size="small" sx={{ mt: 1 }} label={t.correctedValue}
-              defaultValue={f.declared_value || ''}
-              onBlur={(e) => editFact(f.fact_key, 'corrected', e.target.value)}
-            />
+
+          {/* We run this check; the representative cannot attest to it, so it is
+              shown rather than asked. */}
+          {kind === 'platform_check' && (
+            <Typography variant="caption" component="p" sx={{ opacity: 0.75 }}>
+              {t.checkNote}
+            </Typography>
+          )}
+
+          {/* No registry value exists, so there is nothing to confirm - it is
+              declared or left out. */}
+          {kind === 'declaration' && (
+            <>
+              <Typography variant="caption" component="p" sx={{ mb: 1, opacity: 0.75 }}>
+                {t.declarationNote}
+              </Typography>
+              <RadioGroup
+                row
+                value={uiModeFor(f.declared_status, f.fact_key)}
+                onChange={(e) => editFact(
+                  f.fact_key,
+                  statusForMode(e.target.value, derived[f.fact_key]),
+                  e.target.value === 'declare' ? declarationValueFor(f.fact_key) : null,
+                )}
+              >
+                <FormControlLabel value="declare" control={<Radio size="small" />} label={t.declare} />
+                <FormControlLabel value="na" control={<Radio size="small" />} label={t.decline} />
+              </RadioGroup>
+            </>
+          )}
+
+          {kind === 'registry' && (
+            <>
+              <RadioGroup
+                row
+                value={uiModeFor(f.declared_status, f.fact_key)}
+                onChange={(e) => editFact(
+                  f.fact_key,
+                  statusForMode(e.target.value, derived[f.fact_key]),
+                  f.declared_value,
+                )}
+              >
+                <FormControlLabel value="confirm" control={<Radio size="small" />} label={t.confirm} />
+                <FormControlLabel value="correct" control={<Radio size="small" />} label={t.correct} />
+                <FormControlLabel value="na" control={<Radio size="small" />} label={t.na} />
+              </RadioGroup>
+              {f.declared_status === 'corrected' && (
+                <TextField
+                  fullWidth size="small" sx={{ mt: 1 }} label={t.correctedValue}
+                  defaultValue={f.declared_value || ''}
+                  onBlur={(e) => editFact(f.fact_key, 'corrected', e.target.value)}
+                />
+              )}
+            </>
           )}
         </Paper>
-      ))}
+        );
+      })}
 
       <Divider sx={{ my: 3 }} />
 
