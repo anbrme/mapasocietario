@@ -59,6 +59,29 @@ test('both server-rendered pages use the shared GA snippet', () => {
   assert.equal(uses.length, 2, 'company page and province hub must share one snippet');
 });
 
+test('the SPA queues its page_view before route components emit passive-effect events', () => {
+  const source = readFileSync(join(ROOT, 'src/hooks/usePageTracking.js'), 'utf8');
+  assert.match(source, /import\s*\{\s*useLayoutEffect\s*\}\s*from\s*['"]react['"]/);
+  assert.match(source, /useLayoutEffect\(\(\)\s*=>\s*\{/);
+  assert.doesNotMatch(
+    source,
+    /\buseEffect\(/,
+    'a passive parent effect runs after child graph effects and recreates the `(not set)` session',
+  );
+});
+
+test('the returning-home signal is emitted from /app, after its page_view', () => {
+  const landing = readFileSync(join(ROOT, 'src/components/LandingPage.jsx'), 'utf8');
+  const app = readFileSync(join(ROOT, 'src/App.jsx'), 'utf8');
+  assert.doesNotMatch(
+    landing,
+    /trackEvent\(['"]home_graph_auto_redirect['"]/,
+    'the skipped homepage has no page_view, so it must not emit the first session event',
+  );
+  assert.match(app, /graphEntrySource\s*!==\s*['"]returning_home_redirect['"]/);
+  assert.match(app, /trackEvent\(['"]home_graph_auto_redirect['"],\s*\{\s*language\s*\}\)/);
+});
+
 // The guard above only watches the four page_view surfaces, and `view_item`
 // carried page_path past it for months. GA4 attaches page_location to EVERY
 // event by itself, so a hand-sent page_path is redundant wherever it appears —
