@@ -12,6 +12,7 @@ import { tokenHash } from '../../../src/verify/ids.js';
 import { grantState } from '../../../src/verify/grant.js';
 import { publicProjection } from '../../../src/verify/projection.js';
 import { renderAttestationHtml } from '../../../src/verify/render.js';
+import { buildTimeline, renderTimelineSvg } from '../../../src/verify/timeline.js';
 import { privateHeaders } from '../../api/verify/_db.js';
 
 const NOT_FOUND_BODY = JSON.stringify({ ok: false, error: 'not_found' });
@@ -52,6 +53,21 @@ export async function onRequestGet({ request, params, env }) {
 
   const view = publicProjection(attestation, facts || [], history || []);
 
+  // The registry lane. Best-effort and time-boxed: the attestation is the
+  // page's reason to exist, and it must render even when the upstream index is
+  // slow or down - the timeline simply says it has nothing to draw.
+  let events = [];
+  try {
+    const groupKey = JSON.parse(attestation.identity_snapshot || '{}').group_key;
+    if (groupKey) {
+      const r = await fetch(
+        `https://api.ncdata.eu/bormes/v3/events?group_key=${encodeURIComponent(groupKey)}&size=100`,
+        { headers: env.INTERNAL_API_KEY ? { 'X-Internal-Key': env.INTERNAL_API_KEY } : {},
+          signal: AbortSignal.timeout(4000) });
+      if (r.ok) events = ((await r.json()) || {}).events || [];
+    }
+  } catch { /* no lane is better than no page */ }
+
   // Counts LINK ACCESSES, not viewers: forwarded links and email scanners both
   // land here. Best-effort — a failed counter must never break the read.
   try {
@@ -89,8 +105,20 @@ export async function onRequestGet({ request, params, env }) {
     border-bottom: 1px solid #8884; vertical-align: top; }
   .att-disclaimer { font-size: .9rem; opacity: .8; border-top: 1px solid #8884; padding-top: 1rem; }
   table { display: block; overflow-x: auto; }
+  .att-timeline { max-width: 44rem; margin: 2rem auto 0; }
+  .att-timeline h2 { font-size: 1.05rem; }
+  .tl { width: 100%; height: auto; }
+  .tl-note, .tl-empty { font-size: .85rem; opacity: .75; }
 </style></head><body>
 ${renderAttestationHtml(view, attestation.display_name, lang)}
+<section class="att-timeline">
+  <h2>${lang === 'en' ? 'Registry and statements' : 'Registro y declaraciones'}</h2>
+  ${renderTimelineSvg(buildTimeline({ events, history: view.history,
+      acceptedAt: view.accepted_at }), lang)}
+  <p class="tl-note">${lang === 'en'
+    ? 'Circles are registry filings; diamonds are statements. The dashed line marks acceptance: everything to its right is what the registry has recorded since.'
+    : 'Los círculos son asientos registrales; los rombos, declaraciones. La línea discontinua marca la aceptación: a su derecha está lo que el registro ha recogido desde entonces.'}</p>
+</section>
 </body></html>`;
 
   return new Response(html, {
