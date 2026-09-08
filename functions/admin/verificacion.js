@@ -174,9 +174,11 @@ async function search() {
   if (!r.ok) { $('hits').innerHTML = '<p class="bad">' + esc(r.data.error || r.status) + '</p>'; return; }
   const items = r.data.items || [];
   $('hits').innerHTML = items.length ? items.map((c, i) =>
-    '<p><button onclick="choose(' + i + ')">Elegir</button> <strong>' + esc(c.name) +
+    '<p><button data-choose="' + i + '">Elegir</button> <strong>' + esc(c.name) +
     '</strong> <span class="muted">' + esc(c.province || '') + ' · ' +
     (c.officers.length ? c.officers.length + ' cargo(s) vigente(s)' : 'sin cargos vigentes') +
+    (c.is_dissolved ? ' · <span class="bad">disuelta</span>' : '') +
+    (c.is_in_concurso ? ' · <span class="bad">en concurso</span>' : '') +
     '</span></p>').join('') : '<p class="muted">Sin resultados.</p>';
   window.__hits = items;
 }
@@ -196,6 +198,11 @@ function choose(i) {
   $('inviteout').innerHTML = '';
 }
 window.choose = choose;
+
+$('hits').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-choose]');
+  if (b) choose(Number(b.dataset.choose));
+});
 
 const STATUS_ES = { live: 'vigente', outdated: 'superada', under_review: 'en revisión',
                     disputed: 'en disputa', expired: 'caducada' };

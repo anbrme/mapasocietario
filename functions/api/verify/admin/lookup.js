@@ -2,16 +2,18 @@
  * GET /api/verify/admin/lookup?q=NAME — find a company and see who the registry
  * says runs it.
  *
- * Inviting requires a group_key and a representative name that matches an
- * officers_active row EXACTLY (sorted-token equality - see src/verify/seat.js).
- * Without this the operator had to know the group_key already and guess the
- * spelling, and a mismatch only surfaced as a refusal from the invite endpoint.
+ * Inviting needs a group_key AND a representative name matching an
+ * officers_active row exactly (sorted-token equality, see src/verify/seat.js).
+ * Without this the operator had to know the key already and guess the spelling,
+ * learning of a mismatch only from the invite endpoint's refusal.
  *
- * Returns the officer list so the name can be picked rather than typed.
+ * The upstream search parameter is `query`, not `q`, and its results already
+ * carry officers_active - so this is one upstream call, not one per hit.
  */
 import { requireAdmin, jsonResponse } from '../_db.js';
 
 const API_BASE = 'https://api.ncdata.eu';
+const MAX_HITS = 6;
 
 export async function onRequestGet({ request, env }) {
   if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
@@ -19,41 +21,29 @@ export async function onRequestGet({ request, env }) {
   const q = (new URL(request.url).searchParams.get('q') || '').trim();
   if (q.length < 3) return jsonResponse({ ok: false, error: 'query_too_short' }, 400);
 
-  const headers = env.INTERNAL_API_KEY ? { 'X-Internal-Key': env.INTERNAL_API_KEY } : {};
   try {
-    const r = await fetch(`${API_BASE}/bormes/v3/search?q=${encodeURIComponent(q)}&size=8`,
-      { headers });
+    const r = await fetch(
+      `${API_BASE}/bormes/v3/search?query=${encodeURIComponent(q)}&size=${MAX_HITS}`,
+      { headers: env.INTERNAL_API_KEY ? { 'X-Internal-Key': env.INTERNAL_API_KEY } : {},
+        signal: AbortSignal.timeout(8000) });
     if (!r.ok) return jsonResponse({ ok: false, error: `search_${r.status}` }, 502);
-    const data = await r.json();
-    const hits = data.results || data.companies || data.hits || [];
 
-    const items = [];
-    for (const hit of hits.slice(0, 5)) {
-      const groupKey = hit.group_key || hit._id || hit.id;
-      if (!groupKey) continue;
-      // The officer list is the point: the invite refuses any name that does not
-      // match a seat, so the operator should choose from the registry's own
-      // spelling rather than retype it.
-      let officers = [];
-      try {
-        const c = await fetch(
-          `${API_BASE}/bormes/v3/company?group_key=${encodeURIComponent(groupKey)}`, { headers });
-        if (c.ok) {
-          const doc = ((await c.json()) || {}).company || {};
-          officers = (doc.officers_active || []).map((o) => ({
-            name: o.name || o.name_normalized,
-            position: o.position_normalized || o.position || null,
-            appointed_date: o.appointed_date || null,
-          }));
-        }
-      } catch { /* a company we cannot read is simply not offered */ }
-      items.push({
-        group_key: groupKey,
-        name: hit.company_name || hit.company_name_normalized || hit.name,
-        province: hit.province || null,
-        officers,
-      });
-    }
+    const data = await r.json();
+    const items = (data.results || []).map((c) => ({
+      group_key: c.group_key || c._id || c.id,
+      name: c.company_name || c.company_name_normalized,
+      province: c.province || null,
+      // Surfaced so a dissolved or insolvent company is visible BEFORE an
+      // invitation goes out, not after the representative has filled the form.
+      is_dissolved: !!c.is_dissolved,
+      is_in_concurso: !!c.is_in_concurso,
+      officers: (c.officers_active || []).map((o) => ({
+        name: o.name || o.name_normalized,
+        position: o.position_normalized || o.position || null,
+        appointed_date: o.appointed_date || null,
+      })),
+    })).filter((c) => c.group_key && c.name);
+
     return jsonResponse({ ok: true, count: items.length, items });
   } catch (e) {
     return jsonResponse({ ok: false, error: String(e.message || e) }, 502);
