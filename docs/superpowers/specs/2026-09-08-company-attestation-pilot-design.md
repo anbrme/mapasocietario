@@ -426,6 +426,8 @@ The privacy notice appears **on the acceptance screen itself, beside the button*
 4. Cron worker deployed with `X-Internal-Key`.
 5. Attestation #1 (own company) end to end; retire `_confirmations.js` and `check-confirmations.mjs`.
 6. Counsel sign-off on the retention term and controller position, and the acceptance-screen privacy notice live — both **before** any external participant submits (§9, §14.2).
+
+   **Deliberately after step 5, not before step 1.** Attestation #1 has the operator as both controller and data subject, so no third party's data is at stake and nothing needs settling to run it. Taking counsel later is also the better instruction: they can be shown a working system and the actual questions pilot companies raise, rather than asked to advise on a description. The gate is the first *external* submission — nothing earlier.
 7. Three friendly companies, then the remainder. `VERIFY_VISIBILITY` stays `private` throughout.
 
 ## 12. Out of scope
