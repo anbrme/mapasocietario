@@ -96,6 +96,7 @@ import { hasIncoherentCapital } from '../utils/capitalCoherence';
 import { latestEventType } from '../utils/latestEventType';
 import { normalizeCompanyName, displayCompanyName, isSameUnifiableEntity } from '../utils/companyName';
 import { findCompanyNode } from '../utils/companyNodeLookup';
+import { buildCompanyAliasMap } from '../utils/companyAliasLookup';
 import { mobileGraphMode } from '../utils/mobileGraphMode';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
 import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
@@ -414,6 +415,8 @@ const SEARCH_COPY = {
     cargoUnify: 'Unify',
     cargoUnifying: 'Unifying positions…',
     expanding: 'Expanding…',
+    expandingProgress: (done, total) => `Expanding… ${done}/${total}`,
+    cargoUnifyingProgress: (done, total) => `Unifying positions… ${done}/${total}`,
     cargoDismiss: 'Dismiss',
     cargoUnified: 'Unified — cargos attached',
     cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
@@ -559,7 +562,10 @@ const SEARCH_COPY = {
     tableWholeGraph: 'Whole graph',
     viewAsCompany: 'View company profile',
     corporateOfficerNotice: 'This position is held by a company, which has its own registry record.',
-    hoverConnections: 'Connections',
+    // Deliberately NOT 'Connections': this counts the edges DRAWN on the
+    // canvas, which for an unexpanded node is whatever brought it here. EY
+    // read 'Connections 1' while holding 199 seats in the registry.
+    hoverConnections: 'Connections shown',
     hoverHint: 'Click: profile · Double click: expand · Right click: options',
     structureSection: 'Structure',
     structureHint: 'Opens the full table in the panel below.',
@@ -781,6 +787,8 @@ const SEARCH_COPY = {
     cargoUnify: 'Unificar',
     cargoUnifying: 'Unificando cargos…',
     expanding: 'Ampliando…',
+    expandingProgress: (done, total) => `Ampliando… ${done}/${total}`,
+    cargoUnifyingProgress: (done, total) => `Unificando cargos… ${done}/${total}`,
     cargoDismiss: 'Descartar',
     cargoUnified: 'Unificada — cargos añadidos',
     cargoUndoChip: count => `⚭ ${count} cargo${count === 1 ? '' : 's'}`,
@@ -923,7 +931,8 @@ const SEARCH_COPY = {
     tableWholeGraph: 'Todo el grafo',
     viewAsCompany: 'Ver ficha de empresa',
     corporateOfficerNotice: 'Este cargo lo ejerce una sociedad, que tiene su propia ficha registral.',
-    hoverConnections: 'Conexiones',
+    // Ver la nota en la copia EN: cuenta enlaces dibujados, no cargos reales.
+    hoverConnections: 'Conexiones en el grafo',
     hoverHint: 'Clic: ficha · Doble clic: expandir · Clic derecho: opciones',
     structureSection: 'Estructura',
     structureHint: 'Abre la tabla completa en el panel inferior.',
@@ -1649,6 +1658,10 @@ const SpanishCompanyNetworkGraph = ({
   // derived from graph nodes (cargoCount / unified) via cargoToggleNode, so no
   // separate affordance state is needed.
   const [isUnifying, setIsUnifying] = useState(false);
+  // { done, total } while the alias probe walks an expansion's companies, else
+  // null. An audit firm's fan-out is hundreds of companies; a bare spinner for
+  // that long reads as a hung page, so the chip counts them down.
+  const [expandProgress, setExpandProgress] = useState(null);
   const [nodeContextMenu, setNodeContextMenu] = useState(null); // { mouseX, mouseY, nodeId }
   // Company whose monitoring dialog is open, or null. Held separately from
   // contextNode because the menu closes the moment the dialog opens.
@@ -4106,33 +4119,13 @@ const SpanishCompanyNetworkGraph = ({
             .map(e => (e.company_name || e.company || e.name || '').trim().toUpperCase())
             .filter(Boolean)
         );
-        const officerAliasMap = new Map(); // oldNameUpper → newNameUpper
-        // Parallel chunks, not one awaited call per company: a bank-sized
-        // fan-out (95 distinct companies) ran ~95 SEQUENTIAL autocomplete
-        // round-trips here, freezing "Unificar cargos" for ~30s.
-        const ALIAS_LOOKUP_CHUNK = 10;
-        const aliasNames = [...uniqueNames];
-        for (let i = 0; i < aliasNames.length; i += ALIAS_LOOKUP_CHUNK) {
-          await Promise.allSettled(
-            aliasNames.slice(i, i + ALIAS_LOOKUP_CHUNK).map(async name => {
-              try {
-                const acResult = await spanishCompaniesService.autocompleteCompanies(name, { limit: 3 });
-                const match = (acResult.suggestions || []).find(
-                  s => (s.name || '').trim().toUpperCase() === name
-                );
-                if (match) {
-                  if (match.has_new_name && match.new_company_name) {
-                    officerAliasMap.set(name, match.new_company_name.trim().toUpperCase());
-                  } else if (match.is_alias && match.original_name) {
-                    officerAliasMap.set(match.original_name.trim().toUpperCase(), name);
-                  }
-                }
-              } catch {
-                // Non-fatal
-              }
-            })
-          );
-        }
+        // oldNameUpper → newNameUpper. Bounded-parallel: a bank-sized fan-out
+        // (95 distinct companies) once ran that many SEQUENTIAL autocomplete
+        // round-trips, freezing "Unificar cargos" for ~30s.
+        const officerAliasMap = await buildCompanyAliasMap(uniqueNames, {
+          lookup: name => spanishCompaniesService.autocompleteCompanies(name, { limit: 3 }),
+          onProgress: (done, total) => setExpandProgress({ done, total }),
+        });
 
         // Group officer results by (company, position), merging name-changed
         // companies. Splitting per role is critical: one officer can hold
@@ -4340,6 +4333,7 @@ const SpanishCompanyNetworkGraph = ({
         setError(text.addOfficerError(err.message));
       } finally {
         setIsLoading(false);
+        setExpandProgress(null);
       }
     },
     [isCompanyOfficer, viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates, text]
@@ -4412,6 +4406,7 @@ const SpanishCompanyNetworkGraph = ({
     } finally {
       setIsLoading(false);
       setIsUnifying(false);
+      setExpandProgress(null);
     }
   }, [addOfficerToGraph, fitGraphToView, text]);
 
@@ -4551,22 +4546,13 @@ const SpanishCompanyNetworkGraph = ({
             .map(e => (e.company_name || e.company || e.name || '').trim().toUpperCase())
             .filter(Boolean)
         );
-        const expandAliasMap = new Map();
-        for (const name of uniqueNames) {
-          try {
-            const acResult = await spanishCompaniesService.autocompleteCompanies(name, { limit: 3 });
-            const match = (acResult.suggestions || []).find(
-              s => (s.name || '').trim().toUpperCase() === name
-            );
-            if (match) {
-              if (match.has_new_name && match.new_company_name) {
-                expandAliasMap.set(name, match.new_company_name.trim().toUpperCase());
-              } else if (match.is_alias && match.original_name) {
-                expandAliasMap.set(match.original_name.trim().toUpperCase(), name);
-              }
-            }
-          } catch { /* non-fatal */ }
-        }
+        // Same bounded-parallel probe as addOfficerToGraph. This path used to
+        // await one call per company: 199 companies for ERNST & YOUNG SL was
+        // ~93s of dead air after the double-click.
+        const expandAliasMap = await buildCompanyAliasMap(uniqueNames, {
+          lookup: name => spanishCompaniesService.autocompleteCompanies(name, { limit: 3 }),
+          onProgress: (done, total) => setExpandProgress({ done, total }),
+        });
 
         // Group officer results by (company, position), merging name-changed
         // companies. See addOfficerToGraph — same rationale: one role per link.
@@ -4920,6 +4906,7 @@ const SpanishCompanyNetworkGraph = ({
         setError(text.expandError(err.message));
       } finally {
         setIsLoading(false);
+        setExpandProgress(null);
       }
     },
     [
@@ -10021,7 +10008,19 @@ const SpanishCompanyNetworkGraph = ({
               size="small"
               color="info"
               icon={<CircularProgress size={12} sx={{ color: 'inherit', ml: 0.5 }} />}
-              label={isUnifying ? text.cargoUnifying : text.expanding}
+              label={
+                // A bare "Ampliando…" for 15s reads as a hung page. Once the
+                // alias probe knows how many companies it is walking, count
+                // them: the wait becomes a measured one. Unify shares the
+                // progress state, so it must keep its own verb.
+                isUnifying
+                  ? (expandProgress
+                      ? text.cargoUnifyingProgress(expandProgress.done, expandProgress.total)
+                      : text.cargoUnifying)
+                  : (expandProgress
+                      ? text.expandingProgress(expandProgress.done, expandProgress.total)
+                      : text.expanding)
+              }
               sx={{ fontWeight: 600 }}
             />
           )}
