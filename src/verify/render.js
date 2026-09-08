@@ -42,8 +42,21 @@ const T = {
     expired: (d) => `This statement was accepted on ${d} and has passed its stated validity period.`,
     method: (who, when) => `Confirmed from an address at the company's domain; the representative holds the registry-recorded position stated; their authority to make this statement was reviewed by ${who} on ${when}.`,
     disclaimer: 'Mapa Societario records who made this statement and that their authority was reviewed. It does not verify their identity, and it does not certify that the statement is true.',
-    headers: ['Fact', 'Declared', 'Registry at acceptance', 'Registry today'],
-    history: 'History', representative: 'Representative', notChecked: 'not checked',
+    headers: ['Fact', 'Declared', 'Registry at acceptance', 'Check'],
+    history: 'History', representative: 'Representative',
+    outcomes: {
+      consistent: 'consistent with the registry',
+      superseded_by_later_event: 'a later registry event has moved past this',
+      contradicted_at_issue: 'contradicts evidence published before acceptance',
+      pending_publication: 'claimed, not yet published',
+      inconclusive: 'could not be checked',
+      none: 'nothing to check',
+      pending: 'not yet re-checked',
+    },
+    summaries: {
+      'Accepted by the representative': 'Accepted by the representative',
+      'Reviewed and published': 'Reviewed and published',
+    },
   },
   es: {
     checked: (d) => (d ? `Última comprobación con éxito: ${d}.`
@@ -55,10 +68,40 @@ const T = {
     expired: (d) => `Esta declaración se aceptó el ${d} y ha superado su periodo de validez declarado.`,
     method: (who, when) => `Confirmada desde una dirección del dominio de la empresa; el representante ocupa el cargo registral indicado; su autoridad para hacer esta declaración fue revisada por ${who} el ${when}.`,
     disclaimer: 'Mapa Societario deja constancia de quién hizo esta declaración y de que su autoridad fue revisada. No verifica su identidad ni certifica que la declaración sea cierta.',
-    headers: ['Hecho', 'Declarado', 'Registro al aceptar', 'Registro hoy'],
-    history: 'Historial', representative: 'Representante', notChecked: 'sin comprobar',
+    headers: ['Hecho', 'Declarado', 'Registro al aceptar', 'Comprobación'],
+    history: 'Historial', representative: 'Representante',
+    outcomes: {
+      consistent: 'coherente con el registro',
+      superseded_by_later_event: 'superada por un hecho registral posterior',
+      contradicted_at_issue: 'contradice evidencia publicada antes de la aceptación',
+      pending_publication: 'declarado, aún no publicado',
+      inconclusive: 'no se ha podido comprobar',
+      none: 'no procede comprobación',
+      pending: 'aún sin volver a comprobar',
+    },
+    // public_summary is inside the hashed audit payload and cannot be rewritten,
+    // so the stored English string is translated at render time.
+    summaries: {
+      'Accepted by the representative': 'Aceptada por el representante',
+      'Reviewed and published': 'Revisada y publicada',
+    },
   },
 };
+
+/**
+ * The fourth column holds a CHECK OUTCOME, not a registry value. It was headed
+ * "Registro hoy" while showing "sin comprobar", so a reader comparing columns
+ * three and four would conclude the registry had gone blank.
+ *
+ * "Not checked" is also wrong for a fact nobody intends to check: `operational`
+ * is an unverifiable declaration by design, so it reads "nothing to check"
+ * rather than implying we owe one.
+ */
+export function checkLabel(fact, lang = 'es') {
+  const t = T[lang] || T.es;
+  if (fact.last_check_outcome) return t.outcomes[fact.last_check_outcome] || fact.last_check_outcome;
+  return fact.check_source === 'none' ? t.outcomes.none : t.outcomes.pending;
+}
 
 export function statusLine(view, lang = 'es') {
   const t = T[lang] || T.es;
@@ -81,11 +124,12 @@ export function renderAttestationHtml(view, companyName, lang = 'es') {
       <td>${esc(factLabel(f.fact_key, lang))}</td>
       <td>${esc(displayValue(f.fact_key, f.declared_value, lang))}</td>
       <td>${esc(displayValue(f.fact_key, f.registry_value_at_issue, lang))}</td>
-      <td>${esc(f.last_check_outcome || t.notChecked)}</td>
+      <td>${esc(checkLabel(f, lang))}${f.last_checked_at
+        ? ` <span class="att-when">(${esc(day(f.last_checked_at))})</span>` : ''}</td>
     </tr>`).join('');
 
   const history = (view.history || []).map((h) =>
-    `<li>${esc(day(h.created_at))} — ${esc(h.summary)}</li>`).join('');
+    `<li>${esc(day(h.created_at))} — ${esc(t.summaries[h.summary] || h.summary)}</li>`).join('');
 
   return `<section class="att att-${esc(view.status)}">
   <h1>${esc(companyName)}</h1>

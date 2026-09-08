@@ -31,6 +31,8 @@ export function publicProjection(attestation, facts, auditRows) {
       declared_status: f.declared_status,
       declared_value: f.declared_value,
       registry_value_at_issue: f.registry_value_at_issue,
+      // Needed to distinguish "we owe a check" from "there is nothing to check".
+      check_source: f.check_source,
       last_check_outcome: f.last_check_outcome,
       last_checked_at: f.last_checked_at,
     })),

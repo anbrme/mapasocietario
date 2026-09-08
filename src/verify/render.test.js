@@ -66,6 +66,49 @@ describe('renderAttestationHtml', () => {
   it('renders the four-column fact table including the registry-today column', () => {
     const html = renderAttestationHtml(base, 'ACME SL', 'en');
     expect(html).toContain('Registry at acceptance');
-    expect(html).toContain('Registry today');
+    expect(html).toContain('Check');
+  });
+});
+
+
+// --- Regression: found in the rendered page ---------------------------------
+
+import { checkLabel } from './render.js';
+
+describe('the check column (found in the rendered page)', () => {
+  it('says "nothing to check" for a fact with no check source', () => {
+    // 'not checked' implied we owed a check on a declaration that is
+    // unverifiable by design.
+    expect(checkLabel({ check_source: 'none', last_check_outcome: null }, 'es'))
+      .toBe('no procede comprobación');
+    expect(checkLabel({ check_source: 'none', last_check_outcome: null }, 'en'))
+      .toBe('nothing to check');
+  });
+
+  it('says "not yet re-checked" only where a check is actually owed', () => {
+    expect(checkLabel({ check_source: 'borme', last_check_outcome: null }, 'en'))
+      .toBe('not yet re-checked');
+  });
+
+  it('renders each outcome in words rather than as an enum', () => {
+    for (const o of ['consistent', 'superseded_by_later_event', 'contradicted_at_issue',
+                     'pending_publication', 'inconclusive']) {
+      const label = checkLabel({ check_source: 'borme', last_check_outcome: o }, 'es');
+      expect(label).not.toBe(o);
+      expect(label.length).toBeGreaterThan(5);
+    }
+  });
+
+  it('translates the stored English audit summary on a Spanish page', () => {
+    // public_summary is inside the hashed audit payload, so it cannot be
+    // rewritten - it must be translated at render.
+    const html = renderAttestationHtml(base, 'ACME SL', 'es');
+    expect(html).toContain('Aceptada por el representante');
+    expect(html).not.toContain('Accepted by the representative');
+  });
+
+  it('leaves the English page in English', () => {
+    expect(renderAttestationHtml(base, 'ACME SL', 'en'))
+      .toContain('Accepted by the representative');
   });
 });

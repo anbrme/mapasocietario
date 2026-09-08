@@ -96,12 +96,14 @@ export async function onRequestPost({ request, env }) {
       `UPDATE attestations SET status='superseded', superseded_by=?
         WHERE subject_id = ? AND id <> ? AND status IN ${CURRENT_STATES}`)
       .bind(attestationId, attestation.subject_id, attestationId),
+    // last_verified_at is NOT touched here: it records when the FACTS were last
+    // checked against the registry, which happened at acceptance. Approval
+    // verifies evidence digests and judgement, not the registry.
     env.VERIFY_DB.prepare(
       `UPDATE attestations
-          SET status='live', approved_at=?, reviewer=?, reviewed_at=?, decision_note=?,
-              last_verified_at=?
+          SET status='live', approved_at=?, reviewer=?, reviewed_at=?, decision_note=?
         WHERE id = ?`)
-      .bind(now, reviewer, now, note || null, now, attestationId),
+      .bind(now, reviewer, now, note || null, attestationId),
   ], {
     attestation_id: attestationId, subject_id: attestation.subject_id,
     action: 'approved', actor: reviewer,

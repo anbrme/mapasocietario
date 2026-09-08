@@ -151,8 +151,8 @@ export async function onRequestPost({ request, env }) {
         (id, subject_id, claimant_id, invitation_id, method, status, representation_basis,
          seat_officer_name, seat_position, seat_appointed_date, identity_snapshot,
          assertion_hash, registry_snapshot, sealed_key, sealed_hash, personal_key,
-         personal_hash, accepted_at, expires_at, acceptance_receipt)
-       VALUES (?,?,?,?, 'email-confirmed','pending_review', ?, ?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+         personal_hash, accepted_at, expires_at, acceptance_receipt, last_verified_at)
+       VALUES (?,?,?,?, 'email-confirmed','pending_review', ?, ?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .bind(attestationId, invitation.subject_id, invitation.claimant_id, invitation.id,
             storedAssertion.representation_basis,
             storedAssertion.seat?.name ?? null, storedAssertion.seat?.position ?? null,
@@ -160,18 +160,31 @@ export async function onRequestPost({ request, env }) {
             draftHash, canonicalJson(fresh),
             keys.sealed, await sha256Hex(sealedBody),
             keys.personal, await sha256Hex(personalBody),
-            receipt.accepted_at, receipt.expires_at, JSON.stringify(receipt)),
+            receipt.accepted_at, receipt.expires_at, JSON.stringify(receipt),
+            // The facts were verified at ACCEPTANCE, not at approval. Review is
+            // a review of the submission, not a fresh check of the registry.
+            acceptedAt),
   ];
 
   for (const fact of rebuilt.facts) {
+    // The drift check above compared every registry-derived fact against a
+    // FRESH read - a matching hash means they all agreed. Recording that is
+    // truthful; leaving every row "not checked" beside a header claiming a
+    // successful check was not.
+    //
+    // A `corrected` fact is the exception: it deliberately differs from the
+    // registry and is a claim awaiting publication, not a consistency.
+    const outcome = fact.check_source !== 'borme' ? null
+      : fact.declared_status === 'corrected' ? 'pending_publication'
+      : 'consistent';
     statements.push(env.VERIFY_DB.prepare(
       `INSERT INTO attestation_facts
         (attestation_id, fact_key, declared_status, declared_value,
-         registry_value_at_issue, check_source)
-       VALUES (?,?,?,?,?,?)`)
+         registry_value_at_issue, check_source, last_check_outcome, last_checked_at)
+       VALUES (?,?,?,?,?,?,?,?)`)
       .bind(attestationId, fact.fact_key, fact.declared_status,
             fact.declared_value ?? null, fact.registry_value_at_issue ?? null,
-            fact.check_source));
+            fact.check_source, outcome, outcome ? acceptedAt : null));
   }
 
   // A record of what happened, never the enforcement.
