@@ -36,3 +36,4 @@ tmp/vc-deck*/
 # Local Pages dev secrets (VERIFY_ADMIN_TOKEN etc). Never committed.
 .dev.vars
 .dev.vars.*
+.wrangler/state/v3/cache/miniflare-CacheObject/metadata.sqlite-wal
