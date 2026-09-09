@@ -111,6 +111,13 @@ function registryGapYears(registryLastSeen, acceptedAt) {
  * `opts.registryLastSeen` is optional: without it the gap line is simply absent.
  */
 export function confirmationViewModel(attestation, lang = 'es', opts = {}) {
+  // The third argument USED to be a bare nowMs. A number destructures to all
+  // defaults instead of throwing, so a missed call site would silently swap a
+  // frozen test clock for the real one and only surface months later as a
+  // level assertion flipping fresh->aging. Fail at the call instead.
+  if (typeof opts !== 'object' || opts === null) {
+    throw new TypeError('confirmationViewModel: third argument is an options object, e.g. { nowMs, registryLastSeen }');
+  }
   if (!attestation || !attestation.accepted_at || !attestation.representative) return null;
   const { nowMs = Date.now(), registryLastSeen = null } = opts;
   const st = confirmationStatus(attestation.accepted_at, nowMs);
