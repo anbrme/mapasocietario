@@ -220,6 +220,10 @@ function renderList(items) {
       \${a.status_reason ? '<p class="muted">' + esc(a.status_reason) + '</p>' : ''}
       <p class="muted"><code>\${esc(a.id)}</code></p>
       <div class="row">
+        <button onclick="checks('\${esc(a.id)}')">Comprobaciones</button>
+      </div>
+      <div id="checks-\${esc(a.id)}"></div>
+      <div class="row">
         <input placeholder="etiqueta (p. ej. Banco X, onboarding)" id="lbl-\${esc(a.id)}">
         <button class="primary" onclick="issue('\${esc(a.id)}')">Emitir enlace</button>
         <button onclick="issue('\${esc(a.id)}','preview')">Vista previa (14 días)</button>
@@ -258,6 +262,36 @@ async function issue(id, kind) {
   if (r.ok) load();
 }
 window.issue = issue;
+
+async function checks(id) {
+  const box = $('checks-' + id);
+  box.innerHTML = '<p class="muted">Cargando…</p>';
+  const r = await api('/api/verify/admin/checks?attestation_id=' + encodeURIComponent(id));
+  if (!r.ok) { box.innerHTML = '<p class="bad">' + esc(r.data.error || r.status) + '</p>'; return; }
+  const items = r.data.items || [];
+  if (!items.length) {
+    box.innerHTML = '<p class="muted">Sin comprobaciones registradas todavía. '
+      + 'El registro empieza el día en que se despliega, no puede reconstruirse hacia atrás.</p>';
+    return;
+  }
+  const s = r.data.summary || {};
+  const head = s.total
+    ? '<p class="muted">' + esc(s.total) + ' comprobaciones entre ' +
+      esc((s.first || '').slice(0, 10)) + ' y ' + esc((s.last || '').slice(0, 10)) +
+      ' · ' + esc(s.consistent) + ' totalmente consistentes · ' +
+      esc(s.failed) + ' no se pudieron comprobar</p>'
+    : '';
+  box.innerHTML = head + '<table><thead><tr><th>Fecha</th><th>Resultado</th><th>Estado</th>'
+    + '</tr></thead><tbody>' + items.map((c) =>
+      '<tr><td>' + esc((c.checked_at || '').slice(0, 10)) + '</td><td>'
+      + (c.source_failed
+          ? '<span class="bad">no se pudo comprobar</span>'
+          : esc(c.outcomes))
+      + '</td><td>' + esc(c.status_before === c.status_after
+          ? c.status_after : c.status_before + ' → ' + c.status_after)
+      + '</td></tr>').join('') + '</tbody></table>';
+}
+window.checks = checks;
 
 async function revoke(id, hash) {
   const r = await api('/api/verify/admin/grant', { method: 'POST',

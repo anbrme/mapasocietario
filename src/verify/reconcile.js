@@ -161,3 +161,35 @@ export const RUN_RETENTION_DAYS = 730;
 
 export const runRetentionCutoff = (nowMs = Date.now()) =>
   new Date(nowMs - RUN_RETENTION_DAYS * 86_400_000).toISOString();
+
+/**
+ * A one-line summary of a run of checks, for the operator.
+ *
+ * "Consistent" means every fact came back consistent on a day the upstream read
+ * SUCCEEDED. A failed read and an empty outcome map both count as neither
+ * consistent nor contradicted: the whole point of storing source_failed is that
+ * "we could not check" must never read as "we checked and all was well".
+ *
+ * Rows arrive newest-first, as the admin endpoint orders them.
+ */
+export function summariseRuns(rows) {
+  const runs = rows || [];
+  let checked = 0;
+  let consistent = 0;
+  for (const r of runs) {
+    if (r.source_failed) continue;
+    checked++;
+    let outcomes;
+    try { outcomes = JSON.parse(r.outcomes || '{}'); } catch { continue; }
+    const values = Object.values(outcomes || {});
+    if (values.length > 0 && values.every((v) => v === 'consistent')) consistent++;
+  }
+  return {
+    total: runs.length,
+    checked,
+    failed: runs.length - checked,
+    consistent,
+    first: runs.length ? runs[runs.length - 1].checked_at : null,
+    last: runs.length ? runs[0].checked_at : null,
+  };
+}

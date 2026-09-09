@@ -62,7 +62,7 @@ describe('the operator console', () => {
     const js = script(await render());
     for (const fn of ['function search', 'function choose', 'function renderQueue',
                       'function renderList', 'function issue', 'function revoke',
-                      'function decide']) {
+                      'function decide', 'function checks']) {
       expect(js).toContain(fn);
     }
   });
@@ -90,6 +90,12 @@ describe('the operator console', () => {
     const html = await render();
     expect(html).toContain(`onclick="issue('\${esc(a.id)}','preview')"`);
     expect(html).toContain('Vista previa (14 días)');
+  });
+
+  it('renders a Comprobaciones button that calls checks for that attestation', async () => {
+    const html = await render();
+    expect(html).toContain(`onclick="checks('\${esc(a.id)}')"`);
+    expect(html).toContain('Comprobaciones');
   });
 
   it('issue() sends kind only when given one, so a normal grant posts no kind field', async () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { eventVisibility, registryNow, checkFact, nextStatus, isExpired, buildRunRow,
-         RUN_RETENTION_DAYS, runRetentionCutoff } from './reconcile.js';
+         RUN_RETENTION_DAYS, runRetentionCutoff, summariseRuns } from './reconcile.js';
 
 const ACCEPTED = '2026-09-08T12:00:00Z';
 const COMPANY = {
@@ -198,5 +198,43 @@ describe('runRetentionCutoff', () => {
     expect(RUN_RETENTION_DAYS).toBe(730);
     expect(runRetentionCutoff(now)).toBe(
       new Date(now - 730 * 86_400_000).toISOString());
+  });
+});
+
+describe('summariseRuns', () => {
+  // Rows arrive newest-first, as the endpoint orders them.
+  const rows = [
+    { checked_at: '2026-09-12T04:00:00Z', source_failed: 0,
+      outcomes: '{"address":"consistent"}' },
+    { checked_at: '2026-09-11T04:00:00Z', source_failed: 1, outcomes: '{}' },
+    { checked_at: '2026-09-10T04:00:00Z', source_failed: 0,
+      outcomes: '{"address":"consistent","officers":"superseded_by_later_event"}' },
+  ];
+
+  it('counts checks, failures and fully consistent days separately', () => {
+    expect(summariseRuns(rows)).toEqual({
+      total: 3, checked: 2, failed: 1, consistent: 1,
+      first: '2026-09-10T04:00:00Z', last: '2026-09-12T04:00:00Z',
+    });
+  });
+
+  it('never counts a failed read as consistent', () => {
+    expect(summariseRuns([{ checked_at: 'x', source_failed: 1, outcomes: '{}' }]).consistent)
+      .toBe(0);
+  });
+
+  it('does not count an empty outcome map as consistent', () => {
+    expect(summariseRuns([{ checked_at: 'x', source_failed: 0, outcomes: '{}' }]).consistent)
+      .toBe(0);
+  });
+
+  it('survives an unparseable outcomes column rather than throwing', () => {
+    expect(summariseRuns([{ checked_at: 'x', source_failed: 0, outcomes: 'not json' }]).consistent)
+      .toBe(0);
+  });
+
+  it('is all zeroes and nulls for no rows', () => {
+    expect(summariseRuns([])).toEqual({
+      total: 0, checked: 0, failed: 0, consistent: 0, first: null, last: null });
   });
 });
