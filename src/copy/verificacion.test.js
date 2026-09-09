@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { COPY, TURNSTILE_SITEKEY } from './verificacion.js';
+import { COPY, TURNSTILE_SITEKEY, CONDITIONS } from './verificacion.js';
 
 const langs = ['es', 'en'];
 const flat = (lang) => JSON.stringify(COPY[lang]);
@@ -46,5 +46,23 @@ describe('the verification request page copy', () => {
 
   it('uses the shared public sitekey', () => {
     expect(TURNSTILE_SITEKEY).toBe('0x4AAAAAADp3WnZGNiZai_32');
+  });
+});
+
+// CONDITIONS is read from both the /verificacion page and the company-profile
+// panel (functions/empresa/_lib.js). The two doors must show the same terms.
+describe('the shared CONDITIONS list', () => {
+  it('has the same number of points in both languages', () => {
+    expect(CONDITIONS.es.length).toBe(CONDITIONS.en.length);
+  });
+
+  it('mentions mancomunados in both languages', () => {
+    expect(CONDITIONS.es.join(' ')).toContain('mancomunados');
+    expect(CONDITIONS.en.join(' ')).toContain('mancomunados');
+  });
+
+  it('carries the no-identity, no-truth point in both languages', () => {
+    expect(CONDITIONS.es.join(' ')).toMatch(/no comprobamos su identidad/i);
+    expect(CONDITIONS.en.join(' ')).toMatch(/do not verify identity/i);
   });
 });

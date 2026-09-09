@@ -44,7 +44,7 @@ const clientScript = (html) => html.slice(
  */
 const TURNSTILE_SENTINEL = 'sentinel-turnstile-token';
 
-function runClientScript(js, html) {
+function runClientScript(js, html, locationSearch = '') {
   const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]));
   const bound = [];
   const handlers = new Map();
@@ -67,7 +67,10 @@ function runClientScript(js, html) {
                       body: opts.body ? JSON.parse(opts.body) : null });
     return { json: async () => ({ ok: true }) };
   };
-  const fakeWindow = { turnstile: { getResponse: () => TURNSTILE_SENTINEL, reset() {} } };
+  const fakeWindow = {
+    turnstile: { getResponse: () => TURNSTILE_SENTINEL, reset() {} },
+    location: { search: locationSearch },
+  };
   // eslint-disable-next-line no-new-func
   new Function('document', 'window', 'fetch', js)(
     { getElementById: byId, querySelector: () => null }, fakeWindow, fakeFetch);
@@ -247,6 +250,38 @@ describe('GET /verificacion', () => {
     const { html } = await render(ES);
     expect(html).toContain('challenges.cloudflare.com/turnstile/v0/api.js');
     expect(html).toContain('class="cf-turnstile" data-sitekey="0x4AAAAAADp3WnZGNiZai_32"');
+  });
+});
+
+// The company profile page (functions/empresa/_lib.js) links here with
+// ?company=<name>. Nothing on the server reads that parameter - it only
+// prefills a field, client-side - so the "the response reveals nothing about
+// any company" property has to survive it too.
+describe('the ?company= prefill', () => {
+  it('never reflects the company parameter into the HTML', async () => {
+    const hostile = '"><script>alert(1)</script>';
+    const { html } = await render(`${ES}?company=${encodeURIComponent(hostile)}`);
+    expect(html).not.toContain(hostile);
+    expect(html).not.toContain('<script>alert(1)</script>');
+    // Not merely escaped-and-present either: the server-rendered markup
+    // carries no trace of the parameter at all, hostile or benign.
+    expect(html).not.toContain('alert(1)');
+  });
+
+  it('reads the parameter client-side via URLSearchParams, not server-side interpolation', async () => {
+    const { html } = await render(ES);
+    const js = clientScript(html);
+    expect(js).toContain('URLSearchParams');
+    expect(js).toContain("get('company')");
+
+    const app = runClientScript(js, html, '?company=ACME%20SL');
+    expect(app.byId('f-company_query').value).toBe('ACME SL');
+  });
+
+  it('leaves the field empty when there is no company parameter', async () => {
+    const { html } = await render(ES);
+    const app = runClientScript(clientScript(html), html, '');
+    expect(app.byId('f-company_query').value).toBe('');
   });
 });
 

@@ -30,6 +30,39 @@ export const CONTACT_EMAIL = 'mapasocietario@ncdata.eu';
 
 export const PRIVACY_PATH = '/verificacion/privacidad';
 
+/**
+ * The six things a company must satisfy to request a verification, held once
+ * and read from here everywhere they are shown: this page itself
+ * (functions/verificacion/index.js) and the "¿Es esta su empresa?" panel on
+ * every company profile page (functions/empresa/_lib.js). The panel and this
+ * page are two doors into the same pilot, and a reader who opens the panel
+ * and then lands here must find the same six sentences, not a redrafted set.
+ *
+ * Order: who may ask, the position they must hold, the one exclusion, the
+ * email rule and its way through, cost and time, and the limit of what any
+ * of this proves. verificacion.test.js pins the invariants that must survive
+ * any rewording: same length in both languages, mancomunados named, and the
+ * no-identity/no-truth line present.
+ */
+export const CONDITIONS = {
+  es: [
+    'Solo la propia empresa, sobre sus propios datos. No aceptamos solicitudes para verificar los datos de otra empresa.',
+    'Quien declara debe ocupar un cargo actualmente inscrito en el Registro Mercantil.',
+    'Los administradores mancomunados quedan fuera del piloto: deben actuar conjuntamente, y ese flujo de doble firma todavía no existe.',
+    `Un correo de dominio corporativo, no de Gmail, Outlook ni equivalentes. Si no es posible, puede escribirnos a ${CONTACT_EMAIL}.`,
+    'Gratuito durante el piloto: unos veinte minutos del tiempo de esa persona, y unos días de principio a fin.',
+    'No comprobamos su identidad y no certificamos que lo declarado sea cierto.',
+  ],
+  en: [
+    'Only the company itself, about its own data. We do not accept requests to verify another company’s data.',
+    'The person who declares must hold a position currently registered in the Registro Mercantil.',
+    'Joint administrators (administradores mancomunados) are outside the pilot: they must act together, and that two-signature flow does not exist yet.',
+    `A corporate domain email address — not Gmail, Outlook or similar. If that is not possible, you can write to us at ${CONTACT_EMAIL}.`,
+    'Free during the pilot: about twenty minutes of that person’s time, and a few days end to end.',
+    'We do not verify identity, and we do not certify that what is declared is true.',
+  ],
+};
+
 export const COPY = {
   es: {
     title: 'Verificación de datos registrales | Mapa Societario',
@@ -42,6 +75,12 @@ export const COPY = {
 
     // The one persuasive line on the page, and it appears exactly once.
     once: 'Hágalo una vez, no una vez por cada cliente.',
+
+    // Heading only - the six points themselves are CONDITIONS, above, shared
+    // verbatim with the company-profile panel.
+    conditions: {
+      heading: 'Las condiciones, de un vistazo',
+    },
 
     notWhat: {
       heading: 'Lo que esto no es',
@@ -193,6 +232,12 @@ export const COPY = {
       'If a bank, a client or a partner has asked you to verify your company’s registry data, this is the page. A representative holding a current registry position makes a dated, attributable statement about their own company’s data, we check it against BORME, and a named person reviews it.',
 
     once: 'Do it once, not once per counterparty.',
+
+    // Heading only - the six points themselves are CONDITIONS, above, shared
+    // verbatim with the company-profile panel.
+    conditions: {
+      heading: 'The conditions, at a glance',
+    },
 
     notWhat: {
       heading: 'What this is not',

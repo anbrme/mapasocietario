@@ -34,6 +34,10 @@ import { foldVariantSeats } from '../../src/utils/officerNameVariants.js';
 import { hasIncoherentCapital } from '../../src/utils/capitalCoherence.js';
 
 import { isSeoVariant } from './_seo_experiment.js';
+// The six pilot conditions, shared verbatim with the /verificacion page
+// itself (functions/verificacion/index.js) so the panel below never drifts
+// into promising something the page does not.
+import { CONDITIONS } from '../../src/copy/verificacion.js';
 
 // What Google actually renders before truncating, in characters. Both are
 // approximations of a pixel budget, so they are deliberately conservative:
@@ -374,6 +378,9 @@ const T = {
     ddCtaText: (name) =>
       `Descarga un PDF con análisis por IA, comprobación de sanciones, señales de alerta e historial mercantil completo de ${name}.`,
     ddCtaBtn: 'Descargar informe · 22,50 €',
+    verifyCtaBtn: '¿Es esta su empresa?',
+    verifyCtaSub: 'Puede dejar constancia, con fecha y con nombre, de que estos datos registrales son correctos.',
+    verifyCtaLink: 'Solicitar la verificación de datos registrales →',
     monitorTitle: 'Sigue esta empresa',
     monitorText: (name) =>
       `Recibe un aviso por correo cuando ${name} publique una nueva inscripción en el BORME. Gratis, sin cuenta y sin comprar nada.`,
@@ -384,7 +391,7 @@ const T = {
     monitorBadEmail: 'Introduce una dirección de correo válida.',
     monitorFail: 'No hemos podido registrar el aviso. Vuelve a intentarlo en un momento.',
     footer: (d) =>
-      `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial.`,
+      `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial. <a href="/verificacion">¿Es esta su empresa? Verifique sus datos.</a>`,
     renamedTo: (href, name) =>
       `Esta sociedad pasó a denominarse <a href="${href}">${name}</a>. Consulta la ficha actualizada.`,
     priorNames: (names) => `Denominaciones anteriores: ${names}.`,
@@ -645,6 +652,9 @@ const T = {
     ddCtaText: (name) =>
       `Download a PDF with AI analysis, sanctions screening, red flags and the full commercial-registry history of ${name}.`,
     ddCtaBtn: 'Download report · €22.50',
+    verifyCtaBtn: 'Is this your company?',
+    verifyCtaSub: 'You can put a dated, named statement on record that this registry data is correct.',
+    verifyCtaLink: 'Request registry data verification →',
     monitorTitle: 'Follow this company',
     monitorText: (name) =>
       `Get an email when ${name} files something new at the BORME. Free, no account, nothing to buy.`,
@@ -659,7 +669,7 @@ const T = {
       `Explore the ownership network, shared directors and subsidiaries of ${name}.`,
     ctaBtn: 'Open interactive map →',
     footer: (d) =>
-      `Data sourced from the Spanish Official Commercial Registry Gazette (BORME). Registry last updated: ${d}. Mapa Societario is not an official registry.`,
+      `Data sourced from the Spanish Official Commercial Registry Gazette (BORME). Registry last updated: ${d}. Mapa Societario is not an official registry. <a href="/verificacion?lang=en">Is this your company? Verify its data.</a>`,
     renamedTo: (href, name) =>
       `This company was renamed to <a href="${href}">${name}</a>. See the updated profile.`,
     priorNames: (names) => `Former names: ${names}.`,
@@ -1293,6 +1303,14 @@ const STYLE = `<style>
   .hero-actions a,.hero-actions button,.overview-action{display:inline-block;border-radius:9px;padding:9px 15px;border:0;font-family:inherit;font-size:14px;font-weight:700;line-height:1.4;text-decoration:none;cursor:pointer}
   .hero-primary,.overview-action{background:var(--brand);color:#fff}
   .hero-secondary{background:#fff;color:var(--brand);border:1px solid #bfdbfe}
+  .verify-offer{margin:0 0 22px}
+  .verify-offer summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;font-size:13px;font-weight:700;color:var(--mut)}
+  .verify-offer summary::-webkit-details-marker{display:none}
+  .verify-offer-sub{font-weight:400;color:var(--mut);font-size:12.5px}
+  .verify-offer-panel{margin-top:10px;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:10px}
+  .verify-offer-panel ul{margin:0 0 10px;padding-left:18px;font-size:13px;color:var(--ink)}
+  .verify-offer-panel li{margin-bottom:6px}
+  .verify-offer-panel a{font-weight:700;font-size:13px}
   .badges{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
   .badge{font-size:12px;font-weight:600;background:#e0e7ff;color:#3730a3;border-radius:999px;padding:3px 10px}
   .badge.danger{background:#fee2e2;color:#991b1b}
@@ -1562,7 +1580,7 @@ const graphHref = (name, groupKey) => {
   return `/app/?${params.toString().replace(/&/g, '&amp;')}`;
 };
 
-export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false, attestation = null, privateResponse = false) {
+export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false, attestation = null, privateResponse = false, isFallback = false) {
   // For the hours between a filing reaching the event log and the aggregation
   // absorbing it, "Administradores y cargos vigentes" — and the JSON-LD employee
   // list Google reads — described the last AGGREGATION rather than the last
@@ -2081,6 +2099,26 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   const altPath = lang === 'en' ? companyPath('es', canonicalSlug) : companyPath('en', canonicalSlug);
   const altLabel = lang === 'en' ? 'Español' : 'English';
 
+  // A quieter, separate offer from the hero CTAs above it: those two speak to
+  // someone RESEARCHING this company, this one speaks to the company itself.
+  // Suppressed for a dissolved company (nothing current left to attest to) and
+  // for an unresolved fallback page (no confirmed registry identity behind
+  // the name shown, so there is nothing to invite a declaration about).
+  const verifyParams = new URLSearchParams();
+  if (lang === 'en') verifyParams.set('lang', 'en');
+  verifyParams.set('company', name);
+  const verifyCtaHref = `/verificacion?${verifyParams.toString().replace(/&/g, '&amp;')}`;
+  const verifyOfferBlock = (isDissolved || isFallback) ? '' : `
+  <div class="verify-offer">
+    <details>
+      <summary>${esc(t.verifyCtaBtn)}<span class="verify-offer-sub">${esc(t.verifyCtaSub)}</span></summary>
+      <div class="verify-offer-panel">
+        <ul>${CONDITIONS[lang].map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
+        <p><a data-track="verify_cta_click" href="${verifyCtaHref}">${esc(t.verifyCtaLink)}</a></p>
+      </div>
+    </details>
+  </div>`;
+
   return `<!doctype html>
 <html lang="${t.htmlLang}">
 <head>
@@ -2116,6 +2154,7 @@ ${privateResponse ? '' : GA_SNIPPET}
     <button type="button" class="hero-primary" data-open-graph data-track="profile_graph_open">${t.topMapBtn}</button>
     <a class="hero-secondary" data-track="profile_registry_jump" href="#registry-data">${t.topRegistryBtn}</a>
   </div>
+  ${verifyOfferBlock}
 
   ${renameNotice}
   ${cotizadaBlock}
@@ -2527,7 +2566,7 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es', opt
     // relaxed here. The public gate keeps exactly one meaning.
     const attestation = options.attestationOverride
       || await liveAttestationFor(env, graphGroupKey(company, seed));
-    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex, attestation, Boolean(options.privateResponse));
+    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex, attestation, Boolean(options.privateResponse), isFallback);
     return new Response(html, {
       status: 200,
       headers: companyPageHeaders({ noindex, privateResponse: options.privateResponse }),

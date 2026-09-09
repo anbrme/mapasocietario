@@ -26,7 +26,7 @@
  * The form GRANTS NOTHING. It writes one row into the operator's queue. Every
  * claim on the page lives in src/copy/verificacion.js, where it is unit-tested.
  */
-import { COPY, TURNSTILE_SITEKEY, PRIVACY_PATH } from '../../src/copy/verificacion.js';
+import { COPY, TURNSTILE_SITEKEY, PRIVACY_PATH, CONDITIONS } from '../../src/copy/verificacion.js';
 import { CONSUMER_DOMAINS } from '../../src/verify/emailDomain.js';
 // The server's own caps. Imported rather than retyped for the same reason
 // CONSUMER_DOMAINS is: a second copy drifts, and the first symptom of the drift
@@ -185,6 +185,8 @@ export function onRequestGet({ request }) {
 <p class="lead">${esc(t.lead)}</p>
 <p class="once">${esc(t.once)}</p>
 
+${section('conditions', { heading: t.conditions.heading, points: CONDITIONS[lang] })}
+
 ${section('not-what', t.notWhat, { summary: true })}
 ${section('what', t.what)}
 ${section('who', t.who)}
@@ -259,6 +261,17 @@ var form = document.getElementById('req');
 var button = document.getElementById('send');
 var formErr = document.getElementById('e-form');
 var email = document.getElementById('f-contact_email');
+
+// Prefill from ?company=, e.g. the link on a company profile page
+// (functions/empresa/_lib.js). Display-only: nothing here looks the company
+// up, so the endpoint's "the response reveals nothing about any company"
+// property is untouched. Read into .value, NEVER interpolated into markup -
+// that would be a reflected-XSS hole for a query parameter anyone can set.
+try {
+  var companyField = document.getElementById('f-company_query');
+  var prefill = new URLSearchParams(window.location.search).get('company');
+  if (companyField && prefill) companyField.value = prefill;
+} catch (e) {}
 
 // Mirrors classifyEmailDomain(): 'invalid' | 'consumer' | 'corporate'.
 function classify(value) {
