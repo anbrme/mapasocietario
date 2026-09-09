@@ -10,6 +10,13 @@ const render = async (url, headers = {}) => {
 const ES = 'https://mapasocietario.es/verificacion';
 const EN = 'https://mapasocietario.es/verificacion?lang=en';
 
+// The contract with POST /api/verify/request, built in a separate task. These
+// are the names validateRequestPayload reads; anything else is a 400 the user
+// cannot explain. One home, so the markup check and the body check agree.
+const POSTED_FIELDS = ['company_query', 'nif', 'contact_name', 'contact_role',
+                       'contact_email', 'referrer_note', 'note', 'website'];
+const BODY_KEYS = [...POSTED_FIELDS, 'turnstileToken'];
+
 /**
  * The page ships ~6kB of client JavaScript assembled inside a server-side
  * template literal, which means an escaping mistake yields HTML that looks
@@ -28,27 +35,51 @@ const clientScript = (html) => html.slice(
  * Runs the script's top level against a DOM built from the ids the page
  * ACTUALLY rendered - an unknown id returns null, exactly as a browser would,
  * so a renamed field surfaces here as a throw instead of as a dead form.
+ *
+ * It also hands back a `submit()` that fires the captured handler and the
+ * `fetch` calls it made, which is the only way to see the JSON the form
+ * actually posts. A string match on the markup cannot: the input can be named
+ * company_query while the script reads the wrong id or writes the wrong key,
+ * and every markup assertion still passes.
  */
+const TURNSTILE_SENTINEL = 'sentinel-turnstile-token';
+
 function runClientScript(js, html) {
   const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]));
   const bound = [];
+  const handlers = new Map();
   const made = new Map();
   const byId = (id) => {
     if (!ids.has(id)) return null;
     if (!made.has(id)) {
       made.set(id, {
-        id, value: '', textContent: '', hidden: false,
+        id, value: '', textContent: '', hidden: false, disabled: false,
         classList: { toggle() {}, remove() {} },
-        addEventListener: (type) => bound.push(`${id}:${type}`),
+        addEventListener(type, fn) { bound.push(`${id}:${type}`); handlers.set(`${id}:${type}`, fn); },
         focus() {}, scrollIntoView() {}, querySelectorAll: () => [],
       });
     }
     return made.get(id);
   };
+  const fetchCalls = [];
+  const fakeFetch = async (path, opts = {}) => {
+    fetchCalls.push({ path, method: opts.method,
+                      body: opts.body ? JSON.parse(opts.body) : null });
+    return { json: async () => ({ ok: true }) };
+  };
+  const fakeWindow = { turnstile: { getResponse: () => TURNSTILE_SENTINEL, reset() {} } };
   // eslint-disable-next-line no-new-func
   new Function('document', 'window', 'fetch', js)(
-    { getElementById: byId, querySelector: () => null }, {}, async () => ({}));
-  return bound;
+    { getElementById: byId, querySelector: () => null }, fakeWindow, fakeFetch);
+
+  return {
+    bound, fetchCalls, byId,
+    async submit() {
+      handlers.get('req:submit')({ preventDefault() {} });
+      // Let the fetch promise chain settle before anyone reads fetchCalls.
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+    },
+  };
 }
 
 describe('GET /verificacion', () => {
@@ -64,10 +95,7 @@ describe('GET /verificacion', () => {
   // pinned against the names validateRequestPayload actually reads.
   it('posts exactly the field names the endpoint reads', async () => {
     const { html } = await render(ES);
-    for (const name of ['company_query', 'nif', 'contact_name', 'contact_role',
-                        'contact_email', 'referrer_note', 'note', 'website']) {
-      expect(html).toContain(`name="${name}"`);
-    }
+    for (const name of POSTED_FIELDS) expect(html).toContain(`name="${name}"`);
     expect(html).toContain('turnstileToken:');
     expect(html).toContain("fetch('/api/verify/request'");
   });
@@ -155,11 +183,45 @@ describe('GET /verificacion', () => {
   it('wires itself to elements the page actually renders', async () => {
     for (const url of [ES, EN]) {
       const { html } = await render(url);
-      const bound = runClientScript(clientScript(html), html);
+      const { bound } = runClientScript(clientScript(html), html);
       expect(bound).toContain('req:submit');
       expect(bound).toContain('f-contact_email:input');
       expect(bound).toContain('f-contact_email:blur');
     }
+  });
+
+  /**
+   * THE test for this page. Every other field-name assertion here reads the
+   * markup; this one reads the JSON that leaves the browser, which is the only
+   * artefact the endpoint sees. Sentinels are distinct and deliberately
+   * unrealistic: a shared or plausible value would hide a swap between two
+   * fields of the same type, which is the mistake most likely to survive review.
+   */
+  it('posts the endpoint contract, each value under its own key', async () => {
+    const { html } = await render(ES);
+    const app = runClientScript(clientScript(html), html);
+
+    const sentinels = Object.fromEntries(
+      POSTED_FIELDS.map((name) => [name, `sentinel-${name}`]));
+    for (const [name, value] of Object.entries(sentinels)) {
+      app.byId(`f-${name}`).value = value;
+    }
+
+    await app.submit();
+
+    expect(app.fetchCalls).toHaveLength(1);
+    const [call] = app.fetchCalls;
+    expect(call.path).toBe('/api/verify/request');
+    expect(call.method).toBe('POST');
+
+    // Exactly the contract: nothing missing, nothing extra, nothing renamed.
+    expect(Object.keys(call.body).sort()).toEqual([...BODY_KEYS].sort());
+
+    // And each value under ITS OWN key, so a swap fails rather than passing.
+    for (const [name, value] of Object.entries(sentinels)) {
+      expect(call.body[name]).toBe(value);
+    }
+    expect(call.body.turnstileToken).toBe(TURNSTILE_SENTINEL);
   });
 
   it('loads Turnstile with the public sitekey', async () => {
