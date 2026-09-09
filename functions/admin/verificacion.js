@@ -149,6 +149,7 @@ function renderRequests(items) {
       <div class="row">
         <button data-req-search="\${esc(r.company_query)}">Buscar</button>
         <button data-req-id="\${esc(r.id)}" data-req-status="contacted">Contactada</button>
+        <button data-req-id="\${esc(r.id)}" data-req-status="invited">Invitada</button>
         <button data-req-id="\${esc(r.id)}" data-req-status="ineligible">No elegible</button>
         <button data-req-id="\${esc(r.id)}" data-req-status="declined">Rechazada</button>
         <button data-req-id="\${esc(r.id)}" data-req-status="spam">Spam</button>

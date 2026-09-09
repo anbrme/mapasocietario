@@ -32,12 +32,18 @@ export function validateRequestPayload(body) {
   // required fields must learn nothing from which complaint comes back.
   if (line(body?.website)) return { ok: false, reason: 'honeypot' };
 
+  // NOT sliced like the other fields: slicing first and classifying the result
+  // would call a 255+ character address "invalid" - accepted by the form,
+  // rejected at submit - when it is actually just too long. Report that
+  // distinctly instead.
+  const contactEmail = line(body?.contact_email).toLowerCase();
+
   const payload = {
     company_query: line(body?.company_query).slice(0, MAX.company_query),
     nif: line(body?.nif).slice(0, MAX.nif).toUpperCase() || null,
     contact_name: line(body?.contact_name).slice(0, MAX.contact_name),
     contact_role: line(body?.contact_role).slice(0, MAX.contact_role),
-    contact_email: line(body?.contact_email).slice(0, MAX.contact_email).toLowerCase(),
+    contact_email: contactEmail,
     referrer_note: line(body?.referrer_note).slice(0, MAX.referrer_note) || null,
     // The only multi-line field: a note may legitimately have paragraphs.
     note: String(body?.note == null ? '' : body.note).trim().slice(0, MAX.note) || null,
@@ -45,6 +51,10 @@ export function validateRequestPayload(body) {
 
   for (const field of REQUIRED) {
     if (!payload[field]) return { ok: false, reason: `${field}_required`, field };
+  }
+
+  if (contactEmail.length > MAX.contact_email) {
+    return { ok: false, reason: 'contact_email_too_long', field: 'contact_email' };
   }
 
   const domain = classifyEmailDomain(payload.contact_email);

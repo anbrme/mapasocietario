@@ -160,6 +160,22 @@ describe('the operator console', () => {
     expect(html).not.toMatch(/onclick=/);
   });
 
+  // §11/§15.3 of the design spec: an operator who has issued an invitation
+  // needs a way to mark the request converted without touching the database
+  // by hand. 'invited' is already an allowed status server-side; this is the
+  // button that lets an operator reach it.
+  it('offers an Invitada button alongside the other status buttons', async () => {
+    const { renderRequests, element } = runClientScript(script(await render()));
+    renderRequests([{
+      id: 'req_1', company_query: 'WAYPORT ADVISORS', nif: null,
+      contact_name: 'Ana', contact_role: 'Administradora', contact_email: 'ana@example.com',
+      referrer_note: null, operator_note: null, status: 'new',
+      created_at: '2026-09-01T00:00:00Z',
+    }]);
+    const html = element('requests').innerHTML;
+    expect(html).toContain('data-req-id="req_1" data-req-status="invited">Invitada');
+  });
+
   it('the Buscar action fills #q with the request\'s company text and triggers the search', async () => {
     const { searchFromRequest, element, fetchCalls } = runClientScript(script(await render()));
     await searchFromRequest('WAYPORT ADVISORS');

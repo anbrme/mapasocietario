@@ -24,7 +24,10 @@ CREATE TABLE verification_requests (
   subject_id    TEXT REFERENCES subjects(subject_id),  -- set when resolved
   invitation_id TEXT REFERENCES invitations(id),       -- set when converted
   operator_note TEXT,
-  created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- ISO 8601, to match requestRetentionCutoff()'s format. CURRENT_TIMESTAMP
+  -- would emit "YYYY-MM-DD HH:MM:SS", whose ' ' sorts before the cutoff's 'T'
+  -- and purges boundary-day rows up to a day early.
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at    TEXT
 );
 

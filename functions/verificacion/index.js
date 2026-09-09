@@ -81,10 +81,12 @@ function field(name, spec, { required = false, type = 'text', textarea = false,
 export function onRequestGet({ request }) {
   const url = new URL(request.url);
   const requested = (url.searchParams.get('lang') || '').toLowerCase();
-  const lang = requested === 'en' ? 'en'
-    : requested === 'es' ? 'es'
-    : (request.headers.get('accept-language') || '').toLowerCase().startsWith('en') ? 'en'
-    : 'es';
+  // Deliberately NOT negotiated on Accept-Language: this response is cached
+  // shared (public, s-maxage=3600) and Cloudflare only honours Accept-Encoding
+  // on Vary, so an Accept-Language-based body would leak across visitors and
+  // the canonical link would tell Google the front door duplicates itself.
+  // No lang parameter always means Spanish; English lives at ?lang=en only.
+  const lang = requested === 'en' ? 'en' : 'es';
   const t = COPY[lang];
   const canonical = lang === 'en' ? `${SITE}${PATH}?lang=en` : `${SITE}${PATH}`;
   const other = lang === 'en' ? PATH : `${PATH}?lang=en`;
@@ -169,7 +171,9 @@ export function onRequestGet({ request }) {
   footer { margin-top: 3rem; border-top: 1px solid var(--line); padding-top: 1.1rem;
            font-size: .9rem; color: var(--muted); }
   footer a { color: var(--muted); }
-</style></head><body><main>
+</style>
+<noscript><style>#req{display:none}</style></noscript>
+</head><body><main>
 
 <p class="kicker">${esc(t.kicker)}</p>
 <h1>${esc(t.h1)}</h1>
@@ -352,6 +356,7 @@ form.addEventListener('submit', function (event) {
   }).catch(function () {
     formErr.textContent = ERRORS.network;
     formErr.hidden = false;
+    if (window.turnstile && window.turnstile.reset) { try { window.turnstile.reset(); } catch (e) {} }
   }).then(function () {
     button.disabled = false;
     button.textContent = SUBMIT;

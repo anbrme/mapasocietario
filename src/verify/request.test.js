@@ -44,6 +44,20 @@ describe('validateRequestPayload', () => {
       .toBe('contact_email_not_corporate');
   });
 
+  // Slicing to MAX.contact_email first and then classifying the remainder
+  // would call a 255+ character address "invalid" - accepted by the form,
+  // rejected at submit - when it is simply too long. That must be its own
+  // distinct reason instead.
+  it('reports an over-length address as too long, not invalid', () => {
+    const local = 'a'.repeat(250);
+    const longEmail = `${local}@example.com`; // well past MAX.contact_email (254)
+    expect(longEmail.length).toBeGreaterThan(MAX.contact_email);
+    const r = validateRequestPayload(good({ contact_email: longEmail }));
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('contact_email_too_long');
+    expect(r.field).toBe('contact_email');
+  });
+
   it('caps every field rather than rejecting a long one', () => {
     const r = validateRequestPayload(good({
       company_query: 'x'.repeat(500), note: 'y'.repeat(5000),

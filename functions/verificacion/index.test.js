@@ -150,19 +150,38 @@ describe('GET /verificacion', () => {
     }
   });
 
-  it('negotiates language by query first, then Accept-Language', async () => {
+  it('negotiates language by the lang query parameter only', async () => {
     expect((await render(EN)).html).toContain('<html lang="en"');
     expect((await render(ES)).html).toContain('<html lang="es"');
-    expect((await render(ES, { 'accept-language': 'en-GB,en;q=0.9' })).html)
-      .toContain('<html lang="en"');
     expect((await render(`${ES}?lang=es`, { 'accept-language': 'en-GB' })).html)
       .toContain('<html lang="es"');
+  });
+
+  // This page is served public, s-maxage=3600 with no Vary, and Cloudflare
+  // only honours Accept-Encoding on Vary - so negotiating on Accept-Language
+  // would let a shared cache serve the English body at the bare URL, complete
+  // with a canonical link that tells Google the front door duplicates itself.
+  // No lang parameter must always mean Spanish, regardless of the header.
+  it('ignores Accept-Language: the bare URL is always Spanish', async () => {
+    const { html } = await render(ES, { 'accept-language': 'en-GB,en;q=0.9' });
+    expect(html).toContain('<html lang="es"');
+  });
+
+  // A no-JS submit has no action/method on <form id="req">, so it falls back to
+  // GET /verificacion?contact_email=...&contact_name=...&note=... - leaking
+  // contact details into the URL, browser history and server logs. The
+  // <noscript> panel already tells the visitor to email instead; this rule is
+  // what actually stops the submit from happening.
+  it('hides the form entirely without JavaScript', async () => {
+    const { html } = await render(ES);
+    expect(html).toContain('<noscript><style>#req{display:none}</style></noscript>');
   });
 
   it('can render every error the endpoint can return', async () => {
     const returned = ['company_query_required', 'contact_name_required',
       'contact_role_required', 'contact_email_required', 'contact_email_invalid',
-      'contact_email_not_corporate', 'turnstile_failed', 'store_failed', 'invalid_json'];
+      'contact_email_too_long', 'contact_email_not_corporate', 'turnstile_failed',
+      'store_failed', 'invalid_json'];
     for (const lang of ['es', 'en']) {
       for (const error of returned) expect(COPY[lang].errors[error]).toBeTruthy();
       // The two the client raises on its own behalf.

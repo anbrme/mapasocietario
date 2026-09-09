@@ -1,3 +1,10 @@
+# /verificacion is deliberately NOT disallowed here. It is the one indexable
+# member of its family; its token-bearing siblings (/verificacion/g/*,
+# /verificacion/p/*) carry their own per-response noindex, which a crawler can
+# only see by being allowed to fetch them. A Disallow on the family would hide
+# that header from crawlers; a mistyped one without the trailing slash
+# (Disallow: /verificacion, no /) would de-index the front door itself.
+
 # Content signals: https://contentsignals.org/
 User-agent: *
 Content-Signal: search=yes, ai-input=yes, ai-train=yes

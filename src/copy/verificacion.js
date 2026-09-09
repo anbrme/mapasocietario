@@ -162,6 +162,7 @@ export const COPY = {
       contact_role_required: 'Necesitamos su cargo en la empresa.',
       contact_email_required: 'Necesitamos un correo electrónico donde responderle.',
       contact_email_invalid: 'Esa dirección no parece una dirección de correo. Revísela.',
+      contact_email_too_long: 'Esa dirección de correo es demasiado larga. Revísela.',
       contact_email_not_corporate:
         `Durante el piloto solo podemos aceptar solicitudes desde un dominio corporativo. Si ese no es su caso, escríbanos a ${CONTACT_EMAIL}.`,
       turnstile_failed:
@@ -310,6 +311,7 @@ export const COPY = {
       contact_role_required: 'We need your position in the company.',
       contact_email_required: 'We need an email address to reply to.',
       contact_email_invalid: 'That does not look like an email address. Please check it.',
+      contact_email_too_long: 'That email address is too long. Please check it.',
       contact_email_not_corporate:
         `During the pilot we can only accept requests from a corporate domain. If that is your situation, write to us at ${CONTACT_EMAIL}.`,
       turnstile_failed:

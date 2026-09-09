@@ -21,6 +21,14 @@ const COPY = {
     h1: 'Privacidad de la verificación',
     intro: 'Esta página explica qué datos personales tratamos cuando un representante confirma los datos registrales de su empresa, por qué, durante cuánto tiempo y cómo puede ejercer sus derechos. Solo cubre el proceso de verificación.',
     sections: [
+      ['Antes de que exista una declaración: su solicitud de verificación', [
+        'Si nos escribe o rellena el formulario de /verificacion para pedir la verificación de su empresa, tratamos: el nombre y el NIF de la empresa tal como los escribió, su nombre de contacto, su cargo, un correo corporativo, quién le indicó que nos escribiera, y una nota opcional.',
+        'Lo usamos únicamente para decidir si invitamos a su empresa al piloto y para contactarle sobre esa decisión.',
+        'Base legal: interés legítimo en evaluar y gestionar solicitudes de participación en el piloto (artículo 6.1.f del RGPD).',
+        'Si marcamos su solicitud como spam o no elegible, la conservamos hasta 90 días desde su recepción y después se suprime.',
+        'Si su solicitud se convierte en una invitación aceptada, pasa a conservarse con los plazos de la declaración descritos más abajo, y esta sección deja de aplicarle.',
+        `Puede ejercer los mismos derechos descritos en "Sus derechos" escribiendo a ${CONTACT}.`,
+      ]],
       ['Qué recogemos', [
         'Su nombre y el cargo registral que consta en el BORME. Ambos ya son públicos en el registro; lo que añadimos es el hecho de que usted hizo una declaración concreta en una fecha concreta.',
         'Su dirección de correo electrónico, para enviarle el enlace y las solicitudes de reconfirmación.',
@@ -58,6 +66,14 @@ const COPY = {
     h1: 'Verification privacy',
     intro: 'This page explains what personal data we process when a representative confirms their company’s registry data, why, for how long, and how to exercise your rights. It covers the verification process only.',
     sections: [
+      ['Before a statement exists: your verification request', [
+        'If you write to us or fill in the form at /verificacion to request verification for your company, we process: the company name and NIF as you typed them, your contact name, your position, a corporate email address, who told you to write to us, and an optional note.',
+        'We use it only to decide whether to invite your company into the pilot and to contact you about that decision.',
+        'Legal basis: legitimate interest in assessing and handling requests to join the pilot (GDPR Article 6.1.f).',
+        'If we mark your request as spam or ineligible, we keep it for up to 90 days from receipt and then delete it.',
+        'If your request becomes an accepted invitation, it is then retained under the terms of the statement record described below, and this section no longer applies to it.',
+        `You can exercise the same rights described under "Your rights" by writing to ${CONTACT}.`,
+      ]],
       ['What we collect', [
         'Your name and the registry position recorded in BORME. Both are already public in the register; what we add is the fact that you made a specific statement on a specific date.',
         'Your email address, to send you the link and any reconfirmation requests.',
