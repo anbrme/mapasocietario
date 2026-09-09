@@ -37,3 +37,4 @@ tmp/vc-deck*/
 .dev.vars
 .dev.vars.*
 .wrangler/state/v3/cache/miniflare-CacheObject/metadata.sqlite-wal
+.dev.vars
