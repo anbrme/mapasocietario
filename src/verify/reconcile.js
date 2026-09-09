@@ -134,3 +134,23 @@ export function nextStatus({ outcomes, consecutiveInconclusive = 0, sourceFailed
 
 // Expiry is a clock, not a check, so it is decided separately and wins.
 export const isExpired = (expiresAt, nowMs = Date.now()) => Date.parse(expiresAt) <= nowMs;
+
+/**
+ * The bind values for one reconciliation_runs row, in column order.
+ *
+ * Lives here rather than in the Worker because the Worker moves data and this
+ * decides what the record says — including the one distinction that matters:
+ * a failed upstream read records source_failed=1 with an EMPTY outcome map, so
+ * "we could not check" can never be read as "we checked and all was well".
+ */
+export function buildRunRow({ attestation, outcomes, sourceFailed, decision, checkedAt }) {
+  return [
+    attestation.id,
+    attestation.subject_id,
+    checkedAt,
+    sourceFailed ? 1 : 0,
+    JSON.stringify(sourceFailed ? {} : (outcomes || {})),
+    attestation.status,
+    decision.status || attestation.status,
+  ];
+}

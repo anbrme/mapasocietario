@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { eventVisibility, registryNow, checkFact, nextStatus, isExpired } from './reconcile.js';
+import { eventVisibility, registryNow, checkFact, nextStatus, isExpired, buildRunRow } from './reconcile.js';
 
 const ACCEPTED = '2026-09-08T12:00:00Z';
 const COMPANY = {
@@ -142,5 +142,51 @@ describe('registryNow / isExpired', () => {
   it('expiry is a clock', () => {
     expect(isExpired('2026-09-01T00:00:00Z', Date.parse('2026-09-08T00:00:00Z'))).toBe(true);
     expect(isExpired('2027-03-07T00:00:00Z', Date.parse('2026-09-08T00:00:00Z'))).toBe(false);
+  });
+});
+
+describe('buildRunRow', () => {
+  const attestation = { id: 'att_1', subject_id: 's1', status: 'live' };
+
+  it('records the outcome map, the status before and the status after', () => {
+    const row = buildRunRow({
+      attestation,
+      outcomes: { address: 'consistent', officers: 'consistent' },
+      sourceFailed: false,
+      decision: { status: 'live' },
+      checkedAt: '2026-09-10T04:15:00Z',
+    });
+    expect(row).toEqual([
+      'att_1', 's1', '2026-09-10T04:15:00Z', 0,
+      '{"address":"consistent","officers":"consistent"}', 'live', 'live',
+    ]);
+  });
+
+  it('records an empty outcome map when the upstream read failed', () => {
+    const row = buildRunRow({
+      attestation, outcomes: {}, sourceFailed: true,
+      decision: { status: null }, checkedAt: '2026-09-10T04:15:00Z',
+    });
+    expect(row[3]).toBe(1);
+    expect(row[4]).toBe('{}');
+  });
+
+  it('carries the status forward when the decision changes nothing', () => {
+    const row = buildRunRow({
+      attestation, outcomes: { address: 'consistent' }, sourceFailed: false,
+      decision: { status: null }, checkedAt: '2026-09-10T04:15:00Z',
+    });
+    expect(row[5]).toBe('live');
+    expect(row[6]).toBe('live');
+  });
+
+  it('records a transition when the decision changes the status', () => {
+    const row = buildRunRow({
+      attestation, outcomes: { address: 'superseded_by_later_event' },
+      sourceFailed: false, decision: { status: 'outdated' },
+      checkedAt: '2026-09-10T04:15:00Z',
+    });
+    expect(row[5]).toBe('live');
+    expect(row[6]).toBe('outdated');
   });
 });

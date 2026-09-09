@@ -11,7 +11,7 @@
  * All classification logic is in src/verify/reconcile.js, where vitest can reach
  * it; this file moves data and sends mail.
  */
-import { checkFact, nextStatus, isExpired } from '../../../src/verify/reconcile.js';
+import { checkFact, nextStatus, isExpired, buildRunRow } from '../../../src/verify/reconcile.js';
 import { buildAuditEvent, GENESIS_HASH } from '../../../src/verify/chain.js';
 
 // Every state an attestation can be in and still be the CURRENT record for its
@@ -114,6 +114,16 @@ async function reconcileOne(env, attestation, report) {
   });
 
   const statements = [...factUpdates];
+
+  // The continuity record. Written on EVERY check, including a no-op and a
+  // failed upstream read, because the value is showing that checks happened -
+  // which the overwritten last_checked_at columns cannot.
+  statements.push(env.VERIFY_DB.prepare(
+    `INSERT INTO reconciliation_runs
+      (attestation_id, subject_id, checked_at, source_failed, outcomes,
+       status_before, status_after)
+     VALUES (?,?,?,?,?,?,?)`)
+    .bind(...buildRunRow({ attestation, outcomes, sourceFailed, decision, checkedAt: now })));
 
   // A successful check moves last_verified_at; a failed one must NOT, or the
   // page would claim a check that did not happen.
