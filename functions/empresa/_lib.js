@@ -19,7 +19,7 @@ import { liveAttestationFor } from './_attestation.js';
 import { buildTrademarksBlock } from './_trademarks.js';
 import { buildAwardsBlock } from './_awards.js';
 import { findPromotedCompanyBySlug, repointStaleSlug } from './_demand.js';
-import { companyPageHeaders } from './_page_headers.js';
+import { companyPageHeaders, notFoundPageHeaders } from './_page_headers.js';
 // The canonical position classifier shared with the graph + officer-capping
 // service (backed by src/data/terms.json, swept by test/position-categories.test.mjs).
 // Pure module (no React/DOM/SPA deps — its purity is guarded by that node test),
@@ -2456,7 +2456,7 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es', opt
       // indexed page — never cache that, or a blip would pin a 404 for 10 min.
       return new Response(notFoundPage(slug, lang), {
         status: 404,
-        headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': isFallback ? 'public, s-maxage=600' : 'no-store' },
+        headers: notFoundPageHeaders({ isFallback, privateResponse: options.privateResponse }),
       });
     }
 
@@ -2465,7 +2465,7 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es', opt
     if (isFallback && nameToSlug(company.company_name) !== slug) {
       return new Response(notFoundPage(slug, lang), {
         status: 404,
-        headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, s-maxage=600' },
+        headers: notFoundPageHeaders({ isFallback: true, privateResponse: options.privateResponse }),
       });
     }
 

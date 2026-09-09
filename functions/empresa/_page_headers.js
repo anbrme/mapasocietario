@@ -30,3 +30,21 @@ export function companyPageHeaders({ noindex = false, privateResponse = false } 
     'cache-control': noindex ? NOINDEX_CACHE : PUBLIC_CACHE,
   };
 }
+
+/**
+ * Response headers for a not-found company page.
+ *
+ * A private response reaches here through a documented path: a badge preview
+ * whose derived slug no longer resolves. Its address carries a grant token, so
+ * it must never be edge-cached, even though the body is an empty shell.
+ */
+export function notFoundPageHeaders({ isFallback = false, privateResponse = false } = {}) {
+  if (privateResponse) return companyPageHeaders({ privateResponse: true });
+  return {
+    'content-type': 'text/html; charset=utf-8',
+    // Cache only fallback misses (garbage slugs). For a curated/IBEX slug a
+    // missing company is most likely a TRANSIENT backend failure on an indexed
+    // page - never cache that, or a blip would pin a 404 for 10 min.
+    'cache-control': isFallback ? 'public, s-maxage=600' : 'no-store',
+  };
+}

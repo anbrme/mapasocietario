@@ -31,7 +31,9 @@ export function previewBanner(lang = 'es') {
  * Every condition that must produce a 404, in one place so it can be tested.
  * Unknown, expired, revoked, wrong kind and not-publishable are deliberately
  * indistinguishable to the caller: a distinct response would confirm which of
- * them was true, and therefore that the record exists.
+ * them was true, and therefore that the record exists. A rendered page can
+ * also come back as handleCompany's own not-found; that path is header-safe
+ * via notFoundPageHeaders, but it does not pass through here.
  */
 export const PREVIEWABLE_STATUSES = ['live', 'outdated'];
 

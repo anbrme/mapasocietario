@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { companyPageHeaders } from './_page_headers.js';
+import { companyPageHeaders, notFoundPageHeaders } from './_page_headers.js';
 
 describe('companyPageHeaders', () => {
   it('lets an indexable page sit in the shared cache for an hour', () => {
@@ -29,6 +29,26 @@ describe('companyPageHeaders', () => {
   it('always sets the content type', () => {
     for (const opts of [{}, { noindex: true }, { privateResponse: true }]) {
       expect(companyPageHeaders(opts)['content-type']).toBe('text/html; charset=utf-8');
+    }
+  });
+});
+
+describe('notFoundPageHeaders', () => {
+  it('caches a fallback miss briefly, as before', () => {
+    expect(notFoundPageHeaders({ isFallback: true })['cache-control'])
+      .toBe('public, s-maxage=600');
+  });
+
+  it('never caches a miss on a curated slug: that is probably a backend blip', () => {
+    expect(notFoundPageHeaders({ isFallback: false })['cache-control']).toBe('no-store');
+  });
+
+  it('never caches a private miss, whatever isFallback says', () => {
+    for (const isFallback of [true, false]) {
+      const h = notFoundPageHeaders({ isFallback, privateResponse: true });
+      expect(h['cache-control']).toBe('private, no-store');
+      expect(h['x-robots-tag']).toBe('noindex, nofollow, noarchive');
+      expect(h['referrer-policy']).toBe('no-referrer');
     }
   });
 });
