@@ -55,7 +55,11 @@ for (const { file, count } of PAGE_VIEW_SURFACES) {
 
 test('both server-rendered pages use the shared GA snippet', () => {
   const source = readFileSync(join(ROOT, 'functions/empresa/_lib.js'), 'utf8');
-  const uses = source.match(/\$\{GA_SNIPPET\}/g) || [];
+  // The company page's interpolation is conditional on privateResponse (a
+  // badge preview must never call home to GA4), so it no longer matches a
+  // bare `${GA_SNIPPET}` — match any interpolation expression that still
+  // references the shared snippet, whichever surface it renders.
+  const uses = source.match(/\$\{[^}]*\bGA_SNIPPET\b[^}]*\}/g) || [];
   assert.equal(uses.length, 2, 'company page and province hub must share one snippet');
 });
 

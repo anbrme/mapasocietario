@@ -116,6 +116,14 @@ async function reconcileOne(env, attestation, report) {
 
   const statements = [...factUpdates];
 
+  // A disputed or under_review record never silently returns to live: only a
+  // consistent check may restore it, and only from under_review. Computed
+  // once, up front, so the continuity record below reflects the status that
+  // was ACTUALLY applied, never a decision that was deliberately suppressed.
+  const mayRestore = attestation.status === 'under_review' || attestation.status === 'live';
+  const applied = (decision.status && (decision.status !== 'live' || mayRestore))
+    ? decision.status : attestation.status;
+
   // The continuity record. Written on every check, including a no-op and a
   // failed upstream read - which the overwritten last_checked_at columns
   // cannot show. NOT written on expiry: the early return above fires first,
@@ -126,7 +134,7 @@ async function reconcileOne(env, attestation, report) {
       (attestation_id, subject_id, checked_at, source_failed, outcomes,
        status_before, status_after)
      VALUES (?,?,?,?,?,?,?)`)
-    .bind(...buildRunRow({ attestation, outcomes, sourceFailed, decision, checkedAt: now })));
+    .bind(...buildRunRow({ attestation, outcomes, sourceFailed, appliedStatus: applied, checkedAt: now })));
 
   // A successful check moves last_verified_at; a failed one must NOT, or the
   // page would claim a check that did not happen.
@@ -138,9 +146,6 @@ async function reconcileOne(env, attestation, report) {
       : [decision.consecutiveInconclusive, now, attestation.id])));
 
   if (decision.status && decision.status !== attestation.status) {
-    // A disputed or under_review record never silently returns to live: only a
-    // consistent check may restore it, and only from under_review.
-    const mayRestore = attestation.status === 'under_review' || attestation.status === 'live';
     if (decision.status !== 'live' || mayRestore) {
       statements.push(
         env.VERIFY_DB.prepare('UPDATE attestations SET status=?, status_reason=? WHERE id=?')

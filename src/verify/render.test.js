@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { statusLine, renderAttestationHtml, FORBIDDEN_PHRASES } from './render.js';
 import { PUBLIC_REVIEWER } from './projection.js';
+import { previewBanner } from './preview.js';
 
 const base = {
   id: 'att_x', status: 'live', method: 'email-confirmed', representation_basis: 'sole_admin',
@@ -50,6 +51,16 @@ describe('renderAttestationHtml', () => {
         const html = renderAttestationHtml({ ...base, status }, 'ACME SL', lang).toLowerCase();
         for (const phrase of FORBIDDEN_PHRASES) expect(html).not.toContain(phrase);
       }
+    }
+  });
+
+  // The preview banner is reader-facing chrome too (src/verify/preview.js) and
+  // is held to the same honesty bar, even though it is injected outside
+  // renderAttestationHtml itself.
+  it('the preview banner also contains none of the forbidden phrasings', () => {
+    for (const lang of ['en', 'es']) {
+      const html = previewBanner(lang).toLowerCase();
+      for (const phrase of FORBIDDEN_PHRASES) expect(html).not.toContain(phrase);
     }
   });
 

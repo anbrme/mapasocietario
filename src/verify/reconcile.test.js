@@ -154,7 +154,7 @@ describe('buildRunRow', () => {
       attestation,
       outcomes: { address: 'consistent', officers: 'consistent' },
       sourceFailed: false,
-      decision: { status: 'live' },
+      appliedStatus: 'live',
       checkedAt: '2026-09-10T04:15:00Z',
     });
     expect(row).toEqual([
@@ -166,7 +166,7 @@ describe('buildRunRow', () => {
   it('records an empty outcome map when the upstream read failed', () => {
     const row = buildRunRow({
       attestation, outcomes: {}, sourceFailed: true,
-      decision: { status: null }, checkedAt: '2026-09-10T04:15:00Z',
+      appliedStatus: 'live', checkedAt: '2026-09-10T04:15:00Z',
     });
     expect(row[3]).toBe(1);
     expect(row[4]).toBe('{}');
@@ -175,7 +175,7 @@ describe('buildRunRow', () => {
   it('carries the status forward when the decision changes nothing', () => {
     const row = buildRunRow({
       attestation, outcomes: { address: 'consistent' }, sourceFailed: false,
-      decision: { status: null }, checkedAt: '2026-09-10T04:15:00Z',
+      appliedStatus: 'live', checkedAt: '2026-09-10T04:15:00Z',
     });
     expect(row[5]).toBe('live');
     expect(row[6]).toBe('live');
@@ -184,11 +184,26 @@ describe('buildRunRow', () => {
   it('records a transition when the decision changes the status', () => {
     const row = buildRunRow({
       attestation, outcomes: { address: 'superseded_by_later_event' },
-      sourceFailed: false, decision: { status: 'outdated' },
+      sourceFailed: false, appliedStatus: 'outdated',
       checkedAt: '2026-09-10T04:15:00Z',
     });
     expect(row[5]).toBe('live');
     expect(row[6]).toBe('outdated');
+  });
+
+  it('records no transition when a restore-to-live decision was suppressed', () => {
+    // A disputed attestation whose facts are all vies/none: checkFact returns
+    // null for those, outcomes is {}, and nextStatus falls through to 'live'
+    // every run. The caller's mayRestore guard suppresses applying that
+    // decision, and buildRunRow must reflect what was ACTUALLY applied
+    // (nothing), not the decision that was discarded.
+    const disputedAttestation = { id: 'att_2', subject_id: 's2', status: 'disputed' };
+    const row = buildRunRow({
+      attestation: disputedAttestation, outcomes: {}, sourceFailed: false,
+      appliedStatus: 'disputed', checkedAt: '2026-09-10T04:15:00Z',
+    });
+    expect(row[5]).toBe('disputed');
+    expect(row[6]).toBe('disputed');
   });
 });
 

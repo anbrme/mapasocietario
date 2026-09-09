@@ -47,8 +47,12 @@ export async function onRequestPost({ request, env }) {
   const note = typeof body.note === 'string' ? body.note.trim() : '';
 
   if (!attestationId || !decision) return jsonResponse({ ok: false, error: 'invalid_request' }, 400);
-  // The reviewer is named publicly on the attestation. An anonymous approval
-  // would remove the accountability the whole design rests on.
+  // The reviewer's name is recorded internally — in attestations.reviewer and
+  // in audit_events.detail — and redacted to the operating entity in the
+  // public projection (see src/verify/projection.js). It is never published,
+  // but an anonymous approval would still destroy the accountability this
+  // whole design rests on: the individual who approved a statement must always
+  // be reconstructable internally, even though the public never sees the name.
   if (!reviewer) return jsonResponse({ ok: false, error: 'reviewer_required' }, 400);
   if (decision === 'reject' && !note) {
     return jsonResponse({ ok: false, error: 'rejection_reason_required' }, 400);

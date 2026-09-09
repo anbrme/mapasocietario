@@ -1547,7 +1547,7 @@ const graphHref = (name, groupKey) => {
   return `/app/?${params.toString().replace(/&/g, '&amp;')}`;
 };
 
-export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false, attestation = null) {
+export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false, attestation = null, privateResponse = false) {
   // For the hours between a filing reaching the event log and the aggregation
   // absorbing it, "Administradores y cargos vigentes" — and the JSON-LD employee
   // list Google reads — described the last AGGREGATION rather than the last
@@ -2087,7 +2087,7 @@ ${hreflangTags(canonicalSlug)}
 <meta name="twitter:description" content="${esc(desc)}">
 ${jsonLd(company, canonicalSlug, lang, t, seed, isIncorporation, { dissolutionDate })}
 ${STYLE}
-${GA_SNIPPET}
+${privateResponse ? '' : GA_SNIPPET}
 </head>
 <body>
 <div class="wrap">
@@ -2512,7 +2512,7 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es', opt
     // relaxed here. The public gate keeps exactly one meaning.
     const attestation = options.attestationOverride
       || await liveAttestationFor(env, graphGroupKey(company, seed));
-    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex, attestation);
+    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex, attestation, Boolean(options.privateResponse));
     return new Response(html, {
       status: 200,
       headers: companyPageHeaders({ noindex, privateResponse: options.privateResponse }),
@@ -2520,7 +2520,7 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es', opt
   } catch {
     return new Response(notFoundPage(slug, lang), {
       status: 503,
-      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+      headers: notFoundPageHeaders({ privateResponse: options.privateResponse }),
     });
   } finally {
     clearTimeout(timeout);

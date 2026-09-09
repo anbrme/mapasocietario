@@ -143,7 +143,7 @@ export const isExpired = (expiresAt, nowMs = Date.now()) => Date.parse(expiresAt
  * a failed upstream read records source_failed=1 with an EMPTY outcome map, so
  * "we could not check" can never be read as "we checked and all was well".
  */
-export function buildRunRow({ attestation, outcomes, sourceFailed, decision, checkedAt }) {
+export function buildRunRow({ attestation, outcomes, sourceFailed, appliedStatus, checkedAt }) {
   return [
     attestation.id,
     attestation.subject_id,
@@ -151,7 +151,7 @@ export function buildRunRow({ attestation, outcomes, sourceFailed, decision, che
     sourceFailed ? 1 : 0,
     JSON.stringify(sourceFailed ? {} : (outcomes || {})),
     attestation.status,
-    decision.status || attestation.status,
+    appliedStatus,
   ];
 }
 

@@ -12,11 +12,11 @@ import { grantState } from './grant.js';
 const COPY = {
   es: {
     title: 'Vista previa',
-    body: 'Así se verá la insignia en su página pública. Esta insignia todavía no es pública: solo usted, con este enlace, la está viendo.',
+    body: 'Así se vería la insignia en su página pública. Esta insignia todavía no es pública: solo usted, con este enlace, la está viendo.',
   },
   en: {
     title: 'Preview',
-    body: 'This is how the badge will look on your public page. The badge is not public yet: only you, with this link, can see it.',
+    body: 'This is how the badge would look on your public page. The badge is not public yet: only you, with this link, can see it.',
   },
 };
 
