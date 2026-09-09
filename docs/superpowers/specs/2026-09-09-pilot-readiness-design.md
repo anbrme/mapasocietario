@@ -37,9 +37,12 @@ Mapa Societario is a brand, not a legal person. "Reviewed by Mapa Societario" re
 | `src/verify/projection.test.js` | "publishes the reviewer, deliberately" **inverts**: the projection must never contain the individual's name. This flip is the enforcement |
 | `src/verify/render.js:139` | Consumes `view.reviewer` from the projection, so no logic change — but the method-line test asserts the organisational string |
 | `src/verify/render.test.js` | Same inversion. **Keep the XSS-escaping case** even though the value is now a constant: defence in depth costs nothing and the field could become dynamic again |
-| `functions/empresa/_confirmation.js:73` | Reads `attestation.reviewer` **directly**, not through the projection. Must use the same constant, or the badge would leak the name the permalink no longer shows |
+| `functions/empresa/_confirmation.js` | **No change.** `liveAttestationFor()` returns `publicProjection(...)` (`functions/empresa/_attestation.js:64`), so the badge already receives the projected value. It keeps its shorter template — on mapasocietario.es the "operator of Mapa Societario" clause is redundant; the attestation permalink carries the fuller form because a counterparty may read it standalone |
+| `functions/empresa/_confirmation` (test) | New regression guard: the badge renders the entity and contains no individual's name. The projection is what protects this surface, so the guard belongs where the surface is |
 
-The last row is the one that would have been missed. A projection-only change leaves the badge publishing the name.
+`src/components/CurrencyConfirmationCard.jsx` is likewise covered: it consumes `/api/verify/badge`, which also goes through `liveAttestationFor`.
+
+**The single point of change is the projection**, which is what an allow-list projection is for. Every public reader — permalink, SEO badge, in-app card, badge API — is downstream of it.
 
 ### 2.4 What is lost, stated plainly
 
