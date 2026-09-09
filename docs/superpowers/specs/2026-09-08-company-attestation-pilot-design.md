@@ -3,6 +3,7 @@
 **Date:** 2026-09-08
 **Status:** Design approved; this is the build target
 **Supersedes (in scope):** [2026-06-28 Company Currency Confirmation](./2026-06-28-company-currency-confirmation-design.md) — that document's thesis stands unchanged; its Phase 1 hand-authored implementation is replaced by the record model below.
+**Amended by:** [2026-09-09 Verification Request Front Door](./2026-09-09-verification-request-front-door-design.md) — reverses the "self-serve claim flow" line of §12 below, on the grounds that an inbound *request* grants no authority. Nothing else in this document is changed.
 **Related:** [[project_company_context_layer]], [[project_anonymous_monitoring_signup]] (the token flow this mirrors), [[project_api_rate_limit_shared_bucket]] (why the cron worker must send `X-Internal-Key`), [[user_analyst_not_salesman]]
 
 ---
