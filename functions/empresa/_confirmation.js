@@ -57,7 +57,7 @@ export const CONFIRMATION_I18N = {
     },
     gap: (d, years) => `Última publicación en el BORME: ${d} — ${years} ${years === 1 ? 'año' : 'años'} antes de la confirmación.`,
     reviewed: (who, when) => `Autoridad revisada por ${who} el ${when}.`,
-    disclaimer: 'Mapa Societario deja constancia de quién hizo esta declaración y de que su autoridad fue revisada. No verifica su identidad ni certifica que la declaración sea cierta.',
+    disclaimer: 'Mapa Societario deja constancia de quién hizo esta declaración y de que su autoridad fue revisada. No certifica que la declaración sea cierta.',
   },
   en: {
     title: 'Currency confirmation',
@@ -72,7 +72,7 @@ export const CONFIRMATION_I18N = {
     },
     gap: (d, years) => `Last BORME publication: ${d} — ${years} ${years === 1 ? 'year' : 'years'} before the confirmation.`,
     reviewed: (who, when) => `Authority reviewed by ${who} on ${when}.`,
-    disclaimer: 'Mapa Societario records who made this statement and that their authority was reviewed. It does not verify their identity, and it does not certify that the statement is true.',
+    disclaimer: 'Mapa Societario records who made this statement and that their authority was reviewed. It does not certify that the statement is true.',
   },
 };
 

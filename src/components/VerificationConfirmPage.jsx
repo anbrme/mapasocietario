@@ -51,7 +51,7 @@ const COPY = {
     already: 'Esta invitación ya se utilizó.',
     privacyTitle: 'Qué conservamos',
     privacy: 'Conservamos la declaración, la evidencia registral del momento y su nombre y cargo (ya públicos en el BORME) mientras la declaración sea consultable. Su correo y la nota de identificación se guardan por separado y puede solicitar su supresión escribiendo a mapasocietario@ncdata.eu.',
-    notice: 'Mapa Societario deja constancia de quién hace esta declaración y revisa su autoridad. No verifica su identidad ni certifica que la declaración sea cierta.',
+    notice: 'Mapa Societario deja constancia de quién hace esta declaración y revisa su autoridad. No certifica que la declaración sea cierta.',
   },
   en: {
     title: 'Confirm registry data | Mapa Societario',

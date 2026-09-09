@@ -60,7 +60,7 @@ const T = {
     disputed: () => 'A registry record published before this statement was accepted appears to contradict it. This is under review.',
     expired: (d) => `This statement was accepted on ${d} and has passed its stated validity period.`,
     method: (who, when) => `Confirmed from an address at the company's domain; the representative holds the registry-recorded position stated; their authority to make this statement was reviewed by ${who}, operator of Mapa Societario, on ${when}.`,
-    disclaimer: 'Mapa Societario records who made this statement and that their authority was reviewed. It does not verify their identity, and it does not certify that the statement is true.',
+    disclaimer: 'Mapa Societario records who made this statement and that their authority was reviewed. It does not certify that the statement is true.',
     // A single quiet sentence, addressed to the most qualified reader there
     // is: someone who just read a verified statement about a DIFFERENT
     // company and is now wondering about their own.
@@ -94,7 +94,7 @@ const T = {
     disputed: () => 'Un asiento registral publicado antes de aceptarse esta declaración parece contradecirla. En revisión.',
     expired: (d) => `Esta declaración se aceptó el ${d} y ha superado su periodo de validez declarado.`,
     method: (who, when) => `Confirmada desde una dirección del dominio de la empresa; el representante ocupa el cargo registral indicado; su autoridad para hacer esta declaración fue revisada por ${who}, operador de Mapa Societario, el ${when}.`,
-    disclaimer: 'Mapa Societario deja constancia de quién hizo esta declaración y de que su autoridad fue revisada. No verifica su identidad ni certifica que la declaración sea cierta.',
+    disclaimer: 'Mapa Societario deja constancia de quién hizo esta declaración y de que su autoridad fue revisada. No certifica que la declaración sea cierta.',
     // Espejo en español de la línea anterior: una sola frase discreta.
     cta: '¿Quiere una declaración así para su propia empresa? Empiece en <a href="/verificacion">/verificacion</a>.',
     headers: ['Hecho', 'Declarado', 'Registro al aceptar', 'Comprobación'],

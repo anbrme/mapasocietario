@@ -53,7 +53,7 @@ test('the panel names the representative, the reviewer and the disclaimer', () =
   assert.match(html, /NURNBERG ALESSANDRO/);
   assert.match(html, /ADM\. UNICO/);
   assert.match(html, /Autoridad revisada por Alessandro Nürnberg/);
-  assert.match(html, /No verifica su identidad ni certifica que la declaración sea cierta/);
+  assert.match(html, /No certifica que la declaración sea cierta/);
 });
 
 test('the panel never claims identity, truth, or a live check', () => {

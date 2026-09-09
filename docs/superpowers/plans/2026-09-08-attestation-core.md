@@ -1848,7 +1848,7 @@ export function grantState(row, nowMs = Date.now()) {
   - `under_review` — *"A verification check could not be completed. This is a process state and implies nothing about the company. Last successfully checked: {last_verified_at}."*
   - `disputed` — *"A registry record published before this statement was accepted appears to contradict it. Under review."*
 - Method line: *"Confirmed from an address at the company's domain; the representative holds the registry-recorded position stated; their authority to make this statement was reviewed by {reviewer} on {reviewed_at}."*
-- Standing disclaimer: *"Mapa Societario records who made this statement and that their authority was reviewed. It does not verify their identity, and it does not certify that the statement is true."*
+- Standing disclaimer: *"Mapa Societario records who made this statement and that their authority was reviewed. It does not certify that the statement is true."*
 
 Never *"was accurate when made"*, never *"as of right now"*, never *"identity verified"*.
 
