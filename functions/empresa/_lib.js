@@ -391,7 +391,10 @@ const T = {
     monitorBadEmail: 'Introduce una dirección de correo válida.',
     monitorFail: 'No hemos podido registrar el aviso. Vuelve a intentarlo en un momento.',
     footer: (d) =>
-      `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial. <a href="/verificacion">¿Es esta su empresa? Verifique sus datos.</a>`,
+      `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial.`,
+    // Held apart from the provenance sentence above so a page carrying a live
+    // confirmation can drop the invitation without losing the source note.
+    footerVerifyInvite: '<a href="/verificacion">¿Es esta su empresa? Verifique sus datos.</a>',
     renamedTo: (href, name) =>
       `Esta sociedad pasó a denominarse <a href="${href}">${name}</a>. Consulta la ficha actualizada.`,
     priorNames: (names) => `Denominaciones anteriores: ${names}.`,
@@ -669,7 +672,8 @@ const T = {
       `Explore the ownership network, shared directors and subsidiaries of ${name}.`,
     ctaBtn: 'Open interactive map →',
     footer: (d) =>
-      `Data sourced from the Spanish Official Commercial Registry Gazette (BORME). Registry last updated: ${d}. Mapa Societario is not an official registry. <a href="/verificacion?lang=en">Is this your company? Verify its data.</a>`,
+      `Data sourced from the Spanish Official Commercial Registry Gazette (BORME). Registry last updated: ${d}. Mapa Societario is not an official registry.`,
+    footerVerifyInvite: '<a href="/verificacion?lang=en">Is this your company? Verify its data.</a>',
     renamedTo: (href, name) =>
       `This company was renamed to <a href="${href}">${name}</a>. See the updated profile.`,
     priorNames: (names) => `Former names: ${names}.`,
@@ -1481,13 +1485,12 @@ const STYLE = `<style>
   .cc{border-radius:14px;padding:16px 18px;margin:0 0 18px;border:1px solid var(--line);background:#fff}
   .cc-head{display:flex;align-items:center;gap:8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
   .cc-dot{width:9px;height:9px;border-radius:50%}
-  .cc-line{margin:8px 0 0;font-weight:600}
-  .cc-asof{margin:12px 0 6px;font-size:13px;color:var(--mut)}
-  .cc-facts{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
-  .cc-chip{display:inline-block;font-size:11px;font-weight:600;border-radius:6px;padding:1px 7px;margin-left:6px}
-  .cc-cur{background:#dcfce7;color:#166534}
-  .cc-none{background:#f1f5f9;color:#475569}
-  .cc-prov{margin:12px 0 0;font-size:12px;color:var(--mut)}
+  .cc-claim{margin:8px 0 0;font-weight:600;font-size:15.5px;line-height:1.45}
+  .cc-gap{margin:6px 0 0;font-size:13.5px;color:var(--ink)}
+  .cc-rep{margin:8px 0 0;font-size:14px}
+  .cc-detail{margin:12px 0 0;font-size:12px;color:var(--mut)}
+  .cc-detail p{margin:0 0 4px}
+  .cc-detail p:last-child{margin:0}
   .cc-fresh{border-color:#bbf7d0;background:#f0fdf4}
   .cc-fresh .cc-dot{background:#16a34a}
   .cc-aging{border-color:#fde68a;background:#fffbeb}
@@ -2099,16 +2102,32 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   const altPath = lang === 'en' ? companyPath('es', canonicalSlug) : companyPath('en', canonicalSlug);
   const altLabel = lang === 'en' ? 'Español' : 'English';
 
+  // Rendered once and read twice: the offer below is gated on whether this is
+  // empty, so calling it in both places would let the two disagree.
+  // company.last_seen lets the badge state the DISTANCE between the last
+  // registry filing and the confirmation, which is the one thing neither the
+  // registry data nor the attestation says on its own.
+  const confirmationBlock = renderConfirmationBlock(attestation, lang, { registryLastSeen: company.last_seen });
+
   // A quieter, separate offer from the hero CTAs above it: those two speak to
   // someone RESEARCHING this company, this one speaks to the company itself.
   // Suppressed for a dissolved company (nothing current left to attest to) and
   // for an unresolved fallback page (no confirmed registry identity behind
   // the name shown, so there is nothing to invite a declaration about).
+  //
+  // Also suppressed when a LIVE confirmation is already on the page: the panel
+  // would be asking, directly above the block that answers it, for something
+  // the company has already given. The gate is the status, not the age of the
+  // badge — a superseded, expired, disputed or under-review confirmation keeps
+  // the panel, because during the pilot the front door is the only route back
+  // to a current statement and hiding it would strand a company on a badge it
+  // can no longer refresh.
+  const hasCurrentConfirmation = Boolean(confirmationBlock) && attestation && attestation.status === 'live';
   const verifyParams = new URLSearchParams();
   if (lang === 'en') verifyParams.set('lang', 'en');
   verifyParams.set('company', name);
   const verifyCtaHref = `/verificacion?${verifyParams.toString().replace(/&/g, '&amp;')}`;
-  const verifyOfferBlock = (isDissolved || isFallback) ? '' : `
+  const verifyOfferBlock = (isDissolved || isFallback || hasCurrentConfirmation) ? '' : `
   <div class="verify-offer">
     <details>
       <summary>${esc(t.verifyCtaBtn)}<span class="verify-offer-sub">${esc(t.verifyCtaSub)}</span></summary>
@@ -2159,7 +2178,7 @@ ${privateResponse ? '' : GA_SNIPPET}
   ${renameNotice}
   ${cotizadaBlock}
 
-  ${renderConfirmationBlock(attestation, lang)}
+  ${confirmationBlock}
 
   ${relationshipOverviewBlock}
 
@@ -2238,7 +2257,7 @@ ${privateResponse ? '' : GA_SNIPPET}
   ${eventsBlock(events, t, lang, company.total_publications)}
   </div>
 
-  <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}</footer>
+  <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}${hasCurrentConfirmation ? '' : ` ${t.footerVerifyInvite}`}</footer>
 </div>
 ${graphOverlay}
 <nav class="mobile-dock" aria-label="${esc(t.relationshipOverview)}">
@@ -2700,7 +2719,7 @@ ${GA_SNIPPET}
     <p>${esc(t.hubRelatedLead)}</p>
     <p><a href="https://ibex35dashboard.ncdata.eu" hreflang="en" lang="en" rel="noopener">${esc(t.hubRelatedLink)}</a></p>
   </section>
-  <footer>${t.footer(esc(fmtDate(latestBormeDateIso(), lang)))}</footer>
+  <footer>${t.footer(esc(fmtDate(latestBormeDateIso(), lang)))} ${t.footerVerifyInvite}</footer>
 </div>
 <div class="nav-overlay" id="navOverlay" role="status" aria-live="polite">
   <div class="spin"></div>

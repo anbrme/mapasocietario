@@ -25,6 +25,30 @@ describe('statusLine', () => {
     expect(line).not.toMatch(/accurate/i);
   });
 
+  /**
+   * `status_reason` is free text: the reconciler writes it, and a reviewer can
+   * too. It arrived untrimmed and without a full stop, so the outdated line
+   * rendered as "...checked at that time. nuevo cargo inscrito The statement
+   * should no longer..." — and a null reason left a double space mid-sentence.
+   * The line is assembled from sentences now, so neither can happen.
+   */
+  it('reads as sentences whatever shape the reason arrives in', () => {
+    for (const lang of ['en', 'es']) {
+      for (const reason of ['nuevo cargo inscrito', '  nuevo cargo inscrito  ', 'Ya inscrito.', '', null]) {
+        const line = statusLine({ ...base, status: 'outdated', status_reason: reason }, lang);
+        expect(line).not.toMatch(/ {2}/);
+        expect(line).not.toMatch(/[a-záéíóúñ] [A-ZÁÉÍÓÚÑ]/);
+      }
+    }
+  });
+
+  it('keeps the reason in the line, ended as a sentence', () => {
+    expect(statusLine({ ...base, status: 'outdated', status_reason: 'nuevo cargo inscrito' }, 'es'))
+      .toContain('nuevo cargo inscrito.');
+    expect(statusLine({ ...base, status: 'outdated', status_reason: 'Ya inscrito.' }, 'es'))
+      .not.toContain('inscrito..');
+  });
+
   it('says under_review implies nothing about the company', () => {
     expect(statusLine({ ...base, status: 'under_review' }, 'en'))
       .toMatch(/implies nothing about the company/i);

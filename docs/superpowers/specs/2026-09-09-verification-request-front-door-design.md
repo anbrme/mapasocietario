@@ -57,6 +57,7 @@ Those three fields are, by §6 of the pilot design, things the system cannot inf
 | Acknowledgement email to the requester | None | It would be a send-to-arbitrary-address surface for no gain; the page confirms on screen |
 | Notification to the operator | Yes, reusing the Cloudflare Email Sending call in `functions/feedback.js` | Otherwise the console must be polled |
 | Conversion to an invitation | Manual, through the existing invite flow | §4. The request prefills a search; it never prefills authority |
+| The `/empresa` panel on an already-confirmed page | Suppressed while the attestation is `live`, kept for every other status | The panel and the footer invitation were asking, on the same page and directly above the block that answers them, for something the company had already given. The gate is the **status, not the age** of the badge: a superseded, expired, disputed or under-review confirmation keeps both doors open, because during the pilot the front door is the only route back to a current statement, and hiding it would strand a company on a badge it can no longer refresh. This is the cheapest possible form of a reconfirmation loop — no email, just do not close the door when the badge goes stale |
 
 ## 6. The page — `GET /verificacion`
 

@@ -10,7 +10,10 @@
  *   - it excludes administradores mancomunados BEFORE the form, not after;
  *   - it never calls a requester's company "verificada";
  *   - it promises no date for the stronger methods, because there isn't one;
- *   - the corporate-domain rule always ships with its way through.
+ *   - the corporate-domain rule always ships with its way through;
+ *   - the review is attributed to the operating ENTITY, never to a named
+ *     individual, because src/verify/projection.js redacts the reviewer to
+ *     exactly that on every public surface.
  *
  * The rendering order is the page's, not this object's: the Function draws
  * `notWhat` before `what` deliberately. A reader who has just been told by a
@@ -21,6 +24,7 @@
  * One persuasive line is allowed on this page, `once`, and it appears once.
  * Deliberately free of Node imports so vitest and the Function both read it.
  */
+import { PUBLIC_REVIEWER } from '../verify/projection.js';
 
 // Public by design - a Turnstile sitekey is meant to be in the page. Shared
 // with the existing widgets; the matching secret is a Pages project secret.
@@ -71,7 +75,7 @@ export const COPY = {
     kicker: 'Piloto · plazas limitadas',
     h1: 'Verificación de datos registrales',
     lead:
-      'Si un banco, un cliente o un socio le ha pedido que verifique los datos registrales de su empresa, esta es la página. Un representante con cargo vigente en el registro hace una declaración fechada y atribuible sobre los datos de su propia empresa, nosotros la contrastamos con el BORME, y la revisa una persona con nombre y apellidos.',
+      `Si un banco, un cliente o un socio le ha pedido que verifique los datos registrales de su empresa, esta es la página. Un representante con cargo vigente en el registro hace una declaración fechada y atribuible sobre los datos de su propia empresa, nosotros la contrastamos con el BORME, y la revisa ${PUBLIC_REVIEWER}, la sociedad que opera Mapa Societario.`,
 
     // The one persuasive line on the page, and it appears exactly once.
     once: 'Hágalo una vez, no una vez por cada cliente.',
@@ -96,7 +100,7 @@ export const COPY = {
       points: [
         'Una declaración fechada y atribuible: un representante de su empresa afirma, en una fecha concreta, qué datos son correctos y cuáles no.',
         'Contrastada con el BORME: comparamos lo que usted declara con lo que consta publicado y le enseñamos las diferencias antes de que acepte nada.',
-        'Revisada por una persona, cuyo nombre se publica junto a la declaración. Si no la aceptamos, se lo decimos.',
+        `Revisada a mano, y la revisión se publica atribuida a ${PUBLIC_REVIEWER}, la sociedad que opera Mapa Societario y que responde de ella. Si no la aceptamos, se lo decimos.`,
         'Portátil: una misma declaración, con su enlace público, sirve ante cualquiera que se la pida, sin rellenar otra vez el mismo cuestionario.',
       ],
     },
@@ -127,7 +131,7 @@ export const COPY = {
     pilot: {
       heading: 'En qué se apoya hoy, y en qué no',
       paragraphs: [
-        'Esto es un piloto. Hoy la verificación se apoya en tres cosas: un correo confirmado en el dominio de la empresa, la coincidencia con un cargo vigente en el registro, y una revisión manual firmada por una persona con nombre y apellidos. No comprobamos su identidad y no certificamos que lo que usted declara sea cierto.',
+        `Esto es un piloto. Hoy la verificación se apoya en tres cosas: un correo confirmado en el dominio de la empresa, la coincidencia con un cargo vigente en el registro, y una revisión manual de la que responde ${PUBLIC_REVIEWER}, operador de Mapa Societario. No comprobamos su identidad y no certificamos que lo que usted declara sea cierto.`,
         'Están diseñados, y todavía no implementados, la firma con certificado electrónico cualificado del representante y el sellado de tiempo cualificado del registro. Cada declaración guarda con qué método se hizo, así que cuando lleguen los métodos más fuertes las declaraciones de hoy no quedan invalidadas: quedan distinguidas.',
       ],
     },
@@ -226,7 +230,7 @@ export const COPY = {
     kicker: 'Pilot · limited places',
     h1: 'Registry data verification',
     lead:
-      'If a bank, a client or a partner has asked you to verify your company’s registry data, this is the page. A representative holding a current registry position makes a dated, attributable statement about their own company’s data, we check it against BORME, and a named person reviews it.',
+      `If a bank, a client or a partner has asked you to verify your company’s registry data, this is the page. A representative holding a current registry position makes a dated, attributable statement about their own company’s data, we check it against BORME, and ${PUBLIC_REVIEWER}, the company that operates Mapa Societario, reviews it.`,
 
     once: 'Do it once, not once per counterparty.',
 
@@ -250,7 +254,7 @@ export const COPY = {
       points: [
         'A dated, attributable statement: a representative of your company states, on a specific date, which data are right and which are not.',
         'Checked against BORME: we compare what you declare with what is published, and show you the differences before you accept anything.',
-        'Reviewed by a person, whose name is published alongside the statement. If we do not accept it, we tell you so.',
+        `Reviewed by hand, and the review is published attributed to ${PUBLIC_REVIEWER}, the company that operates Mapa Societario and answers for it. If we do not accept it, we tell you so.`,
         'Portable: one statement, with its public link, answers everyone who asks, instead of the same questionnaire filled in again and again.',
       ],
     },
@@ -279,7 +283,7 @@ export const COPY = {
     pilot: {
       heading: 'What it rests on today, and what it does not',
       paragraphs: [
-        'This is a pilot. Today the verification rests on three things: an email address confirmed on the company’s own domain, a match to a current position in the register, and a manual review signed by a named person. We do not verify your identity, and we do not certify that what you declare is true.',
+        `This is a pilot. Today the verification rests on three things: an email address confirmed on the company’s own domain, a match to a current position in the register, and a manual review that ${PUBLIC_REVIEWER}, the operator of Mapa Societario, answers for. We do not verify your identity, and we do not certify that what you declare is true.`,
         'Designed, and not yet implemented, are signature with the representative’s qualified electronic certificate and qualified timestamping of the record. Every statement records which method was used, so when the stronger methods arrive today’s statements are not invalidated: they are distinguished.',
       ],
     },

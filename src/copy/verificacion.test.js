@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { COPY, TURNSTILE_SITEKEY, CONDITIONS } from './verificacion.js';
+import { PUBLIC_REVIEWER } from '../verify/projection.js';
 
 const langs = ['es', 'en'];
 const flat = (lang) => JSON.stringify(COPY[lang]);
@@ -42,6 +43,23 @@ describe('the verification request page copy', () => {
 
   it('carries the corporate-domain rule and a way through it', () => {
     for (const l of langs) expect(flat(l)).toContain('mapasocietario@ncdata.eu');
+  });
+
+  /**
+   * The front door must promise exactly what the attestation surfaces deliver.
+   * src/verify/projection.js redacts the individual reviewer to the operating
+   * entity on EVERY public reader, so a page that still promises "una revisión
+   * firmada por una persona con nombre y apellidos" advertises a name the badge
+   * no longer carries. Pinned against the projection constant so the two cannot
+   * drift apart again.
+   */
+  it('attributes the review to the operating entity, never to a named individual', () => {
+    for (const l of langs) {
+      expect(flat(l)).toContain(PUBLIC_REVIEWER);
+      expect(flat(l)).not.toMatch(/nombre y apellidos/i);
+      expect(flat(l)).not.toMatch(/named person/i);
+      expect(flat(l)).not.toMatch(/whose name is published/i);
+    }
   });
 
   it('uses the shared public sitekey', () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Chip, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import { confirmationViewModel } from '../../functions/empresa/_confirmation.js';
@@ -33,6 +33,12 @@ const DOT_VARIANT = {
  * the dark canvas. All logic is in confirmationViewModel (shared with the HTML
  * renderer); this component only maps the view model to MUI. Renders nothing
  * when there is no valid confirmation for the company.
+ *
+ * It had drifted off that view model: it read `vm.verifiedVia`, `vm.asOf` and
+ * `vm.facts`, none of which confirmationViewModel returns, so those branches
+ * were dead and the card silently omitted the representative the SEO panel
+ * shows. Reading only keys the view model actually returns is what keeps the
+ * "mirrors the SEO panel" claim above true.
  */
 export default function CurrencyConfirmationCard({ rec, lang = 'es' }) {
   const vm = confirmationViewModel(rec, lang);
@@ -72,35 +78,26 @@ export default function CurrencyConfirmationCard({ rec, lang = 'es' }) {
       </Box>
 
       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {vm.statusLine}
+        {vm.claim}
       </Typography>
 
-      {vm.verifiedVia && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          {vm.verifiedVia}
+      {vm.gap && (
+        <Typography variant="body2" sx={{ mt: 0.5 }}>
+          {vm.gap}
         </Typography>
       )}
 
-      {vm.asOf && (
-        <>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, mb: 0.5 }}>
-            {vm.asOf}
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {vm.facts.map((f, i) => (
-              <Chip
-                key={i}
-                size="small"
-                label={`${f.label} · ${f.chipLabel}`}
-                color={f.status === 'none' ? 'default' : 'success'}
-                variant={f.status === 'none' ? 'outlined' : 'filled'}
-              />
-            ))}
-          </Box>
-        </>
-      )}
+      <Typography variant="body2" sx={{ mt: 1 }}>
+        <Box component="strong">{vm.repLabel}:</Box> {vm.representative}
+      </Typography>
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+      {vm.detail.map((line, i) => (
+        <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block', mt: i === 0 ? 1 : 0.5 }}>
+          {line}
+        </Typography>
+      ))}
+
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
         {vm.disclaimer}
       </Typography>
     </Box>

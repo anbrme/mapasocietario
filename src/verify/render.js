@@ -31,12 +31,31 @@ const esc = (s) =>
 
 const day = (iso) => (typeof iso === 'string' ? iso.slice(0, 10) : '');
 
+/**
+ * `status_reason` is free text — the reconciler writes it, and so can a
+ * reviewer — so it arrives untrimmed, empty, or without a full stop. The status
+ * line is built by joining sentences through here rather than by interpolating
+ * the raw value between two fixed ones, which produced "…at that time. nuevo
+ * cargo inscrito The statement should…" and, for a null reason, a double space.
+ */
+const sentence = (s) => {
+  const text = String(s == null ? '' : s).trim();
+  if (!text) return '';
+  return /[.!?…]$/.test(text) ? text : `${text}.`;
+};
+
+const sentences = (parts) => parts.map(sentence).filter(Boolean).join(' ');
+
 const T = {
   en: {
     checked: (d) => (d ? `Last successfully checked: ${d}.`
                        : 'This statement has not been checked since it was published.'),
     live: (d) => `This statement was accepted on ${d} and was consistent with the registry evidence checked at that time.`,
-    outdated: (d, why) => `This statement was accepted on ${d} and was consistent with the registry evidence checked at that time. ${why} The statement should no longer be treated as current.`,
+    outdated: (d, why) => sentences([
+      `This statement was accepted on ${d} and was consistent with the registry evidence checked at that time.`,
+      why,
+      'The statement should no longer be treated as current.',
+    ]),
     under_review: () => 'A verification check could not be completed. This is a process state and implies nothing about the company.',
     disputed: () => 'A registry record published before this statement was accepted appears to contradict it. This is under review.',
     expired: (d) => `This statement was accepted on ${d} and has passed its stated validity period.`,
@@ -66,7 +85,11 @@ const T = {
     checked: (d) => (d ? `Última comprobación con éxito: ${d}.`
                        : 'Esta declaración no se ha comprobado desde su publicación.'),
     live: (d) => `Esta declaración se aceptó el ${d} y era coherente con la evidencia registral comprobada en ese momento.`,
-    outdated: (d, why) => `Esta declaración se aceptó el ${d} y era coherente con la evidencia registral comprobada en ese momento. ${why} La declaración ya no debe considerarse vigente.`,
+    outdated: (d, why) => sentences([
+      `Esta declaración se aceptó el ${d} y era coherente con la evidencia registral comprobada en ese momento.`,
+      why,
+      'La declaración ya no debe considerarse vigente.',
+    ]),
     under_review: () => 'No se ha podido completar una comprobación. Es un estado de proceso y no implica nada sobre la empresa.',
     disputed: () => 'Un asiento registral publicado antes de aceptarse esta declaración parece contradecirla. En revisión.',
     expired: (d) => `Esta declaración se aceptó el ${d} y ha superado su periodo de validez declarado.`,
@@ -119,7 +142,7 @@ export function statusLine(view, lang = 'es') {
     : view.status === 'disputed' ? t.disputed()
     : view.status === 'expired' ? t.expired(accepted)
     : t.live(accepted);
-  return `${body} ${t.checked(day(view.last_verified_at))}`.trim();
+  return sentences([body, t.checked(day(view.last_verified_at))]);
 }
 
 export function renderAttestationHtml(view, companyName, lang = 'es') {

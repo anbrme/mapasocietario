@@ -39,6 +39,7 @@ Mapa Societario is a brand, not a legal person. "Reviewed by Mapa Societario" re
 | `src/verify/render.test.js` | Same inversion. **Keep the XSS-escaping case** even though the value is now a constant: defence in depth costs nothing and the field could become dynamic again |
 | `functions/empresa/_confirmation.js` | **No change.** `liveAttestationFor()` returns `publicProjection(...)` (`functions/empresa/_attestation.js:64`), so the badge already receives the projected value. It keeps its shorter template — on mapasocietario.es the "operator of Mapa Societario" clause is redundant; the attestation permalink carries the fuller form because a counterparty may read it standalone |
 | `functions/empresa/_confirmation` (test) | New regression guard: the badge renders the entity and contains no individual's name. The projection is what protects this surface, so the guard belongs where the surface is |
+| `src/copy/verificacion.js` | **Added 2026-09-09, after the projection had already shipped.** The front door promised in three places — `lead`, `what.points[2]`, `pilot.paragraphs[0]`, in both languages — a review *"firmada por una persona con nombre y apellidos"*. The projection had stopped publishing one, so the page was advertising a name the badge no longer carries. It now interpolates `PUBLIC_REVIEWER`, and `verificacion.test.js` pins the promise against the constant so the two cannot drift again |
 
 `src/components/CurrencyConfirmationCard.jsx` is likewise covered: it consumes `/api/verify/badge`, which also goes through `liveAttestationFor`.
 

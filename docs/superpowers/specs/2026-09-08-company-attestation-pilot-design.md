@@ -394,6 +394,12 @@ Handling for token-bearing URLs: `Cache-Control: private, no-store`, `Referrer-P
 
 **`/empresa/<slug>` badge.** Reads the live attestation from D1 instead of `_confirmations.js`. These pages carry `s-maxage=86400`, so a status change would otherwise keep asserting itself for a day: pages carrying an attestation get a short TTL, *and* any status transition purges that page.
 
+*Information hierarchy, revised 2026-09-09.* The badge as first built opened with the hedge rather than the fact — a category-name heading, then *"Esta declaración se aceptó el X y era coherente con la evidencia registral comprobada en ese momento"*, then two further caveats at near-equal weight. Four hedged paragraphs to convey one event. It now leads with a plain claim whose grammatical **subject is always the company** — *"La empresa confirmó el 2026-09-09 que estos datos registrales seguían vigentes"* — so the sentence cannot be misread as us certifying anything, and the caveats move into a demoted `detail` block. **Nothing is dropped:** `statusLine` is still carried verbatim from `src/verify/render.js` into `detail`, so the badge and the attestation permalink still cannot drift on the load-bearing wording.
+
+*The registry gap.* The badge also states the distance between the last BORME filing and the confirmation — *"Última publicación en el BORME: 2014-03-27 — 12 años antes de la confirmación."* This is the one thing neither the registry data nor the attestation says on its own, and on a company whose registry record is a decade old it is the most informative line on the page. Suppressed below one year (a gap of months is ordinary and says nothing) and suppressed entirely when the registry moved *after* the confirmation — that is a supersession, which the status already carries, and rendering it as a gap would invert its meaning.
+
+Dates on the badge stay ISO. The reader is a foreign professional, for whom `2026-09-09` is unambiguous where `09/09/2026` is not, and mixing formats between the claim and the small print reads worse than either used consistently.
+
 **The attestation page.** Leads with **fitness for current reliance, qualified by when it was last successfully checked** — never "as of right now", which a daily job cannot support. It states this separately from what the statement itself was, because the two are different things.
 
 The wording must not assert accuracy we never established. An `outdated` attestation reads:
