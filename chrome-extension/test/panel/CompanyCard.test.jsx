@@ -16,7 +16,13 @@ describe('CompanyCard', () => {
     expect(screen.getByText('A28015865')).toBeInTheDocument();
     expect(screen.getByText(/Active officers/i)).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /View full profile/i });
-    expect(link).toHaveAttribute('href', 'https://mapasocietario.es/app?search=TELEFONICA%20SA');
+    expect(link).toHaveAttribute('href', 'https://mapasocietario.es/app?search=TELEFONICA%20SA&gk=H%3AM-1&source=chrome_extension');
     expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('labels the open seats as at-dissolution for a dissolved company', () => {
+    render(<CompanyCard company={{ ...company, status: 'dissolved' }} locale="en" />);
+    expect(screen.getByText(/Officers at dissolution/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Active officers/i)).toBeNull();
   });
 });

@@ -88,6 +88,28 @@ describe('buildGraph', () => {
     expect(hiddenNonBoard).toBe(2);
   });
 
+  it("marks a dissolved company's open seats as at-dissolution, not current", () => {
+    // BORME inscribes an extinción without ceasing each seat, so the doc keeps
+    // them in officers_active. They ended with the company; never show them as
+    // the current board (functions/empresa/_lib.js applies the same rule).
+    const dissolved = {
+      groupKey: 'H:M-9', name: 'GONE SA', status: 'dissolved',
+      officersActive: [
+        { name: 'LAST BOSS', position: 'Administrador', appointedDate: '2010-01-01' },
+      ],
+      officersResigned: [],
+    };
+    const { nodes, links, seatsAtDissolution } = buildGraph(dissolved);
+    const officer = nodes.find((n) => n.type === 'officer');
+    expect(officer.status).toBe('at_dissolution');
+    expect(links[0].status).toBe('at_dissolution');
+    expect(seatsAtDissolution).toBe(true);
+  });
+
+  it('leaves an active company\'s seats marked current', () => {
+    expect(buildGraph(company).seatsAtDissolution).toBe(false);
+  });
+
   it('caps officer nodes at maxOfficers using active officers', () => {
     // All 100 people are active Consejero (board) so they pass the filter; cap at 5
     const many = { groupKey: 'H:M-2', name: 'BIG SA',

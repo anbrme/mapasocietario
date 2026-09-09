@@ -20,8 +20,10 @@ function Row({ label, children }) {
 }
 
 export default function CompanyCard({ company, locale }) {
-  const statusLabel = company.status === 'dissolved' || company.status === 'disuelta'
-    ? t(locale, 'statusDissolved') : t(locale, 'statusActive');
+  const isDissolved = company.status === 'dissolved' || company.status === 'disuelta';
+  const statusLabel = isDissolved ? t(locale, 'statusDissolved') : t(locale, 'statusActive');
+  // Seats left open when the company closed are history, not staff.
+  const openSeatsLabel = t(locale, isDissolved ? 'officersAtDissolution' : 'activeOfficers');
   return (
     <div style={{ padding: 12, fontFamily: 'system-ui' }}>
       <h2 style={{ margin: '0 0 8px', fontSize: 16 }}>{company.name}</h2>
@@ -29,7 +31,7 @@ export default function CompanyCard({ company, locale }) {
       <Row label={t(locale, 'capital')}>{fmtCapital(company.capital, locale)}</Row>
       <Row label={t(locale, 'address')}>{company.address}</Row>
       <Row label={t(locale, 'status')}>{statusLabel}</Row>
-      <Row label={t(locale, 'activeOfficers')}>{company.officersActive.length}</Row>
+      <Row label={openSeatsLabel}>{company.officersActive.length}</Row>
       <Row label={t(locale, 'formerOfficers')}>{company.officersResigned.length}</Row>
       <a href={appSearchUrl(company)} target="_blank" rel="noopener noreferrer"
          style={{ display: 'inline-block', marginTop: 10, fontSize: 13, color: '#1a5fb4' }}>

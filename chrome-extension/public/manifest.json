@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mapa Societario — Spanish company lookup",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Select a Spanish company name on any page to see its registry profile and officer network.",
   "permissions": ["contextMenus", "sidePanel"],
   "host_permissions": ["https://api.ncdata.eu/*"],

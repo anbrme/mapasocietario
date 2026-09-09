@@ -12,7 +12,7 @@ describe('resolveCompany', () => {
     const out = await resolveCompany('telefonica', { fetchImpl: fakeFetch(payload) });
     expect(out).toEqual([
       { id: 'H:M-396846', name: 'TELEFONICA SA', location: 'Madrid', nif: 'A28015865',
-        isAlias: false, formerName: null, newName: null },
+        isAlias: false, formerName: null, newName: null, lastFiling: null },
     ]);
   });
 
@@ -23,6 +23,16 @@ describe('resolveCompany', () => {
     const out = await resolveCompany('old name', { fetchImpl: fakeFetch(payload) });
     expect(out[0].isAlias).toBe(true);
     expect(out[0].formerName).toBe('OLD NAME SL');
+  });
+
+  it('maps the last filing date, the only disambiguator the directory returns', async () => {
+    // The live autocomplete carries no province/city/nif, so last_updated is
+    // what tells two same-named companies apart in the match list.
+    const payload = { suggestions: [
+      { id: 'H:M-1', company_name: 'ACME SL', last_updated: '2026-08-28' },
+    ]};
+    const out = await resolveCompany('acme', { fetchImpl: fakeFetch(payload) });
+    expect(out[0].lastFiling).toBe('2026-08-28');
   });
 
   it('returns [] for short queries without calling fetch', async () => {

@@ -20,4 +20,19 @@ describe('isBoardPosition', () => {
   it('classifies VOC.COM.AUDIT (vocal/comisión) as non-board', () => {
     expect(isBoardPosition('VOC.COM.AUDIT')).toBe(false);
   });
+  it('classifies PTE.C.EJ (executive-committee chair) as non-board', () => {
+    expect(isBoardPosition('PTE.C.EJ')).toBe(false);
+  });
+  it('classifies PRES.NOMB.RE (nominations-committee chair) as non-board', () => {
+    expect(isBoardPosition('PRES.NOMB.RE')).toBe(false);
+  });
+  it('classifies PRECOMAUDIT (fused audit-committee chair) as non-board', () => {
+    expect(isBoardPosition('PRECOMAUDIT')).toBe(false);
+  });
+  it('classifies MICOAUDI (fused audit-committee member) as non-board', () => {
+    expect(isBoardPosition('MICOAUDI')).toBe(false);
+  });
+  it('classifies PRE.NO.EJEC. (non-executive board chair) as board', () => {
+    expect(isBoardPosition('PRE.NO.EJEC.')).toBe(true);
+  });
 });

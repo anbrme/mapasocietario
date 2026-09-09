@@ -6,13 +6,16 @@ import { t } from '../i18n.js';
 
 const COMPANY = '#1a5fb4';
 const OFFICER = '#2ca02c';
+// Seats that were open when the company was dissolved: drawn, but never in the
+// green that means "in post today".
+const OFFICER_AT_DISSOLUTION = '#9aa3ad';
 
 function drawNode(node, ctx, globalScale) {
   const isCo = node.type === 'company';
   const r = isCo ? 6 : 5;
   ctx.beginPath();
   ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
-  ctx.fillStyle = isCo ? COMPANY : OFFICER;
+  ctx.fillStyle = isCo ? COMPANY : (node.status === 'at_dissolution' ? OFFICER_AT_DISSOLUTION : OFFICER);
   ctx.fill();
   const rawLabel = String(node.label || '');
   const label = isCo && rawLabel.length > 28 ? rawLabel.slice(0, 27) + '…' : rawLabel;
@@ -52,7 +55,8 @@ function drawLink(link, ctx, globalScale) {
 }
 
 export default function CompanyGraph({ company, locale = 'en' }) {
-  const { nodes, links, hiddenNonBoard } = useMemo(() => buildGraph(company), [company]);
+  const { nodes, links, hiddenNonBoard, seatsAtDissolution } =
+    useMemo(() => buildGraph(company), [company]);
   const graphData = useMemo(() => ({ nodes, links }), [nodes, links]);
   const wrapRef = useRef(null);
   const [width, setWidth] = useState(360);
@@ -63,9 +67,14 @@ export default function CompanyGraph({ company, locale = 'en' }) {
     return () => ro.disconnect();
   }, []);
 
-  const noteH = hiddenNonBoard > 0 ? 24 : 0;
+  const noteH = (hiddenNonBoard > 0 ? 24 : 0) + (seatsAtDissolution ? 24 : 0);
   return (
     <div ref={wrapRef} style={{ height: 320, borderTop: '1px solid #eee' }}>
+      {seatsAtDissolution && (
+        <p style={{ margin: '4px 8px', fontSize: 12, color: '#8a5a00' }}>
+          {t(locale, 'dissolvedSeatsNote')}
+        </p>
+      )}
       {hiddenNonBoard > 0 && (
         <p style={{ margin: '4px 8px', fontSize: 12, color: '#888' }}>
           {hiddenNonBoard} {t(locale, 'hiddenRoles')}
