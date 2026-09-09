@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { eventVisibility, registryNow, checkFact, nextStatus, isExpired, buildRunRow } from './reconcile.js';
+import { eventVisibility, registryNow, checkFact, nextStatus, isExpired, buildRunRow,
+         RUN_RETENTION_DAYS, runRetentionCutoff } from './reconcile.js';
 
 const ACCEPTED = '2026-09-08T12:00:00Z';
 const COMPANY = {
@@ -188,5 +189,14 @@ describe('buildRunRow', () => {
     });
     expect(row[5]).toBe('live');
     expect(row[6]).toBe('outdated');
+  });
+});
+
+describe('runRetentionCutoff', () => {
+  it('is two years before now, as an ISO string', () => {
+    const now = Date.parse('2026-09-10T04:15:00Z');
+    expect(RUN_RETENTION_DAYS).toBe(730);
+    expect(runRetentionCutoff(now)).toBe(
+      new Date(now - 730 * 86_400_000).toISOString());
   });
 });

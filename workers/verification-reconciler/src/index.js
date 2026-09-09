@@ -11,7 +11,8 @@
  * All classification logic is in src/verify/reconcile.js, where vitest can reach
  * it; this file moves data and sends mail.
  */
-import { checkFact, nextStatus, isExpired, buildRunRow } from '../../../src/verify/reconcile.js';
+import { checkFact, nextStatus, isExpired, buildRunRow, runRetentionCutoff, RUN_RETENTION_DAYS }
+  from '../../../src/verify/reconcile.js';
 import { buildAuditEvent, GENESIS_HASH } from '../../../src/verify/chain.js';
 
 // Every state an attestation can be in and still be the CURRENT record for its
@@ -166,7 +167,7 @@ async function reconcileOne(env, attestation, report) {
 }
 
 export async function reconcileAll(env) {
-  const report = { checked: 0, changed: [], failures: [], nudge: [], anchored: null };
+  const report = { checked: 0, changed: [], failures: [], nudge: [], anchored: null, purged: 0 };
 
   const { results } = await env.VERIFY_DB.prepare(
     `SELECT * FROM attestations WHERE status IN (${CURRENT.map(() => '?').join(',')})`)
@@ -198,6 +199,17 @@ export async function reconcileAll(env) {
     report.anchored = { day, seq: head.seq, hash: head.hash };
   }
 
+  // Retention for the continuity record. Best-effort: losing a purge is a
+  // storage cost, and failing the whole run over it would cost a day of checks.
+  try {
+    const purge = await env.VERIFY_DB
+      .prepare('DELETE FROM reconciliation_runs WHERE checked_at < ?')
+      .bind(runRetentionCutoff()).run();
+    report.purged = purge?.meta?.changes || 0;
+  } catch (e) {
+    report.failures.push({ id: 'reconciliation_runs_purge', error: String(e.message || e) });
+  }
+
   return report;
 }
 
@@ -220,6 +232,7 @@ async function mail(env, report) {
     `Failures: ${report.failures.length}`,
     ...report.failures.map((f) => `  ${f.id}: ${f.error}`),
     `Due for reconfirmation: ${report.nudge.length}`,
+    `Check rows purged (older than ${RUN_RETENTION_DAYS} days): ${report.purged}`,
     report.anchored
       ? `Chain head ${report.anchored.day}: seq ${report.anchored.seq} ${report.anchored.hash}`
       : 'Chain head: none',

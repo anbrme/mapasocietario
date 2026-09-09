@@ -154,3 +154,10 @@ export function buildRunRow({ attestation, outcomes, sourceFailed, decision, che
     decision.status || attestation.status,
   ];
 }
+
+// Two years. Long enough to show a counterparty a multi-year run of checks,
+// short enough that the table cannot grow without bound.
+export const RUN_RETENTION_DAYS = 730;
+
+export const runRetentionCutoff = (nowMs = Date.now()) =>
+  new Date(nowMs - RUN_RETENTION_DAYS * 86_400_000).toISOString();
