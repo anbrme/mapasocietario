@@ -254,6 +254,11 @@ describe('validateRequestPayload', () => {
     expect(r.payload.contact_name).toBe('Ana Gómez');
   });
 
+  it('keeps newlines in the note, which may legitimately have paragraphs', () => {
+    const r = validateRequestPayload(good({ note: 'Primera linea.\n\nSegunda linea.' }));
+    expect(r.payload.note).toBe('Primera linea.\n\nSegunda linea.');
+  });
+
   it('nulls the optional fields when blank, rather than storing empty strings', () => {
     const r = validateRequestPayload(good({ nif: '', referrer_note: '  ', note: '' }));
     expect(r.payload.nif).toBeNull();
@@ -281,10 +286,17 @@ describe('buildRequestEmail', () => {
   });
 
   it('never lets a newline break out of a header field', () => {
-    const payload = validateRequestPayload(good({ company_query: 'ACME\r\nBcc: x@y.z' })).payload;
-    const mail = buildRequestEmail(payload, { from: 'a@b.c', to: 'd@e.f',
-                                              timestamp: 't', id: 'req_1' });
+    // Deliberately NOT routed through validateRequestPayload: that strips the
+    // newline first, and this test would then pass with the sanitiser deleted -
+    // re-testing the validator while pretending to guard the email builder.
+    const raw = {
+      company_query: 'ACME\r\nBcc: x@y.z', nif: null, contact_name: 'Ana',
+      contact_role: 'Adm', contact_email: 'a@b.c', referrer_note: null, note: null,
+    };
+    const mail = buildRequestEmail(raw, { from: 'a@b.c', to: 'd@e.f',
+                                          timestamp: 't', id: 'req_1' });
     expect(mail.subject).not.toMatch(/[\r\n]/);
+    expect(mail.subject).toContain('ACME Bcc: x@y.z');
   });
 });
 ```
