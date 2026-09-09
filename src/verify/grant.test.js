@@ -4,15 +4,29 @@ import {
   GRANT_KINDS, DEFAULT_TTL_DAYS, PREVIEW_TTL_DAYS,
 } from './grant.js';
 
+const NOW = Date.parse('2026-09-08T12:00:00Z');
+
 describe('grantState', () => {
-  const now = Date.parse('2026-09-10T00:00:00Z');
-  it('is missing for no row', () => expect(grantState(null, now)).toBe('missing'));
-  it('is revoked when revoked_at is set', () =>
-    expect(grantState({ revoked_at: '2026-09-09T00:00:00Z' }, now)).toBe('revoked'));
-  it('is expired at or past the expiry', () =>
-    expect(grantState({ expires_at: '2026-09-10T00:00:00Z' }, now)).toBe('expired'));
-  it('is valid otherwise', () =>
-    expect(grantState({ expires_at: '2026-09-11T00:00:00Z' }, now)).toBe('valid'));
+  it('is valid with no expiry set', () => {
+    expect(grantState({ expires_at: null, revoked_at: null }, NOW)).toBe('valid');
+  });
+  it('is valid before expiry', () => {
+    expect(grantState({ expires_at: '2026-10-01T00:00:00Z', revoked_at: null }, NOW)).toBe('valid');
+  });
+  it('is expired after expiry', () => {
+    expect(grantState({ expires_at: '2026-09-01T00:00:00Z', revoked_at: null }, NOW)).toBe('expired');
+  });
+  it('is revoked even when unexpired', () => {
+    expect(grantState({ expires_at: null, revoked_at: '2026-09-07T00:00:00Z' }, NOW)).toBe('revoked');
+  });
+  it('is missing for a null row', () => {
+    expect(grantState(null, NOW)).toBe('missing');
+  });
+  // Added with the preview-grant work: the original set covered "after
+  // expiry" but not the boundary, and grantState uses <=.
+  it('is expired at the exact expiry instant', () => {
+    expect(grantState({ expires_at: '2026-09-08T12:00:00Z', revoked_at: null }, NOW)).toBe('expired');
+  });
 });
 
 describe('normalizeGrantKind', () => {
