@@ -10,6 +10,47 @@ const render = async (url, headers = {}) => {
 const ES = 'https://mapasocietario.es/verificacion';
 const EN = 'https://mapasocietario.es/verificacion?lang=en';
 
+/**
+ * The page ships ~6kB of client JavaScript assembled inside a server-side
+ * template literal, which means an escaping mistake yields HTML that looks
+ * perfect and JavaScript that never runs: the form silently does nothing, no
+ * visitor reports a console error, and the suite stays green. The operator
+ * console carries the same guard for the same reason - see
+ * functions/admin/verificacion.test.js, whose header records a real instance.
+ *
+ * Both languages are checked because the two renders interpolate different
+ * copy into the same script, so a character that breaks only one is possible.
+ */
+const clientScript = (html) => html.slice(
+  html.lastIndexOf('<script>') + '<script>'.length, html.lastIndexOf('</script>'));
+
+/**
+ * Runs the script's top level against a DOM built from the ids the page
+ * ACTUALLY rendered - an unknown id returns null, exactly as a browser would,
+ * so a renamed field surfaces here as a throw instead of as a dead form.
+ */
+function runClientScript(js, html) {
+  const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]));
+  const bound = [];
+  const made = new Map();
+  const byId = (id) => {
+    if (!ids.has(id)) return null;
+    if (!made.has(id)) {
+      made.set(id, {
+        id, value: '', textContent: '', hidden: false,
+        classList: { toggle() {}, remove() {} },
+        addEventListener: (type) => bound.push(`${id}:${type}`),
+        focus() {}, scrollIntoView() {}, querySelectorAll: () => [],
+      });
+    }
+    return made.get(id);
+  };
+  // eslint-disable-next-line no-new-func
+  new Function('document', 'window', 'fetch', js)(
+    { getElementById: byId, querySelector: () => null }, {}, async () => ({}));
+  return bound;
+}
+
 describe('GET /verificacion', () => {
   it('is the one indexable member of the family', async () => {
     const { res, html } = await render(ES);
@@ -99,6 +140,25 @@ describe('GET /verificacion', () => {
       // The two the client raises on its own behalf.
       expect(COPY[lang].errors.network).toBeTruthy();
       expect(COPY[lang].errors.unknown).toBeTruthy();
+    }
+  });
+
+  it('emits JavaScript that actually parses, in both languages', async () => {
+    for (const url of [ES, EN]) {
+      const js = clientScript((await render(url)).html);
+      expect(js.length).toBeGreaterThan(1000);
+      // The Function constructor parses without executing.
+      expect(() => new Function(js)).not.toThrow();
+    }
+  });
+
+  it('wires itself to elements the page actually renders', async () => {
+    for (const url of [ES, EN]) {
+      const { html } = await render(url);
+      const bound = runClientScript(clientScript(html), html);
+      expect(bound).toContain('req:submit');
+      expect(bound).toContain('f-contact_email:input');
+      expect(bound).toContain('f-contact_email:blur');
     }
   });
 
