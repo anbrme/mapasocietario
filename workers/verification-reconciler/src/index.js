@@ -115,9 +115,11 @@ async function reconcileOne(env, attestation, report) {
 
   const statements = [...factUpdates];
 
-  // The continuity record. Written on EVERY check, including a no-op and a
-  // failed upstream read, because the value is showing that checks happened -
-  // which the overwritten last_checked_at columns cannot.
+  // The continuity record. Written on every check, including a no-op and a
+  // failed upstream read - which the overwritten last_checked_at columns
+  // cannot show. NOT written on expiry: the early return above fires first,
+  // because expiry is a clock rather than a check and there is no outcome to
+  // record. That act is in audit_events, where an act belongs.
   statements.push(env.VERIFY_DB.prepare(
     `INSERT INTO reconciliation_runs
       (attestation_id, subject_id, checked_at, source_failed, outcomes,
