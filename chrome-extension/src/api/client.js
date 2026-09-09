@@ -26,6 +26,9 @@ export async function resolveCompany(query, { fetchImpl = fetch } = {}) {
       isAlias: Boolean(s.is_alias),
       formerName: s.original_name || null,
       newName: s.new_company_name || null,
+      // The live directory returns no province/city/nif, so the date of the
+      // last BORME filing is the one disambiguator two same-named rows have.
+      lastFiling: s.last_updated || null,
     }));
   } catch {
     return [];

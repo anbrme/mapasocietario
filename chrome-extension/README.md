@@ -13,27 +13,42 @@ npm test
 
 Load `dist/` as an unpacked extension (chrome://extensions → Developer mode → Load unpacked).
 
-## Manual E2E results
+## Keeping in sync with the web app
 
-| Page | Selection | Result |
-|------|-----------|--------|
-| (to be filled in by maintainer) | | |
+Two things are copies of app code, not imports (a Chrome bundle can't reach
+across the project root), so they drift silently:
+
+- `src/shared/positionCategories.js` — a verbatim copy of
+  `src/utils/positionCategories.js` between the marker comments, plus an
+  extension-only board filter. `test/shared/positionCategories.sync.test.js`
+  fails if the two diverge; resync by replacing the whole marked block.
+- `src/panel/appSearchUrl.js` — must keep emitting `gk=<group_key>`; `/app`
+  resolves that key to one company, while a bare `search=` re-runs a fuzzy
+  name search and can open a different legal entity.
+
+Rules the app applies that this panel must mirror: a dissolved company has no
+*current* officers (BORME never ceases the seats individually), and the graph
+shows governance roles only, with non-board seats reported as a count.
+
+## Release
+
+1. `npm test` (all green) and `npm run build`
+2. Bump `version` in `public/manifest.json` **and** `package.json` together
+3. `cd dist && zip -r ../mapasocietario-extension-v<version>.zip .`
+4. Upload the zip to the Chrome Web Store dashboard
 
 ## Automated verification
 
-**Build:**
-- Exit code: 0
-- Dist files: manifest.json, background.js, panel.js, chunk-messages.js, src/panel/index.html, icons/
+**Build:** exit code 0 — `dist/` gets manifest.json, background.js, panel.js,
+chunk-messages.js, src/panel/index.html, icons/.
 
-**Test suite:**
-- All 25 tests passed across 10 test files
-  - test/api/client.company.test.js (3 tests)
-  - test/api/client.resolve.test.js (4 tests)
-  - test/shared/buildGraph.test.js (4 tests)
-  - test/background.test.js (3 tests)
-  - test/panel/MatchList.test.jsx (3 tests)
-  - test/panel/CompanyCard.test.jsx (1 test)
-  - test/panel/App.test.jsx (1 test)
-  - test/panel/i18n.test.js (3 tests)
-  - test/panel/empresaUrl.test.js (2 tests)
-  - test/panel/CompanyGraph.test.jsx (1 test)
+**Test suite (v0.2.0):** 79 tests across 13 files, all passing.
+
+## Manual check the maintainer still owes
+
+Chrome's side panel can't be driven by page-level automation, so load `dist/`
+unpacked and confirm by hand: right-click a selected company name → panel opens
+→ match list → card + graph → the profile link lands on the right company.
+Note the API is unreachable from Chrome on the maintainer's own network during
+LaLiga windows (ISP-level Cloudflare IP filtering) — test from another network
+if the panel shows the error state while `curl` works.

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
 let capturedProps = null;
 vi.mock('react-force-graph-2d', () => ({
@@ -10,6 +10,12 @@ vi.mock('react-force-graph-2d', () => ({
 }));
 
 import CompanyGraph from '../../src/panel/components/CompanyGraph.jsx';
+
+const dissolvedCompany = {
+  groupKey: 'H:M-9', name: 'GONE SA', status: 'dissolved',
+  officersActive: [{ name: 'LAST BOSS', position: 'Administrador', appointedDate: '2010-01-01' }],
+  officersResigned: [],
+};
 
 const activeCompany = {
   groupKey: 'H:M-1', name: 'ACME SA',
@@ -83,6 +89,17 @@ describe('CompanyGraph', () => {
     const drawn = ctx.fillText.mock.calls.map(([txt]) => txt);
     expect(drawn).toContain('Consejero');
   });
+
+  it("warns that a dissolved company's seats are not current", () => {
+    render(<CompanyGraph company={dissolvedCompany} locale="en" />);
+    expect(screen.getByText(/ended with the company/i)).toBeInTheDocument();
+  });
+
+  it('shows no dissolution notice for an active company', () => {
+    render(<CompanyGraph company={activeCompany} locale="en" />);
+    expect(screen.queryByText(/ended with the company/i)).toBeNull();
+  });
+
 });
 
 // ─── helpers ────────────────────────────────────────────────────────────────

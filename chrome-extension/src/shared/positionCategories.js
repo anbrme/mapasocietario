@@ -1,3 +1,26 @@
+// Position classifier for the extension's board-only graph.
+//
+// The block between the markers below is a VERBATIM copy of the web app's
+// src/utils/positionCategories.js — a Chrome bundle can't import across the
+// project root, so the file is duplicated rather than shared. Resync by
+// replacing the whole block; test/shared/positionCategories.sync.test.js fails
+// if it drifts. Do not hand-edit inside the markers.
+
+// ─── BEGIN verbatim copy of src/utils/positionCategories.js ───
+// Map a raw position string (as stored on link.relationship / officer
+// position_normalized, e.g. "APO.SOL", "CON.IND.", "VICEPRESID.",
+// "PRECOMAUDIT") to one of ~11 canonical category labels (incl. the dedicated
+// Art. 143 RRM organic permanent representative). Shared by the graph
+// component (filter chips + simplified mode) and the officer-capping service
+// so both classify positions identically. The full vocabulary of registry
+// positions lives in src/data/terms.json (officersPositions, ~1045 entries);
+// test/position-categories.test.mjs sweeps all of them.
+//
+// BORME abbreviations are wildly inconsistent (CONSEJERO / CONS. / CONSJ. /
+// CON.IND. all mean consejero), so the rules are families of prefixes, with
+// one structural rule first: a chair/vice-chair/secretary/member/suplente OF
+// an organ (comisión, junta directiva, consejo rector…) is an organ role
+// ("Vocal / Comisión"), not a company-level Presidente/Secretario.
 export const POSITION_CATEGORY_ORDER = [
   'Presidente',
   'Vicepresidente',
@@ -16,11 +39,19 @@ export const POSITION_CATEGORY_ORDER = [
 // junta, consejo rector, asamblea). COM(?!ISAR|SAR|ISIN) keeps COMISARIO /
 // COMSARIO / COMISINOBLI (bondholder-syndicate trustees) out — those are
 // "Otros", not commission members.
-const ORGAN_CONTEXT = /COM(?!ISAR|SAR|ISIN)|CMS|CMTE|CTE[.\s]|JTA|JUNTA|JUN[.\s]|J\.\s?DIR|J\.\s?ADM|J\.\s?G|J\.\s?REC|J\.D\b|J\.R\b|JT\.\s?DI|CON[S]?\.?\s?RE[CG]?\b|C\.\s?RE[CT]|C\.PERM|CJO|ASAMBL|CONS\.GO|CON\.GOB|CONADM|CONS\.\s?LIQ|C\.DIR|CO\.E|C\.C\.|C\.D\.|C\.N\.|C\.A\.|CO\.DE|C\.RIESGO|C\.SEGURI|C\.INV|C\.RET|C\.PRO|C\.AUD/;
+// NOTE: committee-chair tokens (C.EJ = comité ejecutivo, NOMB/NYR = comisión de
+// nombramientos [y retribuciones], spaced "C. AUD" = comité de auditoría,
+// ESTRATEG = comisión de estrategia) are included so a chair OF such a committee
+// (PTE.C.EJ, PRES.NOMB.RE, PTE. C. AUD.…) is an organ role, NOT the company-level
+// apical "Presidente". Bare board-chair forms (PRESIDENTE, PDTE.) carry no organ
+// token and stay "Presidente".
+const ORGAN_CONTEXT = /COM(?!ISAR|SAR|ISIN)|CMS|CMTE|CTE[.\s]|JTA|JUNTA|JUN[.\s]|J\.\s?DIR|J\.\s?ADM|J\.\s?G|J\.\s?REC|J\.D\b|J\.R\b|JT\.\s?DI|CON[S]?\.?\s?RE[CG]?\b|C\.\s?RE[CT]|C\.PERM|CJO|ASAMBL|CONS\.GO|CON\.GOB|CONADM|CONS\.\s?LIQ|C\.DIR|CO\.E|C\.C\.|C\.D\.|C\.N\.|C\.A\.|CO\.DE|C\.RIESGO|C\.SEGURI|C\.INV|C\.RET|C\.PRO|C\.\s?AUD|C\.EJ|NOMB|NYR|ESTRATEG/;
 
 // Role-prefix shapes that combine with ORGAN_CONTEXT (pre/vice/sec/tes/vocal/
 // member/suplente abbreviations, down to single letters like "P.COM.EJEC.").
-const ORGAN_ROLE_PREFIX = /^(P\b|P\.|PR\b|PR\.|PRE|PRES|V\b|V\.|V-|VP|VPR|VPRE|VPTE|VICE|VIC|VS|VSE|VSEC|VCS|VCP|S\b|S\.|SC|SCR|SCT|SE\.|SEC|VOC|VO\.|VOTI|VOSU|MIE|MIEM|MMBR|MBRO|MRO|M\.|TES|SUPL|SUP\b|SUP\.|VTE|CO\.|COPRE)/;
+// PTE/PDTE (presidente del comité/comisión) are here so a committee chair
+// resolves via ORGAN_CONTEXT above rather than falling through to "Presidente".
+const ORGAN_ROLE_PREFIX = /^(P\b|P\.|PR\b|PR\.|PRE|PRES|PTE|PDTE|V\b|V\.|V-|VP|VPR|VPRE|VPTE|VICE|VIC|VS|VSE|VSEC|VCS|VCP|S\b|S\.|SC|SCR|SCT|SE\.|SEC|VOC|VO\.|VOTI|VOSU|MIE|MIEM|MMBR|MBRO|MRO|M\.|TES|SUPL|SUP\b|SUP\.|VTE|CO\.|COPRE)/;
 
 export const positionCategoryFor = pos => {
   const p = (pos || '').trim().toUpperCase();
@@ -32,7 +63,15 @@ export const positionCategoryFor = pos => {
   // "COMS.SEGUIM.") and fused chair/secretary forms (PRECOMAUDIT, SECOAUDI)
   // are organ roles too.
   if (/^COMS?[.\s]/.test(p)) return 'Vocal / Comisión';
-  if (/^(PRE|SEC|VP|VS)CO/.test(p)) return 'Vocal / Comisión';
+  // Fused (dot-less) organ forms: the registry runs "presidente/secretario/
+  // miembro DE comité …" together with no separator, so ORGAN_CONTEXT's COM /
+  // C.AUD tokens never fire — PRECOMAUDIT, SECOAUDI, MICOAUDI, MECONORE. Every
+  // SEPARATED variant (M.Com.Ej, Mie.Com.Ejcr, Mro.Coms.Ctr) already resolves via
+  // COM. The member-side prefixes (MI/MIE/MIEM/ME = miembro) must be followed
+  // IMMEDIATELY by CO, which is what keeps the lookalikes MANCOM. (mancomunado)
+  // and MED.CONCUSAL (mediador concursal) out. Keep in lockstep with the backend
+  // port borme_v3_enricher/position_categories.py.
+  if (/^(PRE|SEC|SE|VP|VS|MI|MIE|MIEM|ME)CO/.test(p)) return 'Vocal / Comisión';
   if (
     ORGAN_CONTEXT.test(p) &&
     ORGAN_ROLE_PREFIX.test(p) &&
@@ -41,7 +80,9 @@ export const positionCategoryFor = pos => {
     return 'Vocal / Comisión';
   }
 
-  if (/^(PRESIDENT|PDTE|PTE\b|PTE\.|PRES|PRESID|COPRE)/.test(p)) return 'Presidente';
+  // PRE.NO.EJEC. = Presidente No Ejecutivo (non-executive Chair) — the apical
+  // board chair, NOT a committee (it reaches here because it has no organ token).
+  if (/^(PRESIDENT|PDTE|PTE\b|PTE\.|PRES|PRESID|COPRE|PRE\.NO)/.test(p)) return 'Presidente';
   if (/^(VICEPRESIDEN|VICEPRESID|VICEPRESI|VICEPRE|VICEPR|VICPRES|VICPTE|VICEPTE|VPDTE|V-PRE|VPRE|VPTE)/.test(p)) return 'Vicepresidente';
   if (/^(CONSEJER|CONSEJ|CONSJ|CONS[.\s]|CON\.)/.test(p)) return 'Consejero';
   if (/^(ADMINISTRADOR|ADMINISTRAD|ADMINISTR|ADMIN|ADM[.\s]|ADMR|ADMOR|ADMPROV)/.test(p)) return 'Administrador';
@@ -64,6 +105,29 @@ export const positionCategoryFor = pos => {
   return 'Otros';
 };
 
+// True when two raw position strings denote the same kind of post (same
+// canonical category). Used to attach borme_events_v3 events to the correct
+// officer→company link: one officer can hold several roles at one company with
+// independent active/ceased status (e.g. an active CONSEJERO and a later-revoked
+// APODERADO), so a role's events must never bleed onto another role's link.
+// Matching is at category granularity because the two data sources format the
+// same role differently (expand-officer "CONS. DELEG." vs events "CON.DELEGADO").
+export const sameRoleCategory = (roleA, roleB) =>
+  positionCategoryFor(roleA) === positionCategoryFor(roleB);
+
+// Simplified mode ("Simplificar" chip) hides ONLY these categories. This is an
+// exclusion list, NOT an admission list: unknown or unmapped positions must
+// stay visible, otherwise legitimate roles disappear from the graph (e.g.
+// independent directors "CON.IND." on Acerinox were silently dropped when
+// unmapped positions fell into a collapsible "Otros").
+export const SIMPLIFIED_EXCLUDED_CATEGORIES = new Set(['Apoderado']);
+
+// ─── END verbatim copy ───
+
+// Extension-only. The side panel draws the GOVERNANCE graph: the organ that can
+// bind the company. Apoderados, auditors and committee vocales are counted and
+// reported as "N non-board roles hidden" instead of crowding the canvas
+// (Inditex 87 seats → 7 nodes, CaixaBank ~1500 → 18).
 export const BOARD_CATEGORIES = new Set([
   'Presidente', 'Vicepresidente', 'Consejero', 'Administrador',
   'Representante 143 RRM', 'Secretario', 'Liquidador',

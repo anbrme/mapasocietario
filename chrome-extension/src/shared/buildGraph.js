@@ -6,6 +6,11 @@ function normName(name) {
 
 export function buildGraph(company, { maxOfficers = 40 } = {}) {
   const center = { id: company.groupKey, label: company.name, type: 'company' };
+  // BORME inscribes an extinción without ceasing each seat one by one, so a
+  // dissolved company's doc still lists them under officers_active. They ended
+  // WITH the company and must never read as the current board — the same rule
+  // the web app applies (functions/empresa/_lib.js).
+  const seatsAtDissolution = company.status === 'dissolved' || company.status === 'disuelta';
 
   // First pass: collect all seats per person, tracking which have board positions.
   // boardSeats: normName -> { label, bestStatus, role, date }
@@ -47,10 +52,11 @@ export function buildGraph(company, { maxOfficers = 40 } = {}) {
   const nodes = [center];
   const links = [];
   for (const [key, p] of ordered) {
-    if (p.status !== 'active') continue; // only show current board members
+    if (p.status !== 'active') continue; // only seats still open on the record
     const id = `officer:${key}`;
-    nodes.push({ id, label: p.label, type: 'officer', status: p.status });
-    links.push({ source: center.id, target: id, status: p.status, role: p.role, date: p.date });
+    const status = seatsAtDissolution ? 'at_dissolution' : 'active';
+    nodes.push({ id, label: p.label, type: 'officer', status });
+    links.push({ source: center.id, target: id, status, role: p.role, date: p.date });
   }
-  return { nodes, links, hiddenNonBoard };
+  return { nodes, links, hiddenNonBoard, seatsAtDissolution };
 }

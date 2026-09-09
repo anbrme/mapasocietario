@@ -21,8 +21,13 @@ export default function MatchList({ matches, locale, onPick }) {
             >
               <div style={{ fontWeight: 600 }}>{m.name}</div>
               <div style={{ fontSize: 12, color: '#777' }}>
-                {[m.location, m.nif].filter(Boolean).join(' · ')}
-                {m.isAlias && m.formerName ? ` · (${t(locale, 'formerly')}: ${m.formerName})` : ''}
+                {[
+                  m.location,
+                  m.nif,
+                  m.lastFiling ? `${t(locale, 'lastFiling')}: ${m.lastFiling}` : null,
+                  m.isAlias && m.formerName ? `${t(locale, 'formerly')}: ${m.formerName}` : null,
+                  m.newName ? `${t(locale, 'nowNamed')}: ${m.newName}` : null,
+                ].filter(Boolean).join(' · ')}
               </div>
             </button>
           </li>
