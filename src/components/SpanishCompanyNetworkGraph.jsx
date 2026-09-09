@@ -1932,9 +1932,9 @@ const SpanishCompanyNetworkGraph = ({
   const searchTypeRef = useRef(searchType);
   searchTypeRef.current = searchType;
 
-  // When a sole_shareholder is selected from autocomplete, we plot the shareholder
-  // node immediately and defer fetching its N participadas until the user confirms
-  // (prevents silent N parallel v3 lookups on every selection).
+  // Desktop stages a sole_shareholder's N participadas behind a confirmation
+  // prompt. Compact/mobile selection loads them immediately because choosing
+  // the autocomplete result is already the user's explicit graph action.
   const [pendingSubsidiaries, setPendingSubsidiaries] = useState(null);
   const [loadingSubsidiaries, setLoadingSubsidiaries] = useState(false);
 
@@ -1987,6 +1987,7 @@ const SpanishCompanyNetworkGraph = ({
   // and a selection made from the initially-empty /app search screen. Keep the
   // search panel only while that canvas is empty.
   const {
+    surface: isCompactSurface,
     active: isCompactEmbed,
     allowAutomaticPanels,
   } = mobileGraphMode({
@@ -8655,19 +8656,11 @@ const SpanishCompanyNetworkGraph = ({
     setIbexSidebarDismissed(false);
 
     // An owner with no cargos of its own: the officer search would come back
-    // empty, so plot a bare node and stage the participadas behind the
-    // confirmation pill. Avoids N silent parallel v3 lookups on every
-    // selection, and shows the true total.
+    // empty, so plot a bare node and use the ownership list carried by the
+    // autocomplete result.
     if (selection.route === 'shareholder') {
       const { entityKind, ownsTotal } = selection;
       const entityId = plotBareShareholderNode(displayName, entityKind);
-      setPendingSubsidiaries({
-        entityName: displayName,
-        entityId,
-        entityKind,
-        count: ownsTotal,
-        owns: selection.owns,
-      });
       trackEvent('graph_search_result', {
         entry_source: entrySource,
         search_origin: 'user_selection',
@@ -8678,6 +8671,33 @@ const SpanishCompanyNetworkGraph = ({
       lastSuccessfulSearchAtRef.current = Date.now();
       setSearchQuery('');
       setCompactPanel(current => current === 'search' ? null : current);
+
+      // On mobile, choosing the autocomplete result is already an explicit
+      // request to draw this shareholder's network. Load the participadas now
+      // instead of requiring another action on a canvas with very little room.
+      // Desktop keeps its confirmation prompt for potentially large fan-outs.
+      if (isCompactSurface) {
+        trackEvent('graph_selected_node_action', {
+          entry_source: entrySource,
+          entity_type: entityKind,
+          interaction_source: 'mobile_shareholder_selection',
+          selected_action: 'load_subsidiaries_automatically',
+        });
+        await loadSubsidiariesForShareholder(
+          displayName,
+          entityId,
+          entityKind,
+          selection.owns
+        );
+      } else {
+        setPendingSubsidiaries({
+          entityName: displayName,
+          entityId,
+          entityKind,
+          count: ownsTotal,
+          owns: selection.owns,
+        });
+      }
       return;
     }
 
