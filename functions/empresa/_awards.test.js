@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   awardsPanelState,
+  elenyxCompanyUrl,
   formatSingleBidShare,
   buildAwardsBlock,
   MIN_AWARDS_FOR_SINGLE_BID_SHARE,
@@ -23,6 +24,9 @@ const t = {
   awardsStatSingleBid: 'Con una sola oferta',
   awardsSingleBidNote: 'nota concentración',
   awardsSource: 'Fuente: PLACSP',
+  awardsElenyxCta: 'Analizar esta empresa en Elenyx ↗',
+  awardsElenyxSub: 'Consulta su análisis de licitaciones.',
+  awardsElenyxDisclaimer: 'Elenyx no está afiliado a Mapa Societario.',
 };
 
 const company = { name: 'MERCADONA SA', nif: 'A46103834' };
@@ -94,6 +98,17 @@ describe('formatSingleBidShare', () => {
   });
 });
 
+describe('elenyxCompanyUrl', () => {
+  it('uses the company NIF in the language-specific Elenyx profile URL', () => {
+    expect(elenyxCompanyUrl(' a81638108 ', 'es')).toBe('https://elenyx.es/company/A81638108');
+    expect(elenyxCompanyUrl('A81638108', 'en')).toBe('https://elenyx.es/en/company/A81638108');
+  });
+
+  it('declines malformed identifiers instead of creating an outbound link', () => {
+    expect(elenyxCompanyUrl('A"><script>x</script>', 'es')).toBe(null);
+  });
+});
+
 describe('buildAwardsBlock', () => {
   it('returns an empty string when the company has no NIF to key on', () => {
     expect(buildAwardsBlock({ company: { name: 'ACME' }, t, lang: 'es', apiBase: 'https://api.x', esc })).toBe('');
@@ -128,6 +143,28 @@ describe('buildAwardsBlock', () => {
     const html = buildAwardsBlock({ company, t, lang: 'es', apiBase: 'https://api.ncdata.eu', esc });
     expect(html).toContain("'/bormes/'+encodeURIComponent(");
     expect(html).toContain("+'/company-awards'");
+  });
+
+  it('links the corroborated panel to the matching Elenyx company profile', () => {
+    const es = buildAwardsBlock({ company, t, lang: 'es', apiBase: 'https://api.x', esc });
+    expect(es).toContain('href="https://elenyx.es/company/A46103834"');
+    expect(es).toContain('rel="noopener"');
+    expect(es).toContain(t.awardsElenyxCta);
+    expect(es).toContain(t.awardsElenyxDisclaimer);
+
+    const en = buildAwardsBlock({ company, t, lang: 'en', apiBase: 'https://api.x', esc });
+    expect(en).toContain('href="https://elenyx.es/en/company/A46103834"');
+  });
+
+  it('does not create an Elenyx link from an invalid NIF', () => {
+    const html = buildAwardsBlock({
+      company: { name: 'ACME', nif: 'A"><script>x</script>' },
+      t,
+      lang: 'es',
+      apiBase: 'https://api.x',
+      esc,
+    });
+    expect(html).not.toContain('elenyx.es/company/');
   });
 
   it('says the contracts were awarded to this entity, not the group', () => {

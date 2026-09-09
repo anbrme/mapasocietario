@@ -470,6 +470,11 @@ const T = {
       'La proporción adjudicada con una única oferta mide concentración y dependencia de la demanda pública; no implica irregularidad alguna.',
     awardsSource:
       'Fuente: Plataforma de Contratación del Sector Público. Información no oficial, puede estar incompleta; verifique en origen.',
+    awardsElenyxCta: 'Analizar esta empresa en Elenyx ↗',
+    awardsElenyxSub:
+      'Consulta su análisis de bajas de adjudicación, competencia, compradores y vencimientos previstos.',
+    awardsElenyxDisclaimer:
+      'Recurso externo independiente. Elenyx no está afiliado a Mapa Societario; este enlace no implica recomendación ni respaldo. Mapa Societario no verifica ni asume responsabilidad por sus datos, contenidos, productos o servicios.',
     awardsThObject: 'Objeto del contrato',
     awardsThBuyer: 'Órgano de contratación',
     awardsThDate: 'Fecha',
@@ -740,6 +745,11 @@ const T = {
       'The share awarded on a single bid measures concentration and dependence on public demand; it does not imply any irregularity.',
     awardsSource:
       'Source: Plataforma de Contratación del Sector Público. Unofficial, may be incomplete; verify at source.',
+    awardsElenyxCta: 'Analyse this company on Elenyx ↗',
+    awardsElenyxSub:
+      'Explore its analysis of winning discounts, competition, public buyers and expected contract expiries.',
+    awardsElenyxDisclaimer:
+      'Independent external resource. Elenyx is not affiliated with Mapa Societario; this link does not constitute a recommendation or endorsement. Mapa Societario does not verify or accept responsibility for its data, content, products or services.',
     awardsThObject: 'Object of the contract',
     awardsThBuyer: 'Public buyer',
     awardsThDate: 'Date',
@@ -1343,6 +1353,11 @@ const STYLE = `<style>
   .cat-contrato{background:#dbeafe;color:#1e40af}
   .awards-scroll{overflow-x:auto;margin-top:14px}
   .awards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:4px 0 0}
+  .awards-external{margin:16px 0 10px;padding:14px 16px;border:1px solid #bfdbfe;border-radius:10px;background:#f8fbff}
+  .awards-external>a{font-size:14px;font-weight:700;color:var(--brand);text-decoration:none}
+  .awards-external>a:hover{text-decoration:underline}
+  .awards-external p{margin:5px 0 0;font-size:13px;color:#475569}
+  .awards-external .awards-external-disclaimer{font-size:11.5px;line-height:1.45;color:var(--mut)}
   .subs-btn{font-size:14px;font-weight:600;border:1px solid var(--brand);border-radius:8px;padding:8px 16px;background:#fff;color:var(--brand);cursor:pointer}
   .subs-btn:hover{background:#eff6ff}
   .subs-btn:disabled{opacity:.6;cursor:default}

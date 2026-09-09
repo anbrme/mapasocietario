@@ -28,6 +28,13 @@
 // one contract won unopposed is 100%, which reads as a finding and is not.
 export const MIN_AWARDS_FOR_SINGLE_BID_SHARE = 5;
 
+export function elenyxCompanyUrl(value, lang = 'es') {
+  const nif = String(value || '').trim().toUpperCase();
+  if (!/^[A-Z][A-Z0-9]{8}$/.test(nif)) return null;
+  const prefix = lang === 'en' ? '/en/company/' : '/company/';
+  return `https://elenyx.es${prefix}${encodeURIComponent(nif)}`;
+}
+
 /**
  * Decide whether the panel has anything to show, from the raw response.
  * Self-contained on purpose — it is serialized into the inline script, so it
@@ -76,6 +83,12 @@ export function formatSingleBidShare(share, awards) {
 export function buildAwardsBlock({ company, t, lang, apiBase, esc }) {
   const rawNif = (company && (company.nif || company.enriched_nif)) || '';
   if (!rawNif) return '';
+  const elenyxUrl = elenyxCompanyUrl(rawNif, lang);
+  const elenyxBlock = elenyxUrl ? `<div class="awards-external">
+<a href="${esc(elenyxUrl)}" target="_blank" rel="noopener" data-track="profile_procurement_elenyx">${t.awardsElenyxCta}</a>
+<p>${t.awardsElenyxSub}</p>
+<p class="awards-external-disclaimer">${t.awardsElenyxDisclaimer}</p>
+</div>` : '';
 
   const i18n = {
     statAwards: t.awardsStatAwards,
@@ -96,6 +109,7 @@ export function buildAwardsBlock({ company, t, lang, apiBase, esc }) {
 <h2>${t.awardsTitle}</h2>
 <p class="more">${t.awardsSub}</p>
 <div id="awards-body" data-nif="${esc(rawNif)}" data-lang="${esc(lang)}" data-api="${apiBase}"></div>
+${elenyxBlock}
 <p class="more">${t.awardsScope}</p>
 <p class="more">${t.awardsSource}</p>
 <script type="application/json" id="awards-i18n">${json}</script>
