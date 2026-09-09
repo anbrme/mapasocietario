@@ -31,7 +31,10 @@ export async function onRequestGet({ request, params, env }) {
     .prepare('SELECT * FROM view_grants WHERE token_hash = ?')
     .bind(await tokenHash(raw)).first();
 
-  if (grantState(grant) !== 'valid') return notFound();
+  // A preview token addresses /verificacion/p/ and nothing else. Each token has
+  // exactly one meaning, so a link issued for a badge preview can never also
+  // open the attestation record.
+  if (grantState(grant) !== 'valid' || grant.kind === 'preview') return notFound();
 
   const attestation = await env.VERIFY_DB
     .prepare(`SELECT a.*, s.display_name FROM attestations a

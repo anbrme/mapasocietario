@@ -8,9 +8,11 @@
  * a link, and links get forwarded.
  */
 import { newToken, tokenHash } from '../../../../src/verify/ids.js';
+import {
+  normalizeGrantKind, grantPath, GRANT_KINDS, DEFAULT_TTL_DAYS, PREVIEW_TTL_DAYS,
+} from '../../../../src/verify/grant.js';
 import { requireAdmin, jsonResponse, batchWithAudit } from '../_db.js';
 
-const DEFAULT_TTL_DAYS = 90;
 const MIN_TTL_DAYS = 1;
 const MAX_TTL_DAYS = 365;
 
@@ -49,13 +51,20 @@ export async function onRequestPost({ request, env }) {
     return jsonResponse({ ok: false, error: 'not_publishable', status: attestation.status }, 409);
   }
 
+  const kind = normalizeGrantKind(body.kind);
+  if (kind === null) {
+    return jsonResponse({ ok: false, error: 'invalid_kind', allowed: GRANT_KINDS }, 400);
+  }
+
   const token = newToken();
   const hash = await tokenHash(token);
   const label = typeof body.label === 'string' ? body.label.trim() : null;
   // Number.isFinite alone accepted 0 and negatives, minting a grant that
   // grantState() reports as expired on its first use while the endpoint
   // cheerfully returned a URL.
-  const ttlDays = body.ttl_days === undefined ? DEFAULT_TTL_DAYS : body.ttl_days;
+  const ttlDays = body.ttl_days === undefined
+    ? (kind === 'preview' ? PREVIEW_TTL_DAYS : DEFAULT_TTL_DAYS)
+    : body.ttl_days;
   if (!Number.isFinite(ttlDays) || ttlDays < MIN_TTL_DAYS || ttlDays > MAX_TTL_DAYS) {
     return jsonResponse({ ok: false, error: 'ttl_days_out_of_range',
                           min: MIN_TTL_DAYS, max: MAX_TTL_DAYS }, 400);
@@ -64,21 +73,21 @@ export async function onRequestPost({ request, env }) {
 
   await batchWithAudit(env, [
     env.VERIFY_DB.prepare(
-      `INSERT INTO view_grants (token_hash, attestation_id, label, issued_by, expires_at)
-       VALUES (?,?,?,'admin',?)`).bind(hash, attestationId, label, expiresAt),
+      `INSERT INTO view_grants (token_hash, attestation_id, label, issued_by, expires_at, kind)
+       VALUES (?,?,?,'admin',?,?)`).bind(hash, attestationId, label, expiresAt, kind),
   ], {
     attestation_id: attestationId, action: 'grant_issued', actor: 'operator',
-    detail: JSON.stringify({ label, expires_at: expiresAt }), public_summary: null,
+    detail: JSON.stringify({ label, expires_at: expiresAt, kind }), public_summary: null,
   });
 
-  const base = `https://mapasocietario.es/verificacion/g/${token}`;
+  const base = `https://mapasocietario.es${grantPath(kind, token)}`;
   return jsonResponse({
-    ok: true, token_hash: hash, expires_at: expiresAt,
+    ok: true, token_hash: hash, expires_at: expiresAt, kind,
     url: base,
     // The stated audience is a foreign professional, so the English rendering
     // needs a reachable address. There is no /en/ grant route, so language is a
     // query parameter on the same resource.
     url_en: `${base}?lang=en`,
-    local_url: `http://localhost:5173/verificacion/g/${token}`,
+    local_url: `http://localhost:5173${grantPath(kind, token)}`,
   });
 }

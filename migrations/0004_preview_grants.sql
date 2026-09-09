@@ -1,0 +1,12 @@
+-- VERIFY_DB — preview grants.
+-- Spec: docs/superpowers/specs/2026-09-09-pilot-readiness-design.md section 3
+--
+-- A pilot company cannot see its own badge: isBadgeVisible() renders one only
+-- for PILOT_VISIBLE_GROUP_KEYS while VERIFY_VISIBILITY is private. That gate is
+-- correct and stays. A 'preview' grant unlocks the badge for ITS OWN SUBJECT
+-- ONLY, on its own route.
+--
+-- SQLite cannot add a CHECK constraint via ALTER TABLE, so the allowed values
+-- are enforced in src/verify/grant.js (normalizeGrantKind). Existing rows
+-- default to 'counterparty', so no grant changes meaning.
+ALTER TABLE view_grants ADD COLUMN kind TEXT NOT NULL DEFAULT 'counterparty';
