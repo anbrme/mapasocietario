@@ -28,6 +28,10 @@
  */
 import { COPY, TURNSTILE_SITEKEY, PRIVACY_PATH } from '../../src/copy/verificacion.js';
 import { CONSUMER_DOMAINS } from '../../src/verify/emailDomain.js';
+// The server's own caps. Imported rather than retyped for the same reason
+// CONSUMER_DOMAINS is: a second copy drifts, and the first symptom of the drift
+// is an address the form accepted being rejected at submit.
+import { MAX } from '../../src/verify/request.js';
 
 const SITE = 'https://mapasocietario.es';
 const PATH = '/verificacion';
@@ -59,7 +63,7 @@ const section = (id, block, { summary } = {}) => `
  * skipped, so it is drawn as a question rather than as another blank.
  */
 function field(name, spec, { required = false, type = 'text', textarea = false,
-                            prominent = false, t }) {
+                            prominent = false, maxLength = 0, t }) {
   const mark = required
     ? `<span class="mark req">${esc(t.form.requiredMark)}</span>`
     : `<span class="mark">${esc(t.form.optionalMark)}</span>`;
@@ -68,6 +72,7 @@ function field(name, spec, { required = false, type = 'text', textarea = false,
         placeholder="${esc(spec.placeholder || '')}"></textarea>`
     : `<input id="f-${name}" name="${name}" type="${type}" aria-describedby="h-${name}"
         ${required ? 'required' : ''} placeholder="${esc(spec.placeholder || '')}"
+        ${maxLength ? `maxlength="${maxLength}"` : ''}
         autocomplete="${type === 'email' ? 'email' : 'off'}">`;
   return `
 <div class="field${prominent ? ' ask' : ''}" data-field="${name}">
@@ -210,7 +215,12 @@ ${section('cost', t.cost)}
     ${field('nif', t.form.fields.nif, { t })}
     ${field('contact_name', t.form.fields.contact_name, { required: true, t })}
     ${field('contact_role', t.form.fields.contact_role, { required: true, t })}
-    ${field('contact_email', t.form.fields.contact_email, { required: true, type: 'email', t })}
+    ${field('contact_email', t.form.fields.contact_email,
+            // Capped in the markup as well as on the server. Without this the client
+            // calls an over-long address 'corporate', the server answers
+            // contact_email_too_long, and the visitor gets the accept-then-reject
+            // round trip this whole design exists to avoid.
+            { required: true, type: 'email', maxLength: MAX.contact_email, t })}
     ${field('referrer_note', t.form.fields.referrer_note, { prominent: true, t })}
     ${field('note', t.form.fields.note, { textarea: true, t })}
 

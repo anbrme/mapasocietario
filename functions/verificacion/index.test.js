@@ -249,3 +249,13 @@ describe('GET /verificacion', () => {
     expect(html).toContain('class="cf-turnstile" data-sitekey="0x4AAAAAADp3WnZGNiZai_32"');
   });
 });
+
+describe('the email field cap', () => {
+  it('caps the email input in markup at the same length the server enforces', async () => {
+    const { html } = await render(ES);
+    // Without this the client calls an over-long address "corporate", the server
+    // answers contact_email_too_long, and the visitor gets exactly the
+    // accept-then-reject round trip this design exists to avoid.
+    expect(html).toMatch(/id="f-contact_email"[^>]*maxlength="254"/s);
+  });
+});
