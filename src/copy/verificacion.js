@@ -78,9 +78,6 @@ export const COPY = {
 
     // Heading only - the six points themselves are CONDITIONS, above, shared
     // verbatim with the company-profile panel.
-    conditions: {
-      heading: 'Las condiciones, de un vistazo',
-    },
 
     notWhat: {
       heading: 'Lo que esto no es',
@@ -235,9 +232,6 @@ export const COPY = {
 
     // Heading only - the six points themselves are CONDITIONS, above, shared
     // verbatim with the company-profile panel.
-    conditions: {
-      heading: 'The conditions, at a glance',
-    },
 
     notWhat: {
       heading: 'What this is not',

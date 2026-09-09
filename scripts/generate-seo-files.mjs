@@ -116,7 +116,7 @@ const sitemapRoutes = [
   // Pilot front door (functions/verificacion/index.js). One entry, not two:
   // ?lang=en is a query-string variant of this same URL, not a distinct
   // route, and hreflang (not the sitemap) is what tells Google about it.
-  { path: '/verificacion', changefreq: 'weekly', priority: '0.6' },
+  { path: '/verificacion', changefreq: 'monthly', priority: '0.6' },
   { path: '/about', changefreq: 'monthly', priority: '0.5' },
   { path: '/about-es', changefreq: 'monthly', priority: '0.5' },
   { path: '/faq', changefreq: 'monthly', priority: '0.5' },

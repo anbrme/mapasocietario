@@ -26,7 +26,7 @@
  * The form GRANTS NOTHING. It writes one row into the operator's queue. Every
  * claim on the page lives in src/copy/verificacion.js, where it is unit-tested.
  */
-import { COPY, TURNSTILE_SITEKEY, PRIVACY_PATH, CONDITIONS } from '../../src/copy/verificacion.js';
+import { COPY, TURNSTILE_SITEKEY, PRIVACY_PATH } from '../../src/copy/verificacion.js';
 import { CONSUMER_DOMAINS } from '../../src/verify/emailDomain.js';
 // The server's own caps. Imported rather than retyped for the same reason
 // CONSUMER_DOMAINS is: a second copy drifts, and the first symptom of the drift
@@ -184,8 +184,6 @@ export function onRequestGet({ request }) {
 <h1>${esc(t.h1)}</h1>
 <p class="lead">${esc(t.lead)}</p>
 <p class="once">${esc(t.once)}</p>
-
-${section('conditions', { heading: t.conditions.heading, points: CONDITIONS[lang] })}
 
 ${section('not-what', t.notWhat, { summary: true })}
 ${section('what', t.what)}
