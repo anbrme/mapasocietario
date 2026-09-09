@@ -11,6 +11,40 @@ import { onRequestGet } from './verificacion.js';
 const render = async () => (await onRequestGet()).text();
 const script = (html) => html.match(/<script>([\s\S]*)<\/script>/)[1];
 
+/**
+ * Runs the console's client script with a minimal fake DOM instead of a real
+ * browser, so behaviour (not just syntax) can be asserted on. Every element
+ * is created lazily on first lookup; fetch calls are recorded instead of
+ * making a network request.
+ */
+function runClientScript(js) {
+  const elements = new Map();
+  const element = (id) => {
+    if (!elements.has(id)) {
+      elements.set(id, { value: '', innerHTML: '', textContent: '', className: '',
+                          hidden: false, addEventListener() {}, onclick: null });
+    }
+    return elements.get(id);
+  };
+  const fetchCalls = [];
+  const fakeFetch = async (path, opts = {}) => {
+    fetchCalls.push({ path, body: opts.body ? JSON.parse(opts.body) : null });
+    return {
+      ok: true,
+      json: async () => ({ ok: true, url: 'https://example.test/x', url_en: 'https://example.test/x?lang=en',
+                            expires_at: '2099-01-01T00:00:00Z' }),
+    };
+  };
+  const fakeDocument = { getElementById: element };
+  const fakeSessionStorage = { getItem: () => '', setItem() {}, removeItem() {} };
+  const fakeWindow = {};
+  // eslint-disable-next-line no-new-func
+  const load = new Function('document', 'sessionStorage', 'window', 'fetch',
+    `${js}\nreturn { issue, renderList };`);
+  const exported = load(fakeDocument, fakeSessionStorage, fakeWindow, fakeFetch);
+  return { ...exported, element, fetchCalls };
+}
+
 describe('the operator console', () => {
   it('emits JavaScript that actually parses', async () => {
     const js = script(await render());
@@ -50,5 +84,40 @@ describe('the operator console', () => {
   it('says plainly that issuing a link sends no email', async () => {
     const html = await render();
     expect(html).toMatch(/No se envía ningún correo|no se envía ningún correo/);
+  });
+
+  it('renders a preview button that calls issue with the preview argument', async () => {
+    const html = await render();
+    expect(html).toContain(`onclick="issue('\${esc(a.id)}','preview')"`);
+    expect(html).toContain('Vista previa (14 días)');
+  });
+
+  it('issue() sends kind only when given one, so a normal grant posts no kind field', async () => {
+    const { issue, fetchCalls } = runClientScript(script(await render()));
+    await issue('att-1');
+    await issue('att-2', 'preview');
+    const grantCalls = fetchCalls.filter((c) => c.path === '/api/verify/admin/grant');
+    expect(grantCalls).toHaveLength(2);
+    expect(grantCalls[0].body).not.toHaveProperty('kind');
+    expect(grantCalls[1].body.kind).toBe('preview');
+  });
+
+  it('renders a Tipo column labelling preview and counterparty grants', async () => {
+    const { renderList, element } = runClientScript(script(await render()));
+    renderList([{
+      id: 'a1', display_name: 'ACME SL', status: 'live', seat_officer_name: '',
+      seat_position: '', accepted_at: '2026-01-01T00:00:00Z', expires_at: '2027-01-01T00:00:00Z',
+      last_verified_at: '2026-01-01T00:00:00Z', status_reason: '',
+      grants: [
+        { token_hash: 'h1', label: 'x', kind: 'preview', created_at: '2026-01-01T00:00:00Z',
+          access_count: 0, last_access_at: null, revoked_at: null },
+        { token_hash: 'h2', label: 'y', kind: 'counterparty', created_at: '2026-01-01T00:00:00Z',
+          access_count: 0, last_access_at: null, revoked_at: null },
+      ],
+    }]);
+    const html = element('list').innerHTML;
+    expect(html).toContain('<th>Tipo</th>');
+    expect(html).toContain('vista previa');
+    expect(html).toContain('contraparte');
   });
 });

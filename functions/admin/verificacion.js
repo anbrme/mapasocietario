@@ -222,10 +222,12 @@ function renderList(items) {
       <div class="row">
         <input placeholder="etiqueta (p. ej. Banco X, onboarding)" id="lbl-\${esc(a.id)}">
         <button class="primary" onclick="issue('\${esc(a.id)}')">Emitir enlace</button>
+        <button onclick="issue('\${esc(a.id)}','preview')">Vista previa (14 días)</button>
       </div>
-      \${a.grants.length ? '<table><thead><tr><th>Etiqueta</th><th>Emitido</th><th>Accesos</th>' +
+      \${a.grants.length ? '<table><thead><tr><th>Tipo</th><th>Etiqueta</th><th>Emitido</th><th>Accesos</th>' +
         '<th></th></tr></thead><tbody>' + a.grants.map((g) =>
-          '<tr><td>' + esc(g.label || '—') + '</td><td>' + esc((g.created_at||'').slice(0,10)) +
+          '<tr><td>' + (g.kind === 'preview' ? 'vista previa' : 'contraparte') +
+          '</td><td>' + esc(g.label || '—') + '</td><td>' + esc((g.created_at||'').slice(0,10)) +
           '</td><td>' + esc(g.access_count) + (g.last_access_at ? ' (' +
             esc(g.last_access_at.slice(0,10)) + ')' : '') + '</td><td>' +
           (g.revoked_at ? '<span class="muted">revocado</span>'
@@ -237,14 +239,21 @@ function renderList(items) {
     </div>\`).join('');
 }
 
-async function issue(id) {
+async function issue(id, kind) {
   const r = await api('/api/verify/admin/grant', { method: 'POST',
-    body: JSON.stringify({ attestation_id: id, label: $('lbl-' + id).value.trim() }) });
+    body: JSON.stringify({ attestation_id: id, label: $('lbl-' + id).value.trim(),
+                           ...(kind ? { kind } : {}) }) });
+  const preview = kind === 'preview';
   $('grantout').innerHTML = r.ok
-    ? '<div class="card"><p><strong>Enlace emitido — se muestra una sola vez.</strong></p>'
+    ? '<div class="card"><p><strong>'
+      + (preview ? 'Vista previa emitida' : 'Enlace emitido')
+      + ' — se muestra una sola vez.</strong></p>'
       + '<p>ES <code>' + esc(r.data.url) + '</code></p>'
       + '<p>EN <code>' + esc(r.data.url_en) + '</code></p>'
-      + '<p class="muted">Caduca ' + esc(r.data.expires_at) + '.</p></div>'
+      + '<p class="muted">Caduca ' + esc(r.data.expires_at) + '.'
+      + (preview ? ' Ábralo usted antes de enviarlo: la dirección se deriva del nombre '
+                 + 'de la empresa, así que un cambio de denominación puede no resolver.' : '')
+      + '</p></div>'
     : '<p class="bad">' + esc(r.data.error || r.status) + '</p>';
   if (r.ok) load();
 }

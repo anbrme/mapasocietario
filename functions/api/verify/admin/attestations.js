@@ -26,7 +26,7 @@ export async function onRequestGet({ request, env }) {
   const items = [];
   for (const row of results || []) {
     const { results: grants } = await env.VERIFY_DB.prepare(
-      `SELECT token_hash, label, created_at, expires_at, revoked_at, access_count, last_access_at
+      `SELECT token_hash, label, kind, created_at, expires_at, revoked_at, access_count, last_access_at
          FROM view_grants WHERE attestation_id = ? ORDER BY created_at DESC`)
       .bind(row.id).all();
     items.push({
@@ -34,7 +34,7 @@ export async function onRequestGet({ request, env }) {
       // access_count counts LINK ACCESSES, not readers. The label is an operator
       // note and never an identity claim.
       grants: (grants || []).map((g) => ({
-        token_hash: g.token_hash, label: g.label, created_at: g.created_at,
+        token_hash: g.token_hash, label: g.label, kind: g.kind, created_at: g.created_at,
         expires_at: g.expires_at, revoked_at: g.revoked_at,
         access_count: g.access_count, last_access_at: g.last_access_at,
       })),
