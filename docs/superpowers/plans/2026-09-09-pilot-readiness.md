@@ -546,7 +546,7 @@ failing the run over it would cost a day of checks."
 **Files:**
 - Create: `migrations/0004_preview_grants.sql`
 - Modify: `src/verify/grant.js`
-- Create: `src/verify/grant.test.js`
+- Modify: `src/verify/grant.test.js` (**it already exists** with a `grantState` block — EXTEND it, never overwrite)
 - Modify: `functions/api/verify/admin/grant.js`
 - Modify: `functions/verificacion/g/[token].js`
 
@@ -584,7 +584,7 @@ ALTER TABLE view_grants ADD COLUMN kind TEXT NOT NULL DEFAULT 'counterparty';
 
 - [ ] **Step 2: Write the failing tests**
 
-Create `src/verify/grant.test.js`:
+**`src/verify/grant.test.js` already exists** and holds a `describe('grantState')` block with five tests. Keep that block and its `NOW` constant exactly as they are, add one boundary case to it, and append the three new blocks below it. Do not rewrite the file.
 
 ```js
 import { describe, it, expect } from 'vitest';
