@@ -19,6 +19,7 @@ import { liveAttestationFor } from './_attestation.js';
 import { buildTrademarksBlock } from './_trademarks.js';
 import { buildAwardsBlock } from './_awards.js';
 import { findPromotedCompanyBySlug, repointStaleSlug } from './_demand.js';
+import { companyPageHeaders } from './_page_headers.js';
 // The canonical position classifier shared with the graph + officer-capping
 // service (backed by src/data/terms.json, swept by test/position-categories.test.mjs).
 // Pure module (no React/DOM/SPA deps — its purity is guarded by that node test),
@@ -2355,7 +2356,7 @@ function notFoundPage(slug, lang = 'es') {
 // Pages Function entrypoint (shared by both languages)
 // ---------------------------------------------------------------------------
 
-export async function handleCompany({ params, env, waitUntil }, lang = 'es') {
+export async function handleCompany({ params, env, waitUntil }, lang = 'es', options = {}) {
   const slug = String(params.slug || '').toLowerCase();
   const resolved = resolveSlug(slug);
   // A demand-promoted company is resolved by its stable group_key and becomes
@@ -2489,7 +2490,8 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es') {
     // identity. Keep serving it (it may already be indexed) but drop it out of
     // the index; the next demand signal re-validates and demotes the D1 row.
     const staleSlug = Boolean(promoted) && nameToSlug(company.company_name) !== slug;
-    const noindex = isFallback || staleSlug;
+    // A private response is a preview: never indexable, whatever the slug resolved to.
+    const noindex = isFallback || staleSlug || Boolean(options.privateResponse);
     if (staleSlug) {
       // Heal the D1 row so the sitemap and hubs stop advertising a noindex
       // URL: move it to the live slug, or demote it if that slug is taken.
@@ -2505,22 +2507,15 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es') {
     const gleif = gleifResp && gleifResp.success ? gleifResp.data : null;
     // Read after the company resolves, so it keys on the same group_key the
     // rest of the page used. A failure here yields no badge rather than no page.
-    const attestation = await liveAttestationFor(env, graphGroupKey(company, seed));
+    // An override is a badge preview: the caller has already validated a preview
+    // grant for this subject, so isBadgeVisible() is bypassed BY THE CALLER, not
+    // relaxed here. The public gate keeps exactly one meaning.
+    const attestation = options.attestationOverride
+      || await liveAttestationFor(env, graphGroupKey(company, seed));
     const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex, attestation);
     return new Response(html, {
       status: 200,
-      headers: {
-        'content-type': 'text/html; charset=utf-8',
-        // One hour, not one day. The registry publishes daily and the officer
-        // tables above are rendered from it: a 24h edge cache could keep serving
-        // a board that changed this morning long after the backend knew. At this
-        // traffic a page re-renders at most 24 times a day, which is nothing.
-        // stale-while-revalidate is kept for origin trouble, but bounded to a
-        // day so a rarely-visited page cannot serve a week-old board.
-        'cache-control': noindex
-          ? 'public, max-age=0, s-maxage=600'
-          : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400',
-      },
+      headers: companyPageHeaders({ noindex, privateResponse: options.privateResponse }),
     });
   } catch {
     return new Response(notFoundPage(slug, lang), {
