@@ -109,7 +109,9 @@ CREATE INDEX idx_reconciliation_runs_attestation
   ON reconciliation_runs(attestation_id, checked_at);
 ```
 
-One row per attestation per daily run, written in the `batch()` that already runs. It records `source_failed` separately so a day the upstream API was unreachable is legible as *we could not check*, never as *we checked and found nothing wrong* — the same distinction line 121 already makes for `last_verified_at`.
+One row per attestation per daily run **on which a check actually ran**, written in the `batch()` that already runs.
+
+**Expiry writes no row, deliberately.** `reconcileOne` returns early for an expired attestation (`workers/verification-reconciler/src/index.js:57-72`) because expiry is a clock, not a check: no registry read happens, so there is no outcome to record. Writing a row with an empty outcome map and `source_failed=0` would manufacture exactly the false reading this table exists to prevent — *we checked and found nothing wrong*. The expiry is recorded where it belongs, as an act in `audit_events`. The visible consequence is that an attestation's check history simply stops on the day it expired, with the status column carrying the reason; since `expired` is not in the reconciler's `CURRENT` set, that day would have been its last row anyway. It records `source_failed` separately so a day the upstream API was unreachable is legible as *we could not check*, never as *we checked and found nothing wrong* — the same distinction line 121 already makes for `last_verified_at`.
 
 **Deliberately not in `audit_events`.** That chain is a record of *acts*, and a no-op check is not one; every row also lengthens the hash chain that verification must walk. Retention is therefore independent and set at **two years**, purged by the same daily cron.
 
