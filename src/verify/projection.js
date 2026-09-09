@@ -2,11 +2,26 @@
  * The ONLY shape a reader ever sees. Built by allow-list: a deny-list would
  * leak every column added after it was written.
  *
- * `reviewer` is published deliberately — the reviewer is the operator taking
- * public accountability for the decision, which is the point (spec section 8).
+ * `reviewer` is REDACTED to the operating entity. Section 8 of the pilot design
+ * published the individual deliberately — the reviewer takes accountability for
+ * the decision — but that reasoning assumed a sole operator and does not survive
+ * an employee doing the review. The individual is still recorded in
+ * attestations.reviewer and in audit_events.detail, so the accountability is
+ * kept; only the exposure is dropped. The asymmetry is deliberate: do not
+ * "tidy" it by redacting the internal record too.
+ *
+ * Every public reader is downstream of this function — the grant permalink, the
+ * /empresa badge, the in-app card and /api/verify/badge — so this constant is
+ * the single point of change.
+ *
  * The redaction set is claimant email, identification_note, email_domain_basis,
- * audit detail, evidence keys and hashes, and grant tokens.
+ * audit detail, evidence keys and hashes, grant tokens, and the reviewer's name.
  */
+
+// The registered legal name: no umlaut, no periods. Mapa Societario is a brand
+// and cannot be accountable for a review; an entity with a NIF can.
+export const PUBLIC_REVIEWER = 'Nurnberg Consulting SL';
+
 const HISTORY_FIELDS = ['seq', 'action', 'created_at'];
 
 export function publicProjection(attestation, facts, auditRows) {
@@ -24,7 +39,7 @@ export function publicProjection(attestation, facts, auditRows) {
     approved_at: attestation.approved_at,
     // The last SUCCESSFUL check. A daily job cannot support "as of right now".
     last_verified_at: attestation.last_verified_at,
-    reviewer: attestation.reviewer,
+    reviewer: PUBLIC_REVIEWER,
     status_reason: attestation.status_reason,
     facts: (facts || []).map((f) => ({
       fact_key: f.fact_key,

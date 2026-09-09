@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { statusLine, renderAttestationHtml, FORBIDDEN_PHRASES } from './render.js';
+import { PUBLIC_REVIEWER } from './projection.js';
 
 const base = {
   id: 'att_x', status: 'live', method: 'email-confirmed', representation_basis: 'sole_admin',
   representative: { name: 'NURNBERG ALESSANDRO', position: 'ADM. UNICO' },
   accepted_at: '2026-09-08T11:30:00Z', expires_at: '2027-03-07T11:30:00Z',
   approved_at: '2026-09-09T09:00:00Z', last_verified_at: '2026-10-07T03:00:00Z',
-  reviewer: 'Alessandro Nürnberg', status_reason: null,
+  reviewer: PUBLIC_REVIEWER, status_reason: null,
   facts: [{ fact_key: 'address', declared_status: 'current', declared_value: 'C/ COS 10',
             registry_value_at_issue: 'C/ COS 10', last_check_outcome: 'consistent',
             last_checked_at: '2026-10-07T03:00:00Z' }],
@@ -59,8 +60,15 @@ describe('renderAttestationHtml', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
-  it('publishes the reviewer, deliberately', () => {
-    expect(renderAttestationHtml(base, 'ACME SL', 'en')).toContain('Alessandro Nürnberg');
+  it('names the operating entity as reviewer, not an individual', () => {
+    const html = renderAttestationHtml(base, 'ACME SL', 'en');
+    expect(html).toContain('reviewed by Nurnberg Consulting SL, operator of Mapa Societario');
+    expect(html).not.toContain('Alessandro');
+  });
+
+  it('names the operating entity in Spanish too', () => {
+    const html = renderAttestationHtml(base, 'ACME SL', 'es');
+    expect(html).toContain('revisada por Nurnberg Consulting SL, operador de Mapa Societario');
   });
 
   it('renders the four-column fact table including the registry-today column', () => {

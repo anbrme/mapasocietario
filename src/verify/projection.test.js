@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { publicProjection } from './projection.js';
+import { publicProjection, PUBLIC_REVIEWER } from './projection.js';
 
 const record = (overrides = {}) => ({
   id: 'att_abc', subject_id: 's1', status: 'live', method: 'email-confirmed',
@@ -21,8 +21,10 @@ const audit = [
 ];
 
 describe('publicProjection', () => {
-  it('publishes the reviewer, deliberately', () => {
-    expect(publicProjection(record(), [], []).reviewer).toBe('Alessandro Nürnberg');
+  it('names the operating entity, never the individual reviewer', () => {
+    const view = publicProjection(record(), [], []);
+    expect(view.reviewer).toBe(PUBLIC_REVIEWER);
+    expect(JSON.stringify(view)).not.toContain('Alessandro');
   });
   it('publishes last_verified_at rather than a "right now" claim', () => {
     expect(publicProjection(record(), [], []).last_verified_at).toBe('2026-10-07T03:00:00Z');
@@ -36,12 +38,13 @@ describe('publicProjection', () => {
   it('never leaks any private field, for any generated value', () => {
     const secrets = ['ceo@example.es', 'video call 2026-09-07', 'company website',
                      'evidence/sealed/abc.json', 'evidence/personal/abc.json',
-                     'deadbeef', 'internal: checked poder'];
+                     'deadbeef', 'internal: checked poder', 'Alessandro Nürnberg'];
     for (let i = 0; i < 200; i++) {
       const marker = `SECRET-${i}-${Math.random().toString(36).slice(2)}`;
       const poisoned = record({
         claimant_email: marker, identification_note: marker, email_domain_basis: marker,
         sealed_key: marker, personal_key: marker, sealed_hash: marker, decision_note: marker,
+        reviewer: marker,
       });
       expect(JSON.stringify(publicProjection(poisoned, [], audit))).not.toContain(marker);
     }
