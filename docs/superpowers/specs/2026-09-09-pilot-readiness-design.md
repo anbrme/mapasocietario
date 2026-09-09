@@ -141,7 +141,7 @@ An internal record of *what a company declared and what the registry said* is th
 
 A public check-history lane (§4.3); extracting the company-page data fetch from `_lib.js` (§3.3); any change to `isBadgeVisible` or the pilot allowlist; preview links for anyone other than the subject company itself.
 
-## 8. Open questions
+## 8. Resolved
 
-1. Whether the preview grant should expire at 14 days or on the company's decision. 14 days is a guess; the first three companies will show whether it is short.
-2. Whether an employee reviewer's name should also be withheld from `audit_events.detail`, or whether internal retention of it is exactly the accountability we intend to keep. Current position: retain internally.
+1. **Preview grant expiry: 14 days.** Decided 2026-09-09. Revisit if the first three pilot companies find it short.
+2. **The reviewer's individual name is retained internally**, in `attestations.reviewer` and in `audit_events.detail`. Decided 2026-09-09. Internal retention *is* the accountability being kept; only the public exposure was objected to. This means the redaction rule is asymmetric by design — `reviewer` is redacted from the public projection but never from the internal record — and the tests must assert both halves, or a later "consistency" cleanup will quietly delete the accountability.
