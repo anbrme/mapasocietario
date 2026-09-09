@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { validateRequestPayload, buildRequestEmail, MAX } from './request.js';
+import { validateRequestPayload, buildRequestEmail, MAX, REQUEST_RETENTION_DAYS, requestRetentionCutoff }
+  from './request.js';
 
 const good = (o = {}) => ({
   company_query: 'ACME SOLUCIONES SL',
@@ -100,5 +101,13 @@ describe('buildRequestEmail', () => {
                                           timestamp: 't', id: 'req_1' });
     expect(mail.subject).not.toMatch(/[\r\n]/);
     expect(mail.subject).toContain('ACME Bcc: x@y.z');
+  });
+});
+
+describe('requestRetentionCutoff', () => {
+  it('is ninety days before now, as an ISO string', () => {
+    const now = Date.parse('2026-12-10T04:15:00Z');
+    expect(REQUEST_RETENTION_DAYS).toBe(90);
+    expect(requestRetentionCutoff(now)).toBe(new Date(now - 90 * 86_400_000).toISOString());
   });
 });

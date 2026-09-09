@@ -83,3 +83,11 @@ export function buildRequestEmail(payload, { from, to, timestamp, id }) {
 
   return { to, from, subject, text };
 }
+
+// Only spam and ineligible rows are purged. A request that became an invitation
+// is retained under the attestation record's terms (spec section 9 of the pilot
+// design), because it is then part of that record's provenance.
+export const REQUEST_RETENTION_DAYS = 90;
+
+export const requestRetentionCutoff = (nowMs = Date.now()) =>
+  new Date(nowMs - REQUEST_RETENTION_DAYS * 86_400_000).toISOString();

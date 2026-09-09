@@ -14,6 +14,7 @@
 import { checkFact, nextStatus, isExpired, buildRunRow, runRetentionCutoff, RUN_RETENTION_DAYS }
   from '../../../src/verify/reconcile.js';
 import { buildAuditEvent, GENESIS_HASH } from '../../../src/verify/chain.js';
+import { requestRetentionCutoff, REQUEST_RETENTION_DAYS } from '../../../src/verify/request.js';
 
 // Every state an attestation can be in and still be the CURRENT record for its
 // subject. Scanning only 'live' would mean nothing could ever recover or expire
@@ -172,7 +173,8 @@ async function reconcileOne(env, attestation, report) {
 }
 
 export async function reconcileAll(env) {
-  const report = { checked: 0, changed: [], failures: [], nudge: [], anchored: null, purged: 0 };
+  const report = { checked: 0, changed: [], failures: [], nudge: [], anchored: null, purged: 0,
+                    purgedRequests: 0 };
 
   const { results } = await env.VERIFY_DB.prepare(
     `SELECT * FROM attestations WHERE status IN (${CURRENT.map(() => '?').join(',')})`)
@@ -215,6 +217,18 @@ export async function reconcileAll(env) {
     report.failures.push({ id: 'reconciliation_runs_purge', error: String(e.message || e) });
   }
 
+  // Requests that never became anything. Best-effort, for the same reason as
+  // the run purge: a storage cost must not cost a day of checks.
+  try {
+    const purge = await env.VERIFY_DB.prepare(
+      `DELETE FROM verification_requests
+        WHERE status IN ('spam','ineligible') AND created_at < ?`)
+      .bind(requestRetentionCutoff()).run();
+    report.purgedRequests = purge?.meta?.changes || 0;
+  } catch (e) {
+    report.failures.push({ id: 'verification_requests_purge', error: String(e.message || e) });
+  }
+
   return report;
 }
 
@@ -238,6 +252,7 @@ async function mail(env, report) {
     ...report.failures.map((f) => `  ${f.id}: ${f.error}`),
     `Due for reconfirmation: ${report.nudge.length}`,
     `Check rows purged (older than ${RUN_RETENTION_DAYS} days): ${report.purged}`,
+    `Requests purged (spam/ineligible older than ${REQUEST_RETENTION_DAYS} days): ${report.purgedRequests}`,
     report.anchored
       ? `Chain head ${report.anchored.day}: seq ${report.anchored.seq} ${report.anchored.hash}`
       : 'Chain head: none',
