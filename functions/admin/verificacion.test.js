@@ -40,7 +40,7 @@ function runClientScript(js) {
   const fakeWindow = {};
   // eslint-disable-next-line no-new-func
   const load = new Function('document', 'sessionStorage', 'window', 'fetch',
-    `${js}\nreturn { issue, renderList };`);
+    `${js}\nreturn { issue, renderList, renderRequests, searchFromRequest };`);
   const exported = load(fakeDocument, fakeSessionStorage, fakeWindow, fakeFetch);
   return { ...exported, element, fetchCalls };
 }
@@ -125,5 +125,47 @@ describe('the operator console', () => {
     expect(html).toContain('<th>Tipo</th>');
     expect(html).toContain('vista previa');
     expect(html).toContain('contraparte');
+  });
+
+  it('renders the Solicitudes queue as the first section, above the audit chain', async () => {
+    const html = await render();
+    expect(html).toContain('Solicitudes recibidas');
+    expect(html.indexOf('Solicitudes recibidas')).toBeLessThan(html.indexOf('Cadena de auditoría'));
+  });
+
+  it('still emits parseable JavaScript with the Solicitudes section wired in', async () => {
+    // The header on this file explains why this matters: an escaping mistake
+    // in the new section would produce HTML that looks fine and a script that
+    // is syntactically broken. Re-asserted here so a Solicitudes regression
+    // fails right next to the code that could cause it.
+    const js = script(await render());
+    expect(() => new Function(js)).not.toThrow();
+    expect(js).not.toMatch(/\(''\s*\+/);
+    expect(js).not.toMatch(/\+\s*''\)/);
+  });
+
+  it('renders a request row with a Buscar button that never carries authority', async () => {
+    const { renderRequests, element } = runClientScript(script(await render()));
+    renderRequests([{
+      id: 'req_1', company_query: 'WAYPORT ADVISORS', nif: null,
+      contact_name: 'Ana', contact_role: 'Administradora', contact_email: 'ana@example.com',
+      referrer_note: null, operator_note: null, status: 'new',
+      created_at: '2026-09-01T00:00:00Z',
+    }]);
+    const html = element('requests').innerHTML;
+    expect(html).toContain('WAYPORT ADVISORS');
+    expect(html).toContain('data-req-search="WAYPORT ADVISORS"');
+    // No inline onclick with an interpolated id: the file's own delegated-
+    // listener convention, kept for the same reason it exists elsewhere.
+    expect(html).not.toMatch(/onclick=/);
+  });
+
+  it('the Buscar action fills #q with the request\'s company text and triggers the search', async () => {
+    const { searchFromRequest, element, fetchCalls } = runClientScript(script(await render()));
+    await searchFromRequest('WAYPORT ADVISORS');
+    expect(element('q').value).toBe('WAYPORT ADVISORS');
+    const lookupCalls = fetchCalls.filter((c) => c.path.startsWith('/api/verify/admin/lookup'));
+    expect(lookupCalls).toHaveLength(1);
+    expect(lookupCalls[0].path).toContain(encodeURIComponent('WAYPORT ADVISORS'));
   });
 });

@@ -54,6 +54,12 @@ export function onRequestGet() {
 </div>
 
 <div id="app" hidden>
+  <h2>Solicitudes recibidas</h2>
+  <p class="muted">Una solicitud no concede nada: es un aviso. Para convertirla, busque la
+    empresa abajo y emita la invitación como siempre, anotando cómo ha identificado a la
+    persona y por qué ese dominio es suyo.</p>
+  <div id="requests"></div>
+
   <h2>Cadena de auditoría</h2>
   <div class="card" id="chain">…</div>
 
@@ -126,6 +132,62 @@ function renderChain(d) {
       + 'inmutable: la integridad depende del punto de control externo diario.</p>'
     : '<span class="bad">ROTA en seq ' + esc(d.broken_at_seq) + '</span>';
 }
+
+const STATUS_REQ_ES = { new: 'nueva', contacted: 'contactada', invited: 'invitada',
+                        ineligible: 'no elegible', declined: 'rechazada', spam: 'spam' };
+
+function renderRequests(items) {
+  if (!items.length) { $('requests').innerHTML = '<p class="muted">Nada pendiente.</p>'; return; }
+  $('requests').innerHTML = items.map((r) => \`
+    <div class="card">
+      <strong>\${esc(r.company_query)}</strong>\${r.nif ? ' <span class="muted">· ' + esc(r.nif)
+        + '</span>' : ''}
+      <span class="muted"> — \${esc(STATUS_REQ_ES[r.status] || r.status)}</span>
+      <p class="muted">\${esc(r.contact_name)} — \${esc(r.contact_role)} · \${esc(r.contact_email)}</p>
+      \${r.referrer_note ? '<p class="muted">Motivo: ' + esc(r.referrer_note) + '</p>' : ''}
+      <p class="muted">Recibida \${esc((r.created_at || '').slice(0, 10))}</p>
+      <div class="row">
+        <button data-req-search="\${esc(r.company_query)}">Buscar</button>
+        <button data-req-id="\${esc(r.id)}" data-req-status="contacted">Contactada</button>
+        <button data-req-id="\${esc(r.id)}" data-req-status="ineligible">No elegible</button>
+        <button data-req-id="\${esc(r.id)}" data-req-status="declined">Rechazada</button>
+        <button data-req-id="\${esc(r.id)}" data-req-status="spam">Spam</button>
+      </div>
+      <div class="row">
+        <input placeholder="nota" id="reqnote-\${esc(r.id)}" value="\${esc(r.operator_note || '')}">
+      </div>
+      <p class="muted" id="reqmsg-\${esc(r.id)}"></p>
+    </div>\`).join('');
+}
+
+// A request is a LEAD, never authority: this only fills the existing search
+// box and reuses the existing lookup - it issues nothing.
+function searchFromRequest(query) {
+  $('q').value = query;
+  search();
+}
+window.searchFromRequest = searchFromRequest;
+
+async function decideRequest(id, status) {
+  const note = $('reqnote-' + id).value.trim();
+  const msg = $('reqmsg-' + id);
+  const r = await api('/api/verify/admin/requests', { method: 'POST',
+    body: JSON.stringify({ id, status, operator_note: note }) });
+  msg.textContent = r.ok ? 'Hecho: ' + r.data.status : 'Error: ' + (r.data.error || r.status);
+  msg.className = r.ok ? 'ok' : 'bad';
+  if (r.ok) load();
+}
+window.decideRequest = decideRequest;
+
+// Delegated listeners keyed on data- attributes, not inline onclick with an
+// interpolated id: quoting an id inside an attribute inside a template
+// literal collapses one level of escaping and silently emits a broken call.
+$('requests').addEventListener('click', (e) => {
+  const searchBtn = e.target.closest('button[data-req-search]');
+  if (searchBtn) { searchFromRequest(searchBtn.dataset.reqSearch); return; }
+  const statusBtn = e.target.closest('button[data-req-status]');
+  if (statusBtn) decideRequest(statusBtn.dataset.reqId, statusBtn.dataset.reqStatus);
+});
 
 function renderQueue(items) {
   if (!items.length) { $('queue').innerHTML = '<p class="muted">Nada pendiente.</p>'; return; }
@@ -313,6 +375,8 @@ async function load() {
   $('who').textContent = 'Autenticado';
   $('app').hidden = false;
   renderChain(chain.data);
+  const rq = await api('/api/verify/admin/requests');
+  if (rq.ok) renderRequests(rq.data.items || []);
   const q = await api('/api/verify/admin/queue');
   if (q.ok) renderQueue(q.data.items || []);
   const a = await api('/api/verify/admin/attestations');
