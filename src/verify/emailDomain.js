@@ -15,7 +15,11 @@
 
 // Unambiguous consumer mailboxes only. A domain in doubt is left OUT: a false
 // accept costs one row in a queue, a false reject costs a real lead.
-const CONSUMER_DOMAINS = [
+// Exported so the public request page can run the SAME check as the user types.
+// A second, hand-copied list on the client would drift, and the first symptom of
+// the drift is exactly the thing the rule forbids: an address the form accepted
+// being rejected at submit.
+export const CONSUMER_DOMAINS = [
   'gmail.com', 'googlemail.com',
   'outlook.com', 'outlook.es', 'hotmail.com', 'hotmail.es', 'hotmail.co.uk',
   'live.com', 'live.es', 'msn.com',
