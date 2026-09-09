@@ -51,8 +51,15 @@ const section = (id, block, { summary } = {}) => `
  * One form control. `name` IS the endpoint's contract - these strings are read
  * verbatim by validateRequestPayload, so a typo here is a silent 400 the user
  * cannot explain.
+ *
+ * `prominent` gives a field the same panel treatment the prose blocks get. Only
+ * referrer_note uses it, and not for decoration: that answer is how we learn
+ * which institutions are actually sending companies here, which is the pilot's
+ * whole distribution thesis. At the visual weight of an optional NIF it gets
+ * skipped, so it is drawn as a question rather than as another blank.
  */
-function field(name, spec, { required = false, type = 'text', textarea = false, t }) {
+function field(name, spec, { required = false, type = 'text', textarea = false,
+                            prominent = false, t }) {
   const mark = required
     ? `<span class="mark req">${esc(t.form.requiredMark)}</span>`
     : `<span class="mark">${esc(t.form.optionalMark)}</span>`;
@@ -63,7 +70,7 @@ function field(name, spec, { required = false, type = 'text', textarea = false, 
         ${required ? 'required' : ''} placeholder="${esc(spec.placeholder || '')}"
         autocomplete="${type === 'email' ? 'email' : 'off'}">`;
   return `
-<div class="field" data-field="${name}">
+<div class="field${prominent ? ' ask' : ''}" data-field="${name}">
   <label for="f-${name}">${esc(spec.label)} ${mark}</label>
   <p class="hint" id="h-${name}">${esc(spec.hint)}</p>
   ${control}
@@ -138,6 +145,12 @@ export function onRequestGet({ request }) {
           letter-spacing: .06em; color: var(--muted); }
   .mark.req { color: var(--accent); }
   .hint { color: var(--muted); font-size: .88rem; margin: 0 0 .45rem; }
+  /* The one question the pilot actually needs answered, drawn as a question. */
+  .field.ask { background: var(--card); border: 1px solid var(--line);
+               border-left: 3px solid var(--accent); border-radius: 10px;
+               padding: 1.05rem 1.15rem; }
+  .field.ask label { font-size: 1.02rem; }
+  .field.ask .hint { color: var(--fg); opacity: .78; }
   input, textarea { font: inherit; width: 100%; padding: .6rem .7rem; color: inherit;
                     background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
   textarea { resize: vertical; }
@@ -194,7 +207,7 @@ ${section('cost', t.cost)}
     ${field('contact_name', t.form.fields.contact_name, { required: true, t })}
     ${field('contact_role', t.form.fields.contact_role, { required: true, t })}
     ${field('contact_email', t.form.fields.contact_email, { required: true, type: 'email', t })}
-    ${field('referrer_note', t.form.fields.referrer_note, { t })}
+    ${field('referrer_note', t.form.fields.referrer_note, { prominent: true, t })}
     ${field('note', t.form.fields.note, { textarea: true, t })}
 
     <div class="hp" aria-hidden="true">

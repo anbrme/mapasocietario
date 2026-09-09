@@ -57,6 +57,22 @@ describe('GET /verificacion', () => {
     }
   });
 
+  // Spec section 8: this answer is how we learn which institutions are driving
+  // companies here. At the visual weight of an optional NIF it gets skipped, so
+  // the container is part of the requirement, not styling.
+  it('gives the referrer question a visible container of its own', async () => {
+    for (const [url, lang] of [[ES, 'es'], [EN, 'en']]) {
+      const { html } = await render(url);
+      const open = html.indexOf('<div class="field ask" data-field="referrer_note">');
+      expect(open).toBeGreaterThan(-1);
+      const next = html.indexOf('<div class="field', open + 1);
+      const block = html.slice(open, next === -1 ? undefined : next);
+      expect(block).toContain(COPY[lang].form.fields.referrer_note.label);
+      // It is the ONLY field drawn that way - prominence shared is prominence lost.
+      expect(html.match(/class="field ask"/g)).toHaveLength(1);
+    }
+  });
+
   it('carries the one persuasive line exactly once', async () => {
     for (const [url, lang] of [[ES, 'es'], [EN, 'en']]) {
       const { html } = await render(url);

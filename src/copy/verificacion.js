@@ -28,13 +28,10 @@ export const TURNSTILE_SITEKEY = '0x4AAAAAADp3WnZGNiZai_32';
 
 export const CONTACT_EMAIL = 'mapasocietario@ncdata.eu';
 
-export const LANGS = ['es', 'en'];
-
 export const PRIVACY_PATH = '/verificacion/privacidad';
 
 export const COPY = {
   es: {
-    htmlLang: 'es',
     title: 'Verificación de datos registrales | Mapa Societario',
     description:
       'Un representante con cargo vigente en el registro puede dejar constancia, con fecha y con nombre, sobre los datos registrales de su propia empresa. Piloto con plazas limitadas.',
@@ -104,7 +101,7 @@ export const COPY = {
       body:
         'Durante el piloto solo podemos aceptar solicitudes desde un dominio corporativo, no desde Gmail, Hotmail, Outlook, Yahoo y equivalentes. Es una regla del piloto, no un juicio sobre su empresa: sabemos que deja fuera a muchísimas sociedades españolas perfectamente reales. Tampoco demuestra nada por sí sola, porque cualquiera puede comprar un dominio en diez minutos; solo reduce el ruido mientras revisamos a mano.',
       escape:
-        'Si ese no es su caso, escríbanos a mapasocietario@ncdata.eu y lo resolvemos por correo. Preferimos leer su mensaje a perderle por una regla provisional.',
+        `Si ese no es su caso, escríbanos a ${CONTACT_EMAIL} y lo resolvemos por correo. Preferimos leer su mensaje a perderle por una regla provisional.`,
     },
 
     form: {
@@ -166,27 +163,26 @@ export const COPY = {
       contact_email_required: 'Necesitamos un correo electrónico donde responderle.',
       contact_email_invalid: 'Esa dirección no parece una dirección de correo. Revísela.',
       contact_email_not_corporate:
-        'Durante el piloto solo podemos aceptar solicitudes desde un dominio corporativo. Si ese no es su caso, escríbanos a mapasocietario@ncdata.eu.',
+        `Durante el piloto solo podemos aceptar solicitudes desde un dominio corporativo. Si ese no es su caso, escríbanos a ${CONTACT_EMAIL}.`,
       turnstile_failed:
         'No hemos podido completar la comprobación antirrobots. Recargue la página e inténtelo de nuevo.',
       store_failed:
-        'No hemos podido guardar su solicitud. Inténtelo dentro de unos minutos, o escríbanos a mapasocietario@ncdata.eu.',
+        `No hemos podido guardar su solicitud. Inténtelo dentro de unos minutos, o escríbanos a ${CONTACT_EMAIL}.`,
       invalid_json:
         'No hemos podido leer el formulario. Recargue la página e inténtelo de nuevo.',
       network:
         'No hemos podido enviar la solicitud. Compruebe su conexión e inténtelo de nuevo.',
       unknown:
-        'Algo ha fallado por nuestra parte. Inténtelo de nuevo, o escríbanos a mapasocietario@ncdata.eu.',
+        `Algo ha fallado por nuestra parte. Inténtelo de nuevo, o escríbanos a ${CONTACT_EMAIL}.`,
     },
 
-    noscript: 'Este formulario necesita JavaScript. Si lo tiene desactivado, escríbanos a mapasocietario@ncdata.eu y lo tramitamos por correo.',
+    noscript: `Este formulario necesita JavaScript. Si lo tiene desactivado, escríbanos a ${CONTACT_EMAIL} y lo tramitamos por correo.`,
     privacyLink: 'Cómo tratamos sus datos en la verificación',
-    contactLine: 'Cualquier duda, y cualquier caso que no encaje en el piloto: mapasocietario@ncdata.eu',
+    contactLine: `Cualquier duda, y cualquier caso que no encaje en el piloto: ${CONTACT_EMAIL}`,
     langSwitch: 'English',
   },
 
   en: {
-    htmlLang: 'en',
     title: 'Registry data verification | Mapa Societario',
     description:
       'A representative holding a current registry position can put a dated, attributable statement on the record about their own company’s registry data. Pilot, with limited places.',
@@ -253,7 +249,7 @@ export const COPY = {
       body:
         'During the pilot we can only accept requests from a corporate domain — not from Gmail, Hotmail, Outlook, Yahoo or their equivalents. It is a pilot rule, not a judgement about your company: we know it shuts out a great many entirely real Spanish companies. Nor does it prove anything on its own, since anyone can buy a domain in ten minutes; it only cuts the noise while we review by hand.',
       escape:
-        'If that is your situation, write to us at mapasocietario@ncdata.eu and we will handle it by email. We would rather read your message than lose you to a provisional rule.',
+        `If that is your situation, write to us at ${CONTACT_EMAIL} and we will handle it by email. We would rather read your message than lose you to a provisional rule.`,
     },
 
     form: {
@@ -315,22 +311,22 @@ export const COPY = {
       contact_email_required: 'We need an email address to reply to.',
       contact_email_invalid: 'That does not look like an email address. Please check it.',
       contact_email_not_corporate:
-        'During the pilot we can only accept requests from a corporate domain. If that is your situation, write to us at mapasocietario@ncdata.eu.',
+        `During the pilot we can only accept requests from a corporate domain. If that is your situation, write to us at ${CONTACT_EMAIL}.`,
       turnstile_failed:
         'We could not complete the anti-bot check. Reload the page and try again.',
       store_failed:
-        'We could not save your request. Try again in a few minutes, or write to us at mapasocietario@ncdata.eu.',
+        `We could not save your request. Try again in a few minutes, or write to us at ${CONTACT_EMAIL}.`,
       invalid_json:
         'We could not read the form. Reload the page and try again.',
       network:
         'We could not send the request. Check your connection and try again.',
       unknown:
-        'Something failed on our side. Try again, or write to us at mapasocietario@ncdata.eu.',
+        `Something failed on our side. Try again, or write to us at ${CONTACT_EMAIL}.`,
     },
 
-    noscript: 'This form needs JavaScript. If you have it turned off, write to us at mapasocietario@ncdata.eu and we will handle it by email.',
+    noscript: `This form needs JavaScript. If you have it turned off, write to us at ${CONTACT_EMAIL} and we will handle it by email.`,
     privacyLink: 'How we handle your data in the verification',
-    contactLine: 'Any question, and any case the pilot does not fit: mapasocietario@ncdata.eu',
+    contactLine: `Any question, and any case the pilot does not fit: ${CONTACT_EMAIL}`,
     langSwitch: 'Español',
   },
 };
