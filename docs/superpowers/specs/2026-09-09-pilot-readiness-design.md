@@ -23,11 +23,11 @@ That reasoning was sound but it assumed a sole operator. It does not survive an 
 
 ### 2.2 The string names the legal entity
 
-> *revisada por Nürnberg Consulting S.L., operador de Mapa Societario*
+> *revisada por Nurnberg Consulting SL, operador de Mapa Societario*
 
-**The constant is the entity name only** — `Nürnberg Consulting S.L.` — and the surrounding sentence stays in the existing `t.method(name, date)` i18n template, so the English page reads *reviewed by Nürnberg Consulting S.L., operator of Mapa Societario* rather than inheriting Spanish prose. Splitting it the other way would put untranslated text on the EN surface.
+**The constant is the entity name only** — `Nurnberg Consulting SL` — and the surrounding sentence stays in the existing `t.method(name, date)` i18n template, so the English page reads *reviewed by Nurnberg Consulting SL, operator of Mapa Societario* rather than inheriting Spanish prose. Splitting it the other way would put untranslated text on the EN surface.
 
-Mapa Societario is a brand, not a legal person. "Reviewed by Mapa Societario" reads as reviewed-by-a-website; naming the S.L. names an entity with a NIF that can be held to the review, which is the accountability §8 was reaching for, preserved at organisational level. The brand is retained as the operating name so a reader who arrived via the site recognises it.
+Mapa Societario is a brand, not a legal person. "Reviewed by Mapa Societario" reads as reviewed-by-a-website; naming the SL names an entity with a NIF that can be held to the review, which is the accountability §8 was reaching for, preserved at organisational level. The brand is retained as the operating name so a reader who arrived via the site recognises it.
 
 ### 2.3 Changes
 
