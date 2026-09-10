@@ -24,6 +24,7 @@ import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 
 import { getAccessToken } from '../workers/analytics/src/index.js';
+import { safeDesc, safeName } from './ga4-definition-names.mjs';
 
 const ADMIN = 'https://analyticsadmin.googleapis.com/v1beta';
 const SCOPE = 'https://www.googleapis.com/auth/analytics.edit';
