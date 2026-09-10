@@ -35,7 +35,7 @@ test('the panel renders above the registry data, so borrowed authority frames it
   assert.match(html, /Confirmación de vigencia/);
   assert.match(html, /NURNBERG ALESSANDRO/);
   assert.ok(
-    html.indexOf('Confirmación de vigencia') < html.indexOf('Datos registrales'),
+    html.indexOf('Confirmación de vigencia') < html.indexOf('id="registry-data"'),
     'panel must render before the registry-data heading',
   );
 });

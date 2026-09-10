@@ -331,10 +331,59 @@ describe('the English page', () => {
     // the expected strings is the only assertion that actually fails.
     for (const text of [
       'Listed company', 'View quote', 'Get alerts for this company',
-      'Close', 'Loading the graph', 'Explore relationships on the map',
+      'Close', 'Loading the graph', 'See how this company is connected',
+      'Free: map the network, annotate what you find, and export your investigation.',
       'Follow this company', 'the same tools as the app', 'Open in a new tab',
     ]) {
       expect(en, text).toContain(text);
     }
+  });
+});
+
+/**
+ * The graph overlay is a WORKSPACE, not a picture: you can annotate nodes,
+ * export the investigation and re-import it later. Nothing on a company page
+ * said so, which left the CTA promising only a look. Since a company profile
+ * is where ~78 of every 208 sessions begin, this note is the only place most
+ * arrivals could ever learn the workspace exists.
+ */
+describe('the workspace promise under the hero action', () => {
+  it('states what the reader can do, in the reader\'s language', () => {
+    const es = render('es');
+    const en = render('en');
+
+    expect(es).toContain('class="hero-workspace"');
+    expect(es).toMatch(/anote sus hallazgos/);
+    expect(es).toMatch(/exporte la investigación/);
+
+    expect(en).toContain('class="hero-workspace"');
+    expect(en).toMatch(/annotate what you find/);
+    expect(en).toMatch(/export your investigation/);
+  });
+
+  it('sits directly under the hero actions, before the registry table', () => {
+    const html = render();
+
+    const actions = html.indexOf('class="hero-actions"');
+    const note = html.indexOf('class="hero-workspace"');
+
+    expect(actions).toBeGreaterThan(-1);
+    expect(note).toBeGreaterThan(actions);
+    expect(note).toBeLessThan(html.indexOf('id="registry-data"'));
+  });
+
+  it('names the job rather than the object in the graph CTA', () => {
+    // "Explorar el mapa" promises a picture; the reader came for an answer.
+    // Deliberately NOT "investigar", which reads as an allegation on a page
+    // about a named real company.
+    expect(render('es')).toContain('Ver cómo está conectada esta empresa');
+    expect(render('en')).toContain('See how this company is connected');
+    expect(render('es')).not.toContain('Explorar relaciones en el mapa');
+  });
+
+  it('escapes the note rather than interpolating it raw', () => {
+    const html = render();
+
+    expect(html).not.toMatch(/<p class="hero-workspace">[^<]*<script/);
   });
 });

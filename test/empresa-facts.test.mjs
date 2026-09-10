@@ -57,10 +57,10 @@ test('relationship summary and map action are visible before registry details', 
   });
 
   assert.match(html, /Relaciones societarias de un vistazo/);
-  assert.match(html, /Explorar relaciones en el mapa/);
+  assert.match(html, /Ver cómo está conectada esta empresa/);
   assert.match(html, /\/app\/\?search=TEST(\+|%20)CO(\+|%20)SL&amp;source=company_profile/);
   assert.ok(
-    html.indexOf('Relaciones societarias de un vistazo') < html.indexOf('Datos registrales'),
+    html.indexOf('Relaciones societarias de un vistazo') < html.indexOf('id="registry-data"'),
   );
 });
 

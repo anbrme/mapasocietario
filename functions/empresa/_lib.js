@@ -292,8 +292,9 @@ const T = {
     overviewFormer: 'Cargos cesados',
     overviewOwners: 'Socios únicos conocidos',
     overviewFilings: 'Publicaciones BORME',
-    topMapBtn: 'Explorar relaciones en el mapa →',
+    topMapBtn: 'Ver cómo está conectada esta empresa →',
     mobileMapBtn: 'Mapa',
+    heroWorkspaceNote: 'Gratis: explore la red, anote sus hallazgos y exporte la investigación.',
     mobileReportBtn: 'Informe',
     mobileAlertsBtn: 'Avisos',
     overlayClose: 'Cerrar',
@@ -304,7 +305,7 @@ const T = {
     overlayNewTab: 'Abrir en una pestaña nueva',
     overlayFailed: 'No se han podido cargar las relaciones. Abre el mapa completo para verlas.',
     overlayEmpty: 'No hay cargos registrados para representar en el mapa.',
-    topRegistryBtn: 'Ver datos registrales',
+    topRegistryBtn: 'Datos registrales',
     listedCompany: 'Sociedad cotizada',
     cSector: 'Sector',
     cNif: 'NIF / CIF',
@@ -573,8 +574,9 @@ const T = {
     overviewFormer: 'Former officers',
     overviewOwners: 'Known sole shareholders',
     overviewFilings: 'BORME filings',
-    topMapBtn: 'Explore relationships on the map →',
+    topMapBtn: 'See how this company is connected →',
     mobileMapBtn: 'Map',
+    heroWorkspaceNote: 'Free: map the network, annotate what you find, and export your investigation.',
     mobileReportBtn: 'Report',
     mobileAlertsBtn: 'Alerts',
     overlayClose: 'Close',
@@ -1303,7 +1305,8 @@ const STYLE = `<style>
   h2{font-size:20px;margin:34px 0 12px;padding-top:18px;border-top:1px solid var(--line)}
   h3{font-size:15px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px}
   .lead{color:var(--mut);margin:0 0 16px}
-  .hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 22px}
+  .hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+  .hero-workspace{margin:0 0 22px;color:var(--mut);font-size:13px}
   .hero-actions a,.hero-actions button,.overview-action{display:inline-block;border-radius:9px;padding:9px 15px;border:0;font-family:inherit;font-size:14px;font-weight:700;line-height:1.4;text-decoration:none;cursor:pointer}
   .hero-primary,.overview-action{background:var(--brand);color:#fff}
   .hero-secondary{background:#fff;color:var(--brand);border:1px solid #bfdbfe}
@@ -2173,6 +2176,7 @@ ${privateResponse ? '' : GA_SNIPPET}
     <button type="button" class="hero-primary" data-open-graph data-track="profile_graph_open">${t.topMapBtn}</button>
     <a class="hero-secondary" data-track="profile_registry_jump" href="#registry-data">${t.topRegistryBtn}</a>
   </div>
+  <p class="hero-workspace">${esc(t.heroWorkspaceNote)}</p>
   ${verifyOfferBlock}
 
   ${renameNotice}
