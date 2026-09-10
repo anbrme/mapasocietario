@@ -3,41 +3,47 @@ import React, { useEffect, useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, Button,
   Chip, ToggleButton, ToggleButtonGroup, Table, TableHead, TableBody, TableRow,
-  TableCell, Accordion, AccordionSummary, AccordionDetails, Alert, Snackbar,
+  TableCell, Accordion, AccordionSummary, AccordionDetails, Snackbar, TextField,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import TranslateIcon from '@mui/icons-material/Translate';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DownloadIcon from '@mui/icons-material/Download';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
+import { buildExportHtml, exportFileName } from '../utils/investigationExport';
+import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
+import { NODE_NOTE_FLAGS, NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
 
-export default function RelationshipReportModal({ open, onClose, scope, subjects, lang = 'es', onRemoveCompany }) {
+export default function RelationshipReportModal({
+  open, onClose, doc, graphData, networkNote, onNetworkNoteChange,
+  lang = 'es', onRemoveCompany, onDownload,
+}) {
   const [reportLang, setReportLang] = useState(lang === 'en' ? 'en' : 'es');
   const [copied, setCopied] = useState(false);
   const es = reportLang !== 'en';
+  const t = exportCopy(es ? 'es' : 'en');
 
   useEffect(() => {
     if (open) setReportLang(lang === 'en' ? 'en' : 'es');
   }, [open, lang]);
 
-  const companies = scope?.companies || [];
-  const connectors = scope?.connectors || [];
-  const ownership = scope?.ownership || [];
-  const counts = scope?.counts || { companies: 0, officers: 0, sharedPeople: 0 };
-  const officersByCompany = scope?.officersByCompany || {};
-  const tooFew = companies.length < 2;
-
-  const dateStr = new Date().toLocaleDateString(es ? 'es-ES' : 'en-GB', {
-    year: 'numeric', month: 'long', day: 'numeric',
-  });
+  const companies = doc?.companies || [];
+  const connectors = doc?.connectors || [];
+  const ownership = doc?.ownership || [];
+  const counts = doc?.counts || { companies: 0, officers: 0, sharedPeople: 0 };
+  const flagged = doc?.flagged || [];
+  const otherNotes = doc?.otherNotes || [];
+  const corrections = doc?.corrections || [];
+  const officersByCompany = doc?.officersByCompany || {};
+  const noCompanies = companies.length < 1;
 
   const statusLabel = (s) => es
     ? ({ active: 'Vigente', ceased: 'Cesado', mixed: 'Mixto' }[s] || s)
     : ({ active: 'Active', ceased: 'Ceased', mixed: 'Mixed' }[s] || s);
 
   const copyForWord = async () => {
-    const html = buildReportHtml(scope, { es });
+    const html = buildReportHtml(doc, { es });
     try {
       const plain = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       await navigator.clipboard.write([new ClipboardItem({
@@ -51,17 +57,28 @@ export default function RelationshipReportModal({ open, onClose, scope, subjects
     }
   };
 
-  const saveAsPdf = () => window.print();
+  const download = () => {
+    const html = buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' });
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = exportFileName(doc, es ? 'es' : 'en');
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoking synchronously can cancel the download in Safari.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    onDownload?.();
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle className="rel-report-no-print">
+      <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <AccountTreeIcon color="primary" />
           <Typography variant="subtitle1" sx={{ fontWeight: 700, flex: 1 }}>
-            {es ? 'Informe de Relaciones' : 'Relationship Report'}
+            {es ? 'Informe de situación' : 'Situation report'}
           </Typography>
-          <Chip label={es ? 'No autoritativo' : 'Not authoritative'} size="small" color="warning" variant="outlined" />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <TranslateIcon sx={{ fontSize: 15, color: 'text.disabled' }} />
             <ToggleButtonGroup
@@ -75,16 +92,20 @@ export default function RelationshipReportModal({ open, onClose, scope, subjects
         </Box>
       </DialogTitle>
 
-      <DialogContent id="relationship-report-print" dividers>
-        <Box className="rel-report-print-only rel-report-print-header">
-          <div className="rel-report-brand">NC <span>Data</span></div>
-          <div className="rel-report-doc-title">
-            {es ? 'Informe de Relaciones' : 'Relationship Report'}
-          </div>
-          <div className="rel-report-meta">
-            {es ? 'Generado el' : 'Generated'} {dateStr} · ncdata.eu · {es ? 'Informe no autoritativo' : 'Non-authoritative report'}
-          </div>
-        </Box>
+      <DialogContent dividers>
+        <TextField
+          fullWidth
+          multiline
+          minRows={2}
+          size="small"
+          value={networkNote}
+          onChange={(e) => onNetworkNoteChange(e.target.value.slice(0, NODE_NOTE_MAX_LENGTH))}
+          placeholder={es
+            ? '¿Qué estás mirando y qué has concluido?'
+            : 'What are you looking at, and what did you conclude?'}
+          label={es ? 'Resumen' : 'Summary'}
+          sx={{ mb: 2 }}
+        />
 
         <Typography variant="body2" sx={{ mb: 1 }}>
           <strong>{counts.companies}</strong>{' '}{es ? 'empresas' : 'companies'} ·{' '}
@@ -92,20 +113,48 @@ export default function RelationshipReportModal({ open, onClose, scope, subjects
           <strong>{counts.sharedPeople}</strong>{' '}{es ? 'conexiones compartidas' : 'shared connections'}
         </Typography>
 
+        {flagged.length > 0 && (
+          <>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
+              {es ? 'Señalado' : 'Flagged'}
+            </Typography>
+            <Box sx={{ mb: 1 }}>
+              {flagged.map(f => (
+                <Box
+                  key={f.nodeId}
+                  sx={{
+                    borderLeft: `3px solid ${NODE_NOTE_FLAGS[f.flag] || NODE_NOTE_FLAGS.none}`,
+                    pl: 1, py: 0.5, mb: 0.5,
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{f.name}</Typography>
+                  {f.text && (
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {f.text}
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          </>
+        )}
+
         <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
           {es ? 'Empresas analizadas' : 'Companies analysed'}
         </Typography>
         <Box sx={{ mb: 1 }}>
           {companies.map(c => (
-            <Chip key={c} label={c} size="small" sx={{ mr: 0.5, mb: 0.5 }}
-              onDelete={onRemoveCompany ? () => onRemoveCompany(c) : undefined} />
+            <Box key={c.nodeId} sx={{ display: 'inline-block', mr: 0.5, mb: 0.5, verticalAlign: 'top' }}>
+              <Chip label={c.name}
+                onDelete={onRemoveCompany ? () => onRemoveCompany(c.name) : undefined} />
+              {c.note?.text && (
+                <Typography variant="caption" component="div" sx={{ color: 'text.secondary', maxWidth: 220 }}>
+                  {c.note.text}
+                </Typography>
+              )}
+            </Box>
           ))}
         </Box>
-        {tooFew && (
-          <Alert severity="info" className="rel-report-no-print" sx={{ mb: 1, fontSize: '0.8rem' }}>
-            {es ? 'Añade al menos 2 empresas para el informe.' : 'Add at least 2 companies for the report.'}
-          </Alert>
-        )}
 
         <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
           {es ? 'Conexiones compartidas' : 'Shared connections'}
@@ -132,6 +181,11 @@ export default function RelationshipReportModal({ open, onClose, scope, subjects
                     <Typography component="span" variant="caption" color="text.secondary">
                       ({con.type === 'entity' ? (es ? 'Entidad' : 'Entity') : (es ? 'Persona' : 'Person')})
                     </Typography>
+                    {con.note?.text && (
+                      <Typography variant="caption" component="div" sx={{ color: 'text.secondary' }}>
+                        {con.note.text}
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell>{con.companies.join(', ')}</TableCell>
                   <TableCell>{con.roles.join(' / ')}</TableCell>
@@ -163,6 +217,48 @@ export default function RelationshipReportModal({ open, onClose, scope, subjects
           </Box>
         )}
 
+        {otherNotes.length > 0 && (
+          <>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
+              {es ? 'Otras notas' : 'Other notes'}
+            </Typography>
+            <Box component="ul" sx={{ pl: 3, my: 0.5 }}>
+              {otherNotes.map((n, i) => (
+                <li key={n.nodeId || i}>
+                  <Typography variant="body2">
+                    <strong>{n.name}</strong>
+                    {n.text && (
+                      <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
+                        {' — '}{n.text}
+                      </Typography>
+                    )}
+                  </Typography>
+                </li>
+              ))}
+            </Box>
+          </>
+        )}
+
+        {corrections.length > 0 && (
+          <>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
+              {t.corrections}
+            </Typography>
+            <Box component="ul" sx={{ pl: 3, my: 0.5 }}>
+              {corrections.map((c, i) => (
+                <li key={i}>
+                  <Typography variant="body2">
+                    <strong>{c.nameA}</strong>{' '}
+                    {correctionVerb(t, c.action)}
+                    {c.nameB ? ` ${c.nameB}` : ''}
+                    {c.resignedDate ? ` (${c.resignedDate})` : ''}
+                  </Typography>
+                </li>
+              ))}
+            </Box>
+          </>
+        )}
+
         <Accordion sx={{ mt: 2 }} disableGutters elevation={0}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
@@ -171,11 +267,11 @@ export default function RelationshipReportModal({ open, onClose, scope, subjects
           </AccordionSummary>
           <AccordionDetails>
             {companies.map(c => {
-              const list = [...(officersByCompany[c] || [])].sort((a, b) => a.localeCompare(b));
+              const list = [...(officersByCompany[c.name] || [])].sort((a, b) => a.localeCompare(b));
               return (
-                <Box key={c} sx={{ mb: 1.5 }}>
+                <Box key={c.nodeId} sx={{ mb: 1.5 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {c}{' '}
+                    {c.name}{' '}
                     <Typography component="span" variant="caption" color="text.secondary">
                       ({list.length})
                     </Typography>
@@ -183,7 +279,7 @@ export default function RelationshipReportModal({ open, onClose, scope, subjects
                   {list.length === 0 ? (
                     <Typography variant="caption" color="text.secondary">—</Typography>
                   ) : (
-                    <Box component="ul" className="rel-report-officer-list" sx={{
+                    <Box component="ul" sx={{
                       listStyle: 'none', pl: 0, mt: 0.5, mb: 0,
                       columnWidth: '180px', columnGap: 24,
                     }}>
@@ -200,21 +296,18 @@ export default function RelationshipReportModal({ open, onClose, scope, subjects
             })}
           </AccordionDetails>
         </Accordion>
-
-        <Box className="rel-report-print-only rel-report-print-footer">
-          {es
-            ? 'Generado por NC Data · ncdata.eu · Informe no autoritativo basado en datos públicos del BORME.'
-            : 'Generated by NC Data · ncdata.eu · Non-authoritative report based on public BORME data.'}
-        </Box>
       </DialogContent>
 
-      <DialogActions className="rel-report-no-print" sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose}>{es ? 'Cerrar' : 'Close'}</Button>
-        <Button startIcon={<ContentCopyIcon />} onClick={copyForWord} disabled={tooFew}>
+        <Button startIcon={<ContentCopyIcon />} onClick={copyForWord} disabled={noCompanies}>
           {es ? 'Copiar para Word' : 'Copy for Word'}
         </Button>
-        <Button variant="contained" startIcon={<PictureAsPdfIcon />} onClick={saveAsPdf} disabled={tooFew}>
-          {es ? 'Guardar como PDF' : 'Save as PDF'}
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          {es ? 'se abre en tu navegador' : 'opens in your browser'}
+        </Typography>
+        <Button variant="contained" startIcon={<DownloadIcon />} onClick={download} disabled={noCompanies}>
+          {es ? 'Descargar' : 'Download'}
         </Button>
       </DialogActions>
 

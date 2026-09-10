@@ -101,6 +101,9 @@ export function extractVisibleScope(graphData, normalizeId = (x) => x, subjectId
 
   return {
     companies: companies.map(c => c.name),
+    // Notes are keyed by node id, and two visible companies can share a name,
+    // so callers that need to join notes to companies must not match on name.
+    companyNodes: companies.map(c => ({ name: c.name, nodeId: normalizeId(c.id) })),
     officersByCompany: Object.fromEntries(
       Object.entries(officersByCompany).map(([c, set]) => [c, [...set]])),
     connectors,
