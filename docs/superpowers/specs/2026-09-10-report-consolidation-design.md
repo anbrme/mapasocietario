@@ -274,7 +274,17 @@ The two repos can ship independently, but in this order:
 
 - Structural-edit provenance (merge/delete/hide history in the document)
 - Server-side rendering of the situation report
-- Any change to the corrections API or `borme_corrections.py` logic
+- Any change to the corrections REST API (`/bormes/corrections`) or its
+  storage helpers (`insert_correction`, `delete_correction`,
+  `list_corrections`, `VALID_ACTIONS`)
+
+  **Amended during execution (2026-09-10):** `borme_corrections.py` WAS
+  modified after all — `apply_corrections` and `load_corrections` were
+  deleted, because removing `amended_officer_lists` and
+  `generate_relationship_report` left them with no caller in either repo.
+  Only the server-side *application* of corrections to a PDF died; the
+  REST route and its storage layer are untouched and now have CI coverage
+  for the first time (`tests_dd_corrections_route.py`).
 - The stale `ncdata_infra/bormes/borme_dd_report.py` copy
 - Note-affordance discoverability beyond the network-note field (node notes stay
   on the right-click context menu)
