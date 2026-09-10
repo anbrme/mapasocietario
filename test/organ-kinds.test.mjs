@@ -119,7 +119,7 @@ test('unrecognised committees are never promoted to directorships (default-deny)
   const other = ORGAN_CODES.filter(p => organKindFor(p) === ORGAN_KINDS.OTHER_ORGAN);
   assert.ok(other.length > 100, `default-deny residue collapsed to ${other.length}`);
   for (const pos of other) assert.equal(impliesDirectorship(pos), false, pos);
-  for (const pos of ['COM.GERENCIA', 'PRE.COM.SCI', 'MIEM.COM.FIN', 'COMS.VIGILAN']) {
+  for (const pos of ['COM.GERENCIA', 'PRE.COM.FVS', 'MIEM.COM.FIN', 'COMS.VIGILAN']) {
     assert.equal(organKindFor(pos), ORGAN_KINDS.OTHER_ORGAN, pos);
   }
 });
@@ -132,4 +132,15 @@ test('CO.DE.MA.SO never reaches this module', () => {
   // must classify the same way as that committee's other spelling.
   assert.equal(organKindFor('P.CO.DE.IN'), ORGAN_KINDS.BOARD_COMMITTEE);
   assert.equal(organKindFor('COMS.DEL.INV'), ORGAN_KINDS.BOARD_COMMITTEE);
+});
+
+test('the SCI committee implies a directorship', () => {
+  // Comisión de Seguimiento y Control de las Inversiones (BORME-A-2026-81-28).
+  // CONS.COM.SCI in the same vocabulary shows the registry treating its members
+  // as consejeros, which is what moves these codes out of default-deny.
+  for (const pos of ['PRE.COM.SCI', 'PRE.COM.SCI.']) {
+    assert.equal(organKindFor(pos), ORGAN_KINDS.BOARD_COMMITTEE, pos);
+    assert.equal(impliesDirectorship(pos), true, pos);
+  }
+  assert.equal(organKindFor('CONS.COM.SCI'), null, 'already a consejero by category');
 });

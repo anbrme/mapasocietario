@@ -38,7 +38,7 @@ test('organs that are not boards never reach the board table', () => {
 });
 
 test('unrecognised committees stay in the committee section (default-deny)', () => {
-  for (const pos of ['COM.GERENCIA', 'PRE.COM.SCI', 'MIEM.COM.FIN']) {
+  for (const pos of ['COM.GERENCIA', 'PRE.COM.FVS', 'MIEM.COM.FIN']) {
     assert.equal(officerGroupFor(pos), 'comisiones', pos);
   }
 });

@@ -70,6 +70,7 @@ const COMMITTEE_NAMES = [
   [/COM[S]?\.DEL|COMDEL|C\.DEL|CTE\.DEL|CO\.DE\.IN/, { es: 'Delegada', en: 'Delegated' }],
   [/SOSTE|SOSGC/, { es: 'Sostenibilidad', en: 'Sustainability' }],
   [/GOB|GYR/, { es: 'Gobierno Corporativo', en: 'Corporate Governance' }],
+  [/SCI/, { es: 'Seguimiento y Control de las Inversiones', en: 'Investment Monitoring and Control' }],
 ];
 
 // Organs that are not committees of the board. `g` is the Spanish gender, which

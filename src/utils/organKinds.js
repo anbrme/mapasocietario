@@ -79,6 +79,10 @@ const BOARD_COMMITTEE = [
   // one committee would classify two ways.
   /COM[S]?\.DEL|COMDEL|C\.DEL|CTE\.DEL|CO\.DE\.IN/,
   /GOB|GYR|SOSTE|SOSGC/,                                    // gobierno corporativo / sostenibilidad
+  // Comisión de Seguimiento y Control de las Inversiones. Our own vocabulary
+  // corroborates that it is a committee OF the board: the registry also writes
+  // CONS.COM.SCI — a consejero who sits on it.
+  /SCI/,
 ];
 
 // The CONSEJO de gobierno is the governing body itself, not the board's

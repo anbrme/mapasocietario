@@ -39,7 +39,7 @@ test('an unnameable committee keeps its code and claims nothing', () => {
   // ~200 organ codes name ad-hoc committees we have no source for. Inventing an
   // expansion would put words in the registry's mouth; the role is still
   // readable, and the code lets a reader check the BORME entry.
-  assert.equal(positionLabelFor('PRE.COM.SCI'), 'Presidente de una comisión (PRE.COM.SCI)');
+  assert.equal(positionLabelFor('PRE.COM.FVS'), 'Presidente de una comisión (PRE.COM.FVS)');
   assert.equal(positionLabelFor('COM.GERENCIA'), 'Comisión (COM.GERENCIA)');
   assert.equal(positionLabelFor('MIEM.COM.FIN'), 'Miembro de una comisión (MIEM.COM.FIN)');
 });
@@ -73,7 +73,7 @@ test('non-organ positions keep the overrides and are never invented', () => {
 test('English labels read as English', () => {
   assert.equal(positionLabelFor('MBRO.COM.AUD', 'en'), 'Member, Audit Committee');
   assert.equal(positionLabelFor('PRE.CONS.REC', 'en'), 'Chair, Governing Council');
-  assert.equal(positionLabelFor('PRE.COM.SCI', 'en'), 'Chair of a committee (PRE.COM.SCI)');
+  assert.equal(positionLabelFor('PRE.COM.FVS', 'en'), 'Chair of a committee (PRE.COM.FVS)');
 });
 
 test('no composed label leaks a raw abbreviation, and every role is read', () => {
@@ -98,4 +98,19 @@ test('every organ code yields a non-empty label', () => {
     // Where we cannot name the organ we must show the code verbatim.
     if (label.includes('(')) assert.ok(label.includes(pos), pos);
   }
+});
+
+test('the SCI committee is named from its BORME expansion', () => {
+  // Comisión de Seguimiento y Control de las Inversiones, read from the BORME
+  // (BORME-A-2026-81-28). Our own vocabulary corroborates that it is a
+  // committee OF the board rather than an outside organ: the registry also
+  // publishes CONS.COM.SCI — a consejero who sits on it — so its president is
+  // a sitting director and belongs in the board's committee section, not in
+  // the default-deny residue.
+  assert.equal(positionLabelFor('PRE.COM.SCI'),
+    'Presidente de la Comisión de Seguimiento y Control de las Inversiones');
+  assert.equal(positionLabelFor('PRE.COM.SCI.'),
+    'Presidente de la Comisión de Seguimiento y Control de las Inversiones');
+  assert.equal(positionLabelFor('PRE.COM.SCI', 'en'),
+    'Chair, Investment Monitoring and Control Committee');
 });
