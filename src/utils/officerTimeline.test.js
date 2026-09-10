@@ -288,3 +288,86 @@ describe('superseded seats in the officer view', () => {
     expect(officerSeatStatus(seat)).toBe('ceased');
   });
 });
+
+/**
+ * SEC.COM.AUD. — secretary of the audit committee — held by DAGA GELABERT
+ * TOMAS at GRIFOLS SA. Four acts, verbatim from borme_events_v3.
+ *
+ * Pairing appointments newest-first drew TWO terms here: 2023-08-04 took the
+ * 2024-06-11 revocation, and 2023-05-30 then found no unused cessation at all
+ * and stayed open to today — a live bar for a seat the registry closed. The
+ * chart is copied into reports, so an invented open term is a credibility bug.
+ */
+describe('reappointment inside an open term', () => {
+  const grifolsAuditSecretary = [{
+    name: 'GRIFOLS SA',
+    positions: [
+      { date: '2022-11-30', specific_role: 'SEC.COM.AUD.', event_type: 'Revocaciones' },
+      { date: '2023-05-30', specific_role: 'SEC.COM.AUD.', event_type: 'Nombramientos' },
+      { date: '2023-08-04', specific_role: 'SEC.COM.AUD.', event_type: 'Nombramientos' },
+      { date: '2024-06-11', specific_role: 'SEC.COM.AUD.', event_type: 'Revocaciones' },
+    ],
+  }];
+
+  it('renews the open term instead of opening a parallel one', () => {
+    const spans = buildTimelineSpans(grifolsAuditSecretary);
+    const terms = spans.filter(s => !s.unknownStart);
+    expect(terms).toHaveLength(1);
+    expect(terms[0]).toMatchObject({ start: '2023-05-30', end: '2024-06-11', isActive: false });
+  });
+
+  it('leaves no seat drawn as currently held', () => {
+    expect(buildTimelineSpans(grifolsAuditSecretary).filter(s => s.isActive)).toEqual([]);
+  });
+
+  it('still shows the cessation that predates the loaded window', () => {
+    const spans = buildTimelineSpans(grifolsAuditSecretary);
+    expect(spans.filter(s => s.unknownStart)).toMatchObject([{ end: '2022-11-30' }]);
+  });
+
+  it('closes every appointment when one cessation follows two of them', () => {
+    // Two terms opened years apart with a single cessation between them: the
+    // older one must not stay open just because the newer one claimed it.
+    const spans = buildTimelineSpans([{
+      name: 'ACME SL',
+      positions: [
+        { date: '2020-01-01', specific_role: 'CONSEJERO', event_type: 'Nombramientos' },
+        { date: '2023-01-01', specific_role: 'CONSEJERO', event_type: 'Nombramientos' },
+        { date: '2024-01-01', specific_role: 'CONSEJERO', event_type: 'Ceses/Dimisiones' },
+      ],
+    }]);
+    expect(spans).toHaveLength(1);
+    expect(spans[0]).toMatchObject({ start: '2020-01-01', end: '2024-01-01', isActive: false });
+  });
+
+  it('treats a same-day cese and re-appointment as one continuing term', () => {
+    // Board renewals publish both acts on one day. The seat is held throughout,
+    // which is the same answer effectiveCategoryFromEvents reaches for links.
+    const spans = buildTimelineSpans([{
+      name: 'ACME SL',
+      positions: [
+        { date: '2015-06-01', specific_role: 'CONSEJERO', event_type: 'Nombramientos' },
+        { date: '2020-06-01', specific_role: 'CONSEJERO', event_type: 'Ceses/Dimisiones' },
+        { date: '2020-06-01', specific_role: 'CONSEJERO', event_type: 'Nombramientos' },
+      ],
+    }]);
+    expect(spans.filter(s => s.isActive)).toHaveLength(1);
+    expect(spans.find(s => s.isActive).start).toBe('2020-06-01');
+  });
+
+  it('reopens a seat re-appointed after its revocation', () => {
+    // M.COM.NOM.RE at GRIFOLS: revoked twice, then appointed again in 2025.
+    const spans = buildTimelineSpans([{
+      name: 'GRIFOLS SA',
+      positions: [
+        { date: '2023-08-04', specific_role: 'M.COM.NOM.RE', event_type: 'Nombramientos' },
+        { date: '2024-02-23', specific_role: 'M.COM.NOM.RE', event_type: 'Revocaciones' },
+        { date: '2024-08-16', specific_role: 'M.COM.NOM.RE', event_type: 'Revocaciones' },
+        { date: '2025-08-01', specific_role: 'M.COM.NOM.RE', event_type: 'Nombramientos' },
+      ],
+    }]);
+    const active = spans.filter(s => s.isActive);
+    expect(active).toHaveLength(1);
+    expect(active[0]).toMatchObject({ start: '2025-08-01', end: null });
+  });
+});

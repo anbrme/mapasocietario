@@ -31,7 +31,7 @@
  */
 // Extension required: this module is also loaded by the /empresa Pages Function
 // and by the node:test suite, neither of which resolves extensionless imports.
-import { sameRoleCategory } from './positionCategories.js';
+import { matchesRole } from './roleKey.js';
 
 const APPOINTMENT = 'appointment';
 const CLOSURE = 'closure';
@@ -54,9 +54,25 @@ export const nameKey = name =>
 
 const roleOf = officer => officer?.position_normalized || officer?.position || '';
 
-const isSameSeat = (seat, officer) =>
-  nameKey(seat.name || seat.name_normalized) === nameKey(officer.name) &&
-  sameRoleCategory(roleOf(seat), roleOf(officer));
+const isSameName = (seat, officer) =>
+  nameKey(seat.name || seat.name_normalized) === nameKey(officer.name);
+
+/**
+ * Every role this person already holds or has held at this company. Which seat
+ * an act belongs to is only decidable against the whole set: see roleKey.js.
+ */
+const seatRolesFor = (officer, ...seatLists) => {
+  const roles = [];
+  seatLists.forEach(seats =>
+    seats.forEach(seat => {
+      if (isSameName(seat, officer)) roles.push(roleOf(seat));
+    })
+  );
+  return roles;
+};
+
+const isSameSeat = (seat, officer, pool) =>
+  isSameName(seat, officer) && matchesRole(roleOf(officer), roleOf(seat), pool);
 
 /**
  * @param {Object|null} company - a borme_companies_v3 doc.
@@ -88,8 +104,10 @@ export const reconcileOfficersWithEvents = (company, events) => {
       const kind = actKind(officer.event_type);
       if (!kind || !officer.name) continue;
 
+      const pool = seatRolesFor(officer, active, resigned);
+
       if (kind === CLOSURE) {
-        const index = active.findIndex(seat => isSameSeat(seat, officer));
+        const index = active.findIndex(seat => isSameSeat(seat, officer, pool));
         if (index === -1) continue; // never fabricate a departure
         const [seat] = active.splice(index, 1);
         resigned.push({
@@ -103,10 +121,10 @@ export const reconcileOfficersWithEvents = (company, events) => {
       }
 
       // An appointment of someone the doc has resigned is a return to the seat.
-      const resignedIndex = resigned.findIndex(seat => isSameSeat(seat, officer));
+      const resignedIndex = resigned.findIndex(seat => isSameSeat(seat, officer, pool));
       if (resignedIndex !== -1) resigned.splice(resignedIndex, 1);
 
-      const activeIndex = active.findIndex(seat => isSameSeat(seat, officer));
+      const activeIndex = active.findIndex(seat => isSameSeat(seat, officer, pool));
       if (activeIndex !== -1) {
         // Already seated — a re-election renews the date, nothing more.
         active[activeIndex] = {

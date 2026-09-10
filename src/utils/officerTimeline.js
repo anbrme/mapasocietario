@@ -132,14 +132,28 @@ export const groupRecordsByCompany = (records, { unknownLabel = '?' } = {}) => {
 // ─── Companies → spans ───────────────────────────────────────────────────────
 
 /**
- * Pair each appointment with the first cessation that follows it, per
- * company+role. Walking appointments newest-first is what keeps a
- * revoke-and-reappoint honest: the latest appointment finds no later cessation
- * and stays open, and the earlier term closes on the one cessation that exists.
+ * Replay each company+role's registry acts in publication order and record the
+ * terms they describe.
  *
- * A cessation left unpaired becomes an `unknownStart` marker rather than being
- * dropped — its term began before the loaded window, and hiding a published act
- * would be worse than admitting we cannot date its start.
+ * This used to pair appointments with cessations by walking the appointments
+ * newest-first and claiming the first unused cessation on or after each. That
+ * quietly left older appointments open forever whenever a term was renewed
+ * before it ended: DAGA GELABERT TOMAS was appointed secretary of the GRIFOLS
+ * audit committee on 2023-05-30 and again on 2023-08-04, and revoked once, on
+ * 2024-06-11. The later appointment took the revocation, the earlier one found
+ * nothing left to close it, and the chart drew a seat still held today.
+ *
+ * A chronological sweep has no such gap. One term is open at a time: an
+ * appointment opens it, a further appointment while it is open RENEWS it rather
+ * than starting a parallel one, a cessation closes it, and a later appointment
+ * opens the next. Acts are ordered by date with cessations processed first on a
+ * tie, so a board renewal that publishes a cese and a re-appointment on one day
+ * ends with the seat held — the same answer effectiveCategoryFromEvents reaches
+ * for the equivalent graph link.
+ *
+ * A cessation arriving with no term open becomes an `unknownStart` marker
+ * rather than being dropped — its term began before the loaded window, and
+ * hiding a published act would be worse than admitting we cannot date its start.
  */
 export const buildTimelineSpans = (companies, { fallbackRole = 'Cargo' } = {}) => {
   if (!companies?.length) return [];
@@ -149,55 +163,61 @@ export const buildTimelineSpans = (companies, { fallbackRole = 'Cargo' } = {}) =
     const byRole = new Map();
     (company.positions || []).forEach((position) => {
       const role = position.specific_role || position.position || fallbackRole;
-      if (!byRole.has(role)) byRole.set(role, { appointments: [], cessations: [] });
+      if (!byRole.has(role)) byRole.set(role, []);
       const date = parseTimelineDate(position.date);
       if (!date) return;
-      const bucket = byRole.get(role);
-      const act = { date, raw: position.date };
-      if (isAppointmentMovement(position)) bucket.appointments.push(act);
-      else bucket.cessations.push(act);
+      byRole.get(role).push({
+        date,
+        raw: position.date,
+        isAppointment: isAppointmentMovement(position),
+      });
     });
 
-    byRole.forEach(({ appointments, cessations }, role) => {
-      const sortedAppointments = [...appointments].sort((a, b) => a.date - b.date);
-      const sortedCessations = [...cessations].sort((a, b) => a.date - b.date);
-      const usedCessations = new Set();
-      const paired = [];
+    byRole.forEach((acts, role) => {
+      // Cessations first on a same-day tie, so a cese published alongside the
+      // re-appointment that supersedes it closes the old term rather than
+      // cutting short the new one.
+      const ordered = [...acts].sort(
+        (a, b) => a.date - b.date || Number(a.isAppointment) - Number(b.isAppointment),
+      );
 
-      for (let i = sortedAppointments.length - 1; i >= 0; i--) {
-        const appointment = sortedAppointments[i];
-        const cessation = sortedCessations.find(
-          (c) => c.date >= appointment.date && !usedCessations.has(c),
-        ) || null;
-        if (cessation) usedCessations.add(cessation);
-        paired.unshift({ appointment, cessation });
-      }
-
-      paired.forEach(({ appointment, cessation }) => {
+      const push = (open, cessation) =>
         spans.push({
           company: company.name,
           role,
-          startDate: appointment.date,
+          startDate: open.date,
           endDate: cessation ? cessation.date : null,
-          start: appointment.raw,
+          start: open.raw,
           end: cessation ? cessation.raw : null,
           isActive: !cessation,
         });
-      });
 
-      sortedCessations.forEach((cessation) => {
-        if (usedCessations.has(cessation)) return;
+      let open = null;
+      ordered.forEach((act) => {
+        if (act.isAppointment) {
+          // A renewal of a term already running is the same seat, not a second one.
+          if (!open) open = act;
+          return;
+        }
+        if (open) {
+          push(open, act);
+          open = null;
+          return;
+        }
+        // Nothing to close: this term began before the loaded window.
         spans.push({
           company: company.name,
           role,
-          startDate: cessation.date,
-          endDate: cessation.date,
-          start: cessation.raw,
-          end: cessation.raw,
+          startDate: act.date,
+          endDate: act.date,
+          start: act.raw,
+          end: act.raw,
           isActive: false,
           unknownStart: true,
         });
       });
+
+      if (open) push(open, null);
     });
   });
 

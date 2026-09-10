@@ -144,9 +144,9 @@ import { parseSpanishCompanyData } from '../utils/spanishCompanyParserWithTerms'
 import {
   POSITION_CATEGORY_ORDER,
   positionCategoryFor,
-  sameRoleCategory,
   SIMPLIFIED_EXCLUDED_CATEGORIES,
 } from '../utils/positionCategories';
+import { matchesRole } from '../utils/roleKey';
 import { isActiveCategory, effectiveCategoryFromEvents, isDissolvedLink } from '../utils/officerLinkStatus';
 import { BORME_SECTION_NAMES, getLinkEffectiveCategory, isDirectionalLink } from '../utils/linkDirectionality';
 import { useTerms } from '../hooks/useTerms';
@@ -324,6 +324,7 @@ const SEARCH_COPY = {
     jump: index => `Jump ${index}`,
     lastRecord: 'Latest record',
     moreRelationships: count => `+${count} more relationships`,
+    formerRoles: count => `+${count} former`,
     connectedWith: (a, b, count) => `${a} connected with ${b}${count > 1 ? ` through ${count} loaded links.` : '.'}`,
     noConnection: 'No direct or indirect connection was found between these two milestones in the loaded network.',
     soleShareholderOf: (name, count) => (
@@ -693,6 +694,7 @@ const SEARCH_COPY = {
     jump: index => `Salto ${index}`,
     lastRecord: 'Último registro',
     moreRelationships: count => `+${count} relaciones más`,
+    formerRoles: count => `+${count} anterior${count === 1 ? '' : 'es'}`,
     connectedWith: (a, b, count) => `${a} conectado con ${b}${count > 1 ? ` mediante ${count} enlaces cargados.` : '.'}`,
     noConnection: 'No se ha encontrado ninguna conexión directa o indirecta entre estos dos hitos en la red cargada.',
     soleShareholderOf: (name, count) => (
@@ -3562,6 +3564,21 @@ const SpanishCompanyNetworkGraph = ({
 
     setGraphData(prev => {
       const nodesById = new Map(prev.nodes.map(n => [n.id, n]));
+
+      // Which seat an act belongs to is only decidable against every seat the
+      // pair holds: a role that shares its category with a sibling can never be
+      // matched by category alone. See utils/roleKey.js.
+      const rolesByPair = new Map();
+      prev.links.forEach(l => {
+        if (l.type !== 'officer-company') return;
+        const sid = normalizeNodeId(getNodeIdFromRef(l.source));
+        const tid = normalizeNodeId(getNodeIdFromRef(l.target));
+        if (!sid || !tid) return;
+        const pairKey = sid < tid ? `${sid}|${tid}` : `${tid}|${sid}`;
+        if (!rolesByPair.has(pairKey)) rolesByPair.set(pairKey, []);
+        rolesByPair.get(pairKey).push(l.relationship || '');
+      });
+
       const newLinks = prev.links.map(link => {
         const sourceNode =
           typeof link.source === 'object' ? link.source : nodesById.get(link.source);
@@ -3603,14 +3620,26 @@ const SpanishCompanyNetworkGraph = ({
         // active CONSEJERO and a later-revoked APODERADO); without this filter
         // every role-link inherits the company's latest event, so a still-active
         // seat is mislabeled ceased and the company disappears under an
-        // active-only filter. See sameRoleCategory.
+        // active-only filter.
+        //
+        // Matching used to run at position-CATEGORY granularity, which is too
+        // coarse where a person holds several seats of one category: DAGA
+        // GELABERT TOMAS holds three "Vocal / Comisión" roles at GRIFOLS SA, so
+        // his 2025-08-01 re-appointment to the nominations committee was the
+        // latest act of that category for all three and drew two revoked seats
+        // as live. matchesRole requires the exact role unless the seat is the
+        // only one of its category on this pair. See utils/roleKey.js.
         const linkRole = link.relationship || '';
+        const pairRoles =
+          rolesByPair.get(
+            [normalizeNodeId(officerNode.id), normalizeNodeId(companyNode.id)].sort().join('|')
+          ) || [linkRole];
         const events = [];
         ['nombramientos', 'ceses_dimisiones', 'reelecciones', 'revocaciones'].forEach(cat => {
           const entries = eventMap.get(`${officerUpper}|${companyUpper}|${cat}`);
           if (entries) {
             entries.forEach(({ date, position }) => {
-              if (!sameRoleCategory(position, linkRole)) return;
+              if (!matchesRole(position, linkRole, pairRoles)) return;
               events.push({ category: cat, date, position });
             });
           }
@@ -5634,6 +5663,29 @@ const SpanishCompanyNetworkGraph = ({
     ]
   );
 
+  // Clicking an officer edge opens the person's inspector, where the timeline
+  // lists every post they hold or held at each company with its dates. The
+  // canvas draws one edge per pair once a live seat collapses its ceased
+  // siblings, and the "+N anteriores" badge on that edge is only honest if the
+  // roles behind it are one click away.
+  const handleLinkClick = useCallback(
+    link => {
+      if (!link || link.type !== 'officer-company') return;
+      const { source, target } = link;
+      if (typeof source !== 'object' || typeof target !== 'object') return;
+      // On a unified cargo edge the SOURCE company is itself the officer.
+      const officerNode = target.type === 'officer' ? target : source;
+      if (!officerNode?.id) return;
+      trackEvent('graph_link_click', {
+        ...graphInteractionParams(officerNode),
+        interaction_source: isTouchDevice ? 'touch' : 'mouse',
+      });
+      setActiveNodeId(normalizeNodeId(officerNode.id));
+      openDataPreviewRef.current?.(officerNode);
+    },
+    [graphInteractionParams, isTouchDevice]
+  );
+
   const entityDatasets = React.useMemo(
     () => buildInspectorDatasets(previewData, { lang: uiLanguage, labels: text }),
     [previewData, uiLanguage, text]
@@ -6828,10 +6880,18 @@ const SpanishCompanyNetworkGraph = ({
     // When an officer holds an ACTIVE seat at a company, drop their resigned
     // sibling-seat edges to that SAME company — otherwise a currently-active
     // officer reads as "resigned" (e.g. an active Adm. Mancom. who was formerly
-    // Secretario shows a red edge overlapping the green one). The resigned role
-    // still appears in the officer detail panel. Pairs with no active seat keep
-    // their resigned edges (genuinely former officers stay red). Skipped when the
-    // user explicitly filters to "Cesados" — there they want every resigned role.
+    // Secretario shows a red edge overlapping the green one). Pairs with no
+    // active seat keep their resigned edges (genuinely former officers stay
+    // red). Skipped when the user explicitly filters to "Cesados" — there they
+    // want every resigned role.
+    //
+    // How many were dropped is stamped onto the surviving edges as
+    // `ceasedSiblingCount`, counted here because this is the point at which the
+    // information is destroyed. Without it the canvas simply loses the fact:
+    // someone who held six posts and holds one reads identically to someone who
+    // has only ever held that one, and recovering the difference means knowing
+    // the global "Cesados" filter exists and flooding the whole graph to answer
+    // a question about a single pair.
     if (!statusFilters.has('ceased')) {
       const isOfficerLink = l => l.type === 'officer-company';
       const pairKey = l =>
@@ -6842,9 +6902,23 @@ const SpanishCompanyNetworkGraph = ({
         if (isOfficerLink(l) && getOfficerLinkStatus(l) === 'active') activePairs.add(pairKey(l));
       });
       if (activePairs.size > 0) {
-        activeLinks = activeLinks.filter(
-          l => !(isOfficerLink(l) && getOfficerLinkStatus(l) !== 'active' && activePairs.has(pairKey(l)))
-        );
+        const droppedByPair = new Map();
+        activeLinks.forEach(l => {
+          if (!isOfficerLink(l) || getOfficerLinkStatus(l) === 'active') return;
+          const key = pairKey(l);
+          if (!activePairs.has(key)) return;
+          droppedByPair.set(key, (droppedByPair.get(key) || 0) + 1);
+        });
+        activeLinks = activeLinks
+          .filter(
+            l => !(isOfficerLink(l) && getOfficerLinkStatus(l) !== 'active' && activePairs.has(pairKey(l)))
+          )
+          .map(l => {
+            if (!isOfficerLink(l)) return l;
+            const dropped = droppedByPair.get(pairKey(l));
+            if (!dropped) return l;
+            return { ...l, ceasedSiblingCount: dropped };
+          });
       }
     }
 
@@ -7842,6 +7916,14 @@ const SpanishCompanyNetworkGraph = ({
           ? `${edgeLabel} (bajo ${link.fromPreviousName})`
           : `(bajo ${link.fromPreviousName})`;
       }
+      // Posts this person held at the same company and no longer holds. Their
+      // edges were collapsed into this one, so say so rather than let them
+      // vanish — "current on the nominations committee, and five other posts
+      // before that" is usually the story someone came to the graph for.
+      if (link.ceasedSiblingCount > 0) {
+        const former = text.formerRoles(link.ceasedSiblingCount);
+        edgeLabel = edgeLabel ? `${edgeLabel} · ${former}` : former;
+      }
       if (edgeLabel) {
         const isDense = filteredGraphData.links.length > MAX_LINKS_FOR_LABELS;
         let shouldRenderLabel = false;
@@ -7899,7 +7981,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, graphPalette, ink]
+    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, graphPalette, ink, text]
   );
 
   // Graph controls
@@ -10137,6 +10219,7 @@ const SpanishCompanyNetworkGraph = ({
             graphData={filteredGraphData}
             nodeCanvasObject={nodeCanvasObject}
             linkCanvasObject={linkCanvasObject}
+            onLinkClick={handleLinkClick}
             nodePointerAreaPaint={(node, color, ctx) => {
               ctx.fillStyle = color;
               ctx.beginPath();
