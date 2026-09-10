@@ -14,6 +14,7 @@ import {
   Tab,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HourglassTopIcon from '@mui/icons-material/HourglassTop';
@@ -340,9 +341,24 @@ export default function AdminPage() {
               Upload cuentas anuales for pending orders
             </Typography>
           </Box>
-          <IconButton onClick={() => fetchOrders()} disabled={loading} title="Refresh">
-            <RefreshIcon />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* The verification console is a separate surface with its own
+                credential: it never receives adminKey, and its token is typed
+                there and kept in that tab's sessionStorage. Same tab on
+                purpose - a new tab would start with empty sessionStorage. */}
+            <Button
+              href="/admin/verificacion"
+              size="small"
+              variant="outlined"
+              startIcon={<VerifiedUserIcon />}
+              sx={{ textTransform: 'none' }}
+            >
+              Verificación
+            </Button>
+            <IconButton onClick={() => fetchOrders()} disabled={loading} title="Refresh">
+              <RefreshIcon />
+            </IconButton>
+          </Box>
         </Box>
 
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
