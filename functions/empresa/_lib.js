@@ -26,7 +26,7 @@ import { companyPageHeaders, notFoundPageHeaders } from './_page_headers.js';
 // so it is safe to import into this Cloudflare Pages Function. Using it here
 // instead of a local regex keeps the page and the in-app graph classifying
 // officers identically.
-import { positionCategoryFor } from '../../src/utils/positionCategories.js';
+import { groupOfficersForDisplay, BOARD_CATEGORIES } from '../../src/utils/officerGroups.js';
 import { reconcileOfficersWithEvents } from '../../src/utils/pendingOfficerEvents.js';
 // A cese BORME printed under a variant spelling of an active officer closes that
 // seat here (HAJJAJI ABDELKRIM / HAJJAJI ABDEL KARIM); see the module header.
@@ -327,6 +327,13 @@ const T = {
     noBoard: (n) =>
       `No constan administradores ni consejeros vigentes en esta denominación (${n} apoderado(s) u otros cargos registrados).`,
     otherRecordedRoles: (n) => `Ver otros cargos registrados (${n})`,
+    officerGroups: {
+      consejo: 'Consejo y administración',
+      comisiones: 'Comisiones',
+      direccion: 'Dirección',
+      auditoria_representantes: 'Auditoría y representantes',
+      otros: 'Otros cargos',
+    },
     shareholders: 'Estructura de socios',
     soleCompanies: 'Socio único (sociedades)',
     soleIndividuals: 'Socio único (personas físicas)',
@@ -609,6 +616,13 @@ const T = {
     noBoard: (n) =>
       `No current directors on record for this denomination (${n} power(s) of attorney or other roles registered).`,
     otherRecordedRoles: (n) => `View other recorded roles (${n})`,
+    officerGroups: {
+      consejo: 'Board and management bodies',
+      comisiones: 'Committees',
+      direccion: 'Management',
+      auditoria_representantes: 'Auditors and representatives',
+      otros: 'Other roles',
+    },
     shareholders: 'Shareholder structure',
     soleCompanies: 'Sole shareholder (companies)',
     soleIndividuals: 'Sole shareholder (individuals)',
@@ -808,45 +822,42 @@ const T = {
 
 const MAX_OFFICERS = 40;
 
-// Company-level governing-organ categories shown under "Administradores y cargos
-// vigentes". Everything else (Apoderado, Auditor, Vocal / Comisión, Otros) is a
-// non-board role. Classification is delegated to the shared positionCategoryFor
-// so the page and the graph never diverge on a position string.
-const BOARD_CATEGORIES = new Set([
-  'Presidente',
-  'Vicepresidente',
-  'Consejero',
-  'Administrador',
+// The page's board table carries two administrator-level roles the DD report
+// files under other headings. The Art. 143 RRM permanent representative is the
+// natural person exercising a CORPORATE administrator's post — an organic
+// appointment, not a voluntary power — and on a dissolved company the liquidador
+// is by then the only person with authority over it, so a page that filed him
+// under "other recorded roles" would report no officers at all. Both are
+// deliberate and locked by test/officer-board-role.test.mjs.
+const PAGE_BOARD_CATEGORIES = new Set([
+  ...BOARD_CATEGORIES,
   'Representante 143 RRM',
-  'Secretario',
   'Liquidador',
 ]);
-
-function isBoardRole(o) {
-  return BOARD_CATEGORIES.has(positionCategoryFor(o.position_normalized || o.position || ''));
-}
 
 function prettyPosition(pos, t) {
   const p = (pos || '').toUpperCase();
   return t.positions[p] || pos || '';
 }
 
-function selectOfficers(list) {
-  const all = list || [];
-  const board = all.filter(isBoardRole);
-  const shown = board.slice(0, MAX_OFFICERS);
-  const omitted = [...board.slice(MAX_OFFICERS), ...all.filter((officer) => !isBoardRole(officer))];
-  return { shown, omitted };
-}
-
+/**
+ * Officer tables, grouped the way the DD report groups them.
+ *
+ * The board table lists one row per PERSON, not per seat. Somebody can hold a
+ * board title, a vicesecretaryship and three committee seats at one company —
+ * DAGA GELABERT TOMAS has six live rows at GRIFOLS SA — and giving each its own
+ * row inflates the board, since the row count is how a reader counts it. Their
+ * committee work is listed under Comisiones instead, where it says something
+ * about how the board is organised rather than how large it is.
+ */
 function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = false } = {}) {
-  const { shown: list, omitted } = selectOfficers(rawList);
-  if (!list.length && !omitted.length) return '';
+  const groups = groupOfficersForDisplay(rawList, dateKey, PAGE_BOARD_CATEGORIES);
+  if (!groups.length) return '';
   const renderRows = (officers) => officers
     .map(
       (o) => `<tr>
         <td>${esc(o.name || o.name_normalized)}${o.ceased_as ? ` <span class="muted">(${esc(t.ceasedAs(o.ceased_as))})</span>` : ''}</td>
-        <td>${esc(prettyPosition(o.position_normalized || o.position, t))}</td>
+        <td>${esc((o.positions || []).map((p) => prettyPosition(p, t)).join(', '))}</td>
         <td>${esc(fmtDate(o[dateKey], lang))}</td>
       </tr>`,
     )
@@ -854,13 +865,27 @@ function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = fals
   const table = (officers) => `<table class="t">
     <thead><tr><th>${t.thName}</th><th>${t.thRole}</th><th>${dateLabel}</th></tr></thead>
     <tbody>${renderRows(officers)}</tbody></table>`;
-  const primary = list.length
-    ? table(list)
+
+  const board = (groups.find(([group]) => group === 'consejo') || [, []])[1];
+  const shown = board.slice(0, MAX_OFFICERS);
+  const rest = [
+    ...(board.length > MAX_OFFICERS ? [['consejo', board.slice(MAX_OFFICERS)]] : []),
+    ...groups.filter(([group]) => group !== 'consejo'),
+  ];
+  const restCount = rest.reduce((n, [, rows]) => n + rows.length, 0);
+
+  const primary = shown.length
+    ? table(shown)
     : noBoardNote
-    ? `<p class="more">${t.noBoard(omitted.length)}</p>`
+    ? `<p class="more">${t.noBoard(restCount)}</p>`
     : '';
-  const more = omitted.length
-    ? `<details class="officer-more"><summary>${t.otherRecordedRoles(omitted.length)}</summary>${table(omitted)}</details>`
+  // Each remaining group keeps its own heading and table. Previously they were
+  // concatenated in raw document order, so apoderados, auditors and committee
+  // members were interleaved arbitrarily.
+  const more = restCount
+    ? `<details class="officer-more"><summary>${t.otherRecordedRoles(restCount)}</summary>${rest
+        .map(([group, rows]) => `<h4 class="officer-group">${esc(t.officerGroups[group])}</h4>${table(rows)}`)
+        .join('')}</details>`
     : '';
   return `${primary}${more}`;
 }
