@@ -177,8 +177,8 @@ ${section('corrections', t.corrections, correctionRows ? `<ul>${correctionRows}<
   ${doc.subject ? `<br><a href="${SITE}">${esc(t.backLink)}</a>` : ''}
 </footer>
 </div>
-${hasWalkthrough ? `<script>window.__SITREP__=${stepJson};</script>
-<script>${WALKTHROUGH_SCRIPT}</script>` : ''}
+<script>window.__SITREP__=${stepJson};</script>
+<script>${WALKTHROUGH_SCRIPT}</script>
 </body>
 </html>`;
 }

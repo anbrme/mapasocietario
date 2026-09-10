@@ -76,7 +76,8 @@ describe('buildExportHtml', () => {
   it('omits the walkthrough controls when nothing is flagged', () => {
     const html = buildExportHtml({ ...doc, flagged: [], counts: { ...doc.counts, flagged: 0 } }, graphData, { lang: 'es' });
 
-    expect(html).not.toContain('wt-start');
+    expect(html).not.toContain('<button id="wt-start"');
+    expect(html).toContain('__SITREP__'); // the script is always inlined; only the controls are conditional
   });
 
   it('omits the summary section when no network note was written', () => {
