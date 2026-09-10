@@ -5680,18 +5680,34 @@ const SpanishCompanyNetworkGraph = ({
       text: nodeNoteText,
       flag: nodeNoteFlag,
     }));
+    trackGraphToolbarAction('node_note_saved');
     closeNodeNoteDialog();
     setSnapshotNotice(text.noteSaved);
-  }, [nodeNoteTargetId, nodeNoteText, nodeNoteFlag, closeNodeNoteDialog, text]);
+  }, [
+    nodeNoteTargetId,
+    nodeNoteText,
+    nodeNoteFlag,
+    closeNodeNoteDialog,
+    trackGraphToolbarAction,
+    text,
+  ]);
 
   const removeContextNodeNote = useCallback(() => {
     const targetId = nodeNoteTargetId || contextNode?.id;
     if (!targetId) return;
     setGraphData(prev => removeNodeNote(prev, targetId));
+    trackGraphToolbarAction('node_note_removed');
     closeNodeNoteDialog();
     closeNodeContextMenu();
     setSnapshotNotice(text.noteRemoved);
-  }, [nodeNoteTargetId, contextNode, closeNodeNoteDialog, closeNodeContextMenu, text]);
+  }, [
+    nodeNoteTargetId,
+    contextNode,
+    closeNodeNoteDialog,
+    closeNodeContextMenu,
+    trackGraphToolbarAction,
+    text,
+  ]);
 
   const openMergeNodeDialog = useCallback(() => {
     if (!contextNode) return;
