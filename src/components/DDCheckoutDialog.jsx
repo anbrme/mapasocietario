@@ -34,7 +34,6 @@ import {
   queryAndroidBillingProducts,
 } from '../services/playBillingService';
 import { API_URL, PAYMENTS_API } from '../config';
-import { getClientId } from '../utils/clientId';
 import { trackEvent } from '../utils/track';
 import { buildCheckoutIntake, findCheckoutBlocker } from '../utils/checkoutIntake';
 import { checkoutPriceView } from './ddCheckoutPriceView';
@@ -83,13 +82,7 @@ const DD_COPY = {
     connectionError: 'Connection error. Please try again.',
     title: 'Due Diligence Report',
     reportLanguage: 'Report language',
-    reportType: 'Report type',
-    companyBased: 'Company-based',
-    custom: 'Custom',
-    amendedMode: count =>
-      `Applies your ${count} correction${count === 1 ? '' : 's'} to the report. It is marked as "Custom - not authoritative".`,
-    faithfulMode:
-      'Registry report: the data as published in the Registro Mercantil, with quality notes.',
+    correctionsNotIncluded: (n) => `This report reproduces the registry as filed. Your ${n} corrections aren't in it — they're in your situation report, free to download from the map.`,
     baseDescription: 'Corporate structure, officer history, sanctions and adverse-media screening, risk analysis',
     sampleReport: 'See a sample report before you buy',
     financialStatements: 'Financial Statements (Cuentas Anuales)',
@@ -187,13 +180,7 @@ const DD_COPY = {
     connectionError: 'Error de conexión. Inténtalo de nuevo.',
     title: 'Informe Due Diligence',
     reportLanguage: 'Idioma del informe',
-    reportType: 'Tipo de informe',
-    companyBased: 'Registral',
-    custom: 'Custom',
-    amendedMode: count =>
-      `Aplica tus ${count} corrección${count === 1 ? '' : 'es'} al informe. Se marca como "Custom - no autoritativo".`,
-    faithfulMode:
-      'Informe registral: los datos tal como constan en el Registro Mercantil, con notas de calidad.',
+    correctionsNotIncluded: (n) => `Este informe reproduce el registro tal como se publicó. Tus ${n} correcciones no están incluidas — están en tu informe de situación, que puedes descargar gratis desde el mapa.`,
     baseDescription:
       'Estructura societaria, historial de administradores, cribado de sanciones y prensa adversa, análisis de riesgo',
     sampleReport: 'Ver un informe de ejemplo antes de comprar',
@@ -302,11 +289,7 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
   const [error, setError] = useState('');
   const [androidProducts, setAndroidProducts] = useState([]);
   const [androidProductsLoading, setAndroidProductsLoading] = useState(false);
-  // DD mode: 'faithful' (Company-based, registry as-is + quality notes) vs
-  // 'amended' (Custom, applies the user's per-company corrections overlay).
-  const [mode, setMode] = useState('faithful');
   const [correctionsCount, setCorrectionsCount] = useState(0);
-  const [groupKey, setGroupKey] = useState(null);
   // Free-first-report insight intake (active only when FREE_FIRST_REPORT_CODE is set).
   const [useFreeReport, setUseFreeReport] = useState(false);
   const [buyerRole, setBuyerRole] = useState('');
@@ -439,14 +422,11 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
     return () => { cancelled = true; clearTimeout(t); };
   }, [email, isAndroidApp]);
 
-  // On open, look up the company's corrections overlay. The "Custom" mode is
-  // only offered when the user actually has corrections for this company; until
-  // then there is nothing to amend and the Company-based report is the product.
+  // On open, count the user's corrections for this company — they drive the
+  // statement below, not a choice of report.
   useEffect(() => {
     if (!open || !companyName) {
       setCorrectionsCount(0);
-      setGroupKey(null);
-      setMode('faithful');
       return;
     }
     let cancelled = false;
@@ -454,21 +434,16 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
       try {
         const gk = await resolveGroupKey(companyName);
         if (cancelled) return;
-        setGroupKey(gk);
         if (!gk) {
           setCorrectionsCount(0);
-          setMode('faithful');
           return;
         }
         const list = await listCorrections(gk);
         if (cancelled) return;
         setCorrectionsCount(list.length);
-        // Default to Custom when the user has corrections — that's why they made them.
-        setMode(list.length > 0 ? 'amended' : 'faithful');
       } catch {
         if (!cancelled) {
           setCorrectionsCount(0);
-          setMode('faithful');
         }
       }
     })();
@@ -565,11 +540,6 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
         } : undefined,
         options: {
           language: pendingLang,
-          mode,
-          ...(mode === 'amended' ? {
-            account_id: getClientId(),
-            ...(groupKey ? { group_key: groupKey } : {}),
-          } : {}),
           financialStatements: pendingIncludeFS,
           ...(pendingIncludeFS ? {
             financialStatementsYear: pendingFinancialStatementsYear || 'latest',
@@ -704,13 +674,6 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
 
       const options = {
         language: lang,
-        // Custom (amended) DD: thread the mode + per-user corrections scope so the
-        // backend applies the overlay (mode==='amended' branch reads account_id + group_key).
-        mode,
-        ...(mode === 'amended' ? {
-          account_id: getClientId(),
-          ...(groupKey ? { group_key: groupKey } : {}),
-        } : {}),
         ...((includeFS && !freeActive) ? {
           financialStatements: true,
           financialStatementsYear,
@@ -905,62 +868,21 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
             add anything optional. It is asked on the order page after payment
             instead — see OrderStatusPage. */}
 
-        {/* Report mode selector — only when the user has graph corrections for this
-            company. Company-based = registry as-is; Custom = applies your corrections. */}
+        {/* A buyer with corrections must not pay without learning their
+            corrections are not in what they bought. This is the one place in
+            the product where the paid/free line is stated to someone with money
+            on the screen: you pay for evidence, not for your own notes. */}
         {correctionsCount > 0 && (
           <Box
             sx={{
-              p: 1.5,
-              mb: 2,
-              borderRadius: 1.5,
-              bgcolor: (theme) => alpha(theme.palette.success.main, 0.06),
+              p: 1.5, mb: 2, borderRadius: 1.5,
+              bgcolor: (theme) => alpha(theme.palette.info.main, 0.06),
               border: '1px solid',
-              borderColor: (theme) => alpha(theme.palette.success.main, 0.2),
+              borderColor: (theme) => alpha(theme.palette.info.main, 0.2),
             }}
           >
-            <Typography
-              variant="caption"
-              sx={{
-                display: 'block',
-                mb: 1,
-                color: 'text.disabled',
-                fontSize: '0.62rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                fontWeight: 600,
-              }}
-            >
-              {copy.reportType}
-            </Typography>
-            <ToggleButtonGroup
-              value={mode}
-              exclusive
-              onChange={(_, v) => v && setMode(v)}
-              size="small"
-              fullWidth
-              sx={{
-                '& .MuiToggleButton-root': {
-                  py: 0.6,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.78rem',
-                  borderColor: 'divider',
-                  color: 'text.secondary',
-                  '&.Mui-selected': {
-                    bgcolor: 'success.main',
-                    color: 'success.contrastText',
-                    '&:hover': { bgcolor: 'success.dark' },
-                  },
-                },
-              }}
-            >
-              <ToggleButton value="faithful">{copy.companyBased}</ToggleButton>
-              <ToggleButton value="amended">{`${copy.custom} (${correctionsCount})`}</ToggleButton>
-            </ToggleButtonGroup>
-            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1, lineHeight: 1.45 }}>
-              {mode === 'amended'
-                ? copy.amendedMode(correctionsCount)
-                : copy.faithfulMode}
+            <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
+              {copy.correctionsNotIncluded(correctionsCount)}
             </Typography>
           </Box>
         )}
