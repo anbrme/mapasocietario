@@ -47,7 +47,7 @@ const EN = {
   subject: 'Subject',
   generated: 'Generated',
   nonAuthoritative: 'Non-authoritative document — written by its author, not by the registry.',
-  sourceLine: 'Data derived from BORME (Registro Mercantil). The notes are the author\'s own.',
+  sourceLine: 'Data derived from BORME (Registro Mercantil). The notes are the author’s own.',
   summaryNote: 'Summary',
   flagged: 'Flagged',
   companies: 'Companies analysed',

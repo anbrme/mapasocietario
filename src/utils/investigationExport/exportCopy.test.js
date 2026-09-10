@@ -22,6 +22,10 @@ describe('exportCopy', () => {
       expect(typeof exportCopy('en')[key], `en.${key}`).toBe('string');
       expect(exportCopy('en')[key].length, `en.${key}`).toBeGreaterThan(0);
     });
+    // Check bidirectional: EN must not have keys that ES doesn't have
+    const esKeys = Object.keys(exportCopy('es')).sort();
+    const enKeys = Object.keys(exportCopy('en')).sort();
+    expect(enKeys).toEqual(esKeys);
   });
 
   it('falls back to Spanish for an unknown language', () => {
