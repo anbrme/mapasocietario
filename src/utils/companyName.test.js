@@ -3,6 +3,7 @@ import {
   canonLegalForm,
   entityNameKey,
   normalizeCompanyName,
+  collectNormalizedCompanyNames,
   looksLikeGroupKey,
   selectGroupKeyId,
   stripRegistryOffice,
@@ -55,6 +56,24 @@ describe('normalizeCompanyName', () => {
   it('is null-safe and trims', () => {
     expect(normalizeCompanyName(null)).toBe('');
     expect(normalizeCompanyName('  ACME SL  ')).toBe('ACME SL');
+  });
+});
+
+describe('collectNormalizedCompanyNames', () => {
+  it('reads company_name from expand-officer rows so graph event enrichment runs', () => {
+    expect(collectNormalizedCompanyNames([
+      { company_name: 'GRIFOLS SA' },
+      { company_name: 'GRIFOLS SA.' },
+      { company_name: 'RETORN GROUP SL' },
+    ])).toEqual(['GRIFOLS SA', 'RETORN GROUP SL']);
+  });
+
+  it('supports grouped graph rows and legacy company fields', () => {
+    expect(collectNormalizedCompanyNames([
+      { name: 'ACME SL (2024)' },
+      { company: 'LEGACY SA' },
+      null,
+    ])).toEqual(['ACME SL', 'LEGACY SA']);
   });
 });
 

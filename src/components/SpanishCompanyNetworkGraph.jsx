@@ -94,7 +94,12 @@ import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
 import { hasIncoherentCapital } from '../utils/capitalCoherence';
 import { latestEventType } from '../utils/latestEventType';
-import { normalizeCompanyName, displayCompanyName, isSameUnifiableEntity } from '../utils/companyName';
+import {
+  normalizeCompanyName,
+  collectNormalizedCompanyNames,
+  displayCompanyName,
+  isSameUnifiableEntity,
+} from '../utils/companyName';
 import { findCompanyNode } from '../utils/companyNodeLookup';
 import { buildCompanyAliasMap } from '../utils/companyAliasLookup';
 import { mobileGraphMode } from '../utils/mobileGraphMode';
@@ -4303,13 +4308,12 @@ const SpanishCompanyNetworkGraph = ({
           return { nodes: newNodes, links: dedupeGraphLinks(newLinks) };
         });
 
-        // Collect unique company names for this officer's expanded results
-        const uniqueCompanyNames = new Set();
-        (searchResults || []).forEach(group => {
-          const raw = group?.name || '';
-          if (!raw) return;
-          uniqueCompanyNames.add(normalizeCompanyName(raw));
-        });
+        // Officer-expansion API rows carry `company_name`, not `name`. Missing
+        // that field left this set empty, so the graph never reconciled the
+        // aggregate status with newer live events (e.g. a reappointment after
+        // a revocation). Use the grouped names so company aliases also match
+        // the node names already placed on the canvas.
+        const uniqueCompanyNames = new Set(collectNormalizedCompanyNames(companyEntries));
 
         // Fire-and-forget shareholder fetches for the companies discovered for this officer,
         // and for the officer themselves (companies they may be sole shareholder of).
