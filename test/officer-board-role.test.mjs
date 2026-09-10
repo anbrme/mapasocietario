@@ -60,3 +60,61 @@ test('Art. 143 RRM permanent representative renders as a current board member', 
   assert.match(html, /<td>PERM REP PERSON<\/td>/, 'the 143 RRM representative must appear in the board table');
   assert.doesNotMatch(html, /No constan administradores/);
 });
+
+// The board table lists one row per PERSON, not per seat. DAGA GELABERT TOMAS
+// holds six live roles at GRIFOLS SA; rendering each as a board row would give
+// the company four directors it does not have, because the row count is how a
+// reader counts the board. His committee work belongs under Comisiones, where
+// it describes how the board is organised rather than how large it is.
+test('a director who also sits on committees is one board row, not five', () => {
+  const company = {
+    company_name: 'GRIFOLS SA',
+    company_type: 'SA',
+    officers_active: [
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'CONS.OTR.EXT', appointed_date: '2024-02-23' },
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'VICESECRET.', appointed_date: '2024-02-23' },
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'MBRO.COM.AUD', appointed_date: '2023-05-30' },
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'SEC.COM.AUD.', appointed_date: '2024-06-11' },
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'M.COM.NOM.RE', appointed_date: '2025-08-01' },
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'APODERADO', appointed_date: '2024-11-29' },
+    ],
+    officers_resigned: [],
+  };
+  const html = renderCompanyPage(company, [], 'grifols-sa', null, 'es');
+  const board = html.split('<details class="officer-more">')[0];
+  const boardRows = board.match(/<td>DAGA GELABERT TOMAS<\/td>/g) || [];
+  assert.equal(boardRows.length, 1, 'one person, one board row');
+  // Rendered raw for now — CONS.OTR.EXT has no entry in the nine-item label map.
+  assert.match(board, /CONS\.OTR\.EXT/, 'the board row carries his real board title');
+  assert.doesNotMatch(board, /COM\.AUD/, 'committee seats are not board rows');
+
+  // …and the committee seats stay discoverable, under their own heading.
+  const more = html.split('<details class="officer-more">')[1];
+  assert.match(more, /Comisiones/);
+  // …spelled out, not as the raw BORME code.
+  assert.match(more, /Miembro de la Comisión de Auditoría/);
+  assert.match(more, /Miembro de la Comisión de Nombramientos y Retribuciones/);
+  assert.doesNotMatch(more, /MBRO\.COM\.AUD/);
+});
+
+// The non-board tables were previously concatenated in raw document order, so
+// apoderados, auditors and committee members were interleaved arbitrarily.
+test('other recorded roles are grouped under headings, not dumped in file order', () => {
+  const company = {
+    company_name: 'Z SA',
+    company_type: 'SA',
+    officers_active: [
+      { name: 'AN ATTORNEY', position_normalized: 'APODERADO', appointed_date: '2022-01-01' },
+      { name: 'A COMMITTEE MEMBER', position_normalized: 'MBRO.COM.AUD', appointed_date: '2022-01-01' },
+      { name: 'A DIRECTOR', position_normalized: 'CONSEJERO', appointed_date: '2022-01-01' },
+      { name: 'AN AUDITOR', position_normalized: 'AUDITOR', appointed_date: '2022-01-01' },
+    ],
+    officers_resigned: [],
+  };
+  const html = renderCompanyPage(company, [], 'z-sa', null, 'es');
+  const more = html.split('<details class="officer-more">')[1];
+  // Committees come before auditors and representatives, whatever order the
+  // backend returned the rows in.
+  assert.ok(more.indexOf('Comisiones') < more.indexOf('Auditoría y representantes'));
+  assert.ok(more.indexOf('<td>A COMMITTEE MEMBER</td>') < more.indexOf('<td>AN ATTORNEY</td>'));
+});

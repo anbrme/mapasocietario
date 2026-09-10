@@ -66,7 +66,7 @@ export const positionCategoryFor = pos => {
   if (
     ORGAN_CONTEXT.test(p) &&
     ORGAN_ROLE_PREFIX.test(p) &&
-    !/^(CONSEJER|CONSJ|CONS\.\s?DEL|CON\.DEL|PRESIDENT)/.test(p)
+    !/^(CONSEJER|CONSJ|CONS\.\s?DEL|CON\.DEL|CO\.DE\.MA|PRESIDENT)/.test(p)
   ) {
     return 'Vocal / Comisión';
   }
@@ -75,7 +75,10 @@ export const positionCategoryFor = pos => {
   // board chair, NOT a committee (it reaches here because it has no organ token).
   if (/^(PRESIDENT|PDTE|PTE\b|PTE\.|PRES|PRESID|COPRE|PRE\.NO)/.test(p)) return 'Presidente';
   if (/^(VICEPRESIDEN|VICEPRESID|VICEPRESI|VICEPRE|VICEPR|VICPRES|VICPTE|VICEPTE|VPDTE|V-PRE|VPRE|VPTE)/.test(p)) return 'Vicepresidente';
-  if (/^(CONSEJER|CONSEJ|CONSJ|CONS[.\s]|CON\.)/.test(p)) return 'Consejero';
+  // CO.DE.MA.SO = Consejero Delegado Mancomunado y Solidario. It is excluded
+  // from the organ rule above (it is not a comisión), so it must be claimed
+  // here or it would fall through to Otros — no other rule starts with CO.
+  if (/^(CONSEJER|CONSEJ|CONSJ|CONS[.\s]|CON\.|CO\.DE\.MA)/.test(p)) return 'Consejero';
   if (/^(ADMINISTRADOR|ADMINISTRAD|ADMINISTR|ADMIN|ADM[.\s]|ADMR|ADMOR|ADMPROV)/.test(p)) return 'Administrador';
   if (/^(SECRETARI|SECRET|SECRE|SECR|SEC[.\s]|SRIO|VICESECRETAR|VICESECRET|VICESEC|VICSEC|VSECR|VSEC|VCSEC|V-SEC|SCR|SCRT)/.test(p)) return 'Secretario';
   if (/^(LIQUIDADOR|LIQUID|LIQ[.\s])/.test(p)) return 'Liquidador';
