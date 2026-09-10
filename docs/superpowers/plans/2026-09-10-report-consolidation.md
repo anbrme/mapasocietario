@@ -555,7 +555,7 @@ The exported file has no access to the app's `text` object — it must carry its
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `exportCopy(lang: 'es'|'en') => { title, subject, generated, nonAuthoritative, sourceLine, summaryNote, flagged, companies, connections, ownership, otherNotes, corrections, none, person, inCompanies, role, status, active, ceased, mixed, entity, individual, walkthrough, step, of, next, prev, exit, soleOf, lostOf, actionHide, actionMerge, actionResigned, actionActive, backLink }` — every value a string.
+- Produces: `exportCopy(lang: 'es'|'en') => { title, subject, generated, nonAuthoritative, sourceLine, summaryNote, flagged, companies, connections, ownership, otherNotes, corrections, none, person, inCompanies, role, status, active, ceased, mixed, entity, individual, walkthrough, next, prev, exit, soleOf, lostOf, actionHide, actionMerge, actionResigned, actionActive, backLink }` — every value a string.
 
 - [ ] **Step 1: Write the failing test**
 
