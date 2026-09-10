@@ -6,10 +6,11 @@
  * lands where a judgement is actually required.
  */
 import { factDiff } from '../../../../src/verify/diff.js';
-import { requireAdmin, jsonResponse } from '../_db.js';
+import { adminDenial, jsonResponse } from '../_db.js';
 
 export async function onRequestGet({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   const { results: pending } = await env.VERIFY_DB.prepare(
     `SELECT a.*, c.declared_name, c.email, c.claimed_role, c.identification_note,

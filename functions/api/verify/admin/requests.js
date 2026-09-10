@@ -7,13 +7,14 @@
  * which still demands representation_basis, identification_note and
  * email_domain_basis by hand.
  */
-import { requireAdmin, jsonResponse } from '../_db.js';
+import { adminDenial, jsonResponse } from '../_db.js';
 
 const STATUSES = ['new', 'contacted', 'invited', 'ineligible', 'declined', 'spam'];
 const DEFAULT_LIMIT = 100;
 
 export async function onRequestGet({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   const status = (new URL(request.url).searchParams.get('status') || '').trim();
   const filtered = STATUSES.includes(status);
@@ -30,7 +31,8 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   let body;
   try { body = await request.json(); }

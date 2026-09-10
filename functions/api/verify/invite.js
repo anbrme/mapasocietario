@@ -13,7 +13,7 @@
  */
 import { matchSeat } from '../../../src/verify/seat.js';
 import { newId, newToken, tokenHash } from '../../../src/verify/ids.js';
-import { requireAdmin, fetchCompanyByGroupKey, auditStatement, jsonResponse } from './_db.js';
+import { adminDenial, fetchCompanyByGroupKey, auditStatement, jsonResponse } from './_db.js';
 
 const BASES = new Set(['sole_admin', 'joint_several_admin', 'delegated_board_member', 'apoderado']);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -48,7 +48,8 @@ export function validateInvitePayload(body) {
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   let body;
   try { body = await request.json(); }

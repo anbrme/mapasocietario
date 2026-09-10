@@ -6,14 +6,15 @@
  * which section 4.1 of the pilot design forbids: a check compares a declaration
  * against the registry; it does not establish that the declaration is true.
  */
-import { requireAdmin, jsonResponse } from '../_db.js';
+import { adminDenial, jsonResponse } from '../_db.js';
 import { summariseRuns } from '../../../../src/verify/reconcile.js';
 
 const DEFAULT_LIMIT = 60;
 const MAX_LIMIT = 400;
 
 export async function onRequestGet({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const id = (url.searchParams.get('attestation_id') || '').trim();

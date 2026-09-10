@@ -10,13 +10,14 @@
  * The upstream search parameter is `query`, not `q`, and its results already
  * carry officers_active - so this is one upstream call, not one per hit.
  */
-import { requireAdmin, jsonResponse } from '../_db.js';
+import { adminDenial, jsonResponse } from '../_db.js';
 
 const API_BASE = 'https://api.ncdata.eu';
 const MAX_HITS = 6;
 
 export async function onRequestGet({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   const q = (new URL(request.url).searchParams.get('q') || '').trim();
   if (q.length < 3) return jsonResponse({ ok: false, error: 'query_too_short' }, 400);

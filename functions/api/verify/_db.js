@@ -34,6 +34,30 @@ export function requireAdmin(request, env) {
 }
 
 /**
+ * The admin guard every verification endpoint uses: returns null to proceed,
+ * or the Response to return.
+ *
+ * It separates the two failures `requireAdmin` alone cannot, because they have
+ * different fixes and only the operator can tell them apart: a WRONG TOKEN is
+ * the caller's problem (401), while an UNBOUND VERIFY_ADMIN_TOKEN is the
+ * server's (503) — on Cloudflare Pages a secret reaches only deployments
+ * created after it is set, so rotating one without redeploying leaves the
+ * console rejecting a token that is correct everywhere the operator can see.
+ *
+ * Saying so leaks nothing: when the secret is unset, no token authenticates,
+ * so the 503 discloses a misconfiguration rather than anything secret.
+ */
+export function adminDenial(request, env) {
+  if (!env.VERIFY_ADMIN_TOKEN) {
+    return jsonResponse({ ok: false, error: 'admin_token_not_configured' }, 503);
+  }
+  if (!requireAdmin(request, env)) {
+    return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  }
+  return null;
+}
+
+/**
  * X-Internal-Key exempts a caller from the shared rate bucket, which keys on the
  * nginx loopback address - so an unkeyed BATCH caller consumes the site-wide
  * per-worker budget and can take the public site down with it.

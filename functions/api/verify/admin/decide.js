@@ -14,7 +14,7 @@
  * from when the operator got round to approving.
  */
 import { sha256Hex } from '../../../../src/verify/hash.js';
-import { requireAdmin, jsonResponse, batchWithAudit } from '../_db.js';
+import { adminDenial, jsonResponse, batchWithAudit } from '../_db.js';
 
 const CURRENT_STATES = "('live','outdated','under_review','disputed','expired')";
 
@@ -34,7 +34,8 @@ async function evidenceState(env, key, expectedHash) {
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   let body;
   try { body = await request.json(); }

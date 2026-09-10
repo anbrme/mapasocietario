@@ -12,10 +12,11 @@
  * off-system (spec section 4.2).
  */
 import { verifyChain } from '../../../../src/verify/chain.js';
-import { requireAdmin, jsonResponse } from '../_db.js';
+import { adminDenial, jsonResponse } from '../_db.js';
 
 export async function onRequestGet({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   const { results } = await env.VERIFY_DB.prepare(
     `SELECT seq, attestation_id, subject_id, action, actor, detail, public_summary,

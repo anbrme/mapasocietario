@@ -370,9 +370,21 @@ $('list').addEventListener('click', (e) => {
   if (b) revoke(b.dataset.att, b.dataset.revoke);
 });
 
+// Not every rejection is a bad token. Saying "token inválido" when the server
+// is missing its secret sends the operator to check the one thing that is
+// already correct.
+function denialMessage(r) {
+  if (r.data && r.data.error === 'admin_token_not_configured') {
+    return 'El servidor no tiene VERIFY_ADMIN_TOKEN. En Pages un secreto solo llega a '
+      + 'los despliegues creados DESPUÉS de definirlo: vuelva a desplegar.';
+  }
+  if (r.status === 401) return 'Token no válido';
+  return 'El servidor respondió ' + r.status + ((r.data && r.data.error) ? ' (' + r.data.error + ')' : '');
+}
+
 async function load() {
   const chain = await api('/api/verify/admin/chain');
-  if (!chain.ok) { $('who').textContent = 'Token no válido'; $('app').hidden = true; return; }
+  if (!chain.ok) { $('who').textContent = denialMessage(chain); $('app').hidden = true; return; }
   $('who').textContent = 'Autenticado';
   $('app').hidden = false;
   renderChain(chain.data);

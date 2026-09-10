@@ -8,12 +8,13 @@
  * grants already issued against it so a link can be revoked without going to
  * the database.
  */
-import { requireAdmin, jsonResponse } from '../_db.js';
+import { adminDenial, jsonResponse } from '../_db.js';
 
 const LISTED = ['live', 'outdated', 'under_review', 'disputed', 'expired'];
 
 export async function onRequestGet({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   const { results } = await env.VERIFY_DB.prepare(
     `SELECT a.id, a.status, a.accepted_at, a.expires_at, a.last_verified_at, a.reviewer,

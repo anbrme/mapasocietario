@@ -11,13 +11,14 @@ import { newToken, tokenHash } from '../../../../src/verify/ids.js';
 import {
   normalizeGrantKind, grantPath, GRANT_KINDS, DEFAULT_TTL_DAYS, PREVIEW_TTL_DAYS,
 } from '../../../../src/verify/grant.js';
-import { requireAdmin, jsonResponse, batchWithAudit } from '../_db.js';
+import { adminDenial, jsonResponse, batchWithAudit } from '../_db.js';
 
 const MIN_TTL_DAYS = 1;
 const MAX_TTL_DAYS = 365;
 
 export async function onRequestPost({ request, env }) {
-  if (!requireAdmin(request, env)) return jsonResponse({ ok: false, error: 'unauthorized' }, 401);
+  const denied = adminDenial(request, env);
+  if (denied) return denied;
 
   let body;
   try { body = await request.json(); }
