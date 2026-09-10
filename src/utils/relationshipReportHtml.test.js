@@ -30,8 +30,21 @@ describe('buildReportHtml', () => {
 
   it('escapes hostile note text', () => {
     const hostile = { ...doc, networkNote: '<script>alert(1)</script>' };
+    const html = buildReportHtml(hostile, { es: true });
 
-    expect(buildReportHtml(hostile, { es: true })).not.toContain('<script>alert(1)</script>');
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('escapes hostile correction data', () => {
+    const hostile = {
+      ...doc,
+      corrections: [{ nameA: '<img src=x onerror="alert(1)">', action: 'hide' }],
+    };
+    const html = buildReportHtml(hostile, { es: true });
+
+    expect(html).not.toContain('<img src=x onerror');
+    expect(html).toContain('&lt;img src=x onerror');
   });
 
   it('omits the flagged block when nothing is flagged', () => {
@@ -44,5 +57,30 @@ describe('buildReportHtml', () => {
     const bare = { ...doc, networkNote: '', flagged: [], otherNotes: [], companies: [{ nodeId: 'c1', name: 'ALFA SL', note: null }] };
 
     expect(buildReportHtml(bare, { es: true })).toContain('ALFA SL');
+  });
+
+  it('renders corrections with verbs mapped from actions', () => {
+    const withCorrections = {
+      ...doc,
+      corrections: [
+        { nameA: 'GARCIA LOPEZ ANA', action: 'hide' },
+        { nameA: 'OLD NAME', action: 'merge', nameB: 'NEW NAME' },
+        { nameA: 'OFFICER X', action: 'mark_resigned', resignedDate: '2026-01-15' },
+        { nameA: 'OFFICER Y', action: 'mark_active' },
+      ],
+    };
+    const html = buildReportHtml(withCorrections, { es: true });
+
+    expect(html).toContain('GARCIA LOPEZ ANA');
+    expect(html).toContain('OLD NAME');
+    expect(html).toContain('NEW NAME');
+    expect(html).toContain('OFFICER X');
+    expect(html).toContain('2026-01-15');
+  });
+
+  it('omits the corrections block when nothing is corrected', () => {
+    const html = buildReportHtml({ ...doc, corrections: [] }, { es: true });
+
+    expect(html).not.toContain('Correcciones');
   });
 });

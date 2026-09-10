@@ -37,6 +37,18 @@ export function buildReportHtml(doc, { es = true } = {}) {
   const otherRows = (doc?.otherNotes || []).map(n =>
     `<li><b>${esc(n.name)}</b> — ${esc(n.text)}</li>`).join('');
 
+  const correctionLine = (correction) => {
+    const verb = {
+      hide: t.actionHide, merge: t.actionMerge,
+      mark_resigned: t.actionResigned, mark_active: t.actionActive,
+    }[correction.action] || esc(correction.action);
+    const tail = correction.nameB ? ` ${esc(correction.nameB)}` : '';
+    const when = correction.resignedDate ? ` (${esc(correction.resignedDate)})` : '';
+    return `<li>${esc(correction.nameA)} — ${esc(verb)}${tail}${when}</li>`;
+  };
+
+  const correctionRows = (doc?.corrections || []).map(correctionLine).join('');
+
   const block = (title, inner) => (inner ? `<h3>${esc(title)}</h3>${inner}` : '');
 
   return `<div>
@@ -54,6 +66,7 @@ export function buildReportHtml(doc, { es = true } = {}) {
     : `<p>${esc(t.none)}</p>`}
   ${block(t.ownership, ownershipRows ? `<ul>${ownershipRows}</ul>` : '')}
   ${block(t.otherNotes, otherRows ? `<ul>${otherRows}</ul>` : '')}
+  ${block(t.corrections, correctionRows ? `<ul>${correctionRows}</ul>` : '')}
   <p><small>${esc(t.sourceLine)} — mapasocietario.es</small></p>
 </div>`;
 }
