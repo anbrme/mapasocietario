@@ -293,7 +293,7 @@ const SEARCH_COPY = {
     hideShared: 'Hide shared connections',
     showShared: 'Highlight officers/entities across several companies and dim the rest',
     sharedConnections: 'Shared connections',
-    myCorrectionsTooltip: 'Your corrections for this company\'s "Custom" report',
+    myCorrectionsTooltip: 'Your corrections for this company — shown on your map and in your situation report',
     myCorrections: count => `My corrections (${count})`,
     filterNodes: 'Filter nodes and notes',
     filterPlaceholder: 'e.g. Garcia, relevant manager',
@@ -587,7 +587,7 @@ const SEARCH_COPY = {
     legalTitle: 'Source and legal notice',
     markResignedBody: name => (
       <>
-        Mark <strong>{name}</strong> as ceased in the custom report. This does not modify the Registro Mercantil; it only affects your "Custom" report.
+        Mark <strong>{name}</strong> as ceased. This does not modify the Registro Mercantil; it only changes what you see — your map and your situation report.
       </>
     ),
     resignationDate: 'Cessation date (optional)',
@@ -662,7 +662,7 @@ const SEARCH_COPY = {
     hideShared: 'Ocultar conexiones compartidas',
     showShared: 'Resaltar administradores/entidades en varias empresas y atenuar el resto',
     sharedConnections: 'Conexiones compartidas',
-    myCorrectionsTooltip: 'Tus correcciones para el informe "Custom" de esta empresa',
+    myCorrectionsTooltip: 'Tus correcciones para esta empresa — se ven en tu mapa y en tu informe de situación',
     myCorrections: count => `Mis correcciones (${count})`,
     filterNodes: 'Filtrar nodos y notas',
     filterPlaceholder: 'ej: Garcia, directivo relevante',
@@ -951,7 +951,7 @@ const SEARCH_COPY = {
     legalTitle: 'Fuente y aviso legal',
     markResignedBody: name => (
       <>
-        Marcar a <strong>{name}</strong> como cesado en el informe personalizado. Esto no modifica el Registro Mercantil; solo afecta a tu informe "Custom".
+        Marcar a <strong>{name}</strong> como cesado. Esto no modifica el Registro Mercantil; solo cambia lo que tú ves — tu mapa y tu informe de situación.
       </>
     ),
     resignationDate: 'Fecha de cese (opcional)',
@@ -1708,7 +1708,7 @@ const SpanishCompanyNetworkGraph = ({
   const [networkNote, setNetworkNote] = useState('');
   const [showSharedConnections, setShowSharedConnections] = useState(false);
 
-  // Corrections overlay state (feeds the "Custom" amended DD; see correctionsService).
+  // Corrections overlay state (feeds the situation report; see correctionsService).
   // Officer edits (hide / merge / mark-resigned) on the subject company are
   // persisted per-user and scoped to that company's group_key.
   const [correctionsCount, setCorrectionsCount] = useState(0);
@@ -1722,7 +1722,7 @@ const SpanishCompanyNetworkGraph = ({
   // Cache of subject company name -> resolved group_key (avoids re-querying autocomplete)
   const subjectGroupKeyCache = useRef(new Map());
   // The "primary subject" = the FIRST company loaded into the graph. Corrections
-  // and the Custom DD attach to it. It is sticky: officer searches, node
+  // and the situation report attach to it. It is sticky: officer searches, node
   // expansions, and additional companies do NOT change it — only a graph reset
   // clears it. (Derived-from-lastSearchContext was fragile: exploring the graph
   // moved the subject off the company the user was actually investigating.)
@@ -2236,6 +2236,7 @@ const SpanishCompanyNetworkGraph = ({
       setShortestPathNodes(new Set());
       setShortestPathLinks(new Set());
       setShortestPathArray([]);
+      setNetworkNote('');
     }
   }, [visible, embedded]);
 
@@ -3096,7 +3097,7 @@ const SpanishCompanyNetworkGraph = ({
               hasMore: false, // v3 company docs are complete (all officers pre-aggregated)
               total: v3Data.total || v3Results.length,
             });
-            // First company loaded becomes the sticky Custom-DD subject; later
+            // First company loaded becomes the sticky situation-report subject; later
             // company searches append to the graph but keep the original subject.
             setPrimarySubject(prev => prev || query);
             setSearchQuery('');
@@ -5212,7 +5213,7 @@ const SpanishCompanyNetworkGraph = ({
     [activeNodeId]
   );
 
-  // ── Corrections overlay (Custom DD) ──────────────────────────────────────
+  // ── Corrections overlay (situation report) ────────────────────────────────
   // The subject company of any persisted correction is the primary subject (the
   // first company loaded — sticky across graph exploration). Officer edits attach
   // to its group_key; if no company has been loaded yet (e.g. an officer-only
@@ -5765,8 +5766,8 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [contextNode, hideNode, closeNodeContextMenu, recordCorrection, unhideNode, text]);
 
-  // Mark an officer as resigned (DD overlay only — moves the officer from the
-  // active to the resigned set in the Custom report). Opens a small dialog so
+  // Mark an officer as resigned (corrections overlay only — moves the officer
+  // from the active to the resigned set in the situation report). Opens a small dialog so
   // the user can optionally supply the resignation date.
   const openMarkResignedDialog = useCallback(() => {
     if (!contextNode || contextNode.type !== 'officer') return;
@@ -6582,7 +6583,7 @@ const SpanishCompanyNetworkGraph = ({
   // Persistent unmerge: pop the most recent pre-merge snapshot from the node's
   // history and restore that neighborhood, so a merge can be undone at any time
   // (not only within the toast window). Also removes the persisted overlay row
-  // for officer merges so the graph and the Custom DD report stay in sync.
+  // for officer merges so the graph and the situation report stay in sync.
   const unmergeNode = useCallback(async () => {
     const node = contextNode;
     closeNodeContextMenu();
@@ -6800,7 +6801,7 @@ const SpanishCompanyNetworkGraph = ({
   }, [graphData.links, linkPassesPosition]);
 
   // Record a "mark active" correction (reactivate a registry-ceased officer in
-  // the Custom report) + recolor edges green. No date needed, so unlike
+  // the situation report) + recolor edges green. No date needed, so unlike
   // mark-resigned it fires directly without a dialog.
   const markContextOfficerActive = useCallback(() => {
     const node = contextNode;
@@ -7964,6 +7965,7 @@ const SpanishCompanyNetworkGraph = ({
     setCameraState({ x: 0, y: 0, k: 1 });
     setIsNodeNoteDialogOpen(false);
     setNodeNoteTargetId(null);
+    setNetworkNote('');
   };
 
   // Compute table data from graph links
@@ -9162,7 +9164,7 @@ const SpanishCompanyNetworkGraph = ({
             onClick={() => {
               trackGraphToolbarAction('due_diligence');
               // DD is per-company. Prefer the sticky subject (always a company,
-              // and may carry corrections for the Custom option); fall back to the
+              // and may carry corrections that surface in the situation report); fall back to the
               // latest company search — never an officer query.
               const lastCompanyQuery =
                 lastSearchContext?.searchType === 'company' ? lastSearchContext.query : '';
@@ -11598,7 +11600,7 @@ const SpanishCompanyNetworkGraph = ({
           </DialogActions>
         </Dialog>
 
-        {/* Mark-resigned dialog (optional resignation date) — Custom DD overlay */}
+        {/* Mark-resigned dialog (optional resignation date) — corrections overlay for the situation report */}
         <Dialog
           open={Boolean(markResignedNode)}
           onClose={() => setMarkResignedNode(null)}

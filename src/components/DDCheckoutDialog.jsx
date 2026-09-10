@@ -82,7 +82,7 @@ const DD_COPY = {
     connectionError: 'Connection error. Please try again.',
     title: 'Due Diligence Report',
     reportLanguage: 'Report language',
-    correctionsNotIncluded: (n) => `This report reproduces the registry as filed. Your ${n} corrections aren't in it — they're in your situation report, free to download from the map.`,
+    correctionsNotIncluded: (n) => `This report reproduces the registry as filed. Your ${n} correction${n === 1 ? '' : 's'} ${n === 1 ? "isn't" : "aren't"} in it — ${n === 1 ? "it's" : "they're"} in your situation report, free to download from the map.`,
     baseDescription: 'Corporate structure, officer history, sanctions and adverse-media screening, risk analysis',
     sampleReport: 'See a sample report before you buy',
     financialStatements: 'Financial Statements (Cuentas Anuales)',
@@ -180,7 +180,7 @@ const DD_COPY = {
     connectionError: 'Error de conexión. Inténtalo de nuevo.',
     title: 'Informe Due Diligence',
     reportLanguage: 'Idioma del informe',
-    correctionsNotIncluded: (n) => `Este informe reproduce el registro tal como se publicó. Tus ${n} correcciones no están incluidas — están en tu informe de situación, que puedes descargar gratis desde el mapa.`,
+    correctionsNotIncluded: (n) => `Este informe reproduce el registro tal como se publicó. Tu${n === 1 ? '' : 's'} ${n} corrección${n === 1 ? '' : 'es'} no est${n === 1 ? 'á' : 'án'} incluida${n === 1 ? '' : 's'} — est${n === 1 ? 'á' : 'án'} en tu informe de situación, que puedes descargar gratis desde el mapa.`,
     baseDescription:
       'Estructura societaria, historial de administradores, cribado de sanciones y prensa adversa, análisis de riesgo',
     sampleReport: 'Ver un informe de ejemplo antes de comprar',

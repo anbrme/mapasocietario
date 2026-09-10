@@ -8,7 +8,7 @@
 // would put it back in competition with the paid report.
 
 import { escapeHtml as esc } from '../escapeHtml';
-import { exportCopy } from './exportCopy';
+import { correctionVerb, exportCopy } from './exportCopy';
 import { renderGraphSvg } from './renderGraphSvg';
 import { WALKTHROUGH_SCRIPT } from './walkthroughScript';
 
@@ -52,7 +52,7 @@ padding-left:8px;margin:4px 0}
 padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--f,#94a3b8)}
 .card strong{display:block;margin-bottom:2px}
 #map{width:100%;height:520px;background:var(--card);
-border:1px solid var(--line);border-radius:6px;cursor:grab;touch-action:none}
+border:1px solid var(--line);border-radius:6px;cursor:grab}
 #map .l{stroke:var(--link);stroke-width:1}
 #map g.n circle{fill:var(--officer)}
 #map g.n[data-kind="company"] circle{fill:var(--company)}
@@ -73,7 +73,9 @@ a{color:var(--company)}
 @media print{#wt-panel,.hide-print{display:none}#map{height:400px}}
 `;
 
-const flagVar = flag => `--f:${FLAG_COLORS[flag] || FLAG_COLORS.none}`;
+const flagVar = flag => `--f:${
+  Object.prototype.hasOwnProperty.call(FLAG_COLORS, flag) ? FLAG_COLORS[flag] : FLAG_COLORS.none
+}`;
 
 const noteBlock = note => (note
   ? `<div class="note" style="${flagVar(note.flag)}">${esc(note.text)}</div>`
@@ -84,13 +86,9 @@ const section = (id, title, inner) => (inner
   : '');
 
 const correctionLine = (c, t) => {
-  const verb = {
-    hide: t.actionHide, merge: t.actionMerge,
-    mark_resigned: t.actionResigned, mark_active: t.actionActive,
-  }[c.action] || esc(c.action);
   const tail = c.nameB ? ` ${esc(c.nameB)}` : '';
   const when = c.resignedDate ? ` (${esc(c.resignedDate)})` : '';
-  return `<li>${esc(c.nameA)} — ${esc(verb)}${tail}${when}</li>`;
+  return `<li>${esc(c.nameA)} — ${esc(correctionVerb(t, c.action))}${tail}${when}</li>`;
 };
 
 export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {

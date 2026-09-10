@@ -12,7 +12,8 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
 import { buildExportHtml, exportFileName } from '../utils/investigationExport';
-import { NODE_NOTE_FLAGS } from '../utils/nodeNotes';
+import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
+import { NODE_NOTE_FLAGS, NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
 
 export default function RelationshipReportModal({
   open, onClose, doc, graphData, networkNote, onNetworkNoteChange,
@@ -21,6 +22,7 @@ export default function RelationshipReportModal({
   const [reportLang, setReportLang] = useState(lang === 'en' ? 'en' : 'es');
   const [copied, setCopied] = useState(false);
   const es = reportLang !== 'en';
+  const t = exportCopy(es ? 'es' : 'en');
 
   useEffect(() => {
     if (open) setReportLang(lang === 'en' ? 'en' : 'es');
@@ -32,6 +34,7 @@ export default function RelationshipReportModal({
   const counts = doc?.counts || { companies: 0, officers: 0, sharedPeople: 0 };
   const flagged = doc?.flagged || [];
   const otherNotes = doc?.otherNotes || [];
+  const corrections = doc?.corrections || [];
   const officersByCompany = doc?.officersByCompany || {};
   const noCompanies = companies.length < 1;
 
@@ -96,7 +99,7 @@ export default function RelationshipReportModal({
           minRows={2}
           size="small"
           value={networkNote}
-          onChange={(e) => onNetworkNoteChange(e.target.value.slice(0, 2000))}
+          onChange={(e) => onNetworkNoteChange(e.target.value.slice(0, NODE_NOTE_MAX_LENGTH))}
           placeholder={es
             ? '¿Qué estás mirando y qué has concluido?'
             : 'What are you looking at, and what did you conclude?'}
@@ -229,6 +232,26 @@ export default function RelationshipReportModal({
                         {' — '}{n.text}
                       </Typography>
                     )}
+                  </Typography>
+                </li>
+              ))}
+            </Box>
+          </>
+        )}
+
+        {corrections.length > 0 && (
+          <>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
+              {t.corrections}
+            </Typography>
+            <Box component="ul" sx={{ pl: 3, my: 0.5 }}>
+              {corrections.map((c, i) => (
+                <li key={i}>
+                  <Typography variant="body2">
+                    <strong>{c.nameA}</strong>{' '}
+                    {correctionVerb(t, c.action)}
+                    {c.nameB ? ` ${c.nameB}` : ''}
+                    {c.resignedDate ? ` (${c.resignedDate})` : ''}
                   </Typography>
                 </li>
               ))}

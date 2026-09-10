@@ -89,7 +89,18 @@ export const WALKTHROUGH_SCRIPT = `
   });
 
   // Pan and zoom by rewriting one transform — no library, no re-layout.
+  //
+  // tx/ty live in the SVG's user-unit space (the transform is applied inside
+  // the viewBox-scaled root), but mouse deltas arrive in screen pixels. The
+  // two units only match by coincidence, so a drag has to be converted through
+  // the ratio of rendered size to viewBox size before it is added.
   var tx = 0, ty = 0, scale = 1, dragging = false, lastX = 0, lastY = 0;
+  function screenToUserScale() {
+    var vb = map.viewBox && map.viewBox.baseVal;
+    var rect = map.getBoundingClientRect();
+    if (!vb || !vb.width || !vb.height || !rect.width || !rect.height) return 1;
+    return Math.min(rect.width / vb.width, rect.height / vb.height);
+  }
   function apply() {
     if (viewport) viewport.setAttribute('transform', 'translate(' + tx + ',' + ty + ') scale(' + scale + ')');
   }
@@ -97,7 +108,8 @@ export const WALKTHROUGH_SCRIPT = `
   window.addEventListener('mouseup', function () { dragging = false; });
   window.addEventListener('mousemove', function (e) {
     if (!dragging) return;
-    tx += e.clientX - lastX; ty += e.clientY - lastY;
+    var s = screenToUserScale();
+    tx += (e.clientX - lastX) / s; ty += (e.clientY - lastY) / s;
     lastX = e.clientX; lastY = e.clientY;
     apply();
   });

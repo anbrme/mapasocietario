@@ -7,7 +7,7 @@
 // interactive canvas, so this one is the tables and the notes without the map.
 
 import { escapeHtml as esc } from './escapeHtml';
-import { exportCopy } from './investigationExport/exportCopy';
+import { correctionVerb, exportCopy } from './investigationExport/exportCopy';
 
 export function buildReportHtml(doc, { es = true } = {}) {
   const t = exportCopy(es ? 'es' : 'en');
@@ -38,13 +38,9 @@ export function buildReportHtml(doc, { es = true } = {}) {
     `<li><b>${esc(n.name)}</b> — ${esc(n.text)}</li>`).join('');
 
   const correctionLine = (correction) => {
-    const verb = {
-      hide: t.actionHide, merge: t.actionMerge,
-      mark_resigned: t.actionResigned, mark_active: t.actionActive,
-    }[correction.action] || esc(correction.action);
     const tail = correction.nameB ? ` ${esc(correction.nameB)}` : '';
     const when = correction.resignedDate ? ` (${esc(correction.resignedDate)})` : '';
-    return `<li>${esc(correction.nameA)} — ${esc(verb)}${tail}${when}</li>`;
+    return `<li>${esc(correction.nameA)} — ${esc(correctionVerb(t, correction.action))}${tail}${when}</li>`;
   };
 
   const correctionRows = (doc?.corrections || []).map(correctionLine).join('');

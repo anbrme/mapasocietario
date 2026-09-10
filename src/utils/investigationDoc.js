@@ -57,19 +57,21 @@ export function buildInvestigationDoc({
     note: noteFor(c.nodeId),
   }));
 
-  // Everything already shown in place must not be repeated at the bottom.
+  const flagged = FLAGGED_ORDER.flatMap(flag => notedNodes
+    .filter(n => n.userNote.flag === flag)
+    .map(noteEntry));
+
+  // Everything already shown in place — as a company/connector card, or as a
+  // flagged card up top — must not be repeated at the bottom.
   const placed = new Set([
     ...companies.filter(c => c.note).map(c => normalizeNodeId(c.nodeId)),
     ...connectors.filter(c => c.note).map(c => normalizeNodeId(c.nodeId)),
+    ...flagged.map(f => normalizeNodeId(f.nodeId)),
   ]);
 
   const otherNotes = notedNodes
     .filter(n => !placed.has(normalizeNodeId(n.id)))
     .map(noteEntry);
-
-  const flagged = FLAGGED_ORDER.flatMap(flag => notedNodes
-    .filter(n => n.userNote.flag === flag)
-    .map(noteEntry));
 
   // Copied, not shared: a caller holding the same scope object across renders
   // must never see this document's array/object identities change underneath

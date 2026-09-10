@@ -81,3 +81,18 @@ const EN = {
 export const EXPORT_COPY_KEYS = Object.freeze(Object.keys(ES));
 
 export const exportCopy = (lang) => (lang === 'en' ? EN : ES);
+
+// Shared action-verb mapping for a correction entry, used everywhere a
+// correction is rendered (export file, Copy-for-Word, and the in-app
+// preview) so the three stay in sync. Returns the raw (unescaped) verb —
+// callers own escaping so it happens exactly once.
+const CORRECTION_VERB_KEYS = {
+  hide: 'actionHide',
+  merge: 'actionMerge',
+  mark_resigned: 'actionResigned',
+  mark_active: 'actionActive',
+};
+
+export const correctionVerb = (t, action) => (
+  CORRECTION_VERB_KEYS[action] ? t[CORRECTION_VERB_KEYS[action]] : action
+);

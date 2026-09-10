@@ -66,6 +66,24 @@ describe('buildExportHtml', () => {
     expect(html).toContain('&lt;img src=x');
   });
 
+  it('escapes a literal </script> inside a flagged note so the file is not truncated', () => {
+    const hostile = {
+      ...doc,
+      flagged: [{ ...doc.flagged[0], text: 'Ends with </script><script>alert(1)</script> right there' }],
+    };
+    const html = buildExportHtml(hostile, graphData, { lang: 'es' });
+
+    // Only the two script tags the template itself writes (the JSON payload
+    // and the walkthrough script) may close — the note's own "</script>"
+    // must not produce a third one that truncates the document.
+    expect((html.match(/<\/script>/gi) || []).length).toBe(2);
+
+    const dataScript = html.match(/window\.__SITREP__=(.*?);<\/script>/s);
+    expect(dataScript).not.toBeNull();
+    const parsed = JSON.parse(dataScript[1]);
+    expect(parsed.steps[0].text).toBe('Ends with </script><script>alert(1)</script> right there');
+  });
+
   it('writes the flagged notes into the walkthrough global', () => {
     const html = buildExportHtml(doc, graphData, { lang: 'es' });
 

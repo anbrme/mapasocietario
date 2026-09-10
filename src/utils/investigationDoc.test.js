@@ -76,6 +76,22 @@ describe('buildInvestigationDoc', () => {
     expect(otherIds).not.toContain('o1');
   });
 
+  it('does not double-report a flagged node that is neither a company nor a connector', () => {
+    // o2 carries a 'blue' note in the base fixture, which never exercises this
+    // path (only red/amber land in `flagged`). Bump it to 'red' here so it is
+    // both flagged AND absent from companies/connectors — the overlap case.
+    const withFlaggedOutsider = {
+      ...graphData,
+      nodes: graphData.nodes.map(n => (
+        n.id === 'o2' ? { ...n, userNote: { ...n.userNote, flag: 'red' } } : n
+      )),
+    };
+    const doc = build({ graphData: withFlaggedOutsider });
+
+    expect(doc.flagged.map(f => f.nodeId)).toContain('o2');
+    expect(doc.otherNotes.map(n => n.nodeId)).not.toContain('o2');
+  });
+
   it('ignores notes whose text is blank', () => {
     const blank = {
       ...graphData,
