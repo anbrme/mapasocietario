@@ -102,14 +102,16 @@ describe('buildInvestigationDoc', () => {
   });
 
   it('does not mutate its inputs', () => {
+    const testCorrections = [{ action: 'merge', name_a: 'GARCIA LOPEZ, ANA', name_b: 'GARCIA LOPEZ ANA' }];
     const frozenGraphData = JSON.parse(JSON.stringify(graphData));
     const frozenScope = JSON.parse(JSON.stringify(scope));
-    const frozenCorrections = JSON.parse(JSON.stringify([]));
+    const frozenCorrections = JSON.parse(JSON.stringify(testCorrections));
 
-    build({ corrections: [] });
+    build({ corrections: testCorrections });
 
     expect(graphData).toEqual(frozenGraphData);
     expect(scope).toEqual(frozenScope);
+    expect(testCorrections).toEqual(frozenCorrections);
   });
 
   it('returns document with no shared mutable structure with scope', () => {
