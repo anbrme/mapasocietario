@@ -99,6 +99,24 @@ export const positionCategoryFor = pos => {
   return 'Otros';
 };
 
+// A DELEGATION of powers layered on a board seat (consejero delegado), as
+// opposed to a KIND of board seat (dominical, independiente, suplente...).
+// BORME publishes the two as separate rows for one person and routinely ceases
+// only the delegation, which leaves the director on the board — so the backend
+// aggregation must not let a delegation cese empty the folded Consejero seat.
+// Kept here in lockstep with position_categories.is_delegated_consejero; the
+// two are verified against each other over the whole terms.json vocabulary.
+//
+// DEFAULT-DENY: an unrecognised label is NOT a delegation. Strictly a
+// refinement of the "Consejero" category, so it can never move a seat between
+// categories. CO.DE.MA (Consejero Delegado Mancomunado y Solidario) carries no
+// DEL token at all and has to be named.
+const DELEGATION = /^(CONS?\.\s?DEL|CONSEJ\.\s?DEL|CONSEJERO\s+DELEG|CO\.DE\.MA)/;
+
+export const isDelegatedConsejero = pos =>
+  positionCategoryFor(pos) === 'Consejero' &&
+  DELEGATION.test((pos || '').trim().toUpperCase());
+
 // True when two raw position strings denote the same kind of post (same
 // canonical category). Used to attach borme_events_v3 events to the correct
 // officer→company link: one officer can hold several roles at one company with
