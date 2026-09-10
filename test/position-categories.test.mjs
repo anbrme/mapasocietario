@@ -59,6 +59,23 @@ test('fused dot-less organ forms map to Vocal / Comisión', () => {
   }
 });
 
+test('CO.DE.MA.SO is a consejero delegado, not a commission', () => {
+  // "Co.De.Ma.So" = Consejero Delegado Mancomunado y Solidario. ORGAN_CONTEXT's
+  // CO\.DE token matched it, sending 13,289 seats to "Vocal / Comisión" — and,
+  // downstream, keying them as a COMMITTEE seat rather than the OFFICE they are.
+  // Proof (ISLALINK SUBMARINE CABLES SL, 2014-06-05): "Nombramientos.
+  // Consejero: MASSELOT BRICE. Co.De.Ma.So: MASSELOT BRICE." — one act naming
+  // one man under both labels, so they are one office, not two seats.
+  for (const pos of ['CO.DE.MA.SO', 'Co.De.Ma.So', 'CO.DE.MA.SO.']) {
+    assert.equal(positionCategoryFor(pos), 'Consejero', pos);
+  }
+  // The CO.DE token must still catch the genuine Comisión Delegada de
+  // Inversiones forms — the only other CO.DE entries in terms.json.
+  for (const pos of ['P.CO.DE.IN', 'M.CO.DE.IN']) {
+    assert.equal(positionCategoryFor(pos), 'Vocal / Comisión', pos);
+  }
+});
+
 test('fused-form lookalikes are NOT organ roles', () => {
   // One character away from the codes above: the member/secretary prefix must be
   // followed IMMEDIATELY by CO. mancomunado = joint-signing regime, mediador
