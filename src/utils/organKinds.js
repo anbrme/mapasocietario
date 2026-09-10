@@ -95,7 +95,7 @@ const CONTROL = /CONTROL|CTRL|CTR\b|COM\.CTR|COMS\.CTR|CTE\.CON|COM\.CON(?!S)/;
 // The governing body itself: consejo rector (cooperativas), junta directiva
 // (asociaciones), junta/consejo de administración, consejo de gobierno,
 // asamblea. Holding a seat on one of these IS the directorship.
-const GOVERNING_BODY = /REC[TG]?\b|\.REC|CON[S]?\.?\s?RE|JTA|JUNTA|JUN\.|J\.DIR|J\.\s?ADM|JDIR|JT\.DI|ASAMBL|CONADM|CJO|CONS\.GO|CON\.GOB|CONSOCGER|CONSASE/;
+const GOVERNING_BODY = /REC[TG]?\b|\.REC|CON[S]?\.?\s?RE|JTA|JUNTA|JUN\.|J\.DIR|J\.D\b|J\.\s?ADM|JDIR|JT\.DI|ASAMBL|CONADM|CJO|CONS\.GO|CON\.GOB|CONSOCGER|CONSASE/;
 
 // A vocal with no organ named at all: VOCAL, VOCAL 3, VOC.1, VOCAL.PRIMER,
 // VOCAL SUPLEN. A vocal IS a consejero — the plainest kind, holding no special

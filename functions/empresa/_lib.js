@@ -27,6 +27,7 @@ import { companyPageHeaders, notFoundPageHeaders } from './_page_headers.js';
 // instead of a local regex keeps the page and the in-app graph classifying
 // officers identically.
 import { groupOfficersForDisplay, BOARD_CATEGORIES } from '../../src/utils/officerGroups.js';
+import { positionLabelFor } from '../../src/utils/positionLabels.js';
 import { reconcileOfficersWithEvents } from '../../src/utils/pendingOfficerEvents.js';
 // A cese BORME printed under a variant spelling of an active officer closes that
 // seat here (HAJJAJI ABDELKRIM / HAJJAJI ABDEL KARIM); see the module header.
@@ -835,9 +836,13 @@ const PAGE_BOARD_CATEGORIES = new Set([
   'Liquidador',
 ]);
 
-function prettyPosition(pos, t) {
+// The nine hand-written entries in t.positions used to be the page's entire
+// label map; every other cargo printed as its raw BORME abbreviation. They now
+// live alongside the rest in positionLabels, which composes a label from the
+// role and the organ — and still prints the code when it cannot name the organ.
+function prettyPosition(pos, t, lang) {
   const p = (pos || '').toUpperCase();
-  return t.positions[p] || pos || '';
+  return t.positions[p] || positionLabelFor(pos, lang) || '';
 }
 
 /**
@@ -857,7 +862,7 @@ function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = fals
     .map(
       (o) => `<tr>
         <td>${esc(o.name || o.name_normalized)}${o.ceased_as ? ` <span class="muted">(${esc(t.ceasedAs(o.ceased_as))})</span>` : ''}</td>
-        <td>${esc((o.positions || []).map((p) => prettyPosition(p, t)).join(', '))}</td>
+        <td>${esc((o.positions || []).map((p) => prettyPosition(p, t, lang)).join(', '))}</td>
         <td>${esc(fmtDate(o[dateKey], lang))}</td>
       </tr>`,
     )

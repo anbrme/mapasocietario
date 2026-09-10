@@ -91,8 +91,10 @@ test('a director who also sits on committees is one board row, not five', () => 
   // …and the committee seats stay discoverable, under their own heading.
   const more = html.split('<details class="officer-more">')[1];
   assert.match(more, /Comisiones/);
-  assert.match(more, /MBRO\.COM\.AUD/);
-  assert.match(more, /M\.COM\.NOM\.RE/);
+  // …spelled out, not as the raw BORME code.
+  assert.match(more, /Miembro de la Comisión de Auditoría/);
+  assert.match(more, /Miembro de la Comisión de Nombramientos y Retribuciones/);
+  assert.doesNotMatch(more, /MBRO\.COM\.AUD/);
 });
 
 // The non-board tables were previously concatenated in raw document order, so
