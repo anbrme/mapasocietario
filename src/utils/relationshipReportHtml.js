@@ -2,9 +2,7 @@
 // Pure HTML builder for the Relationship Report — used by Copy-for-Word so the
 // report pastes formatted into Word/Docs. No DOM, no React.
 
-const esc = (s) => String(s == null ? '' : s)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;');
+import { escapeHtml as esc } from './escapeHtml';
 
 export function buildReportHtml(scope, { es = true } = {}) {
   const t = es ? {
