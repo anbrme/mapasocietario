@@ -648,7 +648,7 @@ export default function LandingPage({ lang = 'en' }) {
               </Box>
             </Paper>
 
-            {/* Relationship report (free) */}
+            {/* Situation report (free) */}
             <Paper elevation={0} sx={{ p: 3, bgcolor: t.panelBgStrong, border: `1px solid ${t.panelBorderStrong}`, borderRadius: 2, height: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <HubIcon sx={{ color: 'text.secondary' }} />
