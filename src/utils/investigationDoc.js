@@ -52,12 +52,14 @@ export function buildInvestigationDoc({
 
   const connectors = (scope?.connectors || []).map(c => ({
     ...c,
+    companies: [...(c.companies || [])],
+    roles: [...(c.roles || [])],
     note: noteFor(c.nodeId),
   }));
 
   // Everything already shown in place must not be repeated at the bottom.
   const placed = new Set([
-    ...companies.filter(c => c.note).map(c => c.nodeId),
+    ...companies.filter(c => c.note).map(c => normalizeNodeId(c.nodeId)),
     ...connectors.filter(c => c.note).map(c => normalizeNodeId(c.nodeId)),
   ]);
 
@@ -76,7 +78,7 @@ export function buildInvestigationDoc({
     flagged,
     companies,
     connectors,
-    ownership: [...(scope?.ownership || [])],
+    ownership: (scope?.ownership || []).map(o => ({ ...o })),
     otherNotes,
     corrections: (corrections || []).map(c => ({
       action: c.action || '',

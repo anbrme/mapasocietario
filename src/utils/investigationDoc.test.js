@@ -102,9 +102,44 @@ describe('buildInvestigationDoc', () => {
   });
 
   it('does not mutate its inputs', () => {
-    const frozen = JSON.parse(JSON.stringify(graphData));
-    build();
+    const frozenGraphData = JSON.parse(JSON.stringify(graphData));
+    const frozenScope = JSON.parse(JSON.stringify(scope));
+    const frozenCorrections = JSON.parse(JSON.stringify([]));
 
-    expect(graphData).toEqual(frozen);
+    build({ corrections: [] });
+
+    expect(graphData).toEqual(frozenGraphData);
+    expect(scope).toEqual(frozenScope);
+  });
+
+  it('returns document with no shared mutable structure with scope', () => {
+    const doc = build();
+
+    // Mutate the returned document's ownership
+    if (doc.ownership.length > 0) {
+      doc.ownership[0].owner = 'MUTATED';
+    }
+    // Mutate the returned document's connector arrays
+    if (doc.connectors.length > 0) {
+      doc.connectors[0].companies.push('FAKE');
+      doc.connectors[0].roles.push('FAKE');
+    }
+
+    // Original scope must be unchanged
+    expect(scope.ownership[0].owner).toBe('ALFA SL');
+    expect(scope.connectors[0].companies).toEqual(['ALFA SL', 'BETA SL']);
+    expect(scope.connectors[0].roles).toEqual(['Administrador']);
+  });
+
+  it('preserves extra fields in scope.counts', () => {
+    const customScope = {
+      ...scope,
+      counts: { companies: 2, officers: 2, sharedPeople: 1, custom: 7 },
+    };
+    const doc = build({ scope: customScope });
+
+    expect(doc.counts.custom).toBe(7);
+    expect(doc.counts.notes).toBe(3);
+    expect(doc.counts.flagged).toBe(2);
   });
 });
