@@ -634,8 +634,6 @@ const ES = {
   entity: 'Entidad',
   individual: 'Persona',
   walkthrough: 'Recorrido',
-  step: 'Paso',
-  of: 'de',
   next: 'Siguiente',
   prev: 'Anterior',
   exit: 'Salir del recorrido',
@@ -672,8 +670,6 @@ const EN = {
   entity: 'Entity',
   individual: 'Person',
   walkthrough: 'Walkthrough',
-  step: 'Step',
-  of: 'of',
   next: 'Next',
   prev: 'Previous',
   exit: 'Exit walkthrough',
@@ -1909,6 +1905,13 @@ Claude-Session: https://claude.ai/code/session_0161fb7V6eBH5mtgxLFT4Bz5"
 - [ ] **Step 1: Strip `mode` from both payloads**
 
 Delete `const [mode, setMode] = useState('faithful');` (`:307`) and its comment (`:305-306`).
+
+**Four further references die with it — miss any and the build breaks (verified by grep against the current source):**
+
+1. The corrections-lookup effect (`:444-470`) calls `setMode(...)` in **five** places. Delete each call, keep the rest of the effect — `correctionsCount` is still needed for the statement in Step 2.
+2. `const [groupKey, setGroupKey] = useState(null);` (`:309`) becomes write-only once the payload blocks go. Delete the state and the `setGroupKey(...)` calls; keep the local `const gk = await resolveGroupKey(companyName)` inside the effect, since `listCorrections(gk)` still needs it.
+3. `getClientId` is used **only** in the two deleted payload blocks (`:570`, `:711`), so delete its import at `:37`.
+4. The effect's leading comment (`:442-444`) describes offering "Custom" mode. Replace it with: `// On open, count the user's corrections for this company — they drive the statement below, not a choice of report.`
 
 In the Google Play payload (`:566-572`) delete:
 ```js
