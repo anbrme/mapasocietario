@@ -151,6 +151,23 @@ export const normalizeCompanyName = name =>
     .trim();
 
 /**
+ * Collect the company names carried by graph/API rows, preserving their first
+ * appearance. Company-search rows use `name`, while expand-officer rows use
+ * `company_name` (and older responses sometimes use `company`). Keeping this
+ * shape handling in one helper prevents follow-up event enrichment from being
+ * silently skipped for an entire response type.
+ *
+ * @param {Array<{company_name?: string, company?: string, name?: string}>} rows
+ * @returns {string[]}
+ */
+export const collectNormalizedCompanyNames = rows =>
+  Array.from(new Set(
+    (rows || [])
+      .map(row => normalizeCompanyName(row?.company_name || row?.company || row?.name || ''))
+      .filter(Boolean)
+  ));
+
+/**
  * A stable v3 group_key looks like "H:B-441672" or "N:M-396846" (a single
  * letter prefix, a colon, then hoja-style chars). Opaque content-hash ids
  * (e.g. "2b3200b6b59d301eeaaa72f7bb9f7d07") are duplicate/garbage docs that do
