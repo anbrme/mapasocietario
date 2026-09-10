@@ -146,6 +146,7 @@ import {
   positionCategoryFor,
   SIMPLIFIED_EXCLUDED_CATEGORIES,
 } from '../utils/positionCategories';
+import { pruneChipFilterOrphans } from '../utils/graphFilterPrune';
 import { matchesRole } from '../utils/roleKey';
 import { isActiveCategory, effectiveCategoryFromEvents, isDissolvedLink } from '../utils/officerLinkStatus';
 import { BORME_SECTION_NAMES, getLinkEffectiveCategory, isDirectionalLink } from '../utils/linkDirectionality';
@@ -6975,15 +6976,12 @@ const SpanishCompanyNetworkGraph = ({
         return true;
       });
 
-      // Remove any nodes that have no remaining links (orphaned by the filter)
-      const linkedNodeIds = new Set();
-      activeLinks.forEach(link => {
-        linkedNodeIds.add(normalizeNodeId(getNodeIdFromRef(link.source)));
-        linkedNodeIds.add(normalizeNodeId(getNodeIdFromRef(link.target)));
-      });
-      activeNodes = activeNodes.filter(n => {
-        return linkedNodeIds.has(normalizeNodeId(n.id));
-      });
+      // Remove the nodes the filter orphaned. An ownership or merge edge
+      // carries no position and no active/ceased status, so it survives every
+      // chip — counting it as "still linked" kept a company whose only officer
+      // edge had just been filtered away, with its sole shareholder in tow.
+      ({ nodes: activeNodes, links: activeLinks } =
+        pruneChipFilterOrphans(activeNodes, activeLinks));
     }
 
     let filteredNodes = activeNodes;
