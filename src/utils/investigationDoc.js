@@ -71,6 +71,12 @@ export function buildInvestigationDoc({
     .filter(n => n.userNote.flag === flag)
     .map(noteEntry));
 
+  // Copied, not shared: a caller holding the same scope object across renders
+  // must never see this document's array/object identities change underneath
+  // it, which is what a shared reference would risk.
+  const officersByCompany = Object.fromEntries(
+    Object.entries(scope?.officersByCompany || {}).map(([name, officers]) => [name, [...(officers || [])]]));
+
   return {
     subject: primarySubject || '',
     generatedAt,
@@ -79,6 +85,7 @@ export function buildInvestigationDoc({
     companies,
     connectors,
     ownership: (scope?.ownership || []).map(o => ({ ...o })),
+    officersByCompany,
     otherNotes,
     corrections: (corrections || []).map(c => ({
       action: c.action || '',

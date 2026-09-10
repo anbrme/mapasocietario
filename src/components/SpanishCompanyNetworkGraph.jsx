@@ -1690,9 +1690,13 @@ const SpanishCompanyNetworkGraph = ({
   const [ddCheckoutOpen, setDdCheckoutOpen] = useState(false);
   const [ddCheckoutCompany, setDdCheckoutCompany] = useState('');
 
-  // Situation report dialog state
+  // Situation report dialog state. `relDoc` is DERIVED (see the useMemo below,
+  // declared after filteredGraphData) rather than captured once on open: a
+  // one-shot snapshot would freeze networkNote at whatever it was the instant
+  // the modal opened, silently dropping everything the user types afterwards.
   const [relReportOpen, setRelReportOpen] = useState(false);
-  const [relDoc, setRelDoc] = useState(null);
+  const [relCorrections, setRelCorrections] = useState([]);
+  const [relGeneratedAt, setRelGeneratedAt] = useState(null);
   // A note about the whole map. Unlike node notes it has no node to hang on, so
   // it lives here and rides the snapshot's existing `context` slot — which means
   // it survives export/import with NO snapshot version bump.
@@ -7114,9 +7118,13 @@ const SpanishCompanyNetworkGraph = ({
     ? relationshipDetailedScope.sharedNodeIds
     : null;
 
-  // Build the situation report from the visible graph. Declared AFTER
-  // filteredGraphData: its dependency array reads filteredGraphData at render
-  // time, so defining it earlier triggers a temporal-dead-zone ReferenceError.
+  // Open the situation report. Declared AFTER filteredGraphData: its dependency
+  // array reads filteredGraphData at render time, so defining it earlier
+  // triggers a temporal-dead-zone ReferenceError.
+  //
+  // This only fetches corrections and opens the modal. The document itself
+  // (relDoc, below) is derived from live state so it always reflects what the
+  // user is currently looking at and typing — see relDoc's comment.
   const openRelationshipReport = useCallback(async () => {
     if (relationshipDetailedScope.companies.length < 1) return;
     // Corrections are only ever written against primarySubject, so one lookup
@@ -7130,17 +7138,31 @@ const SpanishCompanyNetworkGraph = ({
       // opens without the "what I changed" section.
       corrections = [];
     }
-    setRelDoc(buildInvestigationDoc({
+    setRelCorrections(corrections);
+    // Captured once here, not left to default inside the memo below — a memo
+    // that stamps `new Date()` on every recompute would change the document's
+    // timestamp on every keystroke in the summary field.
+    setRelGeneratedAt(new Date().toISOString());
+    setRelReportOpen(true);
+  }, [relationshipDetailedScope, subjectCompanyName, resolveSubjectGroupKey]);
+
+  // The situation report document. DERIVED, not captured once on open: it must
+  // pick up networkNote as the user types it, and pick up removeCompanyFromReport
+  // shrinking relationshipDetailedScope, or both silently go stale in an
+  // already-open modal. Gated on relReportOpen so it costs nothing while closed.
+  const relDoc = React.useMemo(() => {
+    if (!relReportOpen) return null;
+    return buildInvestigationDoc({
       graphData: filteredGraphData,
       scope: relationshipDetailedScope,
       networkNote,
-      corrections,
+      corrections: relCorrections,
       primarySubject: subjectCompanyName || '',
-    }));
-    setRelReportOpen(true);
+      generatedAt: relGeneratedAt || new Date().toISOString(),
+    });
   }, [
-    relationshipDetailedScope, filteredGraphData, networkNote,
-    subjectCompanyName, resolveSubjectGroupKey,
+    relReportOpen, filteredGraphData, relationshipDetailedScope, networkNote,
+    relCorrections, subjectCompanyName, relGeneratedAt,
   ]);
 
   // Remove a company from the report: hide it AND any officers/subsidiaries that

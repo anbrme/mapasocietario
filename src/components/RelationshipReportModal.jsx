@@ -3,12 +3,13 @@ import React, { useEffect, useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, Button,
   Chip, ToggleButton, ToggleButtonGroup, Table, TableHead, TableBody, TableRow,
-  TableCell, Snackbar, TextField,
+  TableCell, Accordion, AccordionSummary, AccordionDetails, Snackbar, TextField,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import TranslateIcon from '@mui/icons-material/Translate';
 import DownloadIcon from '@mui/icons-material/Download';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
 import { buildExportHtml, exportFileName } from '../utils/investigationExport';
 import { NODE_NOTE_FLAGS } from '../utils/nodeNotes';
@@ -31,6 +32,7 @@ export default function RelationshipReportModal({
   const counts = doc?.counts || { companies: 0, officers: 0, sharedPeople: 0 };
   const flagged = doc?.flagged || [];
   const otherNotes = doc?.otherNotes || [];
+  const officersByCompany = doc?.officersByCompany || {};
   const noCompanies = companies.length < 1;
 
   const statusLabel = (s) => es
@@ -234,6 +236,43 @@ export default function RelationshipReportModal({
           </>
         )}
 
+        <Accordion sx={{ mt: 2 }} disableGutters elevation={0}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              {es ? 'Administradores por empresa' : 'Officers per company'}
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            {companies.map(c => {
+              const list = [...(officersByCompany[c.name] || [])].sort((a, b) => a.localeCompare(b));
+              return (
+                <Box key={c.nodeId} sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {c.name}{' '}
+                    <Typography component="span" variant="caption" color="text.secondary">
+                      ({list.length})
+                    </Typography>
+                  </Typography>
+                  {list.length === 0 ? (
+                    <Typography variant="caption" color="text.secondary">—</Typography>
+                  ) : (
+                    <Box component="ul" sx={{
+                      listStyle: 'none', pl: 0, mt: 0.5, mb: 0,
+                      columnWidth: '180px', columnGap: 24,
+                    }}>
+                      {list.map((name, i) => (
+                        <Typography key={i} component="li" variant="caption"
+                          sx={{ color: 'text.secondary', breakInside: 'avoid', display: 'block' }}>
+                          {name}
+                        </Typography>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
+          </AccordionDetails>
+        </Accordion>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>

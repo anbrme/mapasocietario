@@ -21,6 +21,7 @@ const scope = {
   companyNodes: [{ name: 'ALFA SL', nodeId: 'c1' }, { name: 'BETA SL', nodeId: 'c2' }],
   connectors: [{ name: 'GARCIA LOPEZ ANA', nodeId: 'o1', type: 'individual', companies: ['ALFA SL', 'BETA SL'], roles: ['Administrador'], status: 'active' }],
   ownership: [{ owner: 'ALFA SL', owned: 'BETA SL', lost: false }],
+  officersByCompany: { 'ALFA SL': ['GARCIA LOPEZ ANA', 'RUIZ MARTIN LUIS'], 'BETA SL': ['GARCIA LOPEZ ANA'] },
   counts: { companies: 2, officers: 2, sharedPeople: 1 },
 };
 
@@ -131,6 +132,31 @@ describe('buildInvestigationDoc', () => {
     expect(scope.ownership[0].owner).toBe('ALFA SL');
     expect(scope.connectors[0].companies).toEqual(['ALFA SL', 'BETA SL']);
     expect(scope.connectors[0].roles).toEqual(['Administrador']);
+  });
+
+  it('carries officersByCompany through, as a copy independent of scope', () => {
+    const doc = build();
+
+    expect(doc.officersByCompany).toEqual({
+      'ALFA SL': ['GARCIA LOPEZ ANA', 'RUIZ MARTIN LUIS'],
+      'BETA SL': ['GARCIA LOPEZ ANA'],
+    });
+
+    // Mutating the returned document must never reach the scope it was built
+    // from — same purity guarantee as ownership/connectors above, extended to
+    // this nested object-of-arrays shape.
+    doc.officersByCompany['ALFA SL'].push('FAKE');
+    doc.officersByCompany['NEW CO'] = ['GHOST'];
+
+    expect(scope.officersByCompany['ALFA SL']).toEqual(['GARCIA LOPEZ ANA', 'RUIZ MARTIN LUIS']);
+    expect(scope.officersByCompany['NEW CO']).toBeUndefined();
+  });
+
+  it('defaults officersByCompany to an empty object when scope omits it', () => {
+    const { officersByCompany, ...scopeWithoutOfficers } = scope;
+    const doc = build({ scope: scopeWithoutOfficers });
+
+    expect(doc.officersByCompany).toEqual({});
   });
 
   it('preserves extra fields in scope.counts', () => {
