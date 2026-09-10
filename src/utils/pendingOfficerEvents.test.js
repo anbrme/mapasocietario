@@ -210,3 +210,85 @@ describe('reconcileOfficersWithEvents', () => {
     expect(result.officers_active).not.toBe(doc.officers_active);
   });
 });
+
+/**
+ * One person, several committee seats at one company — the shape that broke
+ * category-granularity matching everywhere it was used.
+ *
+ * Matching by category, a cese published for the audit committee closed
+ * whichever "Vocal / Comisión" seat happened to sit first in the list, and an
+ * appointment to one committee renewed another's date. Both are inventions.
+ */
+describe('an officer holding several seats of one category', () => {
+  const grifolsDoc = {
+    company_name: 'GRIFOLS SA',
+    last_seen: '2025-08-01',
+    officers_active: [
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'M.COM.NOM.RE', appointed_date: '2025-08-01', status: 'active' },
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'SEC.COM.AUD.', appointed_date: '2023-08-04', status: 'active' },
+    ],
+    officers_resigned: [],
+  };
+
+  const laterCese = [{
+    event_date: '2025-09-15',
+    officers: [
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'SEC.COM.AUD.', event_type: 'Ceses/Dimisiones' },
+    ],
+  }];
+
+  it('closes only the seat the act names', () => {
+    const { officers_active, officers_resigned } = reconcileOfficersWithEvents(grifolsDoc, laterCese);
+
+    expect(officers_active.map(o => o.position_normalized)).toEqual(['M.COM.NOM.RE']);
+    expect(officers_resigned.map(o => o.position_normalized)).toEqual(['SEC.COM.AUD.']);
+  });
+
+  it('will not close a sibling seat when the act names a role nobody holds', () => {
+    // MBRO.COM.AUD is the same category as both seats above and matches neither
+    // exactly. Guessing would fabricate a departure; leaving it alone is right.
+    const strangerCese = [{
+      event_date: '2025-09-15',
+      officers: [
+        { name: 'DAGA GELABERT TOMAS', position_normalized: 'MBRO.COM.AUD', event_type: 'Ceses/Dimisiones' },
+      ],
+    }];
+    const { officers_active, officers_resigned } = reconcileOfficersWithEvents(grifolsDoc, strangerCese);
+
+    expect(officers_active).toHaveLength(2);
+    expect(officers_resigned).toHaveLength(0);
+  });
+
+  it('renews only the named seat when one committee is re-appointed', () => {
+    const reappointment = [{
+      event_date: '2025-09-15',
+      officers: [
+        { name: 'DAGA GELABERT TOMAS', position_normalized: 'M.COM.NOM.RE', event_type: 'Reelecciones' },
+      ],
+    }];
+    const { officers_active } = reconcileOfficersWithEvents(grifolsDoc, reappointment);
+    const dates = Object.fromEntries(officers_active.map(o => [o.position_normalized, o.appointed_date]));
+
+    expect(dates['M.COM.NOM.RE']).toBe('2025-09-15');
+    expect(dates['SEC.COM.AUD.']).toBe('2023-08-04');
+  });
+
+  it('still matches a lone seat whose role is spelled differently', () => {
+    // Only one Consejero seat, so there is nothing to confuse the act with and
+    // the abbreviation drift between the two stores must not block the cese.
+    const doc = {
+      company_name: 'ACME SL',
+      last_seen: '2025-01-01',
+      officers_active: [
+        { name: 'RUIZ PEREZ ANA', position_normalized: 'CONS. DELEG.', appointed_date: '2020-01-01', status: 'active' },
+      ],
+      officers_resigned: [],
+    };
+    const events = [{
+      event_date: '2025-06-01',
+      officers: [{ name: 'RUIZ PEREZ ANA', position_normalized: 'CON.DELEGADO', event_type: 'Ceses/Dimisiones' }],
+    }];
+
+    expect(reconcileOfficersWithEvents(doc, events).officers_active).toHaveLength(0);
+  });
+});
