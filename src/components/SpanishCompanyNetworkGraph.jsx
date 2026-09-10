@@ -92,6 +92,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import RelationshipReportModal from './RelationshipReportModal';
 import { extractVisibleScope } from '../utils/relationshipScope';
+import { buildInvestigationDoc } from '../utils/investigationDoc';
 import { hasIncoherentCapital } from '../utils/capitalCoherence';
 import { latestEventType } from '../utils/latestEventType';
 import { normalizeCompanyName, displayCompanyName, isSameUnifiableEntity } from '../utils/companyName';
@@ -282,8 +283,8 @@ const SEARCH_COPY = {
     emptyExamplesLabel: 'Or start with one of these:',
     dueDiligence: 'Due Diligence',
     monitorCompany: 'Monitor this company (free)',
-    relationshipReportTooltip: 'Relationship report for visible companies (free)',
-    relationshipReport: 'Relationship report',
+    situationReportTooltip: 'Situation report for the visible companies — your map, corrections and notes (free)',
+    situationReport: 'Situation report',
     hideShared: 'Hide shared connections',
     showShared: 'Highlight officers/entities across several companies and dim the rest',
     sharedConnections: 'Shared connections',
@@ -625,9 +626,6 @@ const SEARCH_COPY = {
     previewError: message => `Error fetching data: ${message}`,
     emptyNodeName: 'Node name cannot be empty.',
     selectMergeTarget: 'Select a target node to merge into.',
-    relationshipResolveError:
-      'I could not reliably identify at least 2 visible companies. Try searching for them by exact name.',
-    relationshipPrepareError: message => `Could not prepare the relationship report: ${message}`,
     copyTableError: 'Could not copy the table to the clipboard.',
     investigationAdd: 'Add to AI investigation',
     investigationRemove: 'Remove from AI investigation',
@@ -654,8 +652,8 @@ const SEARCH_COPY = {
     emptyExamplesLabel: 'O empieza con una de estas:',
     dueDiligence: 'Due Diligence',
     monitorCompany: 'Monitorizar esta empresa (gratis)',
-    relationshipReportTooltip: 'Informe de relaciones sobre las empresas visibles (gratis)',
-    relationshipReport: 'Informe de relaciones',
+    situationReportTooltip: 'Informe de situación sobre las empresas visibles — tu mapa, tus correcciones y tus notas (gratis)',
+    situationReport: 'Informe de situación',
     hideShared: 'Ocultar conexiones compartidas',
     showShared: 'Resaltar administradores/entidades en varias empresas y atenuar el resto',
     sharedConnections: 'Conexiones compartidas',
@@ -992,9 +990,6 @@ const SEARCH_COPY = {
     previewError: message => `Error al obtener datos: ${message}`,
     emptyNodeName: 'El nombre del nodo no puede estar vacío.',
     selectMergeTarget: 'Selecciona un nodo destino para fusionar.',
-    relationshipResolveError:
-      'No pude identificar con seguridad al menos 2 de las empresas visibles. Prueba a buscarlas por su nombre exacto.',
-    relationshipPrepareError: message => `No se pudo preparar el informe de relaciones: ${message}`,
     copyTableError: 'No se pudo copiar la tabla al portapapeles.',
     investigationAdd: 'Añadir a investigación por IA',
     investigationRemove: 'Quitar de la investigación por IA',
@@ -1695,11 +1690,13 @@ const SpanishCompanyNetworkGraph = ({
   const [ddCheckoutOpen, setDdCheckoutOpen] = useState(false);
   const [ddCheckoutCompany, setDdCheckoutCompany] = useState('');
 
-  // Relationship Report dialog state
+  // Situation report dialog state
   const [relReportOpen, setRelReportOpen] = useState(false);
-  const [relScope, setRelScope] = useState(null);
-  const [relSubjects, setRelSubjects] = useState([]);
-  const [relResolving, setRelResolving] = useState(false);
+  const [relDoc, setRelDoc] = useState(null);
+  // A note about the whole map. Unlike node notes it has no node to hang on, so
+  // it lives here and rides the snapshot's existing `context` slot — which means
+  // it survives export/import with NO snapshot version bump.
+  const [networkNote, setNetworkNote] = useState('');
   const [showSharedConnections, setShowSharedConnections] = useState(false);
 
   // Corrections overlay state (feeds the "Custom" amended DD; see correctionsService).
@@ -7117,31 +7114,34 @@ const SpanishCompanyNetworkGraph = ({
     ? relationshipDetailedScope.sharedNodeIds
     : null;
 
-  // Build a Relationship Report from the visible graph. Declared AFTER
+  // Build the situation report from the visible graph. Declared AFTER
   // filteredGraphData: its dependency array reads filteredGraphData at render
   // time, so defining it earlier triggers a temporal-dead-zone ReferenceError.
   const openRelationshipReport = useCallback(async () => {
-    const scope = relationshipDetailedScope;
-    if (scope.companies.length < 2) return;
-    setRelResolving(true);
+    if (relationshipDetailedScope.companies.length < 1) return;
+    // Corrections are only ever written against primarySubject, so one lookup
+    // covers every correction this graph can carry.
+    let corrections = [];
     try {
-      // Resolve a group_key per visible company; drop ones we can't confidently resolve.
-      const resolved = await Promise.all(
-        scope.companies.map(async name => ({ name, group_key: await resolveGroupKey(name) })));
-      const subjects = resolved.filter(s => s.group_key);
-      if (subjects.length < 2) {
-        setError(text.relationshipResolveError);
-        return;
-      }
-      setRelScope(scope);
-      setRelSubjects(subjects);
-      setRelReportOpen(true);
-    } catch (e) {
-      setError(text.relationshipPrepareError(e.message));
-    } finally {
-      setRelResolving(false);
+      const gk = subjectCompanyName ? await resolveSubjectGroupKey(subjectCompanyName) : null;
+      if (gk) corrections = await listCorrections(gk);
+    } catch {
+      // A corrections lookup must never block the user's own notes. The report
+      // opens without the "what I changed" section.
+      corrections = [];
     }
-  }, [relationshipDetailedScope, filteredGraphData, relationshipSubjectIds, text]);
+    setRelDoc(buildInvestigationDoc({
+      graphData: filteredGraphData,
+      scope: relationshipDetailedScope,
+      networkNote,
+      corrections,
+      primarySubject: subjectCompanyName || '',
+    }));
+    setRelReportOpen(true);
+  }, [
+    relationshipDetailedScope, filteredGraphData, networkNote,
+    subjectCompanyName, resolveSubjectGroupKey,
+  ]);
 
   // Remove a company from the report: hide it AND any officers/subsidiaries that
   // were only attached to it, so no orphan nodes are left floating. Nodes still
@@ -8293,7 +8293,7 @@ const SpanishCompanyNetworkGraph = ({
         detailsExpanded: pathDetailsExpanded,
       },
     },
-    context: { primarySubject },
+    context: { primarySubject, networkNote },
     enrichments: { officerDeputyMatches },
   }), [
     graphData,
@@ -8325,6 +8325,7 @@ const SpanishCompanyNetworkGraph = ({
     pathfinderEndNode,
     pathDetailsExpanded,
     primarySubject,
+    networkNote,
     officerDeputyMatches,
   ]);
 
@@ -8435,6 +8436,7 @@ const SpanishCompanyNetworkGraph = ({
     setShortestPathLinks(new Set());
     setShortestPathArray([]);
     setPrimarySubject(snapshot.context?.primarySubject || null);
+    setNetworkNote(typeof snapshot.context?.networkNote === 'string' ? snapshot.context.networkNote : '');
     setLastSearchContext(null);
     lastSuccessfulSearchAtRef.current = null;
     setLoadingMore(false);
@@ -9156,21 +9158,20 @@ const SpanishCompanyNetworkGraph = ({
           </Button>
           </Tooltip>
         )}
-        {visibleCompanyCount >= 2 && (
-          <Tooltip title={text.relationshipReportTooltip}>
+        {visibleCompanyCount >= 1 && (
+          <Tooltip title={text.situationReportTooltip}>
             <span>
               <Badge badgeContent={visibleCompanyCount} color="primary"
                 sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
                 <Button
-                  variant="contained" color="primary" size="small"
-                  startIcon={relResolving ? <CircularProgress size={14} /> : <AccountTreeIcon />}
-                  disabled={relResolving}
-                  sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap', boxShadow: (t) => `0 2px 10px ${alpha(t.palette.primary.main, 0.35)}` }}
+                  variant="outlined" color="primary" size="small"
+                  startIcon={<AccountTreeIcon />}
+                  sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
                   onClick={() => {
-                    trackGraphToolbarAction('relationship_report');
+                    trackGraphToolbarAction('situation_report');
                     openRelationshipReport();
                   }}>
-                  {text.relationshipReport}
+                  {text.situationReport}
                 </Button>
               </Badge>
             </span>
@@ -11818,10 +11819,13 @@ const SpanishCompanyNetworkGraph = ({
         <RelationshipReportModal
           open={relReportOpen}
           onClose={() => setRelReportOpen(false)}
-          scope={relationshipDetailedScope}
-          subjects={relSubjects}
+          doc={relDoc}
+          graphData={filteredGraphData}
+          networkNote={networkNote}
+          onNetworkNoteChange={setNetworkNote}
           lang={uiLanguage}
           onRemoveCompany={removeCompanyFromReport}
+          onDownload={() => trackGraphToolbarAction('situation_report_download')}
         />
         <AIInvestigationGate
           open={aiPanelOpen}
@@ -11900,10 +11904,13 @@ const SpanishCompanyNetworkGraph = ({
       <RelationshipReportModal
         open={relReportOpen}
         onClose={() => setRelReportOpen(false)}
-        scope={relScope}
-        subjects={relSubjects}
+        doc={relDoc}
+        graphData={filteredGraphData}
+        networkNote={networkNote}
+        onNetworkNoteChange={setNetworkNote}
         lang={uiLanguage}
         onRemoveCompany={removeCompanyFromReport}
+        onDownload={() => trackGraphToolbarAction('situation_report_download')}
       />
       <AIInvestigationGate
         open={aiPanelOpen}
