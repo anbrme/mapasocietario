@@ -23,6 +23,31 @@
 // (bormeparser, the libreborme upstream, publishes a partial table — 51% of our
 // vocabulary, a third of its committee expansions still abbreviated, and GPLv3.
 // Not used here.)
+//
+// PROVENANCE. There is no official expansion table. BORME has never published
+// one — LibreBOR's own reference page says the abbreviations "no están
+// estandarizadas" — and Informa, Axesor and libreborme each decode them with a
+// private in-house dictionary. So this file IS a dictionary, ours, and the point
+// of difference is that it can be audited. Three kinds of entry, in descending
+// order of how much they assert:
+//
+//   1. COMPOSED, mechanically. The office comes from the classifier's category
+//      and the qualifiers are tokens read off the abbreviation itself —
+//      ADM.SOLIDAR. is "Administrador" + SOLID. Nothing is supplied that the
+//      code does not already contain.
+//   2. NAMED FROM A CITED SOURCE. The consejero classes (ejecutivo, dominical,
+//      independiente, otros externos) are the LSC art. 529 duodecies / CNMV
+//      taxonomy, not our coinage. Committee names follow the LSC and the good
+//      governance code; CO.DE.MA.SO and PRE.COM.SCI were each promoted only on
+//      a registry filing that printed the expansion in prose beside the code.
+//   3. KEPT VERBATIM. Everything else. An abbreviation we cannot read is
+//      returned as the registry wrote it.
+//
+// What must never happen is a fourth kind: a plausible-sounding expansion with
+// nothing behind it. An LLM-produced mapping tried during this work decoded
+// ECONORE as "Económico y de Honores" (it is nombramientos y retribuciones) and
+// CRT as "Riesgos y Transferencias" (it is control — the family that must never
+// confer a directorship). Those are the failure mode this file exists to avoid.
 import { organKindFor, ORGAN_KINDS } from './organKinds.js';
 import { positionCategoryFor } from './positionCategories.js';
 
