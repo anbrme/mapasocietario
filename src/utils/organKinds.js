@@ -17,7 +17,7 @@
 // creditors in an insolvency. Only the first group are directors.
 //
 // DEFAULT-DENY. The registry vocabulary carries 543 organ codes, of which ~340
-// name ad-hoc committees (COM.GERENCIA, MIEM.COM.FIN, PRE.COM.SCI…) whose
+// name ad-hoc committees (COM.GERENCIA, MIEM.COM.FIN, PRE.COM.FVS…) whose
 // relation to the board cannot be read off the abbreviation. A code is a
 // BOARD_COMMITTEE only when it names a committee we recognise; everything else
 // stays OTHER_ORGAN. Guessing in the other direction would assert that someone

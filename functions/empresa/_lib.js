@@ -320,6 +320,11 @@ const T = {
       `La sociedad figura disuelta en el BORME${date ? ` (${date})` : ''}. Estos cargos no fueron cesados individualmente en el registro: se extinguieron con la sociedad y no deben leerse como vigentes.`,
     formerOfficers: 'Cargos cesados o revocados',
     ceasedAs: (name) => `cese inscrito como ${name}`,
+    // A committee OF the board may only be held by a sitting consejero, so the
+    // seat is itself the evidence of the directorship. Naming the committee in
+    // the same breath shows the reader what the directorship rests on, rather
+    // than printing a board title the registry has not inscribed.
+    impliedDirector: (detail) => `Consejero (${detail})`,
     officerRoleNote: 'Cada cargo se sigue por su denominación exacta en el BORME. Cuando una persona cambia de tipo de cargo a lo largo del tiempo (p. ej. Consejero → Consejero Independiente → Consejero Externo), cada denominación se registra por separado, por lo que una misma persona puede figurar a la vez como cargo vigente bajo una denominación y como cargo cesado bajo otra.',
     thName: 'Nombre',
     thRole: 'Cargo',
@@ -609,6 +614,7 @@ const T = {
       `The company is recorded as dissolved in BORME${date ? ` (${date})` : ''}. These positions were never individually ceased in the registry: they ended with the company and should not be read as current.`,
     formerOfficers: 'Former / revoked officers',
     ceasedAs: (name) => `cese recorded as ${name}`,
+    impliedDirector: (detail) => `Director (${detail})`,
     officerRoleNote: 'Each role is tracked by its exact BORME title. When a person’s role type changes over time (e.g. Director → Independent Director → External Director), each title is recorded separately, so the same person may appear both as a current officer under one title and as a former officer under another.',
     thName: 'Name',
     thRole: 'Role',
@@ -858,11 +864,20 @@ function prettyPosition(pos, t, lang) {
 function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = false } = {}) {
   const groups = groupOfficersForDisplay(rawList, dateKey, PAGE_BOARD_CATEGORIES);
   if (!groups.length) return '';
+  // Rows whose board seat follows from a board-committee membership render as
+  // "Consejero (Miembro de la Comisión de X)" — see groupOfficersForDisplay.
+  const positionsCell = (o) => {
+    const labels = (o.positions || [])
+      .map((p) => prettyPosition(p, t, lang))
+      .filter(Boolean);
+    const joined = labels.join(', ');
+    return o.impliedDirectorship && joined ? t.impliedDirector(joined) : joined;
+  };
   const renderRows = (officers) => officers
     .map(
       (o) => `<tr>
         <td>${esc(o.name || o.name_normalized)}${o.ceased_as ? ` <span class="muted">(${esc(t.ceasedAs(o.ceased_as))})</span>` : ''}</td>
-        <td>${esc((o.positions || []).map((p) => prettyPosition(p, t, lang)).join(', '))}</td>
+        <td>${esc(positionsCell(o))}</td>
         <td>${esc(fmtDate(o[dateKey], lang))}</td>
       </tr>`,
     )

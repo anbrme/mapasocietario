@@ -19,7 +19,7 @@
 //    also sits on a committee appears once under the board and once under
 //    committees, which is the point.
 import { positionCategoryFor } from './positionCategories.js';
-import { organKindFor, ORGAN_KINDS } from './organKinds.js';
+import { organKindFor, ORGAN_KINDS, impliesDirectorship } from './organKinds.js';
 
 /** Display order. Board first, then how the board organises itself, then the
  *  roles that are not board seats at all. */
@@ -150,7 +150,34 @@ export const groupOfficersForDisplay = (officers, dateKey, boardCategories) => {
       officer.position_normalized || officer.position || '', boardCategories);
     buckets.get(group).push(officer);
   }
+
+  // A committee OF the board may only be held by a sitting consejero, so its
+  // members are directors even when no separate board office is inscribed for
+  // them. Sending those seats to 'comisiones' and nowhere else dropped such a
+  // person out of the board table altogether: BORME revoked DAGA GELABERT
+  // TOMAS's CONS.OTR.EXT at GRIFOLS SA on 2024-02-23, never inscribed a
+  // re-appointment, and put him back on the nominations committee on
+  // 2025-08-01 — so the page listed eleven directors and left out the twelfth.
+  //
+  // impliesDirectorship is the authority on which organ seats do this, and it
+  // is default-deny: a comisión de control, a liquidadora, a comisión de
+  // acreedores, a seat held expressly as a non-consejero, and every ad-hoc
+  // committee we cannot place all answer false and stay out of the board.
+  const boardKeys = new Set(
+    buckets.get('consejo').map(o => displayKeyName(o.name || o.name_normalized)));
+  const impliedDirectors = buckets.get('comisiones')
+    .filter(o => impliesDirectorship(o.position_normalized || o.position || ''))
+    .filter(o => !boardKeys.has(displayKeyName(o.name || o.name_normalized)))
+    // Flagged so the renderer can say "Consejero (Miembro de la Comisión de X)"
+    // — the directorship follows from the committee seat, and the page should
+    // show the reader which seat it follows from rather than inventing a title
+    // the registry has not inscribed.
+    .map(o => ({ ...o, impliedDirectorship: true }));
+
+  const grouped = new Map(buckets);
+  grouped.set('consejo', [...buckets.get('consejo'), ...impliedDirectors]);
+
   return OFFICER_GROUP_ORDER
-    .map(group => [group, collapseGroupByPerson(buckets.get(group), dateKey)])
+    .map(group => [group, collapseGroupByPerson(grouped.get(group), dateKey)])
     .filter(([, rows]) => rows.length > 0);
 };
