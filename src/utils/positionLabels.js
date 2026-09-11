@@ -23,7 +23,33 @@
 // (bormeparser, the libreborme upstream, publishes a partial table — 51% of our
 // vocabulary, a third of its committee expansions still abbreviated, and GPLv3.
 // Not used here.)
+//
+// PROVENANCE. There is no official expansion table. BORME has never published
+// one — LibreBOR's own reference page says the abbreviations "no están
+// estandarizadas" — and Informa, Axesor and libreborme each decode them with a
+// private in-house dictionary. So this file IS a dictionary, ours, and the point
+// of difference is that it can be audited. Three kinds of entry, in descending
+// order of how much they assert:
+//
+//   1. COMPOSED, mechanically. The office comes from the classifier's category
+//      and the qualifiers are tokens read off the abbreviation itself —
+//      ADM.SOLIDAR. is "Administrador" + SOLID. Nothing is supplied that the
+//      code does not already contain.
+//   2. NAMED FROM A CITED SOURCE. The consejero classes (ejecutivo, dominical,
+//      independiente, otros externos) are the LSC art. 529 duodecies / CNMV
+//      taxonomy, not our coinage. Committee names follow the LSC and the good
+//      governance code; CO.DE.MA.SO and PRE.COM.SCI were each promoted only on
+//      a registry filing that printed the expansion in prose beside the code.
+//   3. KEPT VERBATIM. Everything else. An abbreviation we cannot read is
+//      returned as the registry wrote it.
+//
+// What must never happen is a fourth kind: a plausible-sounding expansion with
+// nothing behind it. An LLM-produced mapping tried during this work decoded
+// ECONORE as "Económico y de Honores" (it is nombramientos y retribuciones) and
+// CRT as "Riesgos y Transferencias" (it is control — the family that must never
+// confer a directorship). Those are the failure mode this file exists to avoid.
 import { organKindFor, ORGAN_KINDS } from './organKinds.js';
+import { positionCategoryFor } from './positionCategories.js';
 
 // Exact codes whose label composition cannot reach. The first nine were the
 // page's entire label map before this module existed.
@@ -42,6 +68,19 @@ const OVERRIDES = {
   // the filing that named one man under both labels (ISLALINK SUBMARINE CABLES
   // SL, BORME 2014-06-05).
   'CO.DE.MA.SO': { es: 'Consejero delegado mancomunado y solidario', en: 'Joint and several managing director' },
+  // Cargos the classifier files under 'Otros', so there is no office to compose
+  // from — and sentence-casing the abbreviation invents a word ("Liquisoli",
+  // "Representan"), which reads worse than the code it replaced.
+  // positionCategoryFor is frozen (seat identity is keyed off it), so the label
+  // is fixed here rather than by widening a category.
+  REPRESENTAN: { es: 'Representante', en: 'Representative' },
+  LIQUISOLI: { es: 'Liquidador solidario', en: 'Joint and several liquidator' },
+  'SOC.PROF.': { es: 'Socio profesional', en: 'Professional partner' },
+  'SOCIO MIEMBR': { es: 'Socio miembro', en: 'Member partner' },
+  'ENT. GESTORA': { es: 'Entidad gestora', en: 'Managing entity' },
+  'SOCIO UNICO': { es: 'Socio único', en: 'Sole shareholder' },
+  'DIR. GENERAL': { es: 'Director general', en: 'General manager' },
+  'D. GERENTE': { es: 'Director gerente', en: 'Managing director' },
 };
 
 // WHO holds the seat. Order matters: every vice- form must be tested before the
@@ -95,6 +134,75 @@ const GOVERNING_BODY_NAMES = [
   [/CON[S]?[.\s]?GO/, { es: 'Consejo de Gobierno', en: 'Governing Board', g: 'm' }],
 ];
 
+// ---------------------------------------------------------------------------
+// Non-organ cargos: the office, plus whatever the abbreviation qualifies it with.
+//
+// These printed verbatim — "ADM. SOLID.", "CONS.INDEPEN" — beside composed
+// labels like "Consejero ejecutivo", so the cargo column was half shouted
+// abbreviation and half prose. 41.2% of the corpus's 9.9M seat rows had no prose
+// name at all, led by ADM. SOLID. at 1.14M.
+//
+// Composed rather than tabulated, for the same reason the organ labels are: the
+// exact-match OVERRIDES table held 'ADM. UNICO' but not 'ADM.UNICO', and the
+// registry writes both. The classifier's CATEGORY is itself a truthful label, so
+// the worst case here is the bare office ("Administrador") — never a raw code,
+// and never a claim the abbreviation does not support.
+// ---------------------------------------------------------------------------
+const CATEGORY_LABELS = {
+  Presidente: { es: 'Presidente', en: 'Chair' },
+  Vicepresidente: { es: 'Vicepresidente', en: 'Deputy chair' },
+  Consejero: { es: 'Consejero', en: 'Director' },
+  Administrador: { es: 'Administrador', en: 'Director' },
+  Secretario: { es: 'Secretario', en: 'Secretary' },
+  Liquidador: { es: 'Liquidador', en: 'Liquidator' },
+  Auditor: { es: 'Auditor', en: 'Auditor' },
+  Apoderado: { es: 'Apoderado', en: 'Attorney-in-fact' },
+  'Representante 143 RRM': {
+    es: 'Representante (art. 143 RRM)', en: 'Permanent representative (art. 143 RRM)' },
+};
+
+// Order is the order they are spoken in Spanish: "Consejero externo
+// independiente", "Consejero delegado solidario". Each is tested independently,
+// so a code carrying two of them gets both — with an optional third pattern
+// that suppresses one, because "NO EJEC" contains "EJEC" and would otherwise
+// compose "Consejero no ejecutivo ejecutivo".
+const QUALIFIERS = [
+  // Tested before EJEC so CONS.NOEJDOM is not read as an executive director.
+  [/NO[\s.]*EJEC|NOEJ/, { es: 'no ejecutivo', en: 'non-executive' }],
+  [/NO[\s.]*CONS|NOCONS/, { es: 'no consejero', en: 'not a director' }],
+  [/DELEG|DEL\b|\.DEL[\s.]/, { es: 'delegado', en: 'managing' }],
+  [/UNIC/, { es: 'único', en: 'sole' }],
+  [/CONCURS/, { es: 'concursal', en: 'insolvency' }],
+  [/PROV/, { es: 'provisional', en: 'interim' }],
+  [/INTERIN/, { es: 'interino', en: 'interim' }],
+  [/EXT(?!RAN)/, { es: 'externo', en: 'external' }],
+  [/EJEC|EJCR/, { es: 'ejecutivo', en: 'executive' }, /NO[\s.]*EJEC|NOEJ/],
+  [/INDEP|IDPTE|\bIND\b|\.IND/, { es: 'independiente', en: 'independent' }],
+  [/DOMINIC|\bDOM\b|\.DOM/, { es: 'dominical', en: 'proprietary' }],
+  [/MANCOM|MANC|CONJUNT|\bMAN\b|\.MAN/, { es: 'mancomunado', en: 'joint' }],
+  [/SOLID|\bSOL\b|\.SOL|SOLI/, { es: 'solidario', en: 'joint and several' }],
+  [/SUPL|SUPLEN/, { es: 'suplente', en: 'alternate' }],
+  [/HONOR/, { es: 'honorario', en: 'honorary' }],
+  [/COORD/, { es: 'coordinador', en: 'lead' }],
+];
+
+// A cargo that names no organ. Returns '' when there is no office to compose
+// from, so the caller keeps whatever the registry printed.
+const nonOrganLabel = (p, lang) => {
+  const base = CATEGORY_LABELS[positionCategoryFor(p)];
+  if (!base) return '';
+  const pick = label => label[lang] || label.es;
+  const quals = QUALIFIERS
+    .filter(([re, , unless]) => re.test(p) && !(unless && unless.test(p)))
+    .map(([, l]) => pick(l));
+  if (!quals.length) return pick(base);
+  // English stacks badly as bare adjectives ("Director joint and several"), so
+  // the qualifiers go in parentheses there and inline in Spanish.
+  return lang === 'en'
+    ? `${pick(base)} (${quals.join(', ')})`
+    : `${pick(base)} ${quals.join(' ')}`;
+};
+
 const firstMatch = (patterns, text) => {
   for (const [pattern, label] of patterns) if (pattern.test(text)) return label;
   return null;
@@ -132,7 +240,11 @@ export const positionLabelFor = (pos, lang = 'es') => {
   if (override) return pick(override);
 
   const kind = organKindFor(p);
-  if (!kind) return /^[A-ZÁÉÍÓÚÑ]+$/.test(p) ? sentenceCase(p) : raw;
+  if (!kind) {
+    const office = nonOrganLabel(p, lang);
+    if (office) return office;
+    return /^[A-ZÁÉÍÓÚÑ]+$/.test(p) ? sentenceCase(p) : raw;
+  }
 
   // A bare vocal names no organ: "Vocal 3" is already the whole label.
   if (kind === ORGAN_KINDS.PLAIN_VOCAL) {

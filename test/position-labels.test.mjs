@@ -64,8 +64,13 @@ test('non-organ positions keep the overrides and are never invented', () => {
   // formatting, not interpretation.
   assert.equal(positionLabelFor('APODERADO'), 'Apoderado');
   assert.equal(positionLabelFor('AUDITOR'), 'Auditor');
-  // An abbreviation we have no expansion for is returned untouched.
-  assert.equal(positionLabelFor('CONS.EXT.DOM'), 'CONS.EXT.DOM');
+  // CONS.EXT.DOM used to be returned untouched for want of an expansion. It is
+  // composed now — EXT and DOM are the CNMV's own consejero classes, read off
+  // the abbreviation rather than guessed.
+  assert.equal(positionLabelFor('CONS.EXT.DOM'), 'Consejero externo dominical');
+  // The principle still holds where the abbreviation is not readable: nothing
+  // is claimed and the registry's own text is kept.
+  assert.equal(positionLabelFor('ENT.REG.CONT'), 'ENT.REG.CONT');
   assert.equal(positionLabelFor(''), '');
   assert.equal(positionLabelFor(null), '');
 });
@@ -113,4 +118,96 @@ test('the SCI committee is named from its BORME expansion', () => {
     'Presidente de la Comisión de Seguimiento y Control de las Inversiones');
   assert.equal(positionLabelFor('PRE.COM.SCI', 'en'),
     'Chair, Investment Monitoring and Control Committee');
+});
+
+// ---------------------------------------------------------------------------
+// Non-organ cargos: the office plus whatever the abbreviation qualifies it with.
+//
+// The board table printed these verbatim — "ADM. SOLID.", "CONS.INDEPEN" — next
+// to composed labels like "Consejero ejecutivo", so half the column shouted in
+// capitals and half read as prose. 41.2% of the corpus's 9.9M seat rows had no
+// prose name, led by ADM. SOLID. at 1.14M on its own.
+//
+// Composed, not tabulated, for the reason the organ labels are: the registry
+// spells one office many ways (ADM. UNICO / ADM.UNICO, ADM. MANCOM. /
+// ADM.CONJUNTO) and the exact-match OVERRIDES table caught only the spelling
+// someone had happened to write down. The CATEGORY is already a truthful label,
+// so the worst case is the bare office — never a raw code, never an invention.
+// ---------------------------------------------------------------------------
+
+test('administrador variants read as prose whatever the spelling', () => {
+  for (const code of ['ADM. UNICO', 'ADM.UNICO', 'ADM. UNIC.']) {
+    assert.equal(positionLabelFor(code, 'es'), 'Administrador único', code);
+  }
+  for (const code of ['ADM. SOLID.', 'ADM.SOLIDAR.', 'ADM. SOLIDARIO']) {
+    assert.equal(positionLabelFor(code, 'es'), 'Administrador solidario', code);
+  }
+  for (const code of ['ADM. MANCOM.', 'ADM.CONJUNTO']) {
+    assert.equal(positionLabelFor(code, 'es'), 'Administrador mancomunado', code);
+  }
+  assert.equal(positionLabelFor('ADM.CONCURS.', 'es'), 'Administrador concursal');
+  assert.equal(positionLabelFor('ADMINISTR.', 'es'), 'Administrador');
+});
+
+test('apoderado variants read as prose', () => {
+  for (const code of ['APO.SOL.', 'APODERAD.SOL']) {
+    assert.equal(positionLabelFor(code, 'es'), 'Apoderado solidario', code);
+  }
+  for (const code of ['APO.MANC.', 'APOD.MANCOMU']) {
+    assert.equal(positionLabelFor(code, 'es'), 'Apoderado mancomunado', code);
+  }
+  assert.equal(positionLabelFor('APODERADO', 'es'), 'Apoderado');
+});
+
+test('the consejero classes the board table shows', () => {
+  assert.equal(positionLabelFor('CONS.INDEPEN', 'es'), 'Consejero independiente');
+  assert.equal(positionLabelFor('CONS.DOMINIC', 'es'), 'Consejero dominical');
+  assert.equal(positionLabelFor('CONS.EJECUTI', 'es'), 'Consejero ejecutivo');
+  assert.equal(positionLabelFor('CONS.DEL.SOL', 'es'), 'Consejero delegado solidario');
+  assert.equal(positionLabelFor('CONS.DEL.MAN', 'es'), 'Consejero delegado mancomunado');
+  assert.equal(positionLabelFor('CONS. DELEG.', 'es'), 'Consejero delegado');
+  assert.equal(positionLabelFor('CONS.', 'es'), 'Consejero');
+});
+
+test('a qualifier stack reads in Spanish order', () => {
+  assert.equal(positionLabelFor('CONS.EXT.IND', 'es'), 'Consejero externo independiente');
+  assert.equal(positionLabelFor('CONS.EXT.DOM', 'es'), 'Consejero externo dominical');
+  assert.equal(positionLabelFor('CONS.NO EJEC', 'es'), 'Consejero no ejecutivo');
+});
+
+test('auditor, liquidador, secretario and the 143 RRM representative', () => {
+  assert.equal(positionLabelFor('AUD.SUPL.', 'es'), 'Auditor suplente');
+  assert.equal(positionLabelFor('LIQUID.MANC.', 'es'), 'Liquidador mancomunado');
+  assert.equal(positionLabelFor('VICEPRESID.', 'es'), 'Vicepresidente');
+  assert.match(positionLabelFor('REPR.143 RRM', 'es'), /^Representante/);
+});
+
+test('an office we cannot place keeps its code rather than inventing one', () => {
+  // Category 'Otros' with an abbreviation we cannot read: nothing is claimed.
+  for (const code of ['ENT.REG.CONT', 'REP.ADM.CONC']) {
+    assert.equal(positionLabelFor(code, 'es'), code, code);
+  }
+});
+
+test('an abbreviation is never sentence-cased into a word that does not exist', () => {
+  // 'LIQUISOLI' -> 'Liquisoli' and 'REPRESENTAN' -> 'Representan' read worse
+  // than the code. These carry 62,026 and 110,532 seat rows.
+  assert.equal(positionLabelFor('LIQUISOLI', 'es'), 'Liquidador solidario');
+  assert.equal(positionLabelFor('REPRESENTAN', 'es'), 'Representante');
+  assert.equal(positionLabelFor('SOC.PROF.', 'es'), 'Socio profesional');
+});
+
+test('nothing in the board vocabulary still renders as a shouted code', () => {
+  const shouty = ['ADM. SOLID.', 'ADM.UNICO', 'APO.SOL.', 'CONS.INDEPEN',
+                  'CONS.DOMINIC', 'CONS.DEL.SOL', 'VICESECRET.'];
+  for (const code of shouty) {
+    const label = positionLabelFor(code, 'es');
+    assert.notEqual(label, code, code);
+    assert.ok(/^[A-ZÁÉÍÓÚÑ][a-zá-úñ]/.test(label), `${code} -> ${label}`);
+  }
+});
+
+test('English labels compose too', () => {
+  assert.equal(positionLabelFor('ADM. SOLID.', 'en'), 'Director (joint and several)');
+  assert.equal(positionLabelFor('CONS.INDEPEN', 'en'), 'Director (independent)');
 });
