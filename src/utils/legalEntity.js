@@ -12,7 +12,7 @@
  * false-positives.
  */
 
-import { listedEntityForName } from './ibex35Match';
+import { listedEntityForName } from './ibex35Match.js';
 
 // Known legal-form suffix tokens (normalized: uppercase, periods stripped).
 const LEGAL_FORM_TOKENS = new Set([

@@ -1,5 +1,5 @@
 import { SEED, V3_TO_SLUG, hojaGroupKey } from '../../functions/empresa/_ibex35.js';
-import { entityNameKey, stripRegistryOffice } from './companyName';
+import { entityNameKey, stripRegistryOffice } from './companyName.js';
 
 // A trailing registry-office annotation ("(R.M. A CORUÑA)", "(RM MADRID)")
 // that live graph names carry but the SEED's v3Name never does — e.g.

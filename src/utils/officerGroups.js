@@ -20,6 +20,7 @@
 //    committees, which is the point.
 import { positionCategoryFor } from './positionCategories.js';
 import { organKindFor, ORGAN_KINDS, impliesDirectorship } from './organKinds.js';
+import { isCorporateName } from './legalEntity.js';
 
 /** Display order. Board first, then how the board organises itself, then the
  *  roles that are not board seats at all. */
@@ -88,13 +89,108 @@ export const officerGroupFor = (pos, boardCategories = BOARD_CATEGORIES) => {
     return 'direccion';
   }
 
-  // 4) The external auditor and statutory representatives.
-  if (category === 'Auditor' || category === 'Representante 143 RRM' || category === 'Apoderado') {
+  // 4) The external auditor and statutory representatives. A representative
+  //    reaches this line only when pairRepresentatives143 could not place them
+  //    (several corporate officers, or several representatives); a paired one
+  //    has already folded into the officer's row, and one standing alone is
+  //    routed to the board by groupOfficersForDisplay before this is asked.
+  if (category === 'Auditor' || category === REP143_CATEGORY || category === 'Apoderado') {
     return 'auditoria_representantes';
   }
 
   // 5) Everything else — Secretario, Liquidador, unmapped roles.
   return 'otros';
+};
+
+export const REP143_CATEGORY = 'Representante 143 RRM';
+
+// Every category that folds into the backend's BOARD seat: the four offices
+// plus organ roles. A representative is seated on the board alone only when
+// nobody in the table holds one of these.
+const BOARD_SEAT_CATEGORIES = new Set([...BOARD_CATEGORIES, 'Vocal / Comisión']);
+
+/** A corporate name reduced to a comparison key: accents, case and punctuation
+ *  dropped, the same fold officer_display.py uses, so "ADLID, S.L." and
+ *  "ADLID SL" count as one officer on both surfaces. */
+const corporateKeyName = name =>
+  (name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+
+const positionOf = officer => officer.position_normalized || officer.position || '';
+
+/** Distinct corporate names among `rows`, keyed by corporateKeyName. */
+const corporateNames = (rows, isCorporate) => new Set(
+  rows
+    .map(o => o.name || o.name_normalized)
+    .filter(isCorporate)
+    .map(corporateKeyName),
+);
+
+/**
+ * Pair each Art. 143 RRM representative with the corporate officer they act
+ * for — when, and only when, the table leaves no room for doubt.
+ *
+ * The representative is the natural person who exercises the office when a
+ * COMPANY is appointed administrator (art. 143 RRM). BORME publishes them as
+ * a row of their own and never says whom they represent, so the link is our
+ * inference. The rule, over one table's rows:
+ *
+ * - exactly one corporate director and exactly one representative: the
+ *   representative folds into the director's row(s) as `representative`;
+ * - no corporate director, exactly one corporate liquidator and one
+ *   representative: the same, on the liquidator's row — a liquidator is not
+ *   a board seat, so the representative follows it wherever it is filed;
+ * - no corporate director, no corporate liquidator, and nobody holding a
+ *   board seat at all: the representative is the only trace of the
+ *   administration we hold and is flagged `representativeAlone` so the
+ *   grouping seats them on the board. With natural-person directors on the
+ *   table they are not the only trace, and are listed as a representative
+ *   like any other unpaired one;
+ * - anything else (several of either, or a count that is not 1:1) is
+ *   ambiguous: rows are returned untouched and the representative is listed
+ *   as a representative, not a director.
+ *
+ * A corporate officer's name is not guaranteed to be spelled the same on
+ * every row; variants that survive corporateKeyName count as two officers,
+ * which loses a pairing but never invents one.
+ *
+ * Mirror of pair_representatives_143 in officer_display.py (ncdata-bormes).
+ *
+ * @param {object[]} officers - one table's rows (active OR ceased).
+ * @param {object} [options]
+ * @param {(name: string) => boolean} [options.isCorporate] - the entity test.
+ * @returns {object[]} a new array; input rows are never mutated.
+ */
+export const pairRepresentatives143 = (officers, { isCorporate = isCorporateName } = {}) => {
+  const rows = officers || [];
+  const isRepresentative = o => positionCategoryFor(positionOf(o)) === REP143_CATEGORY;
+  const representatives = rows.filter(isRepresentative);
+  if (representatives.length === 0) return rows;
+
+  const directors = corporateNames(
+    rows.filter(o => BOARD_CATEGORIES.has(positionCategoryFor(positionOf(o)))), isCorporate);
+  const liquidators = corporateNames(
+    rows.filter(o => positionCategoryFor(positionOf(o)) === 'Liquidador'), isCorporate);
+
+  const target = directors.size > 0 ? directors : liquidators;
+  if (target.size === 0) {
+    if (rows.some(o => BOARD_SEAT_CATEGORIES.has(positionCategoryFor(positionOf(o))))) return rows;
+    return rows.map(o => (isRepresentative(o) ? { ...o, representativeAlone: true } : o));
+  }
+  if (target.size !== 1 || representatives.length !== 1) return rows;
+
+  const [targetKey] = target;
+  const representative = representatives[0];
+  const targetCategories = directors.size > 0 ? BOARD_CATEGORIES : new Set(['Liquidador']);
+  const isTarget = o =>
+    targetCategories.has(positionCategoryFor(positionOf(o))) &&
+    corporateKeyName(o.name || o.name_normalized) === targetKey;
+  return rows
+    .filter(o => o !== representative)
+    .map(o => (isTarget(o) ? { ...o, representative } : o));
 };
 
 /** A person's name reduced to a comparison key: accents folded, case dropped. */
@@ -145,9 +241,14 @@ export const collapseGroupByPerson = (rows, dateKey) => {
  */
 export const groupOfficersForDisplay = (officers, dateKey, boardCategories) => {
   const buckets = new Map(OFFICER_GROUP_ORDER.map(g => [g, []]));
-  for (const officer of officers || []) {
-    const group = officerGroupFor(
-      officer.position_normalized || officer.position || '', boardCategories);
+  // Art. 143 RRM representatives fold into the corporate officer they act for
+  // before anything is grouped, so they never add a row to the board. The one
+  // exception is a representative with no corporate officer to attach to —
+  // the only trace of the administration we hold — who is seated on the board.
+  for (const officer of pairRepresentatives143(officers)) {
+    const group = officer.representativeAlone
+      ? 'consejo'
+      : officerGroupFor(positionOf(officer), boardCategories);
     buckets.get(group).push(officer);
   }
 
