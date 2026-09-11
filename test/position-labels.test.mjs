@@ -211,3 +211,26 @@ test('English labels compose too', () => {
   assert.equal(positionLabelFor('ADM. SOLID.', 'en'), 'Director (joint and several)');
   assert.equal(positionLabelFor('CONS.INDEPEN', 'en'), 'Director (independent)');
 });
+
+test('the Spanish preposition "del" is not a delegation', () => {
+  // "SECRETARIO DEL CONSEJO DE ADMINISTRACION" read as "Secretario delegado",
+  // asserting a delegation the registry never recorded. Ten codes did this.
+  assert.equal(positionLabelFor('SECRETARIO DEL CONSEJO', 'es'), 'Secretario');
+  assert.equal(positionLabelFor('PRESIDENTE DEL CONSEJO DE ADMINISTRACION', 'es'), 'Presidente');
+  assert.equal(positionLabelFor('VICEPRESIDENTE DEL CONSEJO DE ADMINISTRACION', 'es'), 'Vicepresidente');
+  // …while the real delegations are untouched.
+  assert.equal(positionLabelFor('CON.DELEGADO', 'es'), 'Consejero delegado');
+  assert.equal(positionLabelFor('CONS.DEL.SOL', 'es'), 'Consejero delegado solidario');
+  assert.equal(positionLabelFor('CONS. DELEG.', 'es'), 'Consejero delegado');
+});
+
+test('a vice- office keeps its vice', () => {
+  // These classify as category 'Secretario', so composing from the category
+  // alone demoted them: 15,680 rows of VICESECRET. read as "Secretario".
+  assert.equal(positionLabelFor('VICESECRET.', 'es'), 'Vicesecretario');
+  assert.equal(positionLabelFor('VICESECRETARIO', 'es'), 'Vicesecretario');
+  assert.equal(positionLabelFor('VSECRNOCONSJ', 'es'), 'Vicesecretario no consejero');
+  assert.equal(positionLabelFor('VICESECRET.', 'en'), 'Deputy secretary');
+  // A plain secretary is still a plain secretary.
+  assert.equal(positionLabelFor('SECRETARIO', 'es'), 'Secretario');
+});
