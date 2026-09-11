@@ -148,6 +148,15 @@ const GOVERNING_BODY_NAMES = [
 // the worst case here is the bare office ("Administrador") — never a raw code,
 // and never a claim the abbreviation does not support.
 // ---------------------------------------------------------------------------
+// A vice- office composed from its category alone loses the "vice": the organ
+// path tests the vice- prefixes first (see ROLE_PREFIXES) but a non-organ code
+// like VICESECRET. has only its category, which is Secretario. 38,000-odd seat
+// rows read as plain secretaries until this.
+const VICE_PREFIX = /^(VICE|VICS|VIC|VCS|VSEC|VS|V-S)/;
+const VICE_OFFICES = {
+  Secretario: { es: 'Vicesecretario', en: 'Deputy secretary' },
+};
+
 const CATEGORY_LABELS = {
   Presidente: { es: 'Presidente', en: 'Chair' },
   Vicepresidente: { es: 'Vicepresidente', en: 'Deputy chair' },
@@ -170,7 +179,11 @@ const QUALIFIERS = [
   // Tested before EJEC so CONS.NOEJDOM is not read as an executive director.
   [/NO[\s.]*EJEC|NOEJ/, { es: 'no ejecutivo', en: 'non-executive' }],
   [/NO[\s.]*CONS|NOCONS/, { es: 'no consejero', en: 'not a director' }],
-  [/DELEG|DEL\b|\.DEL[\s.]/, { es: 'delegado', en: 'managing' }],
+  // DELEG, or DEL as an abbreviation segment (.DEL / DEL.) — never the bare
+  // Spanish preposition, which turned "SECRETARIO DEL CONSEJO DE
+  // ADMINISTRACION" into "Secretario delegado", asserting a delegation the
+  // registry never recorded.
+  [/DELEG|\.DEL\b|\bDEL\./, { es: 'delegado', en: 'managing' }],
   [/UNIC/, { es: 'único', en: 'sole' }],
   [/CONCURS/, { es: 'concursal', en: 'insolvency' }],
   [/PROV/, { es: 'provisional', en: 'interim' }],
@@ -189,7 +202,8 @@ const QUALIFIERS = [
 // A cargo that names no organ. Returns '' when there is no office to compose
 // from, so the caller keeps whatever the registry printed.
 const nonOrganLabel = (p, lang) => {
-  const base = CATEGORY_LABELS[positionCategoryFor(p)];
+  const category = positionCategoryFor(p);
+  const base = (VICE_PREFIX.test(p) && VICE_OFFICES[category]) || CATEGORY_LABELS[category];
   if (!base) return '';
   const pick = label => label[lang] || label.es;
   const quals = QUALIFIERS

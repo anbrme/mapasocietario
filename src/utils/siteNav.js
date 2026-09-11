@@ -34,6 +34,9 @@ export function siteNav(lang = 'en') {
     connectClaude: es ? '/es/conectar-claude/' : '/connect-claude/',
     // Registry glossary — prerendered static route per language.
     glossary: es ? '/es/glosario/' : '/glossary/',
+    // How we read the cargo abbreviations — prerendered static route per
+    // language, and the public face of our position dictionary.
+    cargos: es ? '/es/cargos-registrales/' : '/registry-positions/',
     // Data studies hub — build-time static pages (scripts/generate-studies-hub.mjs),
     // NOT SPA routes: callers must full-page load (isStaticNav).
     studies: es ? '/estudios/' : '/en/studies/',
@@ -66,7 +69,11 @@ export function isHtmlNav(url) {
 // True for build-time static directories that the SPA router does not know
 // (the studies hub and study pages). Same treatment as .html: full-page load.
 export function isStaticNav(url) {
-  return /^\/(estudios|en\/studies)\//.test(url);
+  // Prerendered routes the SPA router does not know. They MUST full-page load:
+  // "/es/:slug" otherwise catches /es/glosario and /es/cargos-registrales
+  // client-side and renders the generic Spanish SEO page over them.
+  return /^\/(estudios|en\/studies|glossary|registry-positions)\//.test(url)
+    || /^\/es\/(glosario|cargos-registrales)\//.test(url);
 }
 
 export function isExternalNav(url) {

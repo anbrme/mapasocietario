@@ -18,10 +18,75 @@ import {
   FREE_FIRST_REPORT_CODE,
   SAMPLE_REPORT_URL,
 } from '../src/copy/freeFirstReport.js';
+import { CARGO_FAMILIES, UNNAMED_COMMITTEE_EXAMPLES } from '../src/copy/cargoFamilies.js';
+import { positionLabelFor } from '../src/utils/positionLabels.js';
 
 // Scale figures come from one build-time source; never retype them here.
 const en = registryScale('en');
 const es = registryScale('es');
+
+
+// --- "How we read registry positions" -------------------------------------
+// The families are data; the "we show it as" column is produced by running each
+// example through positionLabelFor HERE, at build time. So the published page
+// cannot drift from the labels the product actually renders — change a label
+// and this page follows it. test/cargo-families.test.mjs fails if a code stops
+// belonging to the family it is filed under.
+const CARGO_COPY = {
+  es: {
+    yes: 'Sí, es administrador',
+    no: 'No es cargo del órgano de administración',
+    never: 'Nunca confiere la condición de administrador',
+    codeCol: 'Abreviatura del registro',
+    labelCol: 'Cómo la mostramos',
+  },
+  en: {
+    yes: 'Yes — a directorship',
+    no: 'Not a governing-body office',
+    never: 'Never a directorship',
+    codeCol: 'Registry abbreviation',
+    labelCol: 'How we show it',
+  },
+};
+
+const cargoFamilyHtml = (lang) => {
+  const t = CARGO_COPY[lang];
+  return CARGO_FAMILIES.map((family) => {
+    const rows = family.codes
+      .map((code) => `<tr><td><code>${code}</code></td><td>${positionLabelFor(code, lang)}</td></tr>`)
+      .join('');
+    return `
+        <h3>${family[lang].name}</h3>
+        <p>${family[lang].blurb}</p>
+        <p><em>${t[family.directorship]}.</em></p>
+        <table style="border-collapse:collapse;width:100%;margin:0 0 1.5rem">
+          <thead><tr><th align="left">${t.codeCol}</th><th align="left">${t.labelCol}</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+  }).join('');
+};
+
+const cargoUnnamedHtml = (lang) =>
+  UNNAMED_COMMITTEE_EXAMPLES
+    .map((code) => `<li><code>${code}</code> &rarr; ${positionLabelFor(code, lang)}</li>`)
+    .join('');
+
+const cargoJsonLd = (lang) => {
+  const url = `https://mapasocietario.es${lang === 'es' ? '/es/cargos-registrales/' : '/registry-positions/'}`;
+  const terms = CARGO_FAMILIES.map((family) => ({
+    '@type': 'DefinedTerm',
+    name: family[lang].name,
+    description: family[lang].blurb,
+  }));
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'DefinedTermSet',
+    name: lang === 'es' ? 'Cargos del Registro Mercantil' : 'Spanish Registry Positions',
+    url,
+    inDefinedTermSet: url,
+    hasDefinedTerm: terms,
+  });
+};
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, '..', 'dist');
@@ -664,6 +729,93 @@ const routes = [
         <p>Sin registro, sin clave de API, uso gratuito.</p>
         <p><a href="/app/">Buscar una empresa</a> | <a href="/connect-claude/">English version</a></p>
       </main>`,
+  },
+  {
+    path: '/registry-positions',
+    title: 'How We Read Spanish Registry Positions (Cargos) | Mapa Societario',
+    description:
+      'BORME publishes company officer positions as abbreviations it has never expanded. This explains how we decide who is a director, which committee seats count, and how each cargo abbreviation is read.',
+    ogType: 'article',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>How we read Spanish registry positions</h1>
+        <p>The BORME publishes each company officer's position as an abbreviation &mdash; <code>ADM. SOLID.</code>, <code>CONS.INDEPEN</code>, <code>M.COM.NOM.RE</code> &mdash; and has never published a table expanding them. There is no official dictionary to consult. Informa, Axesor and libreborme each decode these with a private in-house one, and so do we. The difference we can offer is that ours is written down.</p>
+        <p>This page is that dictionary, and the reasoning behind it. It matters because the abbreviation decides something consequential: whether we report a person as a director of a Spanish company.</p>
+        ${disclaimerHtmlEn}
+
+        <h2>How we decide who is a director</h2>
+        <p>Four offices make someone a director outright: <strong>administrador</strong>, <strong>consejero</strong>, <strong>presidente</strong> and <strong>vicepresidente</strong> &mdash; along with a seat on a governing body that is not a board of directors, such as a cooperative's consejo rector or an association's junta directiva.</p>
+        <p>A seat on a <strong>committee of the board</strong> also counts. Under the Spanish Companies Act the audit committee and the nominations and remuneration committee of a listed company may be composed only of non-executive directors, so the registry inscribing someone to one of them is itself evidence that they sit on the board. This is not a technicality: a director can be missing from the registry's list of consejeros and still be plainly on the board through a committee seat.</p>
+        <p>Three things that look like board work and are not: a <strong>comisión de control</strong> is the supervisory organ of pension funds and credit cooperatives, elected by the assembly and expressly outside the board; a <strong>comisión liquidadora</strong> winds a company up; a <strong>comisión de acreedores</strong> represents creditors in an insolvency. Together they account for more than thirty thousand seats in our data, and none of them makes anyone a director.</p>
+        <p>Where the registry says outright that a seat is held by someone who is <em>not</em> a consejero, we record the organ and honour the denial.</p>
+
+        <h2>What we do when we cannot read an abbreviation</h2>
+        <p>We default to denying it. The registry vocabulary contains 543 codes naming an organ, and roughly two hundred of them name ad-hoc committees whose meaning cannot be recovered from the abbreviation and for which no primary source exists. Those are never treated as directorships, and they are shown with the code kept visible so you can check the BORME entry yourself:</p>
+        <ul>${cargoUnnamedHtml('en')}</ul>
+        <p>Guessing in the other direction would put a person on a board the registry never placed them on, which is the one error in this domain that cannot be walked back.</p>
+
+        <h2>Where our expansions come from</h2>
+        <p>Three kinds, in descending order of how much they assert:</p>
+        <ol>
+          <li><strong>Composed mechanically.</strong> The office comes from the classification and the qualifiers are tokens the abbreviation already contains &mdash; <code>ADM.SOLIDAR.</code> is "Administrador" plus SOLID. Nothing is supplied that the code does not already carry.</li>
+          <li><strong>Named from a cited source.</strong> The consejero classes &mdash; executive, proprietary, independent, other external &mdash; are those of art. 529 <em>duodecies</em> of the Companies Act, not our coinage. Committee names follow the Act and the good governance code. Where we have promoted an individual code we have done it on a BORME filing that printed the expansion in prose beside the abbreviation.</li>
+          <li><strong>Kept verbatim.</strong> Everything else. An abbreviation we cannot read is shown as the registry wrote it.</li>
+        </ol>
+        <p>What we refuse is a fourth kind: a plausible-sounding expansion with nothing behind it. A machine-generated mapping we tested decoded <code>ECONORE</code> as "económico y de honores" when it is nombramientos y retribuciones, and <code>CRT</code> as "riesgos y transferencias" when it is <em>control</em> &mdash; the one family that must never confer a directorship. Both would have read perfectly well to someone who did not already know.</p>
+
+        <h2>The families, and how each is shown</h2>
+        <p>These are families rather than a list of all 1,191 codes, because our labels are composed rather than looked up: a family stays correct when the registry coins a new spelling of the same office. Every expansion below is generated from the same code that renders a company page, so what you see here is what you will see there.</p>
+        ${cargoFamilyHtml('en')}
+
+        <p><a href="/app/">Search a Spanish company</a> | <a href="/glossary/">Registry glossary</a> | <a href="/es/cargos-registrales/">Versión en español</a></p>
+      </main>
+      <script type="application/ld+json">
+      ${cargoJsonLd('en')}
+      </script>`,
+  },
+  {
+    path: '/es/cargos-registrales',
+    title: 'Cómo interpretamos los cargos del Registro Mercantil | Mapa Societario',
+    description:
+      'El BORME publica los cargos como abreviaturas que nunca ha desarrollado. Explicamos cómo decidimos quién es administrador, qué asientos en comisiones cuentan y cómo leemos cada abreviatura.',
+    ogType: 'article',
+    lang: 'es',
+    staticContent: `
+      <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
+        <h1>Cómo interpretamos los cargos del Registro Mercantil</h1>
+        <p>El BORME publica el cargo de cada administrador como una abreviatura &mdash; <code>ADM. SOLID.</code>, <code>CONS.INDEPEN</code>, <code>M.COM.NOM.RE</code> &mdash; y nunca ha publicado una tabla que las desarrolle. No existe un diccionario oficial que consultar. Informa, Axesor y libreborme resuelven cada uno con el suyo, privado, y nosotros también. La diferencia que podemos ofrecer es que el nuestro está escrito.</p>
+        <p>Esta página es ese diccionario y el razonamiento que hay detrás. Importa porque la abreviatura decide algo con consecuencias: si informamos o no de que una persona es administradora de una sociedad española.</p>
+        ${disclaimerHtmlEs}
+
+        <h2>Cómo decidimos quién es administrador</h2>
+        <p>Cuatro cargos lo son por sí mismos: <strong>administrador</strong>, <strong>consejero</strong>, <strong>presidente</strong> y <strong>vicepresidente</strong>, junto con el asiento en un órgano de gobierno que no es un consejo de administración, como el consejo rector de una cooperativa o la junta directiva de una asociación.</p>
+        <p>El asiento en una <strong>comisión del consejo</strong> también cuenta. La Ley de Sociedades de Capital reserva la composición de la comisión de auditoría y de la de nombramientos y retribuciones de una sociedad cotizada a consejeros no ejecutivos, de modo que inscribir a alguien en ellas acredita por sí mismo que forma parte del consejo. No es un tecnicismo: una persona puede no figurar en la lista de consejeros del registro y ser manifiestamente consejera a través de una comisión.</p>
+        <p>Tres órganos que lo parecen y no lo son: la <strong>comisión de control</strong> es el órgano supervisor de los fondos de pensiones y las cooperativas de crédito, elegido por la asamblea y expresamente ajeno al consejo; la <strong>comisión liquidadora</strong> liquida la sociedad; la <strong>comisión de acreedores</strong> representa a los acreedores en un concurso. Suman más de treinta mil asientos en nuestros datos y ninguno convierte a nadie en administrador.</p>
+        <p>Cuando el registro dice expresamente que un puesto lo ocupa alguien que <em>no</em> es consejero, anotamos el órgano y respetamos la negación.</p>
+
+        <h2>Qué hacemos cuando no podemos leer una abreviatura</h2>
+        <p>Negarlo por defecto. El vocabulario del registro contiene 543 códigos que nombran un órgano, y alrededor de doscientos nombran comisiones ad hoc cuyo significado no puede recuperarse de la abreviatura y para las que no existe fuente primaria. Nunca se tratan como cargo de administración, y se muestran conservando el código para que pueda comprobarse contra el propio BORME:</p>
+        <ul>${cargoUnnamedHtml('es')}</ul>
+        <p>Equivocarse en el otro sentido colocaría a una persona en un consejo en el que el registro nunca la situó, que es el único error de este ámbito que no tiene vuelta atrás.</p>
+
+        <h2>De dónde salen nuestras expansiones</h2>
+        <p>De tres formas, de más a menos comprometidas:</p>
+        <ol>
+          <li><strong>Compuestas mecánicamente.</strong> El cargo procede de la clasificación y los calificativos son fragmentos que la propia abreviatura contiene: <code>ADM.SOLIDAR.</code> es "Administrador" más SOLID. No se añade nada que el código no traiga ya.</li>
+          <li><strong>Nombradas a partir de una fuente citable.</strong> Las clases de consejero &mdash; ejecutivo, dominical, independiente y otros externos &mdash; son las del artículo 529 <em>duodecies</em> de la Ley de Sociedades de Capital, no una invención nuestra. Los nombres de las comisiones siguen la Ley y el código de buen gobierno. Cuando hemos promovido un código concreto ha sido apoyándonos en una publicación del BORME que imprimía la expansión en texto junto a la abreviatura.</li>
+          <li><strong>Conservadas tal cual.</strong> Todo lo demás. Una abreviatura que no sabemos leer se muestra como la escribió el registro.</li>
+        </ol>
+        <p>Lo que rechazamos es una cuarta forma: una expansión verosímil sin nada detrás. Una tabla generada automáticamente que probamos traducía <code>ECONORE</code> como "económico y de honores" cuando es nombramientos y retribuciones, y <code>CRT</code> como "riesgos y transferencias" cuando es <em>control</em>, la única familia que nunca debe conferir la condición de administrador. Las dos se leían perfectamente bien para quien no lo supiera ya.</p>
+
+        <h2>Las familias y cómo mostramos cada una</h2>
+        <p>Son familias y no una lista de los 1.191 códigos porque nuestras etiquetas se componen en vez de consultarse: una familia sigue siendo correcta cuando el registro acuña una grafía nueva del mismo cargo. Todas las expansiones se generan con el mismo código que dibuja una ficha de empresa, así que lo que se ve aquí es lo que se verá allí.</p>
+        ${cargoFamilyHtml('es')}
+
+        <p><a href="/app/?lang=es">Buscar una empresa</a> | <a href="/es/glosario/">Glosario registral</a> | <a href="/registry-positions/">English version</a></p>
+      </main>
+      <script type="application/ld+json">
+      ${cargoJsonLd('es')}
+      </script>`,
   },
   {
     path: '/glossary',

@@ -111,6 +111,8 @@ const sitemapRoutes = [
     LANGS.map((lang) => ({ path: studyPath(study, lang), changefreq: 'monthly', priority: '0.7' }))),
   { path: '/connect-claude/', changefreq: 'monthly', priority: '0.6' },
   { path: '/glossary/', changefreq: 'monthly', priority: '0.7' },
+  { path: '/registry-positions/', changefreq: 'monthly', priority: '0.7' },
+  { path: '/es/cargos-registrales/', changefreq: 'monthly', priority: '0.7' },
   { path: '/es/glosario/', changefreq: 'monthly', priority: '0.7' },
   { path: '/es/conectar-claude/', changefreq: 'monthly', priority: '0.6' },
   // Pilot front door (functions/verificacion/index.js). One entry, not two:
