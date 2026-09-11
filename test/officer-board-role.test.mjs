@@ -97,8 +97,11 @@ test('a director who also sits on committees is one board row, not five', () => 
   const board = html.split('<details class="officer-more">')[0];
   const boardRows = board.match(/<td>DAGA GELABERT TOMAS<\/td>/g) || [];
   assert.equal(boardRows.length, 1, 'one person, one board row');
-  // Rendered raw for now — CONS.OTR.EXT has no entry in the nine-item label map.
-  assert.match(board, /CONS\.OTR\.EXT/, 'the board row carries his real board title');
+  // Spelled out now: positionLabelFor composes the office from the category and
+  // the qualifier the abbreviation carries, so the cargo column no longer mixes
+  // shouted codes with prose.
+  assert.match(board, /Consejero externo/, 'the board row carries his real board title');
+  assert.doesNotMatch(board, /CONS\.OTR\.EXT/, 'and not as a raw BORME code');
   assert.doesNotMatch(board, /COM\.AUD/, 'committee seats are not board rows');
 
   // …and the committee seats stay discoverable, under their own heading.
