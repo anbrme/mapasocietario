@@ -2,7 +2,7 @@
 // and the API service (directory → group_key resolution). Kept in one place so
 // name normalization can never drift between the two paths.
 
-import { listedEntityForName } from './ibex35Match';
+import { listedEntityForName } from './ibex35Match.js';
 
 // Trailing legal-form spellings → dotless canonical code, longest first.
 // JS port of borme_v3_enricher/normalize.py::_LEGAL_FORM_DOTLESS (the

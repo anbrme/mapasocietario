@@ -57,10 +57,39 @@ test('a board-committee member is a board member, and keeps his committee row', 
     'and the committee seat itself is still listed');
 });
 
-// The Art. 143 RRM organic permanent representative is administrator-level and
-// should appear on the board (the old local regex omitted it; the shared
-// classifier includes it). Locks that BOARD_CATEGORIES decision.
-test('Art. 143 RRM permanent representative renders as a current board member', () => {
+// The Art. 143 RRM permanent representative is the natural person exercising
+// a CORPORATE administrator's office. BORME publishes them as a row of their
+// own and never says whom they represent. The page used to seat that row on
+// the board next to the corporate administrator, so a company with a SOLE
+// administrator showed two directors. Now the representative folds into the
+// administrator's row when the pairing is unambiguous, is listed as a
+// representative when it is not, and only stands on the board alone when there
+// is no corporate officer to attach to. Locks pairRepresentatives143.
+test('one corporate administrator + one representative render as ONE row, in prose', () => {
+  // LIDL SUPERMERCADOS SA, former officers (dates are placeholders).
+  const company = {
+    company_name: 'LIDL SUPERMERCADOS SA',
+    company_type: 'SA',
+    officers_active: [],
+    officers_resigned: [
+      { name: 'GESTION DE AUTOSERVICIOS ADLID SL', position_normalized: 'ADM.UNICO', resigned_date: '2010-01-01' },
+      { name: 'ARANDA PANKOW MIGUEL WERNER', position_normalized: 'REPR.143 RRM', resigned_date: '2010-01-01' },
+    ],
+  };
+  const es = renderCompanyPage(company, [], 'lidl-supermercados-sa', null, 'es');
+  assert.match(es, /<td>GESTION DE AUTOSERVICIOS ADLID SL, representada por ARANDA PANKOW MIGUEL WERNER<\/td>/,
+    'the representative is named on the administrator\'s row');
+  assert.doesNotMatch(es, /<td>ARANDA PANKOW MIGUEL WERNER<\/td>/,
+    'and has no row of their own');
+  assert.match(es, /El BORME no publica a quién representa/,
+    'the page says the pairing is inferred');
+
+  const en = renderCompanyPage(company, [], 'lidl-supermercados-sa', null, 'en');
+  assert.match(en, /<td>GESTION DE AUTOSERVICIOS ADLID SL, represented by ARANDA PANKOW MIGUEL WERNER<\/td>/);
+  assert.match(en, /BORME does not record which company/);
+});
+
+test('a representative with no corporate officer to attach to still stands on the board', () => {
   const company = {
     company_name: 'Y SL',
     company_type: 'SL',
@@ -70,8 +99,54 @@ test('Art. 143 RRM permanent representative renders as a current board member', 
     officers_resigned: [],
   };
   const html = renderCompanyPage(company, [], 'y-sl', null, 'es');
-  assert.match(html, /<td>PERM REP PERSON<\/td>/, 'the 143 RRM representative must appear in the board table');
+  const board = html.split('<details class="officer-more">')[0];
+  assert.match(board, /<td>PERM REP PERSON<\/td>/, 'the only trace of the administration is shown as such');
   assert.doesNotMatch(html, /No constan administradores/);
+  assert.doesNotMatch(html, /El BORME no publica a quién representa/, 'no pairing was made, so no note');
+});
+
+test('several corporate directors and several representatives: nobody is paired', () => {
+  // SPANAIR SA (dissolved), former officers: two corporate consejeros, three
+  // representatives. Which represents which is not published, so the page
+  // must not guess.
+  const company = {
+    company_name: 'SPANAIR SA',
+    company_type: 'SA',
+    is_dissolved: true,
+    officers_active: [],
+    officers_resigned: [
+      { name: 'INVERSIONS TURISTIQUES I COMERCIALS 2009 SA', position_normalized: 'CONSEJERO', resigned_date: '2012-01-01' },
+      { name: 'FIRA INTERNACIONAL DE BARCELONA', position_normalized: 'CONSEJERO', resigned_date: '2012-01-01' },
+      { name: 'CORDON BARRENECHEA ARANDO AGUSTI', position_normalized: 'REPR.143 RRM', resigned_date: '2012-01-01' },
+      { name: 'SUÑOL TREPAT RAFAEL', position_normalized: 'REPR.143 RRM', resigned_date: '2012-01-01' },
+      { name: 'ALBANELL MIRA MANUEL', position_normalized: 'REPR.143 RRM', resigned_date: '2012-01-01' },
+    ],
+  };
+  const html = renderCompanyPage(company, [], 'spanair-sa', null, 'es');
+  assert.doesNotMatch(html, /representada por/, 'no pairing is claimed');
+  const [primary, more] = html.split('<details class="officer-more">');
+  assert.match(primary, /<td>INVERSIONS TURISTIQUES I COMERCIALS 2009 SA<\/td>/, 'corporate directors are the board');
+  assert.doesNotMatch(primary, /<td>SUÑOL TREPAT RAFAEL<\/td>/, 'a representative is not a board row');
+  assert.match(more, /Auditoría y representantes[\s\S]*<td>SUÑOL TREPAT RAFAEL<\/td>/,
+    'representatives are listed as representatives');
+});
+
+test('on a dissolved company the representative follows a corporate liquidator', () => {
+  const company = {
+    company_name: 'UNA SOCIEDAD DISUELTA SL',
+    company_type: 'SL',
+    is_dissolved: true,
+    officers_active: [
+      { name: 'UNA LIQUIDADORA SL', position_normalized: 'LIQUIDADOR', appointed_date: '2021-01-01' },
+      { name: 'PERSONA FISICA', position_normalized: 'REPR.143 RRM', appointed_date: '2021-01-01' },
+    ],
+    officers_resigned: [],
+  };
+  const html = renderCompanyPage(company, [], 'una-sociedad-disuelta-sl', null, 'es');
+  const board = html.split('<details class="officer-more">')[0];
+  assert.match(board, /<td>UNA LIQUIDADORA SL, representada por PERSONA FISICA<\/td>/,
+    'the liquidator row carries the representative, in the table that lists the seats open at closure');
+  assert.doesNotMatch(html, /<td>PERSONA FISICA<\/td>/);
 });
 
 // The board table lists one row per PERSON, not per seat. DAGA GELABERT TOMAS

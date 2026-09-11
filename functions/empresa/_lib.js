@@ -325,6 +325,11 @@ const T = {
     // the same breath shows the reader what the directorship rests on, rather
     // than printing a board title the registry has not inscribed.
     impliedDirector: (detail) => `Consejero (${detail})`,
+    // The natural person who exercises a CORPORATE administrator's office
+    // (art. 143 RRM), named on that administrator's row the way a deed would.
+    representedBy: (company, person) => `${company}, representada por ${person}`,
+    rep143PairingNote:
+      'El BORME no publica a quién representa el representante persona física (art. 143 RRM); la asignación se deduce de que consta un único administrador o liquidador persona jurídica.',
     officerRoleNote: 'Cada cargo se sigue por su denominación exacta en el BORME. Cuando una persona cambia de tipo de cargo a lo largo del tiempo (p. ej. Consejero → Consejero Independiente → Consejero Externo), cada denominación se registra por separado, por lo que una misma persona puede figurar a la vez como cargo vigente bajo una denominación y como cargo cesado bajo otra.',
     thName: 'Nombre',
     thRole: 'Cargo',
@@ -615,6 +620,9 @@ const T = {
     formerOfficers: 'Former / revoked officers',
     ceasedAs: (name) => `cese recorded as ${name}`,
     impliedDirector: (detail) => `Director (${detail})`,
+    representedBy: (company, person) => `${company}, represented by ${person}`,
+    rep143PairingNote:
+      'BORME does not record which company an Art. 143 RRM representative acts for; the pairing is inferred because a single corporate administrator or liquidator holds office.',
     officerRoleNote: 'Each role is tracked by its exact BORME title. When a person’s role type changes over time (e.g. Director → Independent Director → External Director), each title is recorded separately, so the same person may appear both as a current officer under one title and as a former officer under another.',
     thName: 'Name',
     thRole: 'Role',
@@ -829,16 +837,19 @@ const T = {
 
 const MAX_OFFICERS = 40;
 
-// The page's board table carries two administrator-level roles the DD report
-// files under other headings. The Art. 143 RRM permanent representative is the
-// natural person exercising a CORPORATE administrator's post — an organic
-// appointment, not a voluntary power — and on a dissolved company the liquidador
-// is by then the only person with authority over it, so a page that filed him
-// under "other recorded roles" would report no officers at all. Both are
-// deliberate and locked by test/officer-board-role.test.mjs.
+// The page's board table carries one administrator-level role the DD report
+// files under "other roles": on a dissolved company the liquidador is by then
+// the only person with authority over it, so a page that filed him under
+// "other recorded roles" would report no officers at all. Deliberate and
+// locked by test/officer-board-role.test.mjs.
+//
+// The Art. 143 RRM representative used to be listed here too, which seated
+// them on the board NEXT TO the corporate administrator they act for — a
+// company with a sole administrator showed two directors. They now fold into
+// that administrator's row (pairRepresentatives143 in officerGroups.js) and
+// only stand on the board alone when there is no corporate officer to attach to.
 const PAGE_BOARD_CATEGORIES = new Set([
   ...BOARD_CATEGORIES,
-  'Representante 143 RRM',
   'Liquidador',
 ]);
 
@@ -873,10 +884,18 @@ function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = fals
     const joined = labels.join(', ');
     return o.impliedDirectorship && joined ? t.impliedDirector(joined) : joined;
   };
+  // A corporate officer whose Art. 143 RRM representative could be paired is
+  // one row naming both, in the words a deed would use.
+  const nameCell = (o) => {
+    const name = o.name || o.name_normalized;
+    return o.representative
+      ? t.representedBy(name, o.representative.name || o.representative.name_normalized)
+      : name;
+  };
   const renderRows = (officers) => officers
     .map(
       (o) => `<tr>
-        <td>${esc(o.name || o.name_normalized)}${o.ceased_as ? ` <span class="muted">(${esc(t.ceasedAs(o.ceased_as))})</span>` : ''}</td>
+        <td>${esc(nameCell(o))}${o.ceased_as ? ` <span class="muted">(${esc(t.ceasedAs(o.ceased_as))})</span>` : ''}</td>
         <td>${esc(positionsCell(o))}</td>
         <td>${esc(fmtDate(o[dateKey], lang))}</td>
       </tr>`,
@@ -907,7 +926,11 @@ function officersRows(rawList, dateKey, dateLabel, t, lang, { noBoardNote = fals
         .map(([group, rows]) => `<h4 class="officer-group">${esc(t.officerGroups[group])}</h4>${table(rows)}`)
         .join('')}</details>`
     : '';
-  return `${primary}${more}`;
+  // BORME publishes no link between a representative and the corporate officer
+  // they act for; when the page has drawn one, it says so.
+  const paired = groups.some(([, rows]) => rows.some((o) => o.representative));
+  const pairingNote = paired ? `<p class="more">${esc(t.rep143PairingNote)}</p>` : '';
+  return `${primary}${more}${pairingNote}`;
 }
 
 /**
