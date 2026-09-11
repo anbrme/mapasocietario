@@ -119,3 +119,97 @@ test('groups render in a fixed order and empty ones are dropped', () => {
   assert.deepEqual(groupOfficersForDisplay([], 'appointed_date'), []);
   assert.ok(OFFICER_GROUP_ORDER.every(g => typeof g === 'string'));
 });
+
+// ---------------------------------------------------------------------------
+// A board committee implies a directorship, so its members belong in the board
+// table as well as under Comisiones.
+//
+// Under the LSC a committee OF the board (auditoría, nombramientos y
+// retribuciones, ejecutiva, delegada, riesgos) may only be held by a sitting
+// consejero — organKinds already encodes that as impliesDirectorship. The
+// grouping sent those seats to 'comisiones' and nowhere else, so anyone whose
+// only LIVE seat was a committee vanished from the board table entirely.
+//
+// DAGA GELABERT TOMAS at GRIFOLS SA is the case: BORME revoked his
+// CONS.OTR.EXT on 2024-02-23 and has never inscribed a re-appointment, then
+// appointed him to the nominations committee on 2025-08-01. He is a director;
+// the page listed eleven board members and left him out.
+//
+// A comisión de CONTROL (26,511 seats) and a comisión LIQUIDADORA (4,395) must
+// never confer a directorship — they are not board organs.
+// ---------------------------------------------------------------------------
+
+test('a committee-only director appears in the board table', () => {
+  const rows = [
+    { name: 'DAGA GELABERT TOMAS', position_normalized: 'M.COM.NOM.RE', appointed_date: '2025-08-01' },
+  ];
+  const groups = new Map(groupOfficersForDisplay(rows, 'appointed_date'));
+
+  assert.ok(groups.has('consejo'), 'a board-committee member is a director');
+  assert.deepEqual(groups.get('consejo').map(o => o.name), ['DAGA GELABERT TOMAS']);
+});
+
+test('the committee detail still shows under Comisiones', () => {
+  const rows = [
+    { name: 'DAGA GELABERT TOMAS', position_normalized: 'M.COM.NOM.RE', appointed_date: '2025-08-01' },
+  ];
+  const groups = new Map(groupOfficersForDisplay(rows, 'appointed_date'));
+
+  assert.deepEqual(groups.get('comisiones').map(o => o.name), ['DAGA GELABERT TOMAS']);
+});
+
+test('the implied board row is marked so it can render as Consejero (…)', () => {
+  const rows = [
+    { name: 'DAGA GELABERT TOMAS', position_normalized: 'M.COM.NOM.RE', appointed_date: '2025-08-01' },
+  ];
+  const [board] = new Map(groupOfficersForDisplay(rows, 'appointed_date')).get('consejo');
+
+  assert.equal(board.impliedDirectorship, true);
+  assert.deepEqual(board.positions, ['M.COM.NOM.RE']);
+});
+
+test('a director who already holds a board office is not duplicated', () => {
+  // SANCHEZ ASIAIN holds CONS.INDEPEN and sits on the audit committee. The
+  // board table counts people, so he must appear once, under his real title.
+  const rows = [
+    { name: 'SANCHEZ ASIAIN MARDONES INIGO', position_normalized: 'CONS.INDEPEN', appointed_date: '2023-08-04' },
+    { name: 'SANCHEZ ASIAIN MARDONES INIGO', position_normalized: 'MBRO.COM.AUD', appointed_date: '2023-08-04' },
+  ];
+  const groups = new Map(groupOfficersForDisplay(rows, 'appointed_date'));
+
+  assert.equal(groups.get('consejo').length, 1);
+  assert.deepEqual(groups.get('consejo')[0].positions, ['CONS.INDEPEN']);
+  assert.notEqual(groups.get('consejo')[0].impliedDirectorship, true);
+});
+
+test('a comision de control does NOT make its member a director', () => {
+  const rows = [
+    { name: 'VOCAL DE CONTROL', position_normalized: 'M.COM.CONTROL', appointed_date: '2020-01-01' },
+  ];
+  const groups = new Map(groupOfficersForDisplay(rows, 'appointed_date'));
+
+  assert.equal(groups.has('consejo'), false);
+});
+
+test('a comision liquidadora does NOT make its member a director', () => {
+  const rows = [
+    { name: 'MIEMBRO LIQUIDADOR', position_normalized: 'M.COM.LIQUID', appointed_date: '2020-01-01' },
+  ];
+  const groups = new Map(groupOfficersForDisplay(rows, 'appointed_date'));
+
+  assert.equal(groups.has('consejo'), false);
+});
+
+test('an unreadable ad-hoc committee does NOT make its member a director', () => {
+  // DEFAULT-DENY: COM.GERENCIA names a committee whose relation to the board
+  // cannot be read off the abbreviation. (PRE.COM.SCI is NOT an example of
+  // this — it is the Comisión de Seguimiento y Control de las Inversiones,
+  // recognised on the evidence in test/organ-kinds.test.mjs.)
+  const rows = [
+    { name: 'MIEMBRO COMITE DE GERENCIA', position_normalized: 'COM.GERENCIA', appointed_date: '2020-01-01' },
+  ];
+  const groups = new Map(groupOfficersForDisplay(rows, 'appointed_date'));
+
+  assert.equal(groups.has('consejo'), false);
+  assert.equal(groups.get('comisiones').length, 1);
+});

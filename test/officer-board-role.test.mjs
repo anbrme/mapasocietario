@@ -29,7 +29,16 @@ test('active ADM. MANCOM. (joint administrator) renders in the current-board tab
 // Guard: genuine committee roles (e.g. "COM. AUDITORIA") must STILL be excluded from
 // the primary board table after the fix. They remain discoverable in the collapsed
 // "other recorded roles" table so the public profile does not silently omit data.
-test('genuine committee roles stay out of the primary board table but remain discoverable', () => {
+// SUPERSEDED BEHAVIOUR. This test used to assert that a committee-only member
+// was NOT a board member. That is wrong for a committee OF the board: under the
+// LSC a comisión de auditoría / nombramientos y retribuciones / ejecutiva /
+// delegada / riesgos may only be held by a sitting consejero, so the seat is
+// itself the evidence of the directorship. Holding those members out of the
+// board table hid real directors — GRIFOLS SA showed eleven and omitted DAGA
+// GELABERT TOMAS, whose only inscribed live seat is the nominations committee.
+// The committee detail still appears under Comisiones; what changed is that the
+// person is no longer absent from the board.
+test('a board-committee member is a board member, and keeps his committee row', () => {
   const company = {
     company_name: 'X SA',
     company_type: 'SA',
@@ -39,9 +48,13 @@ test('genuine committee roles stay out of the primary board table but remain dis
     officers_resigned: [],
   };
   const html = renderCompanyPage(company, [], 'x-sa', null, 'es');
-  const beforeOtherRoles = html.split('<details class="officer-more">')[0];
-  assert.doesNotMatch(beforeOtherRoles, /<td>COMMITTEE PERSON<\/td>/, 'committee-only members are not board members');
-  assert.match(html, /<details class="officer-more">[\s\S]*<td>COMMITTEE PERSON<\/td>/);
+  const boardTable = html.split('<details class="officer-more">')[0];
+  assert.match(boardTable, /<td>COMMITTEE PERSON<\/td>/,
+    'an audit-committee member is a sitting consejero');
+  assert.match(boardTable, /Consejero \(/,
+    'the board row must say the directorship rests on the committee seat');
+  assert.match(html, /<details class="officer-more">[\s\S]*<td>COMMITTEE PERSON<\/td>/,
+    'and the committee seat itself is still listed');
 });
 
 // The Art. 143 RRM organic permanent representative is administrator-level and
@@ -117,4 +130,44 @@ test('other recorded roles are grouped under headings, not dumped in file order'
   // backend returned the rows in.
   assert.ok(more.indexOf('Comisiones') < more.indexOf('Auditoría y representantes'));
   assert.ok(more.indexOf('<td>A COMMITTEE MEMBER</td>') < more.indexOf('<td>AN ATTORNEY</td>'));
+});
+
+// A director whose only inscribed live seat is a board committee must still
+// appear in the board table. BORME revoked DAGA GELABERT TOMAS's CONS.OTR.EXT
+// at GRIFOLS SA on 2024-02-23, never inscribed a re-appointment, and put him
+// back on the nominations committee on 2025-08-01. Under the LSC that committee
+// is open only to sitting consejeros, so he is a director — but the page listed
+// the other eleven and left him out, which is the bug that started this work.
+test('a board-committee member with no inscribed board office is still a director', () => {
+  const company = {
+    company_name: 'GRIFOLS SA',
+    company_type: 'SA',
+    officers_active: [
+      { name: 'DAGA GELABERT TOMAS', position_normalized: 'M.COM.NOM.RE', appointed_date: '2025-08-01' },
+      { name: 'GRIFOLS DEU VICTOR', position_normalized: 'CONS.DOMINIC', appointed_date: '2025-08-01' },
+    ],
+    officers_resigned: [],
+  };
+  const html = renderCompanyPage(company, [], 'grifols-sa', null, 'es');
+  const board = html.split('<details class="officer-more">')[0];
+  assert.match(board, /<td>DAGA GELABERT TOMAS<\/td>/,
+    'a nominations-committee member is a consejero and belongs in the board table');
+  assert.match(html, /Consejero \(Miembro de la Comisión de Nombramientos y Retribuciones\)/,
+    'the row must say what the directorship rests on');
+});
+
+test('a comision de control member is NOT promoted into the board table', () => {
+  const company = {
+    company_name: 'UNA MUTUALIDAD SA',
+    company_type: 'SA',
+    officers_active: [
+      { name: 'VOCAL DE CONTROL', position_normalized: 'M.COM.CONTROL', appointed_date: '2020-01-01' },
+      { name: 'ADMINISTRADOR REAL', position_normalized: 'ADM. UNICO', appointed_date: '2020-01-01' },
+    ],
+    officers_resigned: [],
+  };
+  const html = renderCompanyPage(company, [], 'una-mutualidad-sa', null, 'es');
+  const board = html.split('<details class="officer-more">')[0];
+  assert.doesNotMatch(board, /<td>VOCAL DE CONTROL<\/td>/,
+    'a comisión de control is a supervisory organ, not the board');
 });
