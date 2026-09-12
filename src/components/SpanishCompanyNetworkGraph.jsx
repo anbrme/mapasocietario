@@ -2244,6 +2244,7 @@ const SpanishCompanyNetworkGraph = ({
       setShortestPathLinks(new Set());
       setShortestPathArray([]);
       setNetworkNote('');
+      setWalkthroughEdits(EMPTY_WALKTHROUGH_EDITS);
     }
   }, [visible, embedded]);
 
@@ -5774,10 +5775,10 @@ const SpanishCompanyNetworkGraph = ({
 
   // Saves an "author" walkthrough step's note as a node note — the walkthrough
   // player's note field IS the node-note field for author-sourced steps.
-  const handleSaveNodeNoteFor = useCallback((nodeId, text, flag) => {
+  const handleSaveNodeNoteFor = useCallback((nodeId, noteText, flag) => {
     const now = new Date().toISOString();
-    setGraphData(prev => (text.trim() ? setNodeNote(prev, nodeId, { text, flag }, now) : removeNodeNote(prev, nodeId)));
-    trackGraphToolbarAction(text.trim() ? 'node_note_saved' : 'node_note_removed');
+    setGraphData(prev => (noteText.trim() ? setNodeNote(prev, nodeId, { text: noteText, flag }, now) : removeNodeNote(prev, nodeId)));
+    trackGraphToolbarAction(noteText.trim() ? 'node_note_saved' : 'node_note_removed');
   }, [trackGraphToolbarAction]);
 
   const openMergeNodeDialog = useCallback(() => {
@@ -7210,7 +7211,7 @@ const SpanishCompanyNetworkGraph = ({
   const primarySubjectNodeId = React.useMemo(() => {
     if (!primarySubject) return null;
     const n = (filteredGraphData.nodes || []).find(
-      x => (x.type === 'spanish-company-group' || x.type === 'company') && x.name?.toUpperCase() === primarySubject.toUpperCase());
+      x => (x.type === 'spanish-company-group' || x.type === 'company') && x.name?.toUpperCase() === String(primarySubject).toUpperCase());
     return n ? normalizeNodeId(n.id) : null;
   }, [filteredGraphData.nodes, primarySubject]);
 
@@ -7855,19 +7856,18 @@ const SpanishCompanyNetworkGraph = ({
         return;
       }
 
-      // Walkthrough focus: the tour dims every link outside the current step's
-      // pair, same as the pathfinder does for its own path.
+      // Endpoint ids, derived once and reused below — by the pathfinder's
+      // shared-connector check and by the walkthrough's tour-focus check.
       const sId = normalizeNodeId(getNodeIdFromRef(link.source));
       const tId = normalizeNodeId(getNodeIdFromRef(link.target));
-      const tourKey = pairKey(sId, tId);
-      const inTour = tourActive && tourLinkKeys.has(tourKey);
+      // Walkthrough focus: the tour dims every link outside the current step's
+      // pair, same as the pathfinder does for its own path.
+      const inTour = tourActive && tourLinkKeys.has(pairKey(sId, tId));
 
       // Determine link color based on appointment category
       const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
       const isLinkInPath = shortestPathLinks.has(normalizeNodeId(link.id));
-      const touchesShared = !!sharedHighlightIds && (
-        sharedHighlightIds.has(normalizeNodeId(typeof start === 'object' ? start.id : start)) ||
-        sharedHighlightIds.has(normalizeNodeId(typeof end === 'object' ? end.id : end)));
+      const touchesShared = !!sharedHighlightIds && (sharedHighlightIds.has(sId) || sharedHighlightIds.has(tId));
       let linkColor;
 
       if (pathfinderActive && isLinkInPath) {
@@ -9347,7 +9347,8 @@ const SpanishCompanyNetworkGraph = ({
                 sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
                 <Button
                   variant="outlined" color="primary" size="small"
-                  startIcon={<AccountTreeIcon />}
+                  startIcon={walkthrough.status === 'preparing' ? <CircularProgress size={14} color="inherit" /> : <AccountTreeIcon />}
+                  disabled={walkthrough.status === 'preparing'}
                   sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
                   onClick={() => {
                     trackGraphToolbarAction('situation_report');
