@@ -45,6 +45,19 @@ describe('documentSections', () => {
     expect(html).toContain('id="wt-start"');
   });
 
+  it('omits the walkthrough controls and panel entirely when there are no steps', () => {
+    const html = renderMapFigure({ ...doc, steps: [] }, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
+    expect(html).not.toContain('id="wt-start"');
+    expect(html).not.toContain('id="wt-panel"');
+  });
+
+  it('rings a node on the map when its own step carries a red/amber author note', () => {
+    const flaggedStep = step('c', { section: 'stands_out', nodeIds: ['c1'], authorNote: { text: 'Cuidado', flag: 'amber', origin: 'node' } });
+    const html = renderMapFigure({ ...doc, steps: [flaggedStep] },
+      { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2, userNote: { flag: 'amber', text: 'Cuidado' } }], links: [] }, t);
+    expect(html).toContain('data-flag="amber"');
+  });
+
   it('chapters number steps, label section and source, escape the note, and mark two voices', () => {
     const html = renderChapters(doc, t, wt);
     expect(html).toContain('id="ch-0"');
@@ -54,6 +67,21 @@ describe('documentSections', () => {
     expect(html).toContain('&lt;b&gt;ojo&lt;/b&gt;');
     expect(html).toContain('class="who">Nota del autor');
     expect(html).toContain('2024-03-11');
+  });
+
+  it('an author-source chapter suppresses the body and shows the note under "Nota del autor"', () => {
+    const authorStep = step('n', { source: 'author', flag: 'amber', text: 'Ojo con esto.', authorNote: null });
+    const html = renderChapters({ ...doc, steps: [authorStep] }, t, wt);
+    expect(html).toContain('<span class="src">Autor</span>');
+    expect(html).not.toContain('<p>Ojo con esto.</p>');
+    expect(html).toContain('class="who">Nota del autor');
+    expect(html).toContain('Ojo con esto.');
+  });
+
+  it('renders the evidence line when a step carries one', () => {
+    const withEvidence = step('e', { evidence: { kind: 'officer', ref: 'X123' } });
+    const html = renderChapters({ ...doc, steps: [withEvidence] }, t, wt);
+    expect(html).toContain('Evidencia: officer · X123');
   });
 
   it('annexes render only sections with rows', () => {
@@ -70,5 +98,35 @@ describe('documentSections', () => {
     // The bare-prefix pattern /https?:\/\// can never equal a full URL string;
     // match the whole href (up to the closing quote) to actually verify it.
     expect(html.match(/https?:\/\/[^"']+/g)).toEqual(['https://mapasocietario.es']);
+  });
+
+  describe('section numbering across the summary x steps combinations', () => {
+    const graphData = { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] };
+    const numOf = html => {
+      const m = html.match(/<span class="num">(\d+)<\/span>/);
+      return m ? Number(m[1]) : null;
+    };
+
+    const cases = [
+      { name: 'summary and steps both present', networkNote: 'Lo que vi', steps: doc.steps, summary: 1, map: 2, chapters: 3, annexes: 4 },
+      { name: 'no summary', networkNote: '', steps: doc.steps, summary: null, map: 1, chapters: 2, annexes: 3 },
+      { name: 'no steps', networkNote: 'Lo que vi', steps: [], summary: 1, map: 2, chapters: null, annexes: 3 },
+      { name: 'neither summary nor steps', networkNote: '', steps: [], summary: null, map: 1, chapters: null, annexes: 2 },
+    ];
+
+    cases.forEach(c => {
+      it(`numbers 1..N in reading order when ${c.name}`, () => {
+        const d = { ...doc, networkNote: c.networkNote, steps: c.steps };
+
+        expect(numOf(renderSummary(d, t))).toBe(c.summary);
+        expect(numOf(renderMapFigure(d, graphData, t))).toBe(c.map);
+        expect(numOf(renderChapters(d, t, wt))).toBe(c.chapters);
+        expect(numOf(renderAnnexes(d, t))).toBe(c.annexes);
+
+        // The contents nav must assign the same numbers, in the same order.
+        const contentsNums = [...renderContents(d, t).matchAll(/<b>(\d+)<\/b>/g)].map(m => Number(m[1]));
+        expect(contentsNums).toEqual([c.summary, c.map, c.chapters, c.annexes].filter(n => n != null));
+      });
+    });
   });
 });

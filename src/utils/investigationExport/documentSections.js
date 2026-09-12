@@ -39,28 +39,48 @@ export const renderSummary = (doc, t) => (doc.networkNote
   ? `<section id="summary"><h2><span class="num">1</span>${esc(t.summaryNote)}</h2><p class="lead">${esc(doc.networkNote)}</p></section>`
   : '');
 
+// A node is drawn flagged either because it IS an author-source step (the
+// walkthrough narrates the note directly) or because an existing step's
+// primary node carries an author note with a red/amber flag (draftWalkthrough
+// attaches the note to the node's own step rather than inventing a new one).
+const isFlaggedStep = s => (
+  (s.source === 'author' && (s.flag === 'red' || s.flag === 'amber'))
+  || (s.authorNote?.flag === 'red' || s.authorNote?.flag === 'amber')
+);
+
 export const renderMapFigure = (doc, graphData, t) => {
-  const flaggedIds = new Set((doc.steps || []).filter(s => s.source === 'author' && (s.flag === 'red' || s.flag === 'amber')).map(s => s.nodeIds[0]));
+  const steps = doc.steps || [];
+  const hasSteps = steps.length > 0;
+  const flaggedIds = new Set(steps.filter(isFlaggedStep).map(s => s.nodeIds?.[0]).filter(Boolean));
   const c = doc.counts || {};
   const num = doc.networkNote ? 2 : 1;
-  return `
-<section id="graph"><h2><span class="num">${num}</span>${esc(t.map)}</h2>
-<figure>
-  <div class="frame">
-    ${renderGraphSvg(graphData, { flaggedIds })}
-    <div class="wt-controls hide-print"><button id="wt-start" class="primary">${esc(t.walkthrough)}</button></div>
-  </div>
-  <figcaption>
-    <span>${esc(t.mapCaption(c.companies || 0, c.officers || 0, c.sharedPeople || 0))}</span>
-    <span class="legend"><span><i class="co"></i>${esc(t.legendCompany)}</span><span><i class="of"></i>${esc(t.legendPerson)}</span><span><i class="own"></i>${esc(t.legendOwnership)}</span><span><i class="flag"></i>${esc(t.legendFlag)}</span></span>
-  </figcaption>
-  <div id="wt-panel" hidden>
+  // The walkthrough has nothing to play until steps exist, so the button and
+  // its panel would just be dead chrome — omit both rather than ship a
+  // control with no wiring behind it yet.
+  const controls = hasSteps
+    ? `<div class="wt-controls hide-print"><button id="wt-start" class="primary">${esc(t.walkthrough)}</button></div>`
+    : '';
+  const panel = hasSteps
+    ? `<div id="wt-panel" hidden>
     <div id="wt-eyebrow" class="eyebrow"></div>
     <strong id="wt-title"></strong>
     <p id="wt-text"></p>
     <div id="wt-note" hidden></div>
     <div class="wt-nav"><button id="wt-prev">${esc(t.prev)}</button><button id="wt-next">${esc(t.next)}</button><span id="wt-counter" class="meta"></span><span style="flex:1"></span><button id="wt-exit">${esc(t.exit)}</button></div>
+  </div>`
+    : '';
+  return `
+<section id="graph"><h2><span class="num">${num}</span>${esc(t.map)}</h2>
+<figure>
+  <div class="frame">
+    ${renderGraphSvg(graphData, { flaggedIds })}
+    ${controls}
   </div>
+  <figcaption>
+    <span>${esc(t.mapCaption(c.companies || 0, c.officers || 0, c.sharedPeople || 0))}</span>
+    <span class="legend"><span><i class="co"></i>${esc(t.legendCompany)}</span><span><i class="of"></i>${esc(t.legendPerson)}</span><span><i class="own"></i>${esc(t.legendOwnership)}</span><span><i class="flag"></i>${esc(t.legendFlag)}</span></span>
+  </figcaption>
+  ${panel}
 </figure></section>`;
 };
 
@@ -83,7 +103,7 @@ export const renderChapters = (doc, t, wt) => {
   return `<section id="walkthrough"><h2><span class="num">${num}</span>${esc(t.walkthroughSection)}</h2><div class="chapters">${rows}</div></section>`;
 };
 
-const annex = (id, title, inner) => (inner ? `<div class="annex" id="${id}"><h2>${esc(title)}</h2>${inner}</div>` : '');
+const annex = (id, title, inner) => (inner ? `<div class="annex" id="${id}"><h3>${esc(title)}</h3>${inner}</div>` : '');
 
 export const renderAnnexes = (doc, t) => {
   const companies = (doc.companies || []).map(c => `<li><strong>${esc(c.name)}</strong>${c.note?.text ? noteBlock(c.note, t) : ''}</li>`).join('');

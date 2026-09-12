@@ -52,7 +52,8 @@ export function renderGraphSvg(graphData, { flaggedIds } = {}) {
     // A link can outlive one of its endpoints (hidden or deleted node); drawing
     // it would throw on the missing coordinates.
     if (!a || !b) return '';
-    return `<line class="l" data-a="${escapeHtml(nodeId(a.id))}" data-b="${escapeHtml(nodeId(b.id))}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    const kindAttr = l.type === 'ownership' ? ' data-kind="ownership"' : '';
+    return `<line class="l"${kindAttr} data-a="${escapeHtml(nodeId(a.id))}" data-b="${escapeHtml(nodeId(b.id))}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
   }).join('');
 
   const groups = nodes.map(n => {

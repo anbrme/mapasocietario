@@ -66,6 +66,20 @@ describe('renderGraphSvg', () => {
     expect(renderGraphSvg(graphData, {})).toMatch(/viewBox="-40 -40 180 120"/);
   });
 
+  it('tags an ownership link with data-kind, and leaves other links attribute-free', () => {
+    const mixed = {
+      nodes: graphData.nodes,
+      links: [{ source: 'c1', target: 'o1', type: 'ownership' }],
+    };
+    const ownershipLine = renderGraphSvg(mixed, {}).match(/<line[^>]*>/)[0];
+    expect(ownershipLine).toContain('data-kind="ownership"');
+
+    // graphData's link has no `type`, so it must stay attribute-free — only
+    // the node <g> elements (unrelated) carry their own data-kind.
+    const plainLine = renderGraphSvg(graphData, {}).match(/<line[^>]*>/)[0];
+    expect(plainLine).not.toContain('data-kind');
+  });
+
   it('stamps coordinates on nodes and endpoint ids on links', () => {
     const svg = renderGraphSvg({
       nodes: [{ id: 'a', type: 'company', name: 'A', x: 10, y: 20 }, { id: 'b', type: 'officer', name: 'B', x: 30, y: 40 }],

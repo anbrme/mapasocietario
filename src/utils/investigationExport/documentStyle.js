@@ -23,6 +23,7 @@ ${face(700, PLEX_SANS_BOLD_WOFF2_B64)}
 --bg:#14161A;--fg:#E8E8E4;--muted:#9A9A94;--line:#2A2D33;--card:#1C1F24;--soft:#181B20;
 --accent:#2DD4BF;--accent-soft:#12302C;--company:#2DD4BF;--officer:#94A3B8;--link:#3A3F47}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);
 font:15px/1.6 "IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
@@ -43,6 +44,7 @@ figure{margin:0}
 figure .frame{position:relative;background:var(--card);border:1px solid var(--line);border-radius:8px}
 #map{display:block;width:100%;height:520px;cursor:grab;touch-action:none;border-radius:8px}
 #map .l{stroke:var(--link);stroke-width:1;transition:opacity .2s}
+#map .l[data-kind="ownership"]{stroke-dasharray:4 3;stroke:var(--muted)}
 #map g.n circle{fill:var(--officer)}
 #map g.n[data-kind="company"] circle{fill:var(--company)}
 #map g.n text{fill:var(--fg);font-size:9px;text-anchor:middle;pointer-events:none}
@@ -82,6 +84,7 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .chapter .ev{color:var(--muted);font-size:.82rem;margin-top:4px}
 .chapter .note .who{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .annex{margin-bottom:28px}
+.annex h3{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
 table{border-collapse:collapse;width:100%;font-size:.88rem}
 th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
