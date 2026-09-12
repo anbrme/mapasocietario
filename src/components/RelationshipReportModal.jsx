@@ -20,6 +20,20 @@ import { correctionVerb, exportCopy } from '../utils/investigationExport/exportC
 import { NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
 import { walkthroughCopy, editsCounts } from '../utils/walkthrough';
 
+function StepNoteField({ stepKey, initialText, label, disabled, onCommit }) {
+  const [value, setValue] = useState(initialText);
+  useEffect(() => { setValue(initialText); }, [stepKey, initialText]);
+  return (
+    <TextField
+      size="small" fullWidth multiline maxRows={3} variant="standard" label={label}
+      value={value} disabled={disabled}
+      onChange={e => setValue(e.target.value.slice(0, NODE_NOTE_MAX_LENGTH))}
+      onBlur={() => { if (!disabled && value !== initialText) onCommit(value); }}
+      sx={{ mt: 0.5 }}
+    />
+  );
+}
+
 export default function RelationshipReportModal({
   open, onClose, doc, graphData, networkNote, onNetworkNoteChange,
   lang = 'es', onRemoveCompany, onDownload,
@@ -167,12 +181,12 @@ export default function RelationshipReportModal({
                       </Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>{s.title}</Typography>
                       {s.source !== 'author' && <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{s.text}</Typography>}
-                      <TextField
-                        size="small" fullWidth multiline maxRows={3} variant="standard" label={wt.noteField}
-                        defaultValue={s.source === 'author' ? s.text : (s.authorNote?.text || '')}
+                      <StepNoteField
+                        stepKey={s.key}
+                        initialText={s.source === 'author' ? s.text : (s.authorNote?.text || '')}
+                        label={wt.noteField}
                         disabled={s.source === 'author'}
-                        onBlur={e => walkthrough.setNote(s.key, e.target.value)}
-                        sx={{ mt: 0.5 }}
+                        onCommit={v => walkthrough.setNote(s.key, v)}
                       />
                     </Box>
                     <Box sx={{ display: 'flex' }}>
