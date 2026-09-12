@@ -1,12 +1,12 @@
 // Owns the drafted walkthrough: loading findings, the merged step list, play
 // position and the focus sets the canvas reads. The graph component only wires
 // props in and reads state out.
-import { useCallback, useMemo, useReducer } from 'react';
+import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import {
   draftWalkthrough, subjectCompanyIds, applyWalkthroughEdits, hideStep, setStepNote, moveStep,
   loadFindingsForSubjects,
 } from '../utils/walkthrough';
-import { initialWalkthroughState, walkthroughReducer, focusSets } from './walkthroughState';
+import { initialWalkthroughState, walkthroughReducer, focusSets, stepTransition } from './walkthroughState';
 
 const nid = id => (id == null ? '' : String(id));
 
@@ -24,6 +24,13 @@ export function useWalkthrough({ graphData, scope, primarySubjectId, lang, fetch
   const current = state.status === 'playing' ? steps[state.index] || null : null;
   const focus = useMemo(() => focusSets(current), [current]);
 
+  // Hiding, moving, or re-editing a step ahead of the current one shifts
+  // every later index; re-anchor on the current step's KEY (or clamp/exit
+  // when that step disappeared) instead of trusting the stale index.
+  useEffect(() => {
+    if (state.status === 'playing') dispatch({ type: 'sync', keys: steps.map(s => s.key) });
+  }, [steps, state.status]);
+
   const subjectIds = useMemo(() => subjectCompanyIds(scope, primarySubjectId), [scope, primarySubjectId]);
   const coverage = useMemo(() => {
     const p = state.findingsByKey.get(subjectIds[0]);
@@ -38,17 +45,27 @@ export function useWalkthrough({ graphData, scope, primarySubjectId, lang, fetch
   }, [subjectIds, nodesById, fetchFindings, lang]);
 
   const start = useCallback(async () => {
-    await prepare();
-    dispatch({ type: 'start' });
+    const findingsByKey = await prepare();
+    // Recompute with the same pure functions the memo uses: `steps` still
+    // reflects the PRE-fetch draft at this point (state hasn't re-rendered
+    // yet), so a walkthrough with zero visible steps must be checked against
+    // a freshly-derived list, not the stale one, before entering 'playing'.
+    const fresh = applyWalkthroughEdits(draftWalkthrough({
+      graphData, scope, findingsByKey, primarySubjectId, lang,
+    }), edits);
+    if (fresh.length === 0) return;
+    dispatch({ type: 'start', firstKey: fresh[0].key });
     onTrack?.('walkthrough_start');
-  }, [prepare, onTrack]);
+    onTrack?.('walkthrough_step', { section: fresh[0].section || '' });
+  }, [prepare, graphData, scope, primarySubjectId, lang, edits, onTrack]);
 
   const goTo = useCallback(i => {
-    dispatch({ type: 'goto', index: i, total: steps.length });
-    const s = steps[Math.min(steps.length - 1, Math.max(0, i))];
-    onTrack?.('walkthrough_step', { section: s?.section || '' });
-    if (i >= steps.length - 1) onTrack?.('walkthrough_complete');
-  }, [steps, onTrack]);
+    const t = stepTransition(state.index, i, steps.length);
+    if (!t.moved) return;
+    dispatch({ type: 'goto', index: t.next, total: steps.length, key: steps[t.next]?.key || null });
+    onTrack?.('walkthrough_step', { section: steps[t.next]?.section || '' });
+    if (t.completed) onTrack?.('walkthrough_complete');
+  }, [steps, state.index, onTrack]);
   const next = useCallback(() => goTo(state.index + 1), [goTo, state.index]);
   const prev = useCallback(() => goTo(state.index - 1), [goTo, state.index]);
   const exit = useCallback(() => dispatch({ type: 'exit' }), []);
