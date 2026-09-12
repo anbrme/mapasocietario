@@ -19,9 +19,11 @@ describe('loadFindingsForSubjects', () => {
 
   it('caps the number of fetches and leaves the rest null', async () => {
     const fetchFindings = vi.fn(async () => ({}));
-    const out = await loadFindingsForSubjects({ subjectIds: ['H:1', 'N:beta', 'H:3'], nodesById, fetchFindings, lang: 'es', cap: 2 });
+    const clearTimeoutFn = vi.fn();
+    const out = await loadFindingsForSubjects({ subjectIds: ['H:1', 'N:beta', 'H:3'], nodesById, fetchFindings, lang: 'es', cap: 2, clearTimeoutFn });
     expect(fetchFindings).toHaveBeenCalledTimes(2);
     expect(out.get('H:3')).toBeNull();
+    expect(clearTimeoutFn).toHaveBeenCalledTimes(1);
   });
 
   it('maps a rejected fetch to null and still resolves', async () => {
@@ -41,6 +43,37 @@ describe('loadFindingsForSubjects', () => {
     const out = await p;
     expect(out.get('H:1')).toEqual({ fast: true });
     expect(out.get('H:3')).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('does not propagate late rejections after timeout resolves', async () => {
+    vi.useFakeTimers();
+    const unhandledRejections = [];
+    const rejectionHandler = (reason) => { unhandledRejections.push(reason); };
+    process.on('unhandledRejection', rejectionHandler);
+
+    const fetchFindings = vi.fn(({ groupKey }) => {
+      if (groupKey === 'H:1') return Promise.resolve({ fast: true });
+      // Resolves immediately but rejects after 200ms
+      return new Promise((_, rej) => setTimeout(() => rej(new Error('late')), 200));
+    });
+    const p = loadFindingsForSubjects({ subjectIds: ['H:1', 'H:3'], nodesById, fetchFindings, lang: 'es', waitMs: 100 });
+    await vi.advanceTimersByTimeAsync(101);
+    const out = await p;
+    expect(out.get('H:1')).toEqual({ fast: true });
+    expect(out.get('H:3')).toBeNull();
+
+    // Advance time so the late rejection occurs
+    await vi.advanceTimersByTimeAsync(200);
+    // Let microtask queue drain
+    await Promise.resolve();
+
+    // Verify no unhandled rejection was raised
+    expect(unhandledRejections).toHaveLength(0);
+    // Verify the returned Map is not mutated
+    expect(out.get('H:3')).toBeNull();
+
+    process.off('unhandledRejection', rejectionHandler);
     vi.useRealTimers();
   });
 });

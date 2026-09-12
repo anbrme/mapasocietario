@@ -6,7 +6,7 @@ export const FINDINGS_WAIT_MS = 4000;
 
 export async function loadFindingsForSubjects({
   subjectIds, nodesById, fetchFindings, lang,
-  cap = FINDINGS_FETCH_CAP, waitMs = FINDINGS_WAIT_MS, setTimeoutFn = setTimeout,
+  cap = FINDINGS_FETCH_CAP, waitMs = FINDINGS_WAIT_MS, setTimeoutFn = setTimeout, clearTimeoutFn = clearTimeout,
 }) {
   const ids = (subjectIds || []).slice(0, cap);
   const results = new Map((subjectIds || []).map(id => [id, null]));
@@ -20,7 +20,12 @@ export async function loadFindingsForSubjects({
       .catch(() => { results.set(id, null); });
   });
 
-  const timeout = new Promise(resolve => { setTimeoutFn(resolve, waitMs); });
-  await Promise.race([Promise.all(settle), timeout]);
+  let timeoutId;
+  const timeout = new Promise(resolve => { timeoutId = setTimeoutFn(resolve, waitMs); });
+  try {
+    await Promise.race([Promise.all(settle), timeout]);
+  } finally {
+    clearTimeoutFn(timeoutId);
+  }
   return new Map(results);
 }
