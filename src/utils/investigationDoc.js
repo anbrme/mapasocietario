@@ -35,6 +35,9 @@ export function buildInvestigationDoc({
   corrections = [],
   primarySubject = '',
   generatedAt = new Date().toISOString(),
+  steps = [],
+  author = null,
+  coverage = null,
 }) {
   const notedNodes = (graphData?.nodes || []).filter(hasNodeNote);
   const notesById = new Map(notedNodes.map(n => [normalizeNodeId(n.id), n.userNote]));
@@ -100,5 +103,10 @@ export function buildInvestigationDoc({
       notes: notedNodes.length,
       flagged: flagged.length,
     },
+    steps: (steps || []).map(s => ({ ...s })),
+    author: author && (author.name || author.organisation)
+      ? { name: String(author.name || ''), organisation: String(author.organisation || '') } : null,
+    coverage: coverage && (coverage.since || coverage.indexedThrough)
+      ? { since: String(coverage.since || ''), indexedThrough: String(coverage.indexedThrough || '') } : null,
   };
 }

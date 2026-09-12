@@ -40,6 +40,20 @@ const ES = {
   actionResigned: 'marcado como cesado',
   actionActive: 'marcado como vigente',
   backLink: 'Ver en Mapa Societario',
+  contents: 'Contenido',
+  map: 'Mapa',
+  mapCaption: (n, m, k) => `${n} empresas · ${m} personas · ${k} conexiones compartidas · disposición del autor`,
+  walkthroughSection: 'Recorrido',
+  annexes: 'Anexos',
+  authorNote: 'Nota del autor',
+  elaboratedBy: 'Elaborado por',
+  coverage: (since, through) => `BORME indexado desde ${since.slice(0, 4)}${through ? ` hasta ${through}` : ''}`,
+  legendCompany: 'Empresa',
+  legendPerson: 'Persona',
+  legendOwnership: 'Socio único',
+  legendFlag: 'Señalado',
+  steps: n => `${n} paso${n === 1 ? '' : 's'}`,
+  evidenceLabel: 'Evidencia',
 };
 
 const EN = {
@@ -76,6 +90,20 @@ const EN = {
   actionResigned: 'marked as ceased',
   actionActive: 'marked as active',
   backLink: 'View on Mapa Societario',
+  contents: 'Contents',
+  map: 'Map',
+  mapCaption: (n, m, k) => `${n} companies · ${m} people · ${k} shared connections · author's layout`,
+  walkthroughSection: 'Walkthrough',
+  annexes: 'Annexes',
+  authorNote: "Author's note",
+  elaboratedBy: 'Prepared by',
+  coverage: (since, through) => `BORME indexed since ${since.slice(0, 4)}${through ? ` through ${through}` : ''}`,
+  legendCompany: 'Company',
+  legendPerson: 'Person',
+  legendOwnership: 'Sole shareholder',
+  legendFlag: 'Flagged',
+  steps: n => `${n} step${n === 1 ? '' : 's'}`,
+  evidenceLabel: 'Evidence',
 };
 
 export const EXPORT_COPY_KEYS = Object.freeze(Object.keys(ES));

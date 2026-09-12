@@ -186,4 +186,16 @@ describe('buildInvestigationDoc', () => {
     expect(doc.counts.notes).toBe(3);
     expect(doc.counts.flagged).toBe(2);
   });
+
+  it('carries steps, author and coverage through untouched, defaulting to empty', () => {
+    const base = build();
+    expect(base.steps).toEqual([]);
+    expect(base.author).toBeNull();
+    expect(base.coverage).toBeNull();
+    const steps = [{ key: 'k' }];
+    const doc = build({ steps, author: { name: 'A', organisation: '' }, coverage: { since: '2009-01-01', indexedThrough: '2026-09-11' } });
+    expect(doc.steps).toEqual(steps);
+    expect(doc.steps).not.toBe(steps);
+    expect(doc.author).toEqual({ name: 'A', organisation: '' });
+  });
 });

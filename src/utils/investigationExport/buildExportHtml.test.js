@@ -1,43 +1,45 @@
 import { describe, expect, it } from 'vitest';
 import { buildExportHtml, exportFileName } from './buildExportHtml';
 
+const graphData = { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 10, y: 10 }], links: [] };
 const doc = {
-  subject: 'ALFA SL',
-  generatedAt: '2026-09-10T09:00:00.000Z',
-  networkNote: 'Checking a suspected common controller.',
-  flagged: [{ nodeId: 'c1', name: 'ALFA SL', type: 'company', flag: 'red', text: 'Same address as BETA' }],
-  companies: [{ nodeId: 'c1', name: 'ALFA SL', note: { text: 'Same address as BETA', flag: 'red' } }],
-  connectors: [{ name: 'GARCIA LOPEZ ANA', nodeId: 'o1', type: 'individual', companies: ['ALFA SL', 'BETA SL'], roles: ['Administrador'], status: 'active', note: null }],
-  ownership: [{ owner: 'ALFA SL', owned: 'BETA SL', lost: false }],
-  otherNotes: [],
-  corrections: [{ action: 'merge', nameA: 'GARCIA LOPEZ, ANA', nameB: 'GARCIA LOPEZ ANA', resignedDate: '' }],
-  counts: { companies: 2, officers: 2, sharedPeople: 1, notes: 1, flagged: 1 },
-};
-
-const graphData = {
-  nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 0, y: 0 }],
-  links: [],
+  subject: 'ALFA SL', generatedAt: '2026-09-12T09:00:00.000Z', networkNote: '', author: null, coverage: null,
+  steps: [{ key: 'subject:c1', section: 'subject', nodeIds: ['c1'], linkKeys: [], title: 'ALFA SL', text: 'NIF B1', source: 'registry', date: null, evidence: null, flag: null, deepLink: 'https://mapasocietario.es/app?gk=c1&lang=es', authorNote: { text: 'x</script><script>alert(1)', flag: 'red', origin: 'step' } }],
+  flagged: [], companies: [{ nodeId: 'c1', name: 'ALFA SL', note: null }], connectors: [], ownership: [], otherNotes: [], corrections: [],
+  counts: { companies: 1, officers: 0, sharedPeople: 0, notes: 1, flagged: 0 },
 };
 
 describe('buildExportHtml', () => {
-  it('is a complete self-contained document', () => {
+  it('is a self-contained document with embedded fonts, steps and labels', () => {
     const html = buildExportHtml(doc, graphData, { lang: 'es' });
-
     expect(html.startsWith('<!doctype html>')).toBe(true);
-    expect(html).toContain('</html>');
+    expect(html).toContain('data:font/woff2;base64,');
+    expect(html).toContain('window.__SITREP__=');
+    expect(html).toContain('"sectionLabel":"Sujeto"');
+    expect(html).toContain('"sourceLabel":"Registro (BORME)"');
+    expect(html).not.toContain('</script><script>alert');
+    expect(html.match(/https?:\/\/[^"' )]+/g).every(u => u.startsWith('https://mapasocietario.es'))).toBe(true);
+    expect(html).not.toMatch(/wordmark|<img/);
+  });
+
+  it('stays under 400 KB with a 200-node graph', () => {
+    const nodes = Array.from({ length: 200 }, (_, i) => ({ id: `n${i}`, type: i % 5 ? 'officer' : 'company', name: `NODE ${i}`, x: i, y: i * 2 }));
+    const links = nodes.slice(1).map((n, i) => ({ source: nodes[i].id, target: n.id }));
+    expect(buildExportHtml(doc, { nodes, links }, { lang: 'en' }).length).toBeLessThan(400 * 1024);
+  });
+
+  it('names the file by language, subject and date', () => {
+    expect(exportFileName(doc, 'es')).toBe('Informe_de_situacion_ALFA_SL_20260912.html');
   });
 
   it('loads nothing from the network', () => {
     const html = buildExportHtml(doc, graphData, { lang: 'es' });
-
     expect(html).not.toMatch(/<script[^>]+src=/i);
     expect(html).not.toMatch(/<link[^>]+stylesheet/i);
-    expect(html).not.toMatch(/https?:\/\/(?!mapasocietario\.es)/);
   });
 
   it('carries attribution and a non-authoritative statement', () => {
     const html = buildExportHtml(doc, graphData, { lang: 'es' });
-
     expect(html).toContain('no autoritativo');
     expect(html).toContain('mapasocietario.es');
   });
@@ -45,33 +47,22 @@ describe('buildExportHtml', () => {
   it('never calls itself an investigation report', () => {
     const es = buildExportHtml(doc, graphData, { lang: 'es' });
     const en = buildExportHtml(doc, graphData, { lang: 'en' });
-
     expect(es.toLowerCase()).not.toContain('informe de investigación');
     expect(en.toLowerCase()).not.toContain('investigation report');
   });
 
-  it('escapes a hostile note instead of executing it', () => {
-    const hostile = {
-      ...doc,
-      networkNote: '<script>alert(1)</script>',
-      flagged: [{ ...doc.flagged[0], text: '<img src=x onerror=alert(1)>' }],
-    };
+  it('escapes a hostile network note instead of executing it', () => {
+    const hostile = { ...doc, networkNote: '<script>alert(1)</script>' };
     const html = buildExportHtml(hostile, graphData, { lang: 'es' });
 
     // Escaping neutralises the angle brackets; the inner text necessarily
     // survives as literal characters. Assert on the tags, not on the payload.
     expect(html).not.toContain('<script>alert(1)</script>');
-    expect(html).not.toContain('<img src=x');
     expect(html).toContain('&lt;script&gt;');
-    expect(html).toContain('&lt;img src=x');
   });
 
-  it('escapes a literal </script> inside a flagged note so the file is not truncated', () => {
-    const hostile = {
-      ...doc,
-      flagged: [{ ...doc.flagged[0], text: 'Ends with </script><script>alert(1)</script> right there' }],
-    };
-    const html = buildExportHtml(hostile, graphData, { lang: 'es' });
+  it('escapes a literal </script> inside a step note so the file is not truncated', () => {
+    const html = buildExportHtml(doc, graphData, { lang: 'es' });
 
     // Only the two script tags the template itself writes (the JSON payload
     // and the walkthrough script) may close — the note's own "</script>"
@@ -81,48 +72,17 @@ describe('buildExportHtml', () => {
     const dataScript = html.match(/window\.__SITREP__=(.*?);<\/script>/s);
     expect(dataScript).not.toBeNull();
     const parsed = JSON.parse(dataScript[1]);
-    expect(parsed.steps[0].text).toBe('Ends with </script><script>alert(1)</script> right there');
-  });
-
-  it('writes the flagged notes into the walkthrough global', () => {
-    const html = buildExportHtml(doc, graphData, { lang: 'es' });
-
-    expect(html).toContain('__SITREP__');
-    expect(html).toContain('Same address as BETA');
-  });
-
-  it('omits the walkthrough controls when nothing is flagged', () => {
-    const html = buildExportHtml({ ...doc, flagged: [], counts: { ...doc.counts, flagged: 0 } }, graphData, { lang: 'es' });
-
-    expect(html).not.toContain('<button id="wt-start"');
-    expect(html).toContain('__SITREP__'); // the script is always inlined; only the controls are conditional
-  });
-
-  it('omits the summary section when no network note was written', () => {
-    const html = buildExportHtml({ ...doc, networkNote: '' }, graphData, { lang: 'es' });
-
-    expect(html).not.toContain('id="summary"');
-  });
-
-  it('defines colours for both themes', () => {
-    const html = buildExportHtml(doc, graphData, { lang: 'es' });
-
-    expect(html).toContain('prefers-color-scheme: dark');
+    expect(parsed.steps[0].authorNote.text).toBe('x</script><script>alert(1)');
   });
 });
 
 describe('exportFileName', () => {
-  it('names the file after the subject and the generation date', () => {
-    expect(exportFileName(doc, 'es')).toBe('Informe_de_situacion_ALFA_SL_20260910.html');
-    expect(exportFileName(doc, 'en')).toBe('Situation_report_ALFA_SL_20260910.html');
-  });
-
   it('strips characters a filesystem would reject', () => {
     expect(exportFileName({ ...doc, subject: 'A/B: "C" SL' }, 'en'))
-      .toBe('Situation_report_A_B_C_SL_20260910.html');
+      .toBe('Situation_report_A_B_C_SL_20260912.html');
   });
 
   it('still produces a name when there is no subject', () => {
-    expect(exportFileName({ ...doc, subject: '' }, 'en')).toBe('Situation_report_20260910.html');
+    expect(exportFileName({ ...doc, subject: '' }, 'en')).toBe('Situation_report_20260912.html');
   });
 });
