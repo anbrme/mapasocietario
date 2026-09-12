@@ -14,15 +14,16 @@ export default function WalkthroughPlayer({
 }) {
   const t = walkthroughCopy(lang);
   const [note, setNote] = useState('');
+  const initialText = step?.source === 'author' ? (step?.text || '') : (step?.authorNote?.text || '');
   useEffect(() => {
-    const initial = step?.source === 'author' ? step.text : (step?.authorNote?.text || '');
-    setNote(initial);
-  }, [step?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+    setNote(initialText);
+  }, [step?.key, initialText]);
 
   useEffect(() => {
     if (!open) return undefined;
     const onKey = e => {
-      if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      const t = e.target;
+      if (t && typeof t.closest === 'function' && t.closest('input,textarea,[contenteditable="true"],[role="listbox"],[role="option"],[role="dialog"]')) return;
       if (e.key === 'ArrowRight') onNext?.();
       if (e.key === 'ArrowLeft') onPrev?.();
       if (e.key === 'Escape') onExit?.();
@@ -42,7 +43,7 @@ export default function WalkthroughPlayer({
       sx={{
         position: 'absolute', left: compact ? 0 : 16, right: compact ? 0 : 16, bottom: compact ? 0 : 16,
         zIndex: 20, p: 2, borderRadius: compact ? '12px 12px 0 0' : 2,
-        borderLeft: flagColor ? `4px solid ${flagColor}` : undefined, maxHeight: '45%', overflow: 'auto',
+        borderLeft: flagColor ? `4px solid ${flagColor}` : undefined, maxHeight: '45vh', overflow: 'auto',
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
@@ -66,7 +67,7 @@ export default function WalkthroughPlayer({
         fullWidth size="small" multiline minRows={1} maxRows={4}
         label={t.noteField} value={note}
         onChange={e => setNote(e.target.value.slice(0, NODE_NOTE_MAX_LENGTH))}
-        onBlur={() => onNote?.(step.key, note)}
+        onBlur={() => { if (note !== initialText) onNote?.(step.key, note); }}
       />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5 }}>
         <Button size="small" variant="outlined" onClick={onPrev} disabled={index <= 0} sx={{ textTransform: 'none' }}>{t.prev}</Button>
