@@ -298,7 +298,12 @@ export default function RelationshipReportModal({
         </Accordion>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap' }}>
+        <Typography variant="caption" component="p" sx={{ width: '100%', mb: 0.5, color: 'text.secondary' }}>
+          {es
+            ? 'Tu resumen y las notas de los nodos se incluyen al copiar o descargar este informe de situación. Revísalos antes de compartirlo.'
+            : 'Your summary and node notes are included when you copy or download this situation report. Review them before sharing it.'}
+        </Typography>
         <Button onClick={onClose}>{es ? 'Cerrar' : 'Close'}</Button>
         <Button startIcon={<ContentCopyIcon />} onClick={copyForWord} disabled={noCompanies}>
           {es ? 'Copiar para Word' : 'Copy for Word'}
