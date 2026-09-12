@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-12
 **Repo:** `mapasocietario` only (frontend). No backend change.
-**Status:** design approved 2026-09-12, not yet implemented
+**Status:** design approved 2026-09-12 (document design added same day), not yet implemented
 **Builds on:** `2026-09-10-report-consolidation-design.md` (situation report),
 `2026-08-24-company-findings-panel-design.md` (findings endpoint)
 
@@ -132,6 +132,67 @@ to `walkthroughScript.js`, all of which the drafted story needs to be usable:
 
 The `Recorrido` button in the file is shown whenever there is at least one
 step, which after this change is always.
+
+### The file as a document (added 2026-09-12)
+
+The current export is a map with tables under it. It becomes a **document
+with an author**, in the genre its name already claims. Identity decision,
+user's: *authored document, sourced by us*. Mapa Societario appears only in
+the source and coverage lines. No wordmark, no brand band: the file must not
+be mistakable for the paid due diligence report, and it carries the author's
+unverified notes, which must not sit under our name.
+
+**Structure, top to bottom:**
+
+1. **Cover block.** Eyebrow `INFORME DE SITUACIÓN`; the subject name as the
+   title; a meta line with date and, when given, `Elaborado por {author} ·
+   {organisation}`; then the status line ("Documento no autoritativo —
+   redactado por su autor, no por el registro") as a quiet rule-bordered
+   note, not a warning box.
+2. **Contents strip.** Numbered section list with counts (7 pasos, 3
+   empresas, 2 conexiones). Anchors.
+3. **§1 Resumen.** The network note as a lead paragraph in larger type.
+   Omitted when empty.
+4. **§2 Mapa.** The SVG as a figure with a legend row (company, person,
+   ownership edge, flagged ring) and a caption: "{N} empresas · {M} personas
+   · {K} conexiones compartidas · disposición del autor". The walkthrough
+   controls sit inside the figure frame, top right, small, hidden on print.
+5. **§3 Recorrido.** The steps as numbered chapters: `01`, an eyebrow with
+   the section label and source chip, the title, the registry or map text,
+   a date and evidence line, and beneath it the author note as an indented
+   block with a left bar in the flag colour and the eyebrow `Nota del
+   autor`. Clicking a chapter number plays that step in the map and scrolls
+   the map into view. The chapters are the print form of the walkthrough and
+   the player is its screen form; one array of steps feeds both.
+6. **Annexes.** §4 Empresas analizadas, §5 Conexiones compartidas, §6
+   Propiedad, §7 Correcciones del autor: the existing tables, typeset as
+   annexes with small-caps headers, thin rules, no zebra, dates aligned.
+7. **Footer.** Source line, coverage line ("BORME indexado desde 2009 hasta
+   {indexed_through}" from the findings payload when present), generation
+   timestamp, link back to mapasocietario.es.
+
+**Typography and colour.** IBM Plex Sans 400 and 600, embedded as two
+latin-subset woff2 data URIs (`?inline` imports under
+`src/assets/fonts/`, OFL notice vendored beside them; roughly 80 KB in the
+file). System sans fallback. One accent only, the teal the user guide uses
+(`#0E8178`), with the guide's ink, muted and rule greys, so the artefact
+family reads as one. Flag colours unchanged. Base 15px, line height 1.6,
+one column at 820px max. Dark mode kept via `prefers-color-scheme`; print is
+always light.
+
+**Print.** `@page` A4 with 18mm margins; page breaks before §3 and before
+the annexes; chapters and table rows avoid breaking inside; the map is fixed
+at 150mm tall; player controls hidden. Printing from the browser is the way
+to a PDF, and it must produce one a person would attach to an email.
+
+**Author line.** Two optional fields in the modal under the summary: `Autor`
+and `Organización`. Remembered in `localStorage` (`sitrep_author`), not in
+the graph snapshot: they describe the person, not the investigation. Blank
+fields drop the line; nothing is invented.
+
+**Modal.** The edit tab stays MUI. The preview tab is the document itself in
+an `<iframe srcdoc>`, so "what will it look like" is never a separate
+rendering.
 
 ## Step model
 
@@ -290,8 +351,12 @@ service allows; a 409 is a null entry.
 | `src/utils/investigationDoc.js` | `steps` (merged) replaces `flagged` as the walkthrough input; `flagged` stays for the flagged-cards section |
 | `src/utils/investigationExport/renderGraphSvg.js` | `data-x`, `data-y` on nodes; `data-a`, `data-b` on links |
 | `src/utils/investigationExport/walkthroughScript.js` | pan, link focus, pointer events, two-voice card |
-| `src/utils/investigationExport/buildExportHtml.js` | embed steps; card markup for source chip + author note |
-| `src/utils/investigationExport/exportCopy.js` | section and source labels |
+| `src/utils/investigationExport/buildExportHtml.js` | assembles the document; shrinks to orchestration |
+| `src/utils/investigationExport/documentStyle.js` (new) | the stylesheet string, screen + dark + print, and the `@font-face` rules |
+| `src/utils/investigationExport/documentSections.js` (new) | cover, contents, summary, map figure, chapters, annexes, footer: one pure function each returning an HTML string |
+| `src/assets/fonts/IBMPlexSans-{Regular,SemiBold}-latin.woff2` + `OFL.txt` (new) | embedded via `?inline` |
+| `src/utils/investigationExport/exportCopy.js` | section, source, cover, legend, caption and annex labels |
+| `src/utils/sitrepAuthor.js` (new) | load/save the author and organisation fields |
 
 The graph component is 12,042 lines. This work adds no new state machine to
 it; the hook owns the walkthrough and the component only wires props.
@@ -349,6 +414,13 @@ saves against a baseline of zero, and `situation_report_download`.
 - **Export**: `renderGraphSvg` emits `data-x/y` and `data-a/b`;
   `buildExportHtml` embeds steps and escapes author notes; the script string
   still contains no `</script>`; a card renders both voices.
+- **Document**: the file contains two `@font-face` rules with `data:` URIs
+  and no external URL other than mapasocietario.es; the author line is
+  present with both fields, present with one, absent with none; every
+  contents entry anchors to an existing section id; empty sections are
+  omitted, not rendered empty; the stylesheet contains `@page` and hides the
+  player under `@media print`; the file stays under 400 KB with a 200-node
+  graph.
 - **Player**: one component test with a mocked `fgRef` asserting `centerAt`
   and `zoom` are called with the step's node coordinates, arrow keys advance,
   Escape exits, the note field writes through the edits setter.
