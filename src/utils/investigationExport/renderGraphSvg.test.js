@@ -65,4 +65,14 @@ describe('renderGraphSvg', () => {
   it('fits the viewBox to the layout with a margin', () => {
     expect(renderGraphSvg(graphData, {})).toMatch(/viewBox="-40 -40 180 120"/);
   });
+
+  it('stamps coordinates on nodes and endpoint ids on links', () => {
+    const svg = renderGraphSvg({
+      nodes: [{ id: 'a', type: 'company', name: 'A', x: 10, y: 20 }, { id: 'b', type: 'officer', name: 'B', x: 30, y: 40 }],
+      links: [{ source: 'a', target: 'b' }],
+    });
+    expect(svg).toContain('data-id="a" data-x="10" data-y="20"');
+    expect(svg).toContain('data-id="b" data-x="30" data-y="40"');
+    expect(svg).toContain('<line class="l" data-a="a" data-b="b"');
+  });
 });

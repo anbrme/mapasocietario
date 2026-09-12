@@ -23,4 +23,17 @@ describe('WALKTHROUGH_SCRIPT', () => {
   it('guards on a missing map so a step-less file still opens', () => {
     expect(WALKTHROUGH_SCRIPT).toContain('if (!map)');
   });
+
+  it('pans to the step, highlights its links, and uses pointer events', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('data-x');
+    expect(WALKTHROUGH_SCRIPT).toContain("addEventListener('pointerdown'");
+    expect(WALKTHROUGH_SCRIPT).toContain('linkKeys');
+    expect(WALKTHROUGH_SCRIPT).toContain('__sitrepShow');
+    expect(WALKTHROUGH_SCRIPT).not.toContain("addEventListener('mousedown'");
+  });
+
+  it('renders the registry text and the author note as separate blocks', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain("'wt-note'");
+    expect(WALKTHROUGH_SCRIPT).toContain("'wt-text'");
+  });
 });

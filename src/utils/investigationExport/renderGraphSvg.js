@@ -52,7 +52,7 @@ export function renderGraphSvg(graphData, { flaggedIds } = {}) {
     // A link can outlive one of its endpoints (hidden or deleted node); drawing
     // it would throw on the missing coordinates.
     if (!a || !b) return '';
-    return `<line class="l" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    return `<line class="l" data-a="${escapeHtml(nodeId(a.id))}" data-b="${escapeHtml(nodeId(b.id))}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
   }).join('');
 
   const groups = nodes.map(n => {
@@ -62,7 +62,7 @@ export function renderGraphSvg(graphData, { flaggedIds } = {}) {
     const flagAttr = flag ? ` data-flag="${escapeHtml(flag)}"` : '';
     const kind = isCompany(n) ? 'company' : 'officer';
     return (
-      `<g class="n" data-id="${escapeHtml(id)}" data-kind="${kind}"${flagAttr}>`
+      `<g class="n" data-id="${escapeHtml(id)}" data-x="${n.x}" data-y="${n.y}" data-kind="${kind}"${flagAttr}>`
       + `<circle cx="${n.x}" cy="${n.y}" r="${r}"/>`
       + `<text x="${n.x}" y="${n.y - r - LABEL_OFFSET}">${escapeHtml(truncate(n.name))}</text>`
       + '</g>'
