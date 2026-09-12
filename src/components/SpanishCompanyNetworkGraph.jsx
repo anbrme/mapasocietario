@@ -2,6 +2,10 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { graphInk } from '../theme/graphInk';
 import { debounce } from 'lodash';
 import { forceCollide } from 'd3-force';
+import { useWalkthrough } from '../hooks/useWalkthrough';
+import WalkthroughPlayer from './WalkthroughPlayer';
+import { EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, walkthroughCopy, stepViewport, pairKey } from '../utils/walkthrough';
+import { loadSitrepAuthor, saveSitrepAuthor } from '../utils/sitrepAuthor';
 import {
   Dialog,
   DialogTitle,
@@ -1641,11 +1645,8 @@ const SpanishCompanyNetworkGraph = ({
   );
 
   const trackGraphToolbarAction = useCallback(
-    action => {
-      trackEvent('graph_toolbar_action', {
-        ...graphInteractionParams(),
-        toolbar_action: action,
-      });
+    (action, extra = {}) => {
+      trackEvent('graph_toolbar_action', { ...graphInteractionParams(), toolbar_action: action, ...extra });
     },
     [graphInteractionParams]
   );
@@ -1709,6 +1710,9 @@ const SpanishCompanyNetworkGraph = ({
   // it lives here and rides the snapshot's existing `context` slot — which means
   // it survives export/import with NO snapshot version bump.
   const [networkNote, setNetworkNote] = useState('');
+  const [walkthroughEdits, setWalkthroughEdits] = useState(EMPTY_WALKTHROUGH_EDITS);
+  const [sitrepAuthor, setSitrepAuthor] = useState(() => loadSitrepAuthor());
+  const updateSitrepAuthor = useCallback(next => setSitrepAuthor(saveSitrepAuthor(next)), []);
   const [showSharedConnections, setShowSharedConnections] = useState(false);
 
   // Corrections overlay state (feeds the situation report; see correctionsService).
@@ -5768,6 +5772,14 @@ const SpanishCompanyNetworkGraph = ({
     text,
   ]);
 
+  // Saves an "author" walkthrough step's note as a node note — the walkthrough
+  // player's note field IS the node-note field for author-sourced steps.
+  const handleSaveNodeNoteFor = useCallback((nodeId, text, flag) => {
+    const now = new Date().toISOString();
+    setGraphData(prev => (text.trim() ? setNodeNote(prev, nodeId, { text, flag }, now) : removeNodeNote(prev, nodeId)));
+    trackGraphToolbarAction(text.trim() ? 'node_note_saved' : 'node_note_removed');
+  }, [trackGraphToolbarAction]);
+
   const openMergeNodeDialog = useCallback(() => {
     if (!contextNode) return;
     setMergeTargetOption(null);
@@ -7195,6 +7207,44 @@ const SpanishCompanyNetworkGraph = ({
     ? relationshipDetailedScope.sharedNodeIds
     : null;
 
+  const primarySubjectNodeId = React.useMemo(() => {
+    if (!primarySubject) return null;
+    const n = (filteredGraphData.nodes || []).find(
+      x => (x.type === 'spanish-company-group' || x.type === 'company') && x.name?.toUpperCase() === primarySubject.toUpperCase());
+    return n ? normalizeNodeId(n.id) : null;
+  }, [filteredGraphData.nodes, primarySubject]);
+
+  const fetchFindings = useCallback(
+    ({ groupKey, name, lang }) => spanishCompaniesService.getCompanyFindings({ groupKey, name, lang }), []);
+
+  const walkthrough = useWalkthrough({
+    graphData: filteredGraphData, scope: relationshipDetailedScope, primarySubjectId: primarySubjectNodeId,
+    lang: uiLanguage, fetchFindings, edits: walkthroughEdits, setEdits: setWalkthroughEdits,
+    onTrack: trackGraphToolbarAction,
+  });
+  const tourActive = walkthrough.status === 'playing';
+  const { tourNodeIds, tourLinkKeys } = walkthrough;
+
+  // Camera follows the current step. containerEl is the graph container DOM
+  // node (set by containerCallbackRef below) — the equivalent of a
+  // graphContainerRef for reading live width/height.
+  useEffect(() => {
+    if (!tourActive || !walkthrough.current || !fgRef.current) return;
+    const nodesById = new Map((filteredGraphData.nodes || []).map(n => [normalizeNodeId(n.id), n]));
+    const v = stepViewport(walkthrough.current, nodesById, {
+      width: containerEl?.clientWidth || 800, height: containerEl?.clientHeight || 600,
+    });
+    if (!v) return;
+    fgRef.current.centerAt(v.x, v.y, 500);
+    fgRef.current.zoom(v.k, 500);
+  }, [tourActive, walkthrough.current, filteredGraphData.nodes, containerEl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const walkthroughEvidence = useCallback(step => {
+    const node = (filteredGraphData.nodes || []).find(n => normalizeNodeId(n.id) === step.nodeIds[0]);
+    if (!node) return;
+    if (node.type === 'officer') openOfficerTimeline(node); else openDataPreview(node);
+  }, [filteredGraphData.nodes, openOfficerTimeline, openDataPreview]);
+
   // Open the situation report. Declared AFTER filteredGraphData: its dependency
   // array reads filteredGraphData at render time, so defining it earlier
   // triggers a temporal-dead-zone ReferenceError.
@@ -7204,6 +7254,9 @@ const SpanishCompanyNetworkGraph = ({
   // user is currently looking at and typing — see relDoc's comment.
   const openRelationshipReport = useCallback(async () => {
     if (relationshipDetailedScope.companies.length < 1) return;
+    // Exit the walkthrough BEFORE the modal opens: the player's own Escape
+    // handler must never coexist with the MUI Dialog's.
+    walkthrough.exit();
     // Corrections are only ever written against primarySubject, so one lookup
     // covers every correction this graph can carry.
     let corrections = [];
@@ -7216,12 +7269,14 @@ const SpanishCompanyNetworkGraph = ({
       corrections = [];
     }
     setRelCorrections(corrections);
+    // Load findings before opening so the modal's step list is populated.
+    await walkthrough.prepare();
     // Captured once here, not left to default inside the memo below — a memo
     // that stamps `new Date()` on every recompute would change the document's
     // timestamp on every keystroke in the summary field.
     setRelGeneratedAt(new Date().toISOString());
     setRelReportOpen(true);
-  }, [relationshipDetailedScope, subjectCompanyName, resolveSubjectGroupKey]);
+  }, [relationshipDetailedScope, subjectCompanyName, resolveSubjectGroupKey, walkthrough]);
 
   // The situation report document. DERIVED, not captured once on open: it must
   // pick up networkNote as the user types it, and pick up removeCompanyFromReport
@@ -7236,10 +7291,14 @@ const SpanishCompanyNetworkGraph = ({
       corrections: relCorrections,
       primarySubject: subjectCompanyName || '',
       generatedAt: relGeneratedAt || new Date().toISOString(),
+      steps: walkthrough.steps,
+      author: sitrepAuthor,
+      coverage: walkthrough.coverage,
     });
   }, [
     relReportOpen, filteredGraphData, relationshipDetailedScope, networkNote,
     relCorrections, subjectCompanyName, relGeneratedAt,
+    walkthrough.steps, sitrepAuthor, walkthrough.coverage,
   ]);
 
   // Remove a company from the report: hide it AND any officers/subsidiaries that
@@ -7448,7 +7507,9 @@ const SpanishCompanyNetworkGraph = ({
       // Pathfinder alpha control
       const inPath = shortestPathNodes.has(normalizeNodeId(node.id));
       const isSharedConnector = !!sharedHighlightIds && sharedHighlightIds.has(normalizeNodeId(node.id));
-      if (pathfinderActive && shortestPathNodes.size > 0) {
+      if (tourActive) {
+        ctx.globalAlpha = tourNodeIds.has(normalizeNodeId(node.id)) ? 1.0 : PATH_DIM_ALPHA;
+      } else if (pathfinderActive && shortestPathNodes.size > 0) {
         ctx.globalAlpha = inPath ? 1.0 : PATH_DIM_ALPHA;
       } else if (sharedHighlightIds) {
         ctx.globalAlpha = isSharedConnector ? 1.0 : PATH_DIM_ALPHA;
@@ -7773,7 +7834,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [watchlistChanges, nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, ink, nodeDegrees, deadEndNodeIds]
+    [watchlistChanges, nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, ink, nodeDegrees, deadEndNodeIds, tourActive, tourNodeIds]
   );
 
   const linkCanvasObject = useCallback(
@@ -7793,6 +7854,13 @@ const SpanishCompanyNetworkGraph = ({
       ) {
         return;
       }
+
+      // Walkthrough focus: the tour dims every link outside the current step's
+      // pair, same as the pathfinder does for its own path.
+      const sId = normalizeNodeId(getNodeIdFromRef(link.source));
+      const tId = normalizeNodeId(getNodeIdFromRef(link.target));
+      const tourKey = pairKey(sId, tId);
+      const inTour = tourActive && tourLinkKeys.has(tourKey);
 
       // Determine link color based on appointment category
       const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
@@ -7827,7 +7895,10 @@ const SpanishCompanyNetworkGraph = ({
       }
 
       // Pathfinder alpha control
-      if (pathfinderActive && shortestPathNodes.size > 0) {
+      if (tourActive) {
+        ctx.globalAlpha = inTour ? 0.95 : PATH_DIM_ALPHA;
+        if (inTour) linkColor = PATH_HIGHLIGHT_COLOR;
+      } else if (pathfinderActive && shortestPathNodes.size > 0) {
         ctx.globalAlpha = isLinkInPath ? 0.95 : PATH_DIM_ALPHA;
       } else if (sharedHighlightIds) {
         ctx.globalAlpha = touchesShared ? 1.0 : PATH_DIM_ALPHA;
@@ -7979,7 +8050,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, graphPalette, ink, text]
+    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, graphPalette, ink, text, tourActive, tourLinkKeys]
   );
 
   // Graph controls
@@ -8046,6 +8117,7 @@ const SpanishCompanyNetworkGraph = ({
     setIsNodeNoteDialogOpen(false);
     setNodeNoteTargetId(null);
     setNetworkNote('');
+    setWalkthroughEdits(EMPTY_WALKTHROUGH_EDITS);
   };
 
   // Compute table data from graph links
@@ -8401,7 +8473,7 @@ const SpanishCompanyNetworkGraph = ({
         detailsExpanded: pathDetailsExpanded,
       },
     },
-    context: { primarySubject, networkNote },
+    context: { primarySubject, networkNote, walkthroughEdits },
     enrichments: { officerDeputyMatches },
   }), [
     graphData,
@@ -8434,6 +8506,7 @@ const SpanishCompanyNetworkGraph = ({
     pathDetailsExpanded,
     primarySubject,
     networkNote,
+    walkthroughEdits,
     officerDeputyMatches,
   ]);
 
@@ -8545,6 +8618,7 @@ const SpanishCompanyNetworkGraph = ({
     setShortestPathArray([]);
     setPrimarySubject(snapshot.context?.primarySubject || null);
     setNetworkNote(typeof snapshot.context?.networkNote === 'string' ? snapshot.context.networkNote : '');
+    setWalkthroughEdits(normalizeWalkthroughEdits(snapshot.context?.walkthroughEdits));
     setLastSearchContext(null);
     lastSuccessfulSearchAtRef.current = null;
     setLoadingMore(false);
@@ -9282,6 +9356,20 @@ const SpanishCompanyNetworkGraph = ({
                   {text.situationReport}
                 </Button>
               </Badge>
+            </span>
+          </Tooltip>
+        )}
+        {visibleCompanyCount >= 1 && (
+          <Tooltip title={walkthroughCopy(uiLanguage).tooltip}>
+            <span>
+              <Button
+                variant={tourActive ? 'contained' : 'outlined'} color="primary" size="small"
+                startIcon={walkthrough.status === 'preparing' ? <CircularProgress size={14} color="inherit" /> : <RouteIcon />}
+                disabled={walkthrough.status === 'preparing'}
+                sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
+                onClick={() => (tourActive ? walkthrough.exit() : walkthrough.start())}>
+                {walkthrough.status === 'preparing' ? walkthroughCopy(uiLanguage).preparing : walkthroughCopy(uiLanguage).button}
+              </Button>
             </span>
           </Tooltip>
         )}
@@ -10276,6 +10364,25 @@ const SpanishCompanyNetworkGraph = ({
             height={canvasDimensions.height}
           />
         )}
+
+        <WalkthroughPlayer
+          open={tourActive}
+          step={walkthrough.current}
+          index={walkthrough.index}
+          total={walkthrough.steps.length}
+          lang={uiLanguage}
+          compact={isCompactViewport}
+          onPrev={walkthrough.prev}
+          onNext={walkthrough.next}
+          onExit={walkthrough.exit}
+          onHide={walkthrough.hide}
+          onNote={(key, noteText) => {
+            const step = walkthrough.current;
+            if (step?.source === 'author') { handleSaveNodeNoteFor(step.nodeIds[0], noteText, step.flag); return; }
+            walkthrough.setNote(key, noteText);
+          }}
+          onEvidence={walkthroughEvidence}
+        />
 
         {isCompactEmbed && graphData.nodes.length > 0 && (
           <Tooltip title={text.center}>
@@ -11935,6 +12042,9 @@ const SpanishCompanyNetworkGraph = ({
           lang={uiLanguage}
           onRemoveCompany={removeCompanyFromReport}
           onDownload={() => trackGraphToolbarAction('situation_report_download')}
+          walkthrough={walkthrough}
+          author={sitrepAuthor}
+          onAuthorChange={updateSitrepAuthor}
         />
         <AIInvestigationGate
           open={aiPanelOpen}
@@ -12020,6 +12130,9 @@ const SpanishCompanyNetworkGraph = ({
         lang={uiLanguage}
         onRemoveCompany={removeCompanyFromReport}
         onDownload={() => trackGraphToolbarAction('situation_report_download')}
+        walkthrough={walkthrough}
+        author={sitrepAuthor}
+        onAuthorChange={updateSitrepAuthor}
       />
       <AIInvestigationGate
         open={aiPanelOpen}
