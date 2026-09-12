@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-12
 **Repo:** `mapasocietario` only (frontend). No backend change.
-**Status:** design approved 2026-09-12 (document design added same day), not yet implemented
+**Status:** implemented 2026-09-13 on feat/drafted-walkthrough (12 tasks, subagent-driven). Deviations: IBM Plex 400/700 (Regular+Bold are what is vendored); player logic unit-tested as pure modules + live check (no jsdom in repo). Not yet verified: touch on real devices, print pagination.
 **Builds on:** `2026-09-10-report-consolidation-design.md` (situation report),
 `2026-08-24-company-findings-panel-design.md` (findings endpoint)
 
