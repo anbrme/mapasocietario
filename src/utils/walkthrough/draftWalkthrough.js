@@ -8,6 +8,7 @@
 
 import { nameKey } from '../pendingOfficerEvents';
 import { isSpellingVariant } from '../officerNameVariants';
+import { officerNameRotations } from '../officerNodeKey';
 import { hasNodeNote } from '../nodeNotes';
 import {
   walkthroughCopy, connectorSentence, ownershipSentence, graphOnlyLine, identityLine,
@@ -50,14 +51,18 @@ const step = fields => ({
 
 // Registry evidence refs a name in filing order ("Ana García López"); the
 // visible officer node carries the aggregator's surname-first order
-// ("GARCIA LOPEZ ANA"). Folded, order-independent token equality resolves the
-// rotation; isSpellingVariant is a further fallback for a differing spelling.
-const foldedTokens = key => key.split(' ').filter(Boolean).sort().join(' ');
-
+// ("GARCIA LOPEZ ANA"). Fold accents/case with nameKey, then match via the
+// same RESTRICTED filing-order rotation the rest of the app uses
+// (officerNameRotations): only the leading/trailing 1-2 tokens (a given name)
+// may move to the other end. Deliberately NOT a full token sort — surname
+// ORDER carries identity, so "GARCIA MARTIN JOSE" and "MARTIN GARCIA JOSE"
+// must stay two different people. isSpellingVariant is a further fallback for
+// a differing spelling of the same filing order.
 const officerNodeByName = (officers, ref) => {
-  const wanted = foldedTokens(nameKey(ref));
+  const wanted = nameKey(ref);
   if (!wanted) return null;
-  return officers.find(o => foldedTokens(nameKey(o.name)) === wanted)
+  const accepted = new Set([wanted, ...officerNameRotations(wanted)]);
+  return officers.find(o => accepted.has(nameKey(o.name)))
     || officers.find(o => isSpellingVariant(o.name, ref))
     || null;
 };

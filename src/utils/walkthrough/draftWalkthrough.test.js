@@ -87,6 +87,39 @@ describe('draftWalkthrough', () => {
     expect(turnover.linkKeys).toEqual([pairKey('H:1', 'o1')]);
   });
 
+  it('never rotates evidence onto the wrong officer when two visible officers share the same tokens in a different surname order', () => {
+    const graphData = {
+      nodes: [
+        co('H:1', 'ALFA SL'),
+        off('j1', 'GARCIA MARTIN JOSE'),
+        off('j2', 'MARTIN GARCIA JOSE'),
+      ],
+      links: [
+        link('H:1', 'j1', { category: 'nombramiento', relationship: 'Administrador' }),
+        link('H:1', 'j2', { category: 'nombramiento', relationship: 'Administrador' }),
+      ],
+    };
+    const twoOfficerScope = {
+      companies: ['ALFA SL'],
+      companyNodes: [{ name: 'ALFA SL', nodeId: 'H:1' }],
+      connectors: [],
+      ownership: [],
+      officersByCompany: { 'ALFA SL': ['GARCIA MARTIN JOSE', 'MARTIN GARCIA JOSE'] },
+    };
+    const payload = {
+      ...alfaFindings,
+      findings: [
+        finding('governing_body_turnover', 'context', '2026-06-03', { evidence: [{ kind: 'officer', ref: 'José García Martín' }] }),
+      ],
+    };
+    const steps = draftWalkthrough({
+      graphData, scope: twoOfficerScope, findingsByKey: new Map([['H:1', payload]]), primarySubjectId: 'H:1', lang: 'es',
+    });
+    const turnover = steps.find(s => s.key.startsWith('stands_out:H:1:governing_body_turnover'));
+    expect(turnover.nodeIds).toContain('j1');
+    expect(turnover.nodeIds).not.toContain('j2');
+  });
+
   it('writes one connects step per connector with both companies and their links', () => {
     const connects = draft().filter(s => s.section === 'connects');
     expect(connects).toHaveLength(1);
