@@ -49,14 +49,12 @@ export default function RelationshipReportModal({
   const steps = walkthrough?.steps || [];
 
   useEffect(() => {
-    if (open) {
-      setReportLang(lang === 'en' ? 'en' : 'es');
-      setTab('edit');
-    }
+    if (open) setReportLang(lang === 'en' ? 'en' : 'es');
+    setTab('edit');
   }, [open, lang]);
 
   const previewHtml = useMemo(() => (
-    tab === 'preview' ? buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' }) : null
+    tab === 'preview' && doc ? buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' }) : null
   ), [doc, graphData, es, tab]);
 
   const companies = doc?.companies || [];

@@ -74,6 +74,10 @@ describe('buildExportHtml', () => {
     const parsed = JSON.parse(dataScript[1]);
     expect(parsed.steps[0].authorNote.text).toBe('x</script><script>alert(1)');
   });
+
+  it('does not throw on a null doc', () => {
+    expect(() => buildExportHtml(null, { nodes: [], links: [] }, { lang: 'es' })).not.toThrow();
+  });
 });
 
 describe('exportFileName', () => {

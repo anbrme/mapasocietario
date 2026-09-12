@@ -12,9 +12,10 @@ import {
 } from './documentSections';
 
 export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
+  const safeDoc = doc || {};
   const t = exportCopy(lang);
   const wt = walkthroughCopy(lang);
-  const steps = (doc.steps || []).map(s => ({
+  const steps = (safeDoc.steps || []).map(s => ({
     key: s.key, section: s.section, nodeIds: s.nodeIds, linkKeys: s.linkKeys || [],
     title: s.title, text: s.text, source: s.source, date: s.date, flag: s.flag,
     authorNote: s.authorNote ? { text: s.authorNote.text, flag: s.authorNote.flag } : null,
@@ -30,18 +31,18 @@ export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>${esc(t.title)}${doc.subject ? ` — ${esc(doc.subject)}` : ''}</title>
+<title>${esc(t.title)}${safeDoc.subject ? ` — ${esc(safeDoc.subject)}` : ''}</title>
 <style>${DOCUMENT_STYLE}</style>
 </head>
 <body>
 <div class="wrap">
-${renderCover(doc, t, lang)}
-${renderContents(doc, t)}
-${renderSummary(doc, t)}
-${renderMapFigure(doc, graphData, t)}
-${renderChapters(doc, t, wt)}
-${renderAnnexes(doc, t)}
-${renderFooter(doc, t)}
+${renderCover(safeDoc, t, lang)}
+${renderContents(safeDoc, t)}
+${renderSummary(safeDoc, t)}
+${renderMapFigure(safeDoc, graphData, t)}
+${renderChapters(safeDoc, t, wt)}
+${renderAnnexes(safeDoc, t)}
+${renderFooter(safeDoc, t)}
 </div>
 <script>window.__SITREP__=${stepJson};</script>
 <script>${WALKTHROUGH_SCRIPT}</script>
