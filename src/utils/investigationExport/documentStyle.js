@@ -91,6 +91,8 @@ ul.plain{list-style:none;padding:0;margin:0}ul.plain li{padding:6px 0;border-bot
 footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem;line-height:1.7}
 @page{size:A4;margin:18mm}
 @media print{
+:root{--bg:#FFFFFF;--fg:#0B1324;--muted:#58677D;--line:#CCD6E3;--card:#FFFFFF;--soft:#F3F6FA;
+--accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1}
 #wt-panel,.wt-controls,.hide-print{display:none!important}
 body{background:#fff;color:#0B1324;font-size:11pt}
 .wrap{max-width:none;padding:0}

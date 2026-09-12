@@ -15,7 +15,13 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).toContain('@media print');
     expect(DOCUMENT_STYLE).toContain('#walkthrough{page-break-before:always');
     expect(DOCUMENT_STYLE).toContain('#annexes{page-break-before:always');
-    expect(DOCUMENT_STYLE).toMatch(/@media print\{[^}]*#wt-panel/);
+
+    const printBlock = DOCUMENT_STYLE.slice(DOCUMENT_STYLE.indexOf('@media print{'));
+    expect(printBlock).toContain('#wt-panel,.wt-controls,.hide-print{display:none!important}');
+    expect(printBlock).toContain(':root{');
+    expect(printBlock).toContain('--muted:#58677D');
+    expect(printBlock).toContain('--line:#CCD6E3');
+    expect(printBlock).toContain('#walkthrough{page-break-before:always');
   });
 
   it('uses the guide teal as the single accent and no external url', () => {
