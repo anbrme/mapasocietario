@@ -12046,6 +12046,8 @@ const SpanishCompanyNetworkGraph = ({
           walkthrough={walkthrough}
           author={sitrepAuthor}
           onAuthorChange={updateSitrepAuthor}
+          edits={walkthroughEdits}
+          onPreview={() => trackGraphToolbarAction('walkthrough_preview')}
         />
         <AIInvestigationGate
           open={aiPanelOpen}
@@ -12134,6 +12136,8 @@ const SpanishCompanyNetworkGraph = ({
         walkthrough={walkthrough}
         author={sitrepAuthor}
         onAuthorChange={updateSitrepAuthor}
+        edits={walkthroughEdits}
+        onPreview={() => trackGraphToolbarAction('walkthrough_preview')}
       />
       <AIInvestigationGate
         open={aiPanelOpen}
