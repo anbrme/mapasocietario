@@ -10534,6 +10534,7 @@ const SpanishCompanyNetworkGraph = ({
           compact={isCompactViewport}
           opening={walkthrough.opening}
           bottomOffset={reservedDockHeight}
+          rightOffset={reservedInspectorWidth}
           onPrev={walkthrough.prev}
           onNext={walkthrough.next}
           onExit={walkthrough.exit}

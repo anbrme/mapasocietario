@@ -179,11 +179,6 @@ export default function RelationshipReportModal({
           <>
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 0.5 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>{t.walkthroughSection}</Typography>
-              {onPlay && (
-                <Button size="small" startIcon={<PlayArrowIcon />} onClick={onPlay} sx={{ textTransform: 'none' }}>
-                  {wt.playOnMap}
-                </Button>
-              )}
               <Button size="small" onClick={() => {
                 const c = editsCounts(edits);
                 if (window.confirm(wt.resetConfirm(c.hidden, c.notes))) walkthrough.reset();
@@ -391,6 +386,13 @@ export default function RelationshipReportModal({
         <Button startIcon={<ContentCopyIcon />} onClick={copyForWord} disabled={noCompanies}>
           {es ? 'Copiar para Word' : 'Copy for Word'}
         </Button>
+        {/* The walkthrough plays from here, beside the other ways out of the
+            modal — a footer action, not a header link nobody looks for. */}
+        {onPlay && steps.length > 0 && (
+          <Button variant="outlined" startIcon={<PlayArrowIcon />} onClick={onPlay} sx={{ textTransform: 'none' }}>
+            {wt.playOnMap}
+          </Button>
+        )}
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           {es ? 'se abre en tu navegador' : 'opens in your browser'}
         </Typography>

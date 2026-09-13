@@ -29,7 +29,7 @@ const fmtMoment = (iso, lang) => new Date(`${iso}T12:00:00`).toLocaleDateString(
   lang === 'en' ? 'en-GB' : 'es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 
 export default function WalkthroughPlayer({
-  open, step, index, total, lang = 'es', compact = false, opening = null, bottomOffset = 0,
+  open, step, index, total, lang = 'es', compact = false, opening = null, bottomOffset = 0, rightOffset = 0,
   onPrev, onNext, onExit, onEdit, onEvidence,
 }) {
   const t = walkthroughCopy(lang);
@@ -58,7 +58,9 @@ export default function WalkthroughPlayer({
       aria-label={opening?.title || t.opening(total)}
       sx={{
         position: 'absolute', zIndex: 20,
-        left: compact ? 0 : CONTROLLER_MARGIN, right: compact ? 0 : CONTROLLER_MARGIN,
+        // The docked inspector and the data dock are laid over the same
+        // container; the row stops where they begin, so its buttons stay in view.
+        left: compact ? 0 : CONTROLLER_MARGIN, right: rightOffset + (compact ? 0 : CONTROLLER_MARGIN),
         bottom: bottomOffset + (compact ? 0 : CONTROLLER_MARGIN),
         minHeight: compact ? WALKTHROUGH_CONTROLLER_HEIGHT_COMPACT : WALKTHROUGH_CONTROLLER_HEIGHT,
         px: 1.5, py: 0.75, borderRadius: compact ? '12px 12px 0 0' : 2,
