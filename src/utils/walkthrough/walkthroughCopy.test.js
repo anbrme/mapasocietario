@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  walkthroughCopy, connectorSentence, ownershipSentence, graphOnlyLine, identityLine, platformModifier,
+  walkthroughCopy, graphOnlyLine, identityLine, platformModifier,
 } from './walkthroughCopy';
 
 describe('walkthroughCopy', () => {
@@ -16,29 +16,6 @@ describe('walkthroughCopy', () => {
         'subject', 'stands_out', 'connects', 'ownership', 'other_companies', 'unseen', 'author']);
       expect(Object.keys(t.sources)).toEqual(['registry', 'graph', 'author']);
     }
-  });
-
-  it('writes the connector sentence by status', () => {
-    const t = walkthroughCopy('es');
-    const base = { name: 'ANA GARCIA', roles: ['Administradora única', 'Consejera'], companies: ['ALFA SL', 'BETA SL'] };
-    expect(connectorSentence(t, { ...base, status: 'active' }))
-      .toBe('ANA GARCIA ocupa Administradora única, Consejera en ALFA SL y BETA SL');
-    expect(connectorSentence(t, { ...base, status: 'ceased' })).toMatch(/^ANA GARCIA ocupó /);
-    expect(connectorSentence(t, { ...base, status: 'mixed' })).toMatch(/^ANA GARCIA ocupa y ocupó /);
-    expect(connectorSentence(walkthroughCopy('en'), { ...base, status: 'active' }))
-      .toBe('ANA GARCIA holds Administradora única, Consejera at ALFA SL and BETA SL');
-  });
-
-  it('joins three companies with commas and a final conjunction', () => {
-    const t = walkthroughCopy('en');
-    expect(connectorSentence(t, { name: 'X', status: 'active', roles: ['Director'], companies: ['A', 'B', 'C'] }))
-      .toBe('X holds Director at A, B and C');
-  });
-
-  it('writes ownership present and past', () => {
-    expect(ownershipSentence(walkthroughCopy('es'), { owner: 'A', owned: 'B', lost: false })).toBe('A es socio único de B');
-    expect(ownershipSentence(walkthroughCopy('es'), { owner: 'A', owned: 'B', lost: true })).toBe('A fue socio único de B');
-    expect(ownershipSentence(walkthroughCopy('en'), { owner: 'A', owned: 'B', lost: false })).toBe('A is sole shareholder of B');
   });
 
   it('writes the graph-only line with the count', () => {
@@ -66,6 +43,8 @@ describe('v2 copy', () => {
     expect(walkthroughCopy('es').opening(8)).toBe('Recorrido por esta red · 8 pasos');
     expect(walkthroughCopy('en').opening(1)).toBe('Walkthrough of this network · 1 step');
     expect(walkthroughCopy('es').openingCapped(15)).toBe('Se muestran los 12 primeros de 15 seleccionados');
+    expect(walkthroughCopy('es').openingCapped(15, 5)).toBe('Se muestran los 5 primeros de 15 seleccionados');
+    expect(walkthroughCopy('en').openingCapped(20, 12)).toBe('Showing the first 12 of 20 selected');
   });
   it('renders the selection hint with the platform modifier', () => {
     expect(walkthroughCopy('es').hint('⌘')).toBe('Selecciona nodos con ⌘+clic (Ctrl+clic en Windows/Linux) para elegir los pasos. Sin selección, se genera un borrador.');

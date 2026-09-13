@@ -2,6 +2,8 @@
 // fetches for the inspector: the v3 company profile, the last events, the
 // findings payload, and the visible graph's links. Pure and null-tolerant.
 import { isActiveOfficerCategory } from '../relationshipScope';
+import { getLinkEffectiveCategory } from '../linkDirectionality';
+import { hasIncoherentCapital } from '../capitalCoherence';
 import { walkthroughCopy, identityLine } from './walkthroughCopy';
 
 export const BOARD_CAP = 12;
@@ -11,6 +13,15 @@ const isCompany = n => !!n && (n.type === 'company' || n.type === 'spanish-compa
 const day = v => String(v || '').slice(0, 10);
 const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const REGISTRY_DATA = 'datos registrales';
+
+/**
+ * @param {number} value amount in EUR
+ * @param {string} lang 'es' | 'en'
+ * @returns {string} locale-formatted EUR string
+ */
+export const formatEur = (value, lang) => new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'es-ES', {
+  style: 'currency', currency: 'EUR', maximumFractionDigits: 2,
+}).format(value);
 
 export const boardRows = (profile) => {
   const active = (profile?.officers_active || []).map(o => ({
@@ -47,11 +58,18 @@ export const personSeats = (node, graphData, lang) => {
     // A sole-shareholder link is ownership, not a seat — it never belongs in
     // the "cargos" table, however it happens to be categorised.
     if (l.type === 'ownership') return [];
+    // The link's effective category (latest event, falling back to the
+    // build-time category) decides active/ceased — same rule the graph draws
+    // by. A seat at a dissolved company can hold nothing, regardless of what
+    // its own category says.
+    const cat = getLinkEffectiveCategory(l) || l.category;
+    const active = isActiveOfficerCategory(cat) && !company.isDissolved && !company.is_dissolved;
+    const d = day(l.categoryDate || l.date);
     return [{
       company: company.name || '', companyId: other,
       role: l.relationship || l.category || '',
-      since: day(l.date || l.appointed_date), until: day(l.resigned_date),
-      status: isActiveOfficerCategory(l.category) ? 'active' : 'ceased',
+      since: active ? d : '', until: active ? '' : d,
+      status: active ? 'active' : 'ceased',
     }];
   }).sort((x, y) => x.company.localeCompare(y.company));
 };
@@ -70,10 +88,13 @@ export const companyEvidence = ({
   const t = walkthroughCopy(lang);
   const header = findings?.company || null;
   const all = findings?.findings || [];
+  const eventsList = events?.events || events?.results || [];
+  const capitalIsSound = Number.isFinite(profile?.current_capital)
+    && !hasIncoherentCapital(profile.current_capital, eventsList);
   return {
     identity: header ? identityLine(t, header) : '',
     status: { dissolved: !!profile?.is_dissolved, concurso: !!profile?.is_in_concurso, lastFiling: header?.last_filing || null },
-    capital: profile?.share_capital ?? profile?.capital ?? null,
+    capital: capitalIsSound ? formatEur(profile.current_capital, lang) : null,
     activity: profile?.activity || profile?.enriched_activity || null,
     board: boardRows(profile),
     filings: lastFilings(events, lang),

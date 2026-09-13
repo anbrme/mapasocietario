@@ -167,6 +167,6 @@ export const openingCard = ({
   const capped = mode === 'selection' && selectedCount > SELECTION_CAP;
   return {
     title: t.opening(steps.length),
-    line: capped ? t.openingCapped(selectedCount) : (mode === 'selection' ? t.openingSelection : t.openingDraft),
+    line: capped ? t.openingCapped(selectedCount, SELECTION_CAP) : (mode === 'selection' ? t.openingSelection : t.openingDraft),
   };
 };

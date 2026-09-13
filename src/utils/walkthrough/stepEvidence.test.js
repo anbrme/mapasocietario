@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { boardRows, lastFilings, personSeats, companyEvidence } from './stepEvidence';
 
 const profile = {
-  is_dissolved: false, is_in_concurso: false, share_capital: '3.006,00 €', activity: 'Consultoría',
+  is_dissolved: false, is_in_concurso: false, current_capital: 3006, activity: 'Consultoría',
   officers_active: [
     { name: 'GARCIA LOPEZ MARIA', position_normalized: 'Administradora única', appointed_date: '2021-03-01', status: 'active' },
   ],
@@ -60,10 +60,10 @@ describe('personSeats', () => {
       { source: 'H:1', target: 'o2', category: 'nombramiento', relationship: 'Apoderado' },
     ],
   };
-  it('lists every seat of the person across visible companies, sorted by company', () => {
+  it('lists every seat of the person across visible companies, sorted by company — active seats date "since", ceased seats date "until"', () => {
     expect(personSeats(graph.nodes[0], graph, 'es')).toEqual([
       { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Administradora única', since: '2021-03-01', until: '', status: 'active' },
-      { company: 'NORTE, SL', companyId: 'H:2', role: 'Consejera', since: '2019-01-01', until: '', status: 'ceased' },
+      { company: 'NORTE, SL', companyId: 'H:2', role: 'Consejera', since: '', until: '2019-01-01', status: 'ceased' },
     ]);
   });
 
@@ -81,6 +81,36 @@ describe('personSeats', () => {
       { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Administradora única', since: '2021-03-01', until: '', status: 'active' },
     ]);
   });
+
+  it('reads a later cessation surfaced only through events, overriding the build-time category', () => {
+    const graphWithEvents = {
+      nodes: graph.nodes,
+      links: [
+        {
+          source: 'H:1', target: 'o1', category: 'nombramiento', relationship: 'Administradora única', date: '2023-05-10',
+          events: [{ category: 'nombramiento', date: '2021-03-01' }, { category: 'cese', date: '2023-05-10' }],
+        },
+      ],
+    };
+    expect(personSeats(graph.nodes[0], graphWithEvents, 'es')).toEqual([
+      { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Administradora única', since: '', until: '2023-05-10', status: 'ceased' },
+    ]);
+  });
+
+  it('treats a seat at a dissolved company as ceased, regardless of the link category', () => {
+    const graphWithDissolvedCompany = {
+      nodes: [
+        graph.nodes[0],
+        { id: 'H:1', type: 'spanish-company-group', name: 'ACME IBERIA, SL', isDissolved: true },
+      ],
+      links: [
+        { source: 'H:1', target: 'o1', category: 'nombramiento', relationship: 'Administradora única', date: '2021-03-01' },
+      ],
+    };
+    expect(personSeats(graph.nodes[0], graphWithDissolvedCompany, 'es')).toEqual([
+      { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Administradora única', since: '', until: '2021-03-01', status: 'ceased' },
+    ]);
+  });
 });
 
 describe('companyEvidence', () => {
@@ -88,7 +118,7 @@ describe('companyEvidence', () => {
     const ev = companyEvidence({ node: { id: 'H:1', name: 'ACME IBERIA, SL' }, profile, events, findings, lang: 'es' });
     expect(ev.identity).toContain('NIF B1');
     expect(ev.status).toEqual({ dissolved: false, concurso: false, lastFiling: { date: '2026-06-03', type: 'Nombramientos' } });
-    expect(ev.capital).toBe('3.006,00 €');
+    expect(ev.capital).toMatch(/3\.?006,00\s?€/);
     expect(ev.activity).toBe('Consultoría');
     expect(ev.board).toHaveLength(2);
     expect(ev.filings).toHaveLength(3);
@@ -119,5 +149,23 @@ describe('companyEvidence', () => {
   it('ownership is empty with no scope', () => {
     const ev = companyEvidence({ node: { id: 'H:1', name: 'ACME IBERIA, SL' }, profile, events, findings, lang: 'es' });
     expect(ev.ownership).toEqual([]);
+  });
+
+  it('withholds capital when the filing that set it contradicts it (hasIncoherentCapital)', () => {
+    // Real MAIER NAVARRA SL shape: gazetted as reducing capital by EUR
+    // 700.872,80 and being left with EUR 6.231.559.999,99 — a 0.011% move,
+    // which no company files. See capitalCoherence.js for the full story.
+    const incoherentProfile = { ...profile, current_capital: 6231559999.99 };
+    const incoherentEvents = {
+      events: [{
+        event_date: '2020-01-01',
+        event_types: [{ type: 'Reducción de capital' }],
+        full_entry: 'Reducción de capital. Importe: 700.872,80 Euros. Resultante: 6.231.559.999,99 Euros.',
+      }],
+    };
+    const ev = companyEvidence({
+      node: { id: 'H:1', name: 'ACME IBERIA, SL' }, profile: incoherentProfile, events: incoherentEvents, findings, lang: 'es',
+    });
+    expect(ev.capital).toBeNull();
   });
 });

@@ -129,6 +129,24 @@ describe('loadStepData', () => {
     vi.useRealTimers();
   });
 
+  it('computes an adaptive wait budget from the company count when waitMs is not given', async () => {
+    const manyNodesById = new Map(Array.from({ length: 12 }, (_, i) => [
+      `H:${i}`, { id: `H:${i}`, name: `C${i}`, type: 'company' },
+    ]));
+    const ids = [...manyNodesById.keys()];
+    const fetchProfile = okFetch({ company: {} });
+    const fetchEvents = okFetch({});
+    const fetchFindings = okFetch({});
+    const setTimeoutFn = vi.fn((fn, ms) => setTimeout(fn, 0));
+    const clearTimeoutFn = vi.fn(id => clearTimeout(id));
+    await loadStepData({
+      ids, nodesById: manyNodesById, fetchProfile, fetchEvents, fetchFindings, lang: 'es',
+      cap: 20, setTimeoutFn, clearTimeoutFn,
+    });
+    // FINDINGS_WAIT_MS (4000) + 400 * 12 companies = 8800, under the 10s cap.
+    expect(setTimeoutFn).toHaveBeenCalledWith(expect.any(Function), 8800);
+  });
+
   it('calls clearTimeoutFn exactly once', async () => {
     const clearTimeoutFn = vi.fn();
     const fetchProfile = okFetch({ company: {} });

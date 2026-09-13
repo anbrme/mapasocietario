@@ -77,11 +77,16 @@ export default function RelationshipReportModal({
   };
 
   const openPreview = async () => {
+    // Open the tab synchronously, inside the click handler — Safari and Chrome
+    // pop-up blockers only allow window.open when it runs directly from the
+    // user gesture, not after an intervening await (the dynamic import below).
+    const w = window.open('', '_blank');
+    if (!w) { setPreviewBlocked(true); return; }
+    w.opener = null;
     const { buildExportHtml } = await import('../utils/investigationExport');
     const html = buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' });
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-    const w = window.open(url, '_blank');
-    if (w) { w.opener = null; } else { setPreviewBlocked(true); }
+    w.location = url;
     setTimeout(() => URL.revokeObjectURL(url), 60000);
     onPreview?.();
   };

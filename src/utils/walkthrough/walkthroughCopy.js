@@ -2,12 +2,6 @@
 // here — they are the findings endpoint's own text. This file covers only what
 // the graph itself can say (structure) and the chrome around it.
 
-const joinNames = (names, and) => {
-  const list = (names || []).filter(Boolean);
-  if (list.length <= 1) return list.join('');
-  return `${list.slice(0, -1).join(', ')} ${and} ${list[list.length - 1]}`;
-};
-
 const ES = {
   button: 'Recorrido',
   preparing: 'Preparando…',
@@ -49,7 +43,7 @@ const ES = {
   opening: n => `Recorrido por esta red · ${n} paso${n === 1 ? '' : 's'}`,
   openingSelection: 'Tu selección, en el orden elegido',
   openingDraft: 'Borrador generado: empresas, conexiones y tus notas',
-  openingCapped: n => `Se muestran los 12 primeros de ${n} seleccionados`,
+  openingCapped: (n, cap = 12) => `Se muestran los ${cap} primeros de ${n} seleccionados`,
   kinds: { company: 'Empresa', person: 'Persona', note: 'Nota' },
   hint: mod => `Selecciona nodos con ${mod}+clic (Ctrl+clic en Windows/Linux) para elegir los pasos. Sin selección, se genera un borrador.`,
   blocks: { identity: 'Identidad', board: 'Órgano de administración', filings: 'Últimos actos', findings: 'Lo que destaca' },
@@ -63,7 +57,6 @@ const ES = {
   activityLabel: 'Actividad declarada',
   seatsLine: (k, m) => `${k} cargo${k === 1 ? '' : 's'} en ${m} empresa${m === 1 ? '' : 's'}`,
   previewBlocked: 'El navegador bloqueó la pestaña; permite ventanas emergentes para la vista previa.',
-  noNarrative: '',
 };
 
 const EN = {
@@ -107,7 +100,7 @@ const EN = {
   opening: n => `Walkthrough of this network · ${n} step${n === 1 ? '' : 's'}`,
   openingSelection: 'Your selection, in the order you chose',
   openingDraft: 'Generated draft: companies, connections and your notes',
-  openingCapped: n => `Showing the first 12 of ${n} selected`,
+  openingCapped: (n, cap = 12) => `Showing the first ${cap} of ${n} selected`,
   kinds: { company: 'Company', person: 'Person', note: 'Note' },
   hint: mod => `Select nodes with ${mod}+click (Ctrl+click on Windows/Linux) to choose the steps. With no selection, a draft is generated.`,
   blocks: { identity: 'Identity', board: 'Governing body', filings: 'Latest filings', findings: 'What stands out' },
@@ -121,7 +114,6 @@ const EN = {
   activityLabel: 'Declared activity',
   seatsLine: (k, m) => `${k} seat${k === 1 ? '' : 's'} across ${m} compan${m === 1 ? 'y' : 'ies'}`,
   previewBlocked: 'The browser blocked the tab; allow pop-ups to open the preview.',
-  noNarrative: '',
 };
 
 export const platformModifier = nav => {
@@ -130,16 +122,6 @@ export const platformModifier = nav => {
 };
 
 export const walkthroughCopy = lang => (lang === 'en' ? EN : ES);
-
-export const connectorSentence = (t, { name, status, roles, companies }) => {
-  const verb = t.status[status] || t.status.active;
-  const roleList = (roles || []).filter(Boolean).join(', ');
-  return `${name} ${verb} ${roleList} ${t.at} ${joinNames(companies, t.and)}`;
-};
-
-export const ownershipSentence = (t, { owner, owned, lost }) => (
-  `${owner} ${lost ? t.lostOf : t.soleOf} ${owned}`
-);
 
 export const graphOnlyLine = (t, officerCount) => t.officersVisible(officerCount);
 
