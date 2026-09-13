@@ -57,8 +57,11 @@ describe('reducers', () => {
     expect(moveStep(e, ['a', 'c', 'b'], 'b', 1).order).toEqual(['a', 'c', 'b']);
   });
 
-  it('editsCounts counts hidden and notes', () => {
-    expect(editsCounts({ hidden: ['a', 'b'], order: [], notes: { c: 'x' } })).toEqual({ hidden: 2, notes: 1 });
+  it('editsCounts counts hidden, notes and re-dated moments', () => {
+    expect(editsCounts({ hidden: ['a', 'b'], order: [], notes: { c: 'x' } }))
+      .toEqual({ hidden: 2, notes: 1, moments: 0 });
+    expect(editsCounts({ hidden: [], order: [], notes: {}, moments: { a: '2024-03-11', b: 'not a day' } }))
+      .toEqual({ hidden: 0, notes: 0, moments: 1 });
   });
 });
 

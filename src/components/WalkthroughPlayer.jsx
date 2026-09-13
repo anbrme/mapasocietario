@@ -8,6 +8,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import { walkthroughCopy } from '../utils/walkthrough/walkthroughCopy';
 import { NODE_NOTE_FLAGS, NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
 
+// The moment is an ISO day in the model and a sentence to the reader. A bare
+// 'YYYY-MM-DD' read as UTC midnight renders as the previous day west of
+// Greenwich, so it is read at noon.
+const fmtMoment = (iso, lang) => new Date(`${iso}T12:00:00`).toLocaleDateString(
+  lang === 'en' ? 'en-GB' : 'es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+
 const evidenceLine = (step, t) => {
   const ev = step?.evidence;
   if (!ev) return '';
@@ -69,7 +75,7 @@ export default function WalkthroughPlayer({
           {eyebrow}
         </Typography>
         <Chip size="small" variant="outlined" label={t.sources[step.source]} sx={{ height: 20, fontSize: '0.7rem' }} />
-        {step.moment && <Chip size="small" label={step.moment} sx={{ height: 20, fontSize: '0.7rem' }} />}
+        {step.moment && <Chip size="small" label={fmtMoment(step.moment, lang)} sx={{ height: 20, fontSize: '0.7rem' }} />}
         {step.date && <Typography variant="caption" color="text.secondary">{step.date}</Typography>}
         <Box sx={{ flex: 1 }} />
         <Tooltip title={t.hideStep}><IconButton size="small" onClick={() => onHide?.(step.key)}><VisibilityOffIcon fontSize="small" /></IconButton></Tooltip>

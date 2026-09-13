@@ -59,7 +59,7 @@ figcaption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;ma
 .legend i.own{width:18px;height:0;border-top:2px dashed var(--muted);border-radius:0;vertical-align:3px}
 .legend i.flag{background:transparent;border:2px solid #ef4444}
 #wt-panel{margin-top:12px;background:var(--card);border:1px solid var(--line);
-border-radius:8px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.08);max-height:34vh;overflow:auto}
+border-radius:8px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.08);flex:1 1 auto;min-height:0;overflow:auto}
 #wt-opening{border-bottom:1px solid var(--line);margin-bottom:8px;padding-bottom:8px}
 #wt-title{display:block;font-weight:700;margin:2px 0 4px}
 #wt-text{margin:0 0 6px;white-space:pre-line}
@@ -99,7 +99,8 @@ ul.plain{list-style:none;padding:0;margin:0}ul.plain li{padding:6px 0;border-bot
 nav.contents a.sub{margin-left:14px;font-size:.8rem}
 footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem;line-height:1.7}
 .story{display:grid;grid-template-columns:minmax(0,1fr);gap:0 32px;align-items:start}
-.story #graph{position:sticky;top:0;z-index:2;background:var(--bg);padding-top:8px;margin:0}
+.story #graph{position:sticky;top:0;z-index:2;background:var(--bg);padding-top:8px;margin:0;display:flex;flex-direction:column}
+.story #graph figure,.story #graph #wt-time{flex:0 0 auto}
 .story #graph #map{height:38vh}
 #viewport{transition:transform .6s cubic-bezier(.22,.61,.36,1);transform-origin:0 0;transform-box:view-box}
 #map.dragging #viewport{transition:none}
@@ -117,6 +118,11 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
 .annex-tabs [role=tab][aria-selected=true]{background:var(--accent);border-color:var(--accent);color:#fff}
 h3.explorer{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
 @media (max-width:959px){.story{display:block}}
+@media (max-width:959px){
+.story #graph{max-height:62vh}
+.story #graph #map{height:30vh}
+.story #graph .legend{display:none}
+}
 @media (min-width:960px){
 .wrap{max-width:1180px}
 .wrap>header,.wrap>nav,.wrap>#summary,.wrap>#annexes,.wrap>footer{max-width:820px;margin-left:auto;margin-right:auto}
@@ -136,11 +142,13 @@ body{background:#fff;color:#0B1324;font-size:11pt}
 .wrap{max-width:none;padding:0}
 #map,.story #graph #map{height:150mm}
 .story{display:block}
-.story #graph{position:static;max-height:none;overflow:visible}
+.story #graph{position:static;max-height:none;overflow:visible;display:block}
 #wt-time{display:none!important}
 .annex-tabs{display:none!important}
 .annex-panel[hidden]{display:block!important}
 #map [data-state]{opacity:1!important;stroke-dasharray:none}
+#map g.n[data-state="ghost"] circle,#map g.n[data-state="ghost"] text{opacity:1!important}
+#map .l[data-state="ceased"]{stroke-dasharray:none!important;opacity:1!important}
 #viewport{transform:none!important;transition:none}
 #walkthrough{page-break-before:always}
 #annexes{page-break-before:always}

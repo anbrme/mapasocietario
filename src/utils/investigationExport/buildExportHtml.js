@@ -39,7 +39,6 @@ export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
     noteLabel: t.authorNote,
     timeline: safeDoc.timeline || null,
     lang: lang === 'en' ? 'en' : 'es',
-    dissolvedProxy: t.dissolvedProxy,
     registryAsOf: t.registryAsOf('{d}'),
   }).replace(/</g, '\\u003c');
 

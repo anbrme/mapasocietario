@@ -116,8 +116,14 @@ export const WALKTHROUGH_SCRIPT = `
       var el = nodeEls[id];
       if (el) el.setAttribute('data-state', nodeState[id]);
     });
-    if (dateLabel) dateLabel.textContent = (data.registryAsOf || '{d}').replace('{d}', fmtDay(d));
-    if (slider && dates.indexOf(d) >= 0) slider.value = String(dates.indexOf(d));
+    var asOf = (data.registryAsOf || '{d}').replace('{d}', fmtDay(d));
+    if (dateLabel) dateLabel.textContent = asOf;
+    if (slider) {
+      // A range input reads out its raw index otherwise ("7 of 12"), which
+      // tells a screen-reader user nothing about the day they are standing on.
+      slider.setAttribute('aria-valuetext', asOf);
+      if (dates.indexOf(d) >= 0) slider.value = String(dates.indexOf(d));
+    }
   }
 
   // Centre the step's nodes in the viewBox; fit when there are several.

@@ -74,7 +74,11 @@ export const moveStep = (edits, currentKeys, key, delta) => {
 
 export const editsCounts = edits => {
   const e = normalizeWalkthroughEdits(edits);
-  return { hidden: e.hidden.length, notes: Object.keys(e.notes).length };
+  return {
+    hidden: e.hidden.length,
+    notes: Object.keys(e.notes).length,
+    moments: Object.keys(e.moments).length,
+  };
 };
 
 /**

@@ -5,6 +5,8 @@ import { escapeHtml as esc } from '../escapeHtml';
 import { correctionVerb } from './exportCopy';
 import { renderGraphSvg } from './renderGraphSvg';
 import { flagVar } from './documentStyle';
+import { looksLikeGroupKey } from '../companyName';
+import { RETURN_COMPANY_CAP } from '../returnParams';
 
 const SITE = 'https://mapasocietario.es';
 
@@ -102,13 +104,17 @@ const renderTimeControl = (doc, t, lang) => {
   const idx = new Map(tl.dates.map((d, i) => [d, i]));
   const ticks = [...new Set((doc.steps || []).filter(s => idx.has(s.moment)).map(s => idx.get(s.moment)))]
     .sort((a, b) => a - b).map(i => `<option value="${i}"></option>`).join('');
+  // The empty span stays even with nothing to count: the script looks it up
+  // unconditionally. The separator does not — a trailing ' · ' reads as a
+  // truncated sentence.
   const undated = tl.undated > 0
-    ? `<span id="wt-undated">${esc(t.undated(tl.undated))}</span>`
+    ? ` · <span id="wt-undated">${esc(t.undated(tl.undated))}</span>`
     : '<span id="wt-undated"></span>';
+  const asOf = esc(t.registryAsOf(fmtDay(tl.readOn, lang)));
   return `<div id="wt-time" class="hide-print">
-    <input type="range" id="wt-slider" min="0" max="${tl.dates.length - 1}" step="1" value="${tl.dates.length - 1}" list="wt-ticks" aria-label="${esc(t.registryAsOf(''))}">
+    <input type="range" id="wt-slider" min="0" max="${tl.dates.length - 1}" step="1" value="${tl.dates.length - 1}" list="wt-ticks" aria-label="${asOf}" aria-valuetext="${asOf}">
     <datalist id="wt-ticks">${ticks}</datalist>
-    <div class="meta"><span id="wt-date">${esc(t.registryAsOf(fmtDay(tl.readOn, lang)))}</span> · ${undated}</div>
+    <div class="meta"><span id="wt-date">${asOf}</span>${undated}</div>
   </div>`;
 };
 
@@ -285,7 +291,13 @@ ${panels.map(p => annex(p.title, p.body, p.id)).join('\n')}
 // since), and where the visit came from. No key, no link — a name alone would
 // resolve to the wrong company often enough to be worse than nothing.
 const returnUrl = (doc, watch) => {
-  const keyed = (doc.companies || []).filter(c => c.groupKey && c.name);
+  // parseReturnParams drops any pair whose key is not entity-shaped and reads
+  // at most RETURN_COMPANY_CAP of them, so the document promises exactly what
+  // the app will honour — a hash-shaped duplicate key or the thirteenth
+  // company would otherwise vanish on arrival with no explanation.
+  const keyed = (doc.companies || [])
+    .filter(c => c.name && looksLikeGroupKey(c.groupKey))
+    .slice(0, RETURN_COMPANY_CAP);
   const since = String(doc.generatedAt || '').slice(0, 10);
   // Without the day there is nothing to show changes *since*, and the link's
   // own label would read "Invalid Date" — so no day, no link.

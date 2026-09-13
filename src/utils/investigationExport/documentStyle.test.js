@@ -55,6 +55,32 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).toContain('@media (max-width:959px){.story{display:block}}');
   });
 
+  it('makes the sticky pane a flex column so the step card scrolls, not the pane', () => {
+    // The pane used to clip: map + caption + legend + slider + card overflowed
+    // its own max-height and the card was cut mid-way. Now the card is the only
+    // flexible child, so the map, slider and card always fit.
+    expect(DOCUMENT_STYLE).toMatch(/\.story #graph\{[^}]*display:flex;flex-direction:column\}/);
+    expect(DOCUMENT_STYLE).toContain('.story #graph figure,.story #graph #wt-time{flex:0 0 auto}');
+    expect(DOCUMENT_STYLE).toMatch(/#wt-panel\{[^}]*flex:1 1 auto;min-height:0;overflow:auto\}/);
+    expect(DOCUMENT_STYLE).not.toContain('max-height:34vh');
+  });
+
+  it('keeps the pane inside a phone viewport so the chapters still have room', () => {
+    expect(DOCUMENT_STYLE).toContain('.story #graph{max-height:62vh}');
+    expect(DOCUMENT_STYLE).toContain('.story #graph #map{height:30vh}');
+    expect(DOCUMENT_STYLE).toContain('.story #graph .legend{display:none}');
+    expect(DOCUMENT_STYLE).toMatch(
+      /@media \(max-width:959px\)\{\s*\.story #graph\{max-height:62vh\}/
+    );
+  });
+
+  it('keeps the pane a static block in print, flex layout and state styling reset', () => {
+    const printBlock = DOCUMENT_STYLE.slice(DOCUMENT_STYLE.indexOf('@media print{'));
+    expect(printBlock).toContain('.story #graph{position:static;max-height:none;overflow:visible;display:block}');
+    expect(printBlock).toContain('#map g.n[data-state="ghost"] circle,#map g.n[data-state="ghost"] text{opacity:1!important}');
+    expect(printBlock).toContain('#map .l[data-state="ceased"]{stroke-dasharray:none!important;opacity:1!important}');
+  });
+
   it('carries no rule for chrome the document no longer renders', () => {
     expect(DOCUMENT_STYLE).not.toContain('.wt-controls');
   });

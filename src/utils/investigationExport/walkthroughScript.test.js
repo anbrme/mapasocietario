@@ -65,6 +65,28 @@ describe('WALKTHROUGH_SCRIPT', () => {
     expect(WALKTHROUGH_SCRIPT).toContain("nodeState[L.a] === 'hidden' || nodeState[L.b] === 'hidden'");
   });
 
+  // renderAt duplicates stateAt() from src/utils/walkthrough/registryTimeline.js
+  // (the module cannot run inside the exported file). These three pins fail the
+  // moment one copy is edited without the other.
+  it('pins the node and link date comparisons that mirror stateAt', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain(
+      "n.from && d < n.from ? 'hidden' : (n.to && d >= n.to ? 'ghost' : 'live')"
+    );
+    expect(WALKTHROUGH_SCRIPT).toContain(
+      "L.from && d < L.from ? 'hidden' : (L.to && d >= L.to ? 'ceased' : 'live')"
+    );
+  });
+
+  it('pins the undated-node fallback that mirrors stateAt: its links decide', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain(
+      "mine.length === 0 || mine.indexOf('live') >= 0 ? 'live' : (mine.indexOf('ceased') >= 0 ? 'ghost' : 'hidden')"
+    );
+  });
+
+  it('reads the slider out as the day it stands on, not as its index', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain("slider.setAttribute('aria-valuetext', asOf)");
+  });
+
   it('indexes the map elements once instead of querying per node and link on every date', () => {
     expect(WALKTHROUGH_SCRIPT).toContain('function buildIndex');
     expect(WALKTHROUGH_SCRIPT).toContain('querySelectorAll');

@@ -131,8 +131,6 @@ describe('companyEvidence', () => {
     expect(ev).toEqual({
       identity: '',
       status: { dissolved: false, concurso: false, lastFiling: null },
-      firstSeen: null,
-      lastSeen: null,
       capital: null,
       activity: null,
       board: [],

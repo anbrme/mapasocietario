@@ -451,6 +451,21 @@ describe('renderStory', () => {
     expect(html).toContain(t.undated(2));
   });
 
+  it('says which day the slider stands on, for label and value alike', () => {
+    const html = renderStory(storyDoc, graphData, t, wt);
+    const asOf = t.registryAsOf('13 de septiembre de 2026');
+    expect(html).toContain(`aria-label="${asOf}"`);
+    expect(html).toContain(`aria-valuetext="${asOf}"`);
+    expect(html).not.toContain(`aria-label="${t.registryAsOf('')}"`);
+  });
+
+  it('keeps the undated span but drops its separator when nothing is undated', () => {
+    const html = renderStory({ ...storyDoc, timeline: { ...timeline, undated: 0 } }, graphData, t, wt);
+    expect(html).toContain('<span id="wt-undated"></span>');
+    expect(html).not.toMatch(/<\/span> · <span id="wt-undated">/);
+    expect(html).not.toMatch(/<span id="wt-date">[^<]*<\/span> · /);
+  });
+
   it('emits one tick per distinct moment when two chapters share one', () => {
     const shared = {
       ...storyDoc,
@@ -504,7 +519,7 @@ describe('renderFooter return links', () => {
   const docWithKeys = {
     generatedAt: '2026-09-13T10:00:00.000Z',
     companies: [
-      { nodeId: 'a', name: 'ALFA SL', groupKey: 'gk-a', note: null },
+      { nodeId: 'a', name: 'ALFA SL', groupKey: 'H:M-1234', note: null },
       { nodeId: 'b', name: 'BETA SL', groupKey: null, note: null },
     ],
     coverage: null,
@@ -512,7 +527,7 @@ describe('renderFooter return links', () => {
 
   it('links back with one c= per keyed company, since and source', () => {
     const html = renderFooter(docWithKeys, t, 'es');
-    expect(html).toContain('c=gk-a%7CALFA+SL');
+    expect(html).toContain('c=H%3AM-1234%7CALFA+SL');
     expect(html).not.toContain('BETA');
     expect(html).toContain('since=2026-09-13');
     expect(html).toContain('source=sitrep');
@@ -524,6 +539,28 @@ describe('renderFooter return links', () => {
     const html = renderFooter({ ...docWithKeys, companies: [docWithKeys.companies[1]] }, t, 'es');
     expect(html).not.toContain('since=');
     expect(html).not.toContain(t.watchLink);
+  });
+
+  it('omits a company whose key is a hash duplicate, not an entity key', () => {
+    const html = renderFooter({
+      ...docWithKeys,
+      companies: [...docWithKeys.companies, { nodeId: 'h', name: 'HASHED SL', groupKey: '2b3200b6c9d4e1f0', note: null }],
+    }, t, 'es');
+    expect(html).toContain('c=H%3AM-1234%7CALFA+SL');
+    expect(html).not.toContain('HASHED');
+    expect(html).not.toContain('2b3200b6c9d4e1f0');
+  });
+
+  it('emits at most the twelve companies the app will read back, in document order', () => {
+    const companies = Array.from({ length: 14 }, (_, i) => ({
+      nodeId: `n${i}`, name: `CO${i} SL`, groupKey: `H:M-${100 + i}`, note: null,
+    }));
+    const html = renderFooter({ ...docWithKeys, companies }, t, 'es');
+    // Two links (return + watch), twelve companies each.
+    expect((html.match(/c=H%3AM-/g) || []).length).toBe(2 * 12);
+    expect(html).toContain('CO11+SL');
+    expect(html).not.toContain('CO12+SL');
+    expect(html).not.toContain('CO13+SL');
   });
 
   it('renders no return links when the document carries no usable generated day', () => {
