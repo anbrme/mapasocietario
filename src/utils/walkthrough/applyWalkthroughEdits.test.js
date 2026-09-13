@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, applyWalkthroughEdits,
-  hideStep, setStepNote, moveStep, editsCounts, swapInSelection,
+  hideStep, setStepNote, moveStep, editsCounts, swapInSelection, setStepMoment,
 } from './applyWalkthroughEdits';
 
 const s = (key, extra = {}) => ({ key, section: 'connects', nodeIds: ['n'], linkKeys: [], title: key, text: '', source: 'graph', date: null, evidence: null, flag: null, deepLink: '', authorNote: null, ...extra });
@@ -82,6 +82,31 @@ describe('normalizeWalkthroughEdits', () => {
 
   it('keeps only string keys and string notes', () => {
     expect(normalizeWalkthroughEdits({ hidden: ['a', 1], order: ['b', null], notes: { c: 'ok', d: 2 } }))
-      .toEqual({ hidden: ['a'], order: ['b'], notes: { c: 'ok' } });
+      .toEqual({
+        hidden: ['a'], order: ['b'], notes: { c: 'ok' }, moments: {},
+      });
+  });
+});
+
+describe('moments', () => {
+  it('EMPTY carries an empty moments map', () => {
+    expect(EMPTY_WALKTHROUGH_EDITS.moments).toEqual({});
+  });
+  it('normalises moments to ISO days only', () => {
+    expect(normalizeWalkthroughEdits({ moments: { a: '2024-03-11', b: 'nope', c: 3 } }).moments).toEqual({ a: '2024-03-11' });
+    expect(normalizeWalkthroughEdits({ moments: [] }).moments).toEqual({});
+  });
+  it('an overlay moment wins over the draft moment; a step without one is left untouched', () => {
+    const d = [s('a', { moment: '2020-01-01' }), s('b')];
+    const out = applyWalkthroughEdits(d, { ...EMPTY_WALKTHROUGH_EDITS, moments: { a: '2024-03-11' } });
+    expect(out[0].moment).toBe('2024-03-11');
+    expect(out[1]).toEqual(d[1]);
+  });
+  it('setStepMoment stores a valid day and clears on empty or invalid', () => {
+    const e1 = setStepMoment(EMPTY_WALKTHROUGH_EDITS, 'a', '2024-03-11');
+    expect(e1.moments).toEqual({ a: '2024-03-11' });
+    expect(setStepMoment(e1, 'a', '').moments).toEqual({});
+    expect(setStepMoment(e1, 'a', '2024-3-1').moments).toEqual({});
+    expect(EMPTY_WALKTHROUGH_EDITS.moments).toEqual({});
   });
 });

@@ -191,3 +191,13 @@ describe('pairKey', () => {
     expect(pairKey('a', 'b')).toBe('a|b');
   });
 });
+
+describe('moments', () => {
+  it('a company step defaults to its last filing; a person step to the latest seat date; graph-only company to null', () => {
+    const stepData = new Map([['H:1', { profile, events, findings }]]);
+    const steps = draftWalkthrough({ graphData: graph, scope, stepData, selection: ['H:1', 'o1', 'H:2'], lang: 'es' });
+    expect(steps[0].moment).toBe('2026-06-03');
+    expect(typeof steps[1].moment === 'string' || steps[1].moment === null).toBe(true);
+    expect(steps[2].moment).toBeNull();
+  });
+});

@@ -94,6 +94,8 @@ export const companyEvidence = ({
   return {
     identity: header ? identityLine(t, header) : '',
     status: { dissolved: !!profile?.is_dissolved, concurso: !!profile?.is_in_concurso, lastFiling: header?.last_filing || null },
+    firstSeen: day(profile?.first_seen) || null,
+    lastSeen: day(profile?.last_seen) || null,
     capital: capitalIsSound ? formatEur(profile.current_capital, lang) : null,
     activity: profile?.activity || profile?.enriched_activity || null,
     board: boardRows(profile),

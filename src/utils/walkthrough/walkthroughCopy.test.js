@@ -73,4 +73,8 @@ describe('v2 copy', () => {
     expect(walkthroughCopy('es').previewBlocked).toBe('El navegador bloqueó la pestaña; permite ventanas emergentes para la vista previa.');
     expect(walkthroughCopy('en').previewBlocked).toBe('The browser blocked the tab; allow pop-ups to open the preview.');
   });
+  it('labels the moment field in both languages', () => {
+    expect(walkthroughCopy('es').momentLabel).toBe('Momento');
+    expect(walkthroughCopy('en').momentLabel).toBe('Moment');
+  });
 });

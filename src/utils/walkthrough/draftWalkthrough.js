@@ -15,6 +15,10 @@
 import { hasNodeNote } from '../nodeNotes';
 import { companyEvidence, personSeats } from './stepEvidence';
 import { walkthroughCopy, graphOnlyLine } from './walkthroughCopy';
+import { pairKey } from './pairKey';
+import { defaultMoment } from './registryTimeline';
+
+export { pairKey } from './pairKey';
 
 export const SELECTION_CAP = 12;
 const CONNECTOR_CAP = 8;
@@ -24,9 +28,6 @@ const SITE = 'https://mapasocietario.es';
 const nid = id => (id == null ? '' : String(id));
 const refId = ref => (ref && typeof ref === 'object' ? ref.id : ref);
 const isCompany = n => !!n && (n.type === 'company' || n.type === 'spanish-company-group');
-
-/** Order-independent key for a graph edge between two node ids. */
-export const pairKey = (a, b) => (nid(a) < nid(b) ? `${nid(a)}|${nid(b)}` : `${nid(b)}|${nid(a)}`);
 
 /** The scope's pinned companies, primary subject first when it's among them. */
 export const subjectCompanyIds = (scope, primarySubjectId) => {
@@ -68,6 +69,8 @@ const base = (node, kind, order, lang) => {
   };
 };
 
+const withMoment = step => ({ ...step, moment: defaultMoment(step) });
+
 const officersOfCompany = (companyId, graphData, byId) => (graphData?.links || []).flatMap(l => {
   const a = nid(refId(l.source));
   const b = nid(refId(l.target));
@@ -84,7 +87,7 @@ const companyStep = ({
   });
   const officerIds = [...new Set(officersOfCompany(nid(node.id), graphData, byId))];
   const summary = evidence.identity || graphOnlyLine(t, officerIds.length);
-  return {
+  return withMoment({
     ...base(node, 'company', order, lang),
     evidence,
     summary,
@@ -92,7 +95,7 @@ const companyStep = ({
     source: evidence.identity ? 'registry' : 'graph',
     nodeIds: [nid(node.id), ...officerIds],
     linkKeys: officerIds.map(o => pairKey(node.id, o)),
-  };
+  });
 };
 
 const personStep = ({
@@ -101,7 +104,7 @@ const personStep = ({
   const seats = personSeats(node, graphData, lang);
   const companyIds = [...new Set(seats.map(s => s.companyId))];
   const summary = t.seatsLine(seats.length, companyIds.length);
-  return {
+  return withMoment({
     ...base(node, 'person', order, lang),
     evidence: { seats },
     summary,
@@ -109,7 +112,7 @@ const personStep = ({
     source: 'graph',
     nodeIds: [nid(node.id), ...companyIds],
     linkKeys: companyIds.map(c => pairKey(node.id, c)),
-  };
+  });
 };
 
 /**

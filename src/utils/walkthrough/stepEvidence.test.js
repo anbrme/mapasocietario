@@ -128,7 +128,19 @@ describe('companyEvidence', () => {
   });
   it('degrades to empty values with no payloads', () => {
     const ev = companyEvidence({ node: { id: 'H:9', name: 'X' }, profile: null, events: null, findings: null, lang: 'en' });
-    expect(ev).toEqual({ identity: '', status: { dissolved: false, concurso: false, lastFiling: null }, capital: null, activity: null, board: [], filings: [], findings: [], unseen: [], ownership: [] });
+    expect(ev).toEqual({
+      identity: '',
+      status: { dissolved: false, concurso: false, lastFiling: null },
+      firstSeen: null,
+      lastSeen: null,
+      capital: null,
+      activity: null,
+      board: [],
+      filings: [],
+      findings: [],
+      unseen: [],
+      ownership: [],
+    });
   });
   it('populates ownership from scope rows naming the node as owner or owned', () => {
     const scope = {

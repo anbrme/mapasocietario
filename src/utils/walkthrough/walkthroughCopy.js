@@ -55,6 +55,7 @@ const ES = {
   statusWords: { active: 'Vigente', ceased: 'Cesado', dissolved: 'Disuelta', concurso: 'En concurso' },
   capitalLabel: 'Capital social',
   activityLabel: 'Actividad declarada',
+  momentLabel: 'Momento',
   seatsLine: (k, m) => `${k} cargo${k === 1 ? '' : 's'} en ${m} empresa${m === 1 ? '' : 's'}`,
   previewBlocked: 'El navegador bloqueó la pestaña; permite ventanas emergentes para la vista previa.',
 };
@@ -112,6 +113,7 @@ const EN = {
   statusWords: { active: 'Active', ceased: 'Ceased', dissolved: 'Dissolved', concurso: 'In insolvency' },
   capitalLabel: 'Share capital',
   activityLabel: 'Declared activity',
+  momentLabel: 'Moment',
   seatsLine: (k, m) => `${k} seat${k === 1 ? '' : 's'} across ${m} compan${m === 1 ? 'y' : 'ies'}`,
   previewBlocked: 'The browser blocked the tab; allow pop-ups to open the preview.',
 };

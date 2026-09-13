@@ -3,7 +3,11 @@
 // is applied on top, so a re-expanded graph gains steps without losing the
 // author's order, and a step whose node is hidden reappears where it was.
 
-export const EMPTY_WALKTHROUGH_EDITS = Object.freeze({ hidden: [], order: [], notes: {} });
+import { isIsoDay } from './registryTimeline';
+
+export const EMPTY_WALKTHROUGH_EDITS = Object.freeze({
+  hidden: [], order: [], notes: {}, moments: {},
+});
 
 const strings = v => (Array.isArray(v) ? v.filter(x => typeof x === 'string') : []);
 
@@ -12,7 +16,12 @@ export const normalizeWalkthroughEdits = raw => {
   const notes = raw.notes && typeof raw.notes === 'object' && !Array.isArray(raw.notes)
     ? Object.fromEntries(Object.entries(raw.notes).filter(([, v]) => typeof v === 'string'))
     : {};
-  return { hidden: strings(raw.hidden), order: strings(raw.order), notes };
+  const moments = raw.moments && typeof raw.moments === 'object' && !Array.isArray(raw.moments)
+    ? Object.fromEntries(Object.entries(raw.moments).filter(([, v]) => isIsoDay(v)))
+    : {};
+  return {
+    hidden: strings(raw.hidden), order: strings(raw.order), notes, moments,
+  };
 };
 
 export const applyWalkthroughEdits = (steps, edits) => {
@@ -23,11 +32,14 @@ export const applyWalkthroughEdits = (steps, edits) => {
   const ordered = e.order.filter(k => byKey.has(k)).map(k => byKey.get(k));
   const placed = new Set(ordered.map(s => s.key));
   const rest = visible.filter(s => !placed.has(s.key));
-  return [...ordered, ...rest].map(s => (
-    Object.prototype.hasOwnProperty.call(e.notes, s.key)
+  return [...ordered, ...rest].map(s => {
+    const withNote = Object.prototype.hasOwnProperty.call(e.notes, s.key)
       ? { ...s, authorNote: { text: e.notes[s.key], flag: null, origin: 'step' } }
-      : s
-  ));
+      : s;
+    return Object.prototype.hasOwnProperty.call(e.moments, s.key)
+      ? { ...withNote, moment: e.moments[s.key] }
+      : withNote;
+  });
 };
 
 export const hideStep = (edits, key) => {
@@ -41,6 +53,13 @@ export const setStepNote = (edits, key, text) => {
   const notes = { ...e.notes };
   if (clean) notes[key] = clean; else delete notes[key];
   return { ...e, notes };
+};
+
+export const setStepMoment = (edits, key, iso) => {
+  const e = normalizeWalkthroughEdits(edits);
+  const moments = { ...e.moments };
+  if (isIsoDay(iso)) moments[key] = iso; else delete moments[key];
+  return { ...e, moments };
 };
 
 export const moveStep = (edits, currentKeys, key, delta) => {

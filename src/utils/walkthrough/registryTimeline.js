@@ -3,7 +3,7 @@
 // categoryDate, date) and the v3 profiles the walkthrough loader already
 // fetched. The exported file embeds the result and re-renders the map for
 // any date with `stateAt`'s rule; the script inlines the same rule.
-import { pairKey } from './draftWalkthrough';
+import { pairKey } from './pairKey';
 import { getLinkEffectiveCategory } from '../linkDirectionality';
 import { isActiveCategory } from '../officerLinkStatus';
 
