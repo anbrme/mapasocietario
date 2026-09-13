@@ -230,3 +230,21 @@ describe('buildInvestigationDoc', () => {
     expect(build({ opening: null }).opening).toBeNull();
   });
 });
+
+describe('buildInvestigationDoc v3 fields', () => {
+  const v3GraphData = { nodes: [{ id: 'H:1', type: 'spanish-company-group', name: 'ALFA SL', groupKey: 'gk-alfa' }], links: [] };
+  const v3Scope = { companyNodes: [{ nodeId: 'H:1', name: 'ALFA SL' }], connectors: [], ownership: [], counts: { companies: 1, officers: 0, sharedPeople: 0 } };
+
+  it('copies the timeline and stamps each company with its group key', () => {
+    const timeline = { dates: ['2026-09-13'], nodes: {}, links: {}, undated: 0, readOn: '2026-09-13' };
+    const doc = buildInvestigationDoc({ graphData: v3GraphData, scope: v3Scope, timeline });
+    expect(doc.timeline).toEqual(timeline);
+    expect(doc.timeline).not.toBe(timeline);
+    expect(doc.companies[0].groupKey).toBe('gk-alfa');
+  });
+  it('a missing timeline is null, a company without a key gets null', () => {
+    const doc = buildInvestigationDoc({ graphData: { nodes: [], links: [] }, scope: v3Scope });
+    expect(doc.timeline).toBeNull();
+    expect(doc.companies[0].groupKey).toBeNull();
+  });
+});

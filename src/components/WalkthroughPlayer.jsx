@@ -69,6 +69,7 @@ export default function WalkthroughPlayer({
           {eyebrow}
         </Typography>
         <Chip size="small" variant="outlined" label={t.sources[step.source]} sx={{ height: 20, fontSize: '0.7rem' }} />
+        {step.moment && <Chip size="small" label={step.moment} sx={{ height: 20, fontSize: '0.7rem' }} />}
         {step.date && <Typography variant="caption" color="text.secondary">{step.date}</Typography>}
         <Box sx={{ flex: 1 }} />
         <Tooltip title={t.hideStep}><IconButton size="small" onClick={() => onHide?.(step.key)}><VisibilityOffIcon fontSize="small" /></IconButton></Tooltip>

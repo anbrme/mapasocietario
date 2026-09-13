@@ -6,7 +6,7 @@ import { useWalkthrough } from '../hooks/useWalkthrough';
 import WalkthroughPlayer from './WalkthroughPlayer';
 import {
   EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, walkthroughCopy, platformModifier, stepViewport,
-  pairKey as walkthroughPairKey,
+  pairKey as walkthroughPairKey, buildTimeline,
 } from '../utils/walkthrough';
 import { loadSitrepAuthor, saveSitrepAuthor } from '../utils/sitrepAuthor';
 import {
@@ -7331,12 +7331,16 @@ const SpanishCompanyNetworkGraph = ({
       blocks: sitrepAuthor.blocks,
       mode: walkthrough.mode,
       opening: walkthrough.opening,
+      timeline: buildTimeline({
+        graphData: filteredGraphData, stepData: walkthrough.stepData, steps: walkthrough.steps,
+        readOn: relGeneratedAt || new Date().toISOString(),
+      }),
     });
   }, [
     relReportOpen, filteredGraphData, relationshipDetailedScope, networkNote,
     relCorrections, subjectCompanyName, relGeneratedAt,
     walkthrough.steps, sitrepAuthor, walkthrough.coverage,
-    sitrepAuthor.blocks, walkthrough.mode, walkthrough.opening,
+    sitrepAuthor.blocks, walkthrough.mode, walkthrough.opening, walkthrough.stepData,
   ]);
 
   // Remove a company from the report: hide it AND any officers/subsidiaries that

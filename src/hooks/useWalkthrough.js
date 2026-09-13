@@ -3,8 +3,8 @@
 // props in and reads state out.
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import {
-  draftWalkthrough, openingCard, subjectCompanyIds, applyWalkthroughEdits, hideStep, setStepNote, moveStep,
-  swapInSelection, loadStepData,
+  draftWalkthrough, openingCard, subjectCompanyIds, applyWalkthroughEdits, hideStep, setStepNote, setStepMoment,
+  moveStep, swapInSelection, loadStepData,
 } from '../utils/walkthrough';
 import { initialWalkthroughState, walkthroughReducer, focusSets, stepTransition } from './walkthroughState';
 
@@ -105,6 +105,10 @@ export function useWalkthrough({
   const exit = useCallback(() => dispatch({ type: 'exit' }), []);
 
   const hide = useCallback(key => { setEdits(e => hideStep(e, key)); onTrack?.('walkthrough_step_hidden'); }, [setEdits, onTrack]);
+  const setMoment = useCallback((key, iso) => {
+    setEdits(e => setStepMoment(e, key, iso));
+    onTrack?.('walkthrough_moment_set');
+  }, [setEdits, onTrack]);
   // A step's note has exactly one owner. In selection mode every step is the
   // author's own pick, so its note always writes straight to the node note.
   // In draft mode, a step whose primary node already carries a node-origin
@@ -143,11 +147,11 @@ export function useWalkthrough({
     setEdits(e => moveStep(e, steps.map(s => s.key), key, delta));
   }, [mode, steps, selection, setSelection, setEdits]);
 
-  const reset = useCallback(() => { setEdits(() => ({ hidden: [], order: [], notes: {} })); onTrack?.('walkthrough_reset'); }, [setEdits, onTrack]);
+  const reset = useCallback(() => { setEdits(() => ({ hidden: [], order: [], notes: {}, moments: {} })); onTrack?.('walkthrough_reset'); }, [setEdits, onTrack]);
 
   return {
     status: state.status, steps, draft, index: state.index, current, stepData: state.stepData,
     mode, opening, selectedCount,
-    prepare, start, next, prev, goTo, exit, hide, setNote, move, reset, coverage, ...focus,
+    prepare, start, next, prev, goTo, exit, hide, setNote, setMoment, move, reset, coverage, ...focus,
   };
 }

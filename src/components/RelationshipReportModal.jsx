@@ -198,6 +198,13 @@ export default function RelationshipReportModal({
                     label={wt.noteField}
                     onCommit={v => walkthrough.setNote(s.key, v)}
                   />
+                  <TextField
+                    size="small" type="date" label={wt.momentLabel}
+                    value={s.moment || ''}
+                    onChange={e => walkthrough.setMoment(s.key, e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ mt: 1, width: 190 }}
+                  />
                 </Box>
                 <Box sx={{ display: 'flex' }}>
                   <IconButton size="small" disabled={i === 0} onClick={() => walkthrough.move(s.key, -1)} title={wt.moveUp}><ArrowUpwardIcon fontSize="inherit" /></IconButton>

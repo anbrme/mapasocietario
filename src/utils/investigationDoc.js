@@ -42,9 +42,11 @@ export function buildInvestigationDoc({
   blocks = null,
   mode = null,
   opening = null,
+  timeline = null,
 }) {
   const notedNodes = (graphData?.nodes || []).filter(hasNodeNote);
   const notesById = new Map(notedNodes.map(n => [normalizeNodeId(n.id), n.userNote]));
+  const nodeById = new Map((graphData?.nodes || []).map(n => [normalizeNodeId(n.id), n]));
 
   const noteFor = nodeId => {
     const note = notesById.get(normalizeNodeId(nodeId));
@@ -55,6 +57,7 @@ export function buildInvestigationDoc({
     nodeId: c.nodeId,
     name: c.name,
     note: noteFor(c.nodeId),
+    groupKey: nodeById.get(normalizeNodeId(c.nodeId))?.groupKey || null,
   }));
 
   const connectors = (scope?.connectors || []).map(c => ({
@@ -119,5 +122,6 @@ export function buildInvestigationDoc({
     mode: mode === 'selection' || mode === 'draft' ? mode : null,
     opening: opening && (opening.title || opening.line)
       ? { title: String(opening.title || ''), line: String(opening.line || '') } : null,
+    timeline: timeline && typeof timeline === 'object' ? JSON.parse(JSON.stringify(timeline)) : null,
   };
 }
