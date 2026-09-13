@@ -16,6 +16,7 @@
  */
 import { validateRequestPayload, buildRequestEmail } from '../../../src/verify/request.js';
 import { newId } from '../../../src/verify/ids.js';
+import { visitorIp } from '../../_lib/visitorIp.js';
 
 // Not sensitive: visible in the dashboard URL and in `wrangler whoami`.
 const CLOUDFLARE_ACCOUNT_ID = 'e0f6d4652827b154cc920fd53ed54101';
@@ -65,7 +66,7 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, error: result.reason, field: result.field || null }, 400);
   }
 
-  const ip = request.headers.get('cf-connecting-ip') || '';
+  const ip = visitorIp(request, env);
   if (!(await turnstilePassed(body?.turnstileToken, env, ip))) {
     return json({ ok: false, error: 'turnstile_failed' }, 400);
   }

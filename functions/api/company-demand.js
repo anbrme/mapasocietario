@@ -18,6 +18,7 @@ import {
   shouldValidateCompany,
 } from '../empresa/_demand.js';
 import { nameToSlug } from '../empresa/_slug.js';
+import { visitorIp } from '../_lib/visitorIp.js';
 
 const API_BASE = 'https://api.ncdata.eu';
 const EVENT_TYPES = new Set(['search_rendered', 'full_profile_click']);
@@ -109,8 +110,8 @@ async function readBoundedJson(request) {
 }
 
 /** Per-address daily budget, enforced before any upstream request. */
-async function withinRateLimit(db, request) {
-  const address = request.headers.get('CF-Connecting-IP') || 'unknown';
+async function withinRateLimit(db, request, env) {
+  const address = visitorIp(request, env) || 'unknown';
   const day = today();
   const bucketKey = await sha256(`${address}|${day}`);
   const row = await db.prepare(
@@ -302,7 +303,7 @@ export async function onRequestPost({ request, env }) {
   const candidate = validated.value;
 
   try {
-    if (!await withinRateLimit(env.SEO_DB, request)) {
+    if (!await withinRateLimit(env.SEO_DB, request, env)) {
       return json({ ok: false, error: 'rate_limited' }, 429);
     }
 
