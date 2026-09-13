@@ -106,7 +106,12 @@ const DIMENSIONS = [
   ['click_action', 'Click action', 'graph',
     'What a single click actually did (select, select_and_inspect, ...).'],
   ['context_action', 'Context menu action', 'graph', 'Which context-menu item was chosen.'],
-  ['toolbar_action', 'Toolbar action', 'graph', 'Which toolbar control was used.'],
+  // The walkthrough (Recorrido) and the situation report's return link ship as
+  // graph_toolbar_action{toolbar_action:'walkthrough_*'} and sitrep_return —
+  // without toolbar_action registered every walkthrough event is invisible.
+  ['toolbar_action', 'Toolbar action', 'walkthrough', 'Which toolbar control was used (walkthrough_* events live here).'],
+  ['section', 'Walkthrough step kind', 'walkthrough', 'company | person | note — which kind of step was shown.'],
+  ['mode', 'Walkthrough mode', 'walkthrough', 'selection (author-picked steps) or draft (generated fallback).'],
   ['selected_action', 'Selected node action', 'graph', 'Action taken on an already-selected node.'],
   ['selection_method', 'Selection method', 'graph', 'Keyboard or pointer selection of a search result.'],
   ['activation_source', 'Monitor activation source', 'graph', 'Which surface activated BORME monitoring.'],
@@ -133,6 +138,11 @@ const METRICS = [
   ['officer_suggestion_count', 'Officer suggestions', 'intent', 'STANDARD', 'Officer half of the suggestions.'],
   ['selection_rank', 'Selection rank', 'intent', 'STANDARD',
     'Which rank was chosen. A high mean rank means the top result is wrong.'],
+  ['steps', 'Walkthrough steps', 'walkthrough', 'STANDARD', 'Steps in a started walkthrough.'],
+  ['companies', 'Return-link companies', 'walkthrough', 'STANDARD', 'Companies a situation report link carried back to the app.'],
+  ['loaded', 'Return-link companies loaded', 'walkthrough', 'STANDARD', 'How many of them the app could draw.'],
+  ['changed', 'Return-link companies changed', 'walkthrough', 'STANDARD', 'How many had a filing after the report date.'],
+  ['watch', 'Return-link watch requested', 'walkthrough', 'STANDARD', '1 when the link asked to open the watchlist dialog.'],
 ];
 
 /* ------------------------------------------------------------------ auth */
