@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-13
 **Repo:** `mapasocietario` only (frontend). No backend change.
-**Status:** draft, awaiting review.
+**Status:** approved 2026-09-13.
 **Builds on:** `2026-09-13-walkthrough-v2-selection-dossier-design.md` (the
 step object, the selection model, the chapter/evidence split). Everything not
 named here stays as v2 built it.
@@ -15,7 +15,8 @@ what nobody in this market ships is a portable file that *moves*: a visual
 that changes under the text as the reader scrolls, a network that shows its
 own history, and a way back to the live data. That is the format this spec
 builds. The brief, in the author's words: "visually enticing, light, dynamic
-and as live as it can be".
+and as living as it can be". Living, not live: motion and state inside the
+file, never a network feed.
 
 Three decisions, taken in chat and not to be relitigated here:
 
@@ -50,6 +51,15 @@ current state, chapters after it. Nothing sticky, no slider.
 
 The cover, contents, summary and annexes keep their single-column width. Only
 the story section widens.
+
+### The annexes as an explorer
+
+On screen the annexes become one tabbed block, *Explorar la evidencia* /
+*Explore the evidence*: one tab per non-empty annex (companies, connections,
+ownership, corrections), the first open by default, switched with buttons
+(`role="tablist"`, arrow keys move between tabs). In print every tab is
+stacked in order under its own heading, as today. The tab strip is the only
+new control; the tables inside are unchanged.
 
 ### The timeline
 
@@ -176,7 +186,8 @@ subject companies only.
 | `src/utils/investigationExport/documentStyle.js` | grid, sticky pane, slider, ghost/ceased/hidden states, transitions, reduced-motion, 960 px and print rules |
 | `src/utils/investigationExport/walkthroughScript.js` | IntersectionObserver over `.chapter` (rootMargin `-50% 0px -50% 0px`); `renderAt(date)` applying `stateAt`'s rule through classes; slider binding; animated pan via CSS `transform` on `#viewport` (`transform-origin: 0 0`, transition disabled while dragging or pinching); detach/re-attach logic; keyboard ←/→ still steps chapters |
 | `src/utils/investigationExport/renderGraphSvg.js` | links carry `data-key="a|b|role"` (role folded like `pairKey` + relationship) so the script can address one seat among several on the same pair |
-| `src/utils/investigationExport/exportCopy.js` | return-link copy, slider labels, undated caption, "según su último acto" |
+| `src/utils/investigationExport/exportCopy.js` | return-link copy, slider labels, undated caption, "según su último acto", explorer title |
+| `src/utils/investigationExport/documentSections.js` (annexes) | `renderAnnexes` wraps the non-empty annexes in a tab strip; print stacks them |
 | `src/utils/walkthrough/walkthroughCopy.js` | *Momento* / *Moment* label |
 | `src/App.jsx` | `gk` via `getAll`; `since`, `watch` parsed by a pure `parseReturnParams(search)` in `src/utils/returnParams.js` (new) |
 | `src/components/SpanishCompanyNetworkGraph.jsx` | seed every `gk`; changed-since marker from `since`; open the watchlist dialog on `watch=1` after seeding |
@@ -196,6 +207,7 @@ labelling change, not a structural one.
 | Return link | Ver esta red en Mapa Societario, con los cambios desde el {date} | See this network on Mapa Societario, with changes since {date} |
 | Watch link | Avísame si alguna de estas empresas cambia | Alert me when any of these companies changes |
 | Chapter head moment | {date} appended after the eyebrow with " · " | same |
+| Explorer title | Explorar la evidencia | Explore the evidence |
 
 Dates render with the document's existing `fmtDate` (long form). The URL
 carries ISO.
@@ -224,8 +236,10 @@ Pure, in vitest as today:
   dates, the footer carries both links with every company's `gk` and the
   `since` date, no link when no company has a group key.
 - `walkthroughScript`: contains `IntersectionObserver`, `prefers-reduced-motion`,
-  binds `wt-slider`, never uses `innerHTML`, never contains `</script`,
-  parses.
+  binds `wt-slider`, binds the annex tabs, never uses `innerHTML`, never
+  contains `</script`, parses.
+- `documentSections` (annexes): one tab per non-empty annex, none when only
+  one annex has rows, every panel present in the markup for print.
 - `returnParams`: repeated `gk`, ISO `since` only, `watch` boolean, junk
   ignored.
 - `buildExportHtml`: `timeline` embedded with `<` escaped.
