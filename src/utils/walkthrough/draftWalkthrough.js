@@ -17,9 +17,6 @@ import { companyEvidence, personSeats } from './stepEvidence';
 import { walkthroughCopy, graphOnlyLine } from './walkthroughCopy';
 
 export const SELECTION_CAP = 12;
-// Alias kept for one commit so the v1 loader (walkthroughLoader.js) still
-// compiles; Task 4 replaces it with a cap of its own.
-export const FINDINGS_FETCH_CAP = SELECTION_CAP;
 const CONNECTOR_CAP = 8;
 
 const SITE = 'https://mapasocietario.es';
