@@ -74,6 +74,23 @@ describe('DOCUMENT_STYLE', () => {
     );
   });
 
+  it('drops the graph caption under 960px so the step card keeps the pane budget', () => {
+    // 62vh of pane minus 30vh of map left the card ~58px on a 400x800 phone,
+    // because the two-line caption (counts + legend) ate the rest. The counts
+    // are in the contents and the summary already.
+    const narrow = DOCUMENT_STYLE.slice(
+      DOCUMENT_STYLE.indexOf('@media (max-width:959px){\n')
+    );
+    const block = narrow.slice(0, narrow.indexOf('\n}'));
+    expect(block).toContain('.story #graph figcaption{display:none}');
+    // Paper has the room, and that block applies to print too (A4 inside 18mm
+    // margins is ~657 CSS px), so print puts the caption back — by source order,
+    // with no !important on either side.
+    const printBlock = DOCUMENT_STYLE.slice(DOCUMENT_STYLE.indexOf('@media print{'));
+    expect(printBlock).toContain('.story #graph figcaption{display:flex}');
+    expect(DOCUMENT_STYLE).not.toContain('figcaption{display:none!important}');
+  });
+
   it('keeps the pane a static block in print, flex layout and state styling reset', () => {
     const printBlock = DOCUMENT_STYLE.slice(DOCUMENT_STYLE.indexOf('@media print{'));
     expect(printBlock).toContain('.story #graph{position:static;max-height:none;overflow:visible;display:block}');

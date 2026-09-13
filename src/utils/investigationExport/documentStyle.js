@@ -122,6 +122,7 @@ h3.explorer{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:
 .story #graph{max-height:62vh}
 .story #graph #map{height:30vh}
 .story #graph .legend{display:none}
+.story #graph figcaption{display:none}
 }
 @media (min-width:960px){
 .wrap{max-width:1180px}
@@ -143,6 +144,10 @@ body{background:#fff;color:#0B1324;font-size:11pt}
 #map,.story #graph #map{height:150mm}
 .story{display:block}
 .story #graph{position:static;max-height:none;overflow:visible;display:block}
+/* A4 at 18mm margins is ~657 CSS px wide, so the max-width:959px block above
+   applies to print too and would swallow the caption. Paper has the room: give
+   it back. Source order wins, no !important needed. */
+.story #graph figcaption{display:flex}
 #wt-time{display:none!important}
 .annex-tabs{display:none!important}
 .annex-panel[hidden]{display:block!important}
