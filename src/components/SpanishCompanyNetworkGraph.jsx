@@ -2543,6 +2543,30 @@ const SpanishCompanyNetworkGraph = ({
   // reads it — the same reason the watchlist effect above can call
   // loadCompanyRecordIntoGraph. Keeping it here (rather than lifting the
   // fetcher) sits the two seeding effects side by side.
+  // Drawing the companies is not enough: the report and walkthrough buttons
+  // count PINNED company nodes (relationshipSubjectIds = pinnedNodeIds), so an
+  // unpinned seed leaves the reader who came back from a file with no way to
+  // reopen the report they arrived from. This pins them the way a search pins
+  // its subject — setPinnedNodeIds with the node's id — matching the seeds to
+  // the drawn nodes by the group key just stamped on them, and falling back to
+  // the trimmed upper-cased name (a renamed company draws under its current
+  // name, which is not the one the document was written under). The id derived
+  // from the seed name is added too: graphDataRef trails the loader's last
+  // commit by a render, and pinning an id no node carries is inert.
+  const pinSeededCompanies = useCallback(seeds => {
+    const list = (seeds || []).filter(sd => sd?.name);
+    if (!list.length) return;
+    const keys = new Set(list.map(sd => sd.groupKey).filter(Boolean));
+    const names = new Set(list.map(sd => sd.name.trim().toUpperCase()));
+    const matched = graphDataRef.current.nodes
+      .filter(n => isMonitorableNode(n)
+        && ((n.groupKey && keys.has(n.groupKey))
+          || names.has(String(n.name || '').trim().toUpperCase())))
+      .map(n => normalizeNodeId(n.id));
+    const derived = list.map(sd => companyNameToId(sd.name));
+    setPinnedNodeIds(prev => new Set([...prev, ...matched, ...derived]));
+  }, []);
+
   const returnSeededRef = useRef(false);
   useEffect(() => {
     const ret = initialReturn;
@@ -2580,6 +2604,7 @@ const SpanishCompanyNetworkGraph = ({
           return;
         }
         stampGroupKeys(ret.companies);
+        pinSeededCompanies(ret.companies);
         if (changes.size) setWatchlistChanges(changes);
         setSearchQuery('');
         trackEvent('sitrep_return', {
@@ -8789,13 +8814,14 @@ const SpanishCompanyNetworkGraph = ({
       return undefined;
     }
 
-    // A watchlist token belongs here for the same reason a deep link does:
-    // the reader asked for a specific graph. Offering to restore an unrelated
-    // saved session on top of it is a question with a wrong answer — accepting
-    // replaces the very set they clicked through from their inbox to see.
+    // A watchlist token and a situation report's return link belong here for
+    // the same reason a deep link does: the reader asked for a specific graph.
+    // Offering to restore an unrelated saved session on top of it is a question
+    // with a wrong answer — accepting replaces the very set they clicked
+    // through from their inbox, or from the report they were reading, to see.
     const hasInitialRequest = Boolean(
       initialCompanyData || initialOfficerData || initialCompanyName
-      || initialWatchlistToken
+      || initialWatchlistToken || initialReturn?.companies?.length
     );
     if (hasInitialRequest) {
       autosaveReadyRef.current = true;
@@ -8828,7 +8854,7 @@ const SpanishCompanyNetworkGraph = ({
     return () => {
       cancelled = true;
     };
-  }, [embedded, initialCompanyData, initialOfficerData, initialCompanyName]);
+  }, [embedded, initialCompanyData, initialOfficerData, initialCompanyName, initialReturn]);
 
   const startFreshAutosaveSession = useCallback(() => {
     autosaveWriteIdRef.current += 1;

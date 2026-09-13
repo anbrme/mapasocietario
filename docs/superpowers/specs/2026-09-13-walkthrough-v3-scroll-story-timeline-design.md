@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-13
 **Repo:** `mapasocietario` only (frontend). No backend change.
-**Status:** approved 2026-09-13.
+**Status:** implemented 2026-09-13 on feat/walkthrough-v3 (7 tasks + fix wave, subagent-driven, live-checked on a real graph and a 400 px viewport). Not verified: real-device touch, print pagination.
 **Builds on:** `2026-09-13-walkthrough-v2-selection-dossier-design.md` (the
 step object, the selection model, the chapter/evidence split). Everything not
 named here stays as v2 built it.
