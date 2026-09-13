@@ -1,6 +1,8 @@
 // The situation report's footer links back with the companies it drew:
 // /app?c=<groupKey>|<name>&c=…&since=YYYY-MM-DD&source=sitrep[&watch=1].
 // Names travel with the keys because the company loader needs one.
+import { looksLikeGroupKey } from './companyName';
+
 export const RETURN_COMPANY_CAP = 12;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -11,7 +13,12 @@ export const parseReturnParams = search => {
     if (i < 1) return null;
     const groupKey = v.slice(0, i).trim();
     const name = v.slice(i + 1).trim();
-    return groupKey && name ? { groupKey, name } : null;
+    // A key off the URL is attacker-controlled and the graph stamps it onto
+    // node.groupKey, from where watch=1 can persist it into a monitoring
+    // subscription. Nothing downstream re-checks it, so the boundary is here:
+    // only a real entity key shape ("c:12345") gets through.
+    if (!looksLikeGroupKey(groupKey)) return null;
+    return name ? { groupKey, name } : null;
   }).filter(Boolean).slice(0, RETURN_COMPANY_CAP);
   const since = ISO_DAY.test(p.get('since') || '') ? p.get('since') : null;
   return { companies, since, watch: p.get('watch') === '1' };

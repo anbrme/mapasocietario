@@ -369,6 +369,9 @@ const SEARCH_COPY = {
     restoredSession: 'Restored session',
     watchCompanies: 'Watch these companies (free)',
     watchlistEmpty: 'This watchlist has no companies to draw yet. Confirm the link in your email first.',
+    // The return link from an exported situation report fails differently: no
+    // email to confirm, so it points the reader at the search box instead.
+    sitrepReturnEmpty: "We could not load this report's companies. Search for them by name.",
     watchlistPartial: (loaded, total) =>
       `Loaded ${loaded} of ${total} companies. The rest could not be reached — try again in a moment.`,
     watchlistLinkExpired: 'That watchlist link has expired. Request a new one from your monitoring page.',
@@ -739,6 +742,7 @@ const SEARCH_COPY = {
     restoredSession: 'Sesión restaurada',
     watchCompanies: 'Vigilar estas empresas (gratis)',
     watchlistEmpty: 'Esta lista aún no tiene empresas que dibujar. Confirma antes el enlace de tu correo.',
+    sitrepReturnEmpty: 'No hemos podido cargar las empresas de este informe. Búscalas por su nombre.',
     watchlistPartial: (loaded, total) =>
       `Se han cargado ${loaded} de ${total} empresas. El resto no ha respondido — inténtalo de nuevo en un momento.`,
     watchlistLinkExpired: 'Ese enlace de la lista ha caducado. Pide uno nuevo desde tu página de monitorización.',
@@ -2564,7 +2568,7 @@ const SpanishCompanyNetworkGraph = ({
                 const ev = await fetchWalkthroughEvents({ groupKey: c.groupKey, name: c.name, size: 25 });
                 const list = ev?.events || ev?.results || [];
                 count = Math.max(1, list.filter(
-                  e => String(e.event_date || e.date || '').slice(0, 10) > ret.since
+                  e => String(e.event_date || e.date || e.indexed_date || '').slice(0, 10) > ret.since
                 ).length);
               } catch { /* the last_seen comparison already proved a change */ }
               changes.set(c.groupKey, count);
@@ -2572,7 +2576,7 @@ const SpanishCompanyNetworkGraph = ({
           } catch { /* one unreachable company must not cost the others */ }
         }
         if (loaded === 0) {
-          setError(text.watchlistEmpty);
+          setError(text.sitrepReturnEmpty);
           return;
         }
         stampGroupKeys(ret.companies);
