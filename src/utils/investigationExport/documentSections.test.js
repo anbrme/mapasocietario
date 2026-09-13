@@ -451,6 +451,15 @@ describe('renderStory', () => {
     expect(html).toContain(t.undated(2));
   });
 
+  it('emits one tick per distinct moment when two chapters share one', () => {
+    const shared = {
+      ...storyDoc,
+      steps: [companyStep('c1', { moment: '2024-03-11' }), companyStep('c2', { moment: '2024-03-11' })],
+    };
+    const html = renderStory(shared, graphData, t, wt);
+    expect(html.match(/<option value="0">/g)).toHaveLength(1);
+  });
+
   it('omits the slider when the domain has fewer than two dates', () => {
     const html = renderStory({ ...storyDoc, timeline: { ...timeline, dates: ['2026-09-13'] } }, graphData, t, wt);
     expect(html).not.toContain('id="wt-slider"');
@@ -515,5 +524,13 @@ describe('renderFooter return links', () => {
     const html = renderFooter({ ...docWithKeys, companies: [docWithKeys.companies[1]] }, t, 'es');
     expect(html).not.toContain('since=');
     expect(html).not.toContain(t.watchLink);
+  });
+
+  it('renders no return links when the document carries no usable generated day', () => {
+    [null, '', 'not a date'].forEach(generatedAt => {
+      const html = renderFooter({ ...docWithKeys, generatedAt }, t, 'es');
+      expect(html).not.toContain('since=');
+      expect(html).not.toContain(t.watchLink);
+    });
   });
 });

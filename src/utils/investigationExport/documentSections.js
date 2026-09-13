@@ -100,8 +100,8 @@ const renderTimeControl = (doc, t, lang) => {
   const tl = doc.timeline;
   if (!tl || !Array.isArray(tl.dates) || tl.dates.length < 2) return '';
   const idx = new Map(tl.dates.map((d, i) => [d, i]));
-  const ticks = (doc.steps || []).map(s => s.moment).filter(m => idx.has(m))
-    .map(m => `<option value="${idx.get(m)}"></option>`).join('');
+  const ticks = [...new Set((doc.steps || []).filter(s => idx.has(s.moment)).map(s => idx.get(s.moment)))]
+    .sort((a, b) => a - b).map(i => `<option value="${i}"></option>`).join('');
   const undated = tl.undated > 0
     ? `<span id="wt-undated">${esc(t.undated(tl.undated))}</span>`
     : '<span id="wt-undated"></span>';
@@ -286,10 +286,13 @@ ${panels.map(p => annex(p.title, p.body, p.id)).join('\n')}
 // resolve to the wrong company often enough to be worse than nothing.
 const returnUrl = (doc, watch) => {
   const keyed = (doc.companies || []).filter(c => c.groupKey && c.name);
-  if (!keyed.length) return '';
+  const since = String(doc.generatedAt || '').slice(0, 10);
+  // Without the day there is nothing to show changes *since*, and the link's
+  // own label would read "Invalid Date" — so no day, no link.
+  if (!keyed.length || !/^\d{4}-\d{2}-\d{2}$/.test(since)) return '';
   const p = new URLSearchParams();
   keyed.forEach(c => p.append('c', `${c.groupKey}|${c.name}`));
-  p.set('since', String(doc.generatedAt || '').slice(0, 10));
+  p.set('since', since);
   p.set('source', 'sitrep');
   if (watch) p.set('watch', '1');
   return `${SITE}/app?${p}`;

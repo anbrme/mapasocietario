@@ -17,7 +17,7 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).toContain('#annexes{page-break-before:always');
 
     const printBlock = DOCUMENT_STYLE.slice(DOCUMENT_STYLE.indexOf('@media print{'));
-    expect(printBlock).toContain('#wt-panel,.wt-controls,.hide-print{display:none!important}');
+    expect(printBlock).toContain('#wt-panel,.hide-print{display:none!important}');
     expect(printBlock).toContain(':root{');
     expect(printBlock).toContain('--muted:#58677D');
     expect(printBlock).toContain('--line:#CCD6E3');
@@ -49,6 +49,14 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).toContain('[data-state="ghost"]');
     expect(DOCUMENT_STYLE).toMatch(/@media print\{[\s\S]*\.annex-panel\[hidden\]\{display:block!important\}/);
     expect(DOCUMENT_STYLE).toMatch(/@media print\{[\s\S]*\.story\{display:block\}/);
+    expect(DOCUMENT_STYLE).toMatch(/@media print\{[\s\S]*#viewport\{transform:none!important/);
+    // One grid column would make the pane's own grid area its sticky
+    // containing block, so below the two-column breakpoint .story is a block.
+    expect(DOCUMENT_STYLE).toContain('@media (max-width:959px){.story{display:block}}');
+  });
+
+  it('carries no rule for chrome the document no longer renders', () => {
+    expect(DOCUMENT_STYLE).not.toContain('.wt-controls');
   });
 
   it('styles the note eyebrow span in both the walkthrough card and the chapter note', () => {
