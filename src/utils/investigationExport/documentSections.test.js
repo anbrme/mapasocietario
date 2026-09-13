@@ -571,3 +571,19 @@ describe('renderFooter return links', () => {
     });
   });
 });
+
+describe('renderChapters — unified company step', () => {
+  it('renders the seats table under the company evidence and the unified eyebrow', () => {
+    const seats = [{ company: 'BETA SL', companyId: 'H:2', role: 'Administrador único', since: '2020-01-01', until: '', status: 'active' }];
+    const unified = companyStep('H:1', { unified: true, evidence: companyEvidence({ seats }) });
+    const html = renderChapters({ ...doc, steps: [unified] }, t, wt);
+    expect(html).toContain('Empresa y cargo');
+    expect(html).toContain('Cargos en las empresas del mapa');
+    expect(html).toContain('BETA SL');
+  });
+
+  it('a plain company chapter has no seats table', () => {
+    const html = renderChapters({ ...doc, steps: [companyStep('H:1')] }, t, wt);
+    expect(html).not.toContain('Cargos en las empresas del mapa');
+  });
+});

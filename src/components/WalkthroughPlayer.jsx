@@ -1,12 +1,26 @@
 // src/components/WalkthroughPlayer.jsx
-// The docked card of the live walkthrough. Reads one step, writes one note.
-// Reordering lives in the situation-report modal, not here.
-import React, { useEffect, useState } from 'react';
-import { Box, Button, Chip, Divider, IconButton, Paper, TextField, Tooltip, Typography } from '@mui/material';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+// The one-row controller of the live walkthrough: where you are, what the step
+// is, and the way back to the report. It reads a step and never writes one —
+// notes, moments, order and hiding live in the situation-report modal and on
+// the node's own private note. Its height is exported so the camera can fit
+// the step into the band of canvas it leaves uncovered.
+import React, { useEffect } from 'react';
+import { Box, Button, Chip, IconButton, Paper, Tooltip, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { walkthroughCopy } from '../utils/walkthrough/walkthroughCopy';
-import { NODE_NOTE_FLAGS, NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import { walkthroughCopy, stepKindLabel } from '../utils/walkthrough/walkthroughCopy';
+import { NODE_NOTE_FLAGS } from '../utils/nodeNotes';
+
+// Height reserved at the bottom of the canvas while the controller is open.
+// The camera's inset, not a measurement: the row is laid out to this height
+// on a wide viewport and wraps to twice it on a compact one.
+export const WALKTHROUGH_CONTROLLER_HEIGHT = 56;
+export const WALKTHROUGH_CONTROLLER_HEIGHT_COMPACT = 104;
+const CONTROLLER_MARGIN = 12;
+
+export const walkthroughControllerInset = compact => (compact
+  ? WALKTHROUGH_CONTROLLER_HEIGHT_COMPACT
+  : WALKTHROUGH_CONTROLLER_HEIGHT + CONTROLLER_MARGIN);
 
 // The moment is an ISO day in the model and a sentence to the reader. A bare
 // 'YYYY-MM-DD' read as UTC midnight renders as the previous day west of
@@ -14,37 +28,17 @@ import { NODE_NOTE_FLAGS, NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
 const fmtMoment = (iso, lang) => new Date(`${iso}T12:00:00`).toLocaleDateString(
   lang === 'en' ? 'en-GB' : 'es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 
-const evidenceLine = (step, t) => {
-  const ev = step?.evidence;
-  if (!ev) return '';
-  if (step.kind === 'company') {
-    const findingText = ev.findings?.[0]?.text;
-    if (findingText) return findingText;
-    const lastFiling = ev.status?.lastFiling;
-    return lastFiling ? `${t.subheads.filings}: ${lastFiling.date} · ${lastFiling.type}` : '';
-  }
-  if (step.kind === 'person') {
-    return (ev.seats || []).slice(0, 2).map(s => `${s.role} · ${s.company}`).join(' · ');
-  }
-  return '';
-};
-
 export default function WalkthroughPlayer({
-  open, step, index, total, lang = 'es', compact = false, opening = null, showOpening = false,
-  onPrev, onNext, onExit, onHide, onNote, onEvidence,
+  open, step, index, total, lang = 'es', compact = false, opening = null, bottomOffset = 0,
+  onPrev, onNext, onExit, onEdit, onEvidence,
 }) {
   const t = walkthroughCopy(lang);
-  const [note, setNote] = useState('');
-  const initialText = step?.narrative?.text || step?.authorNote?.text || '';
-  useEffect(() => {
-    setNote(initialText);
-  }, [step?.key, initialText]);
 
   useEffect(() => {
     if (!open) return undefined;
     const onKey = e => {
-      const t = e.target;
-      if (t && typeof t.closest === 'function' && t.closest('input,textarea,[contenteditable="true"],[role="listbox"],[role="option"],[role="dialog"]')) return;
+      const el = e.target;
+      if (el && typeof el.closest === 'function' && el.closest('input,textarea,[contenteditable="true"],[role="listbox"],[role="option"],[role="dialog"]')) return;
       if (e.key === 'ArrowRight') onNext?.();
       if (e.key === 'ArrowLeft') onPrev?.();
       if (e.key === 'Escape') onExit?.();
@@ -55,60 +49,55 @@ export default function WalkthroughPlayer({
 
   if (!open || !step) return null;
   const flagColor = NODE_NOTE_FLAGS[step.narrative?.flag || step.authorNote?.flag] || null;
-  const canEvidence = !!onEvidence;
-  const eyebrow = t.kinds?.[step.kind] || t.sections?.[step.section] || '';
-  const body = step.summary || step.text;
-  const evidence = evidenceLine(step, t);
-  const noteLabel = step.narrative ? `${t.kinds.note} · ${t.noteField}` : t.noteField;
+  const counter = `${index + 1} / ${total}`;
 
   return (
     <Paper
       elevation={6}
+      role="toolbar"
+      aria-label={opening?.title || t.opening(total)}
       sx={{
-        position: 'absolute', left: compact ? 0 : 16, right: compact ? 0 : 16, bottom: compact ? 0 : 16,
-        zIndex: 20, p: 2, borderRadius: compact ? '12px 12px 0 0' : 2,
-        borderLeft: flagColor ? `4px solid ${flagColor}` : undefined, maxHeight: '45vh', overflow: 'auto',
+        position: 'absolute', zIndex: 20,
+        left: compact ? 0 : CONTROLLER_MARGIN, right: compact ? 0 : CONTROLLER_MARGIN,
+        bottom: bottomOffset + (compact ? 0 : CONTROLLER_MARGIN),
+        minHeight: compact ? WALKTHROUGH_CONTROLLER_HEIGHT_COMPACT : WALKTHROUGH_CONTROLLER_HEIGHT,
+        px: 1.5, py: 0.75, borderRadius: compact ? '12px 12px 0 0' : 2,
+        borderLeft: flagColor ? `4px solid ${flagColor}` : undefined,
+        display: 'flex', alignItems: 'center', gap: 1, flexWrap: compact ? 'wrap' : 'nowrap',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-        <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 700, lineHeight: 1.6 }}>
-          {eyebrow}
+      <Tooltip title={opening?.line || ''}>
+        <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', whiteSpace: 'nowrap' }}>
+          {counter}
         </Typography>
-        <Chip size="small" variant="outlined" label={t.sources[step.source]} sx={{ height: 20, fontSize: '0.7rem' }} />
-        {step.moment && <Chip size="small" label={fmtMoment(step.moment, lang)} sx={{ height: 20, fontSize: '0.7rem' }} />}
-        {step.date && <Typography variant="caption" color="text.secondary">{step.date}</Typography>}
-        <Box sx={{ flex: 1 }} />
-        <Tooltip title={t.hideStep}><IconButton size="small" onClick={() => onHide?.(step.key)}><VisibilityOffIcon fontSize="small" /></IconButton></Tooltip>
-        <Tooltip title={t.exit}><IconButton size="small" onClick={onExit}><CloseIcon fontSize="small" /></IconButton></Tooltip>
-      </Box>
-      {showOpening && opening && (
-        <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{opening.title}</Typography>
-          <Typography variant="caption" color="text.secondary">{opening.line}</Typography>
-          <Divider sx={{ mb: 1 }} />
-        </>
+      </Tooltip>
+      <Chip size="small" variant="outlined" label={stepKindLabel(step, t)} sx={{ height: 20, fontSize: '0.7rem' }} />
+      <Typography
+        variant="subtitle2"
+        sx={{ fontWeight: 700, flex: compact ? '1 1 100%' : 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', order: compact ? -1 : 0 }}
+        title={step.title}
+      >
+        {step.title}
+      </Typography>
+      {step.moment && (
+        <Chip size="small" label={fmtMoment(step.moment, lang)} sx={{ height: 20, fontSize: '0.7rem' }} />
       )}
-      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{step.title}</Typography>
-      {body && (
-        <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mb: evidence ? 0.5 : 1 }}>{body}</Typography>
+      {onEvidence && (
+        <Button size="small" onClick={() => onEvidence(step)} sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
+          {t.evidence} →
+        </Button>
       )}
-      {evidence && (
-        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line', mb: 1 }}>{evidence}</Typography>
+      <Box sx={{ flex: compact ? 1 : 0 }} />
+      <Button size="small" variant="outlined" onClick={onPrev} disabled={index <= 0} sx={{ textTransform: 'none' }}>{t.prev}</Button>
+      <Button size="small" variant="contained" onClick={onNext} disabled={index >= total - 1} sx={{ textTransform: 'none' }}>{t.next}</Button>
+      {onEdit && (
+        <Tooltip title={t.editInReport}>
+          <IconButton size="small" onClick={onEdit} aria-label={t.editInReport}><EditOutlinedIcon fontSize="small" /></IconButton>
+        </Tooltip>
       )}
-      {canEvidence && (
-        <Button size="small" onClick={() => onEvidence(step)} sx={{ textTransform: 'none', px: 0, mb: 1 }}>{t.evidence} →</Button>
-      )}
-      <TextField
-        fullWidth size="small" multiline minRows={1} maxRows={4}
-        label={noteLabel} value={note}
-        onChange={e => setNote(e.target.value.slice(0, NODE_NOTE_MAX_LENGTH))}
-        onBlur={() => { if (note !== initialText) onNote?.(step.key, note); }}
-      />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5 }}>
-        <Button size="small" variant="outlined" onClick={onPrev} disabled={index <= 0} sx={{ textTransform: 'none' }}>{t.prev}</Button>
-        <Button size="small" variant="contained" onClick={onNext} disabled={index >= total - 1} sx={{ textTransform: 'none' }}>{t.next}</Button>
-        <Typography variant="caption" color="text.secondary">{index + 1} / {total}</Typography>
-      </Box>
+      <Tooltip title={t.exit}>
+        <IconButton size="small" onClick={onExit} aria-label={t.exit}><CloseIcon fontSize="small" /></IconButton>
+      </Tooltip>
     </Paper>
   );
 }

@@ -3,9 +3,6 @@
 // the graph itself can say (structure) and the chrome around it.
 
 const ES = {
-  button: 'Recorrido',
-  preparing: 'Preparando…',
-  tooltip: 'Recorre esta red paso a paso: registro, conexiones y tus notas',
   sections: {
     subject: 'Sujeto',
     stands_out: 'Lo que destaca',
@@ -44,7 +41,9 @@ const ES = {
   openingSelection: 'Tu selección, en el orden elegido',
   openingDraft: 'Borrador generado: empresas, conexiones y tus notas',
   openingCapped: (n, cap = 12) => `Se muestran los ${cap} primeros de ${n} seleccionados`,
-  kinds: { company: 'Empresa', person: 'Persona', note: 'Nota' },
+  kinds: { company: 'Empresa', person: 'Persona', note: 'Nota', unified: 'Empresa y cargo' },
+  playOnMap: 'Ver en el mapa',
+  editInReport: 'Editar en el informe',
   hint: mod => `Selecciona nodos con ${mod}+clic (Ctrl+clic en Windows/Linux) para elegir los pasos. Sin selección, se genera un borrador.`,
   blocks: { identity: 'Identidad', board: 'Órgano de administración', filings: 'Últimos actos', findings: 'Lo que destaca' },
   subheads: { board: 'Órgano de administración', filings: 'Últimos actos', findings: 'Lo que destaca', unseen: 'Lo que el registro no muestra', seats: 'Cargos en las empresas del mapa' },
@@ -61,9 +60,6 @@ const ES = {
 };
 
 const EN = {
-  button: 'Walkthrough',
-  preparing: 'Preparing…',
-  tooltip: 'Step through this network: registry, connections and your notes',
   sections: {
     subject: 'Subject',
     stands_out: 'What stands out',
@@ -102,7 +98,9 @@ const EN = {
   openingSelection: 'Your selection, in the order you chose',
   openingDraft: 'Generated draft: companies, connections and your notes',
   openingCapped: (n, cap = 12) => `Showing the first ${cap} of ${n} selected`,
-  kinds: { company: 'Company', person: 'Person', note: 'Note' },
+  kinds: { company: 'Company', person: 'Person', note: 'Note', unified: 'Company and officer' },
+  playOnMap: 'Play on the map',
+  editInReport: 'Edit in the report',
   hint: mod => `Select nodes with ${mod}+click (Ctrl+click on Windows/Linux) to choose the steps. With no selection, a draft is generated.`,
   blocks: { identity: 'Identity', board: 'Governing body', filings: 'Latest filings', findings: 'What stands out' },
   subheads: { board: 'Governing body', filings: 'Latest filings', findings: 'What stands out', unseen: 'What the registry cannot show', seats: 'Seats across the companies on the map' },
@@ -124,6 +122,13 @@ export const platformModifier = nav => {
 };
 
 export const walkthroughCopy = lang => (lang === 'en' ? EN : ES);
+
+// The eyebrow for a step: a unified company step (a company that also holds
+// seats) reads as both; otherwise the entity kind, or the v1 section name.
+export const stepKindLabel = (step, t) => {
+  if (step?.kind === 'company' && step?.unified) return t.kinds.unified;
+  return t.kinds?.[step?.kind] || t.sections?.[step?.section] || '';
+};
 
 export const graphOnlyLine = (t, officerCount) => t.officersVisible(officerCount);
 

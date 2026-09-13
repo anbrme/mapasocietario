@@ -4,7 +4,7 @@
 // sourced by us — never styled as a Mapa Societario deliverable.
 import { escapeHtml as esc } from '../escapeHtml';
 import { exportCopy } from './exportCopy';
-import { walkthroughCopy } from '../walkthrough/walkthroughCopy';
+import { walkthroughCopy, stepKindLabel } from '../walkthrough/walkthroughCopy';
 import { DOCUMENT_STYLE } from './documentStyle';
 import { WALKTHROUGH_SCRIPT } from './walkthroughScript';
 import {
@@ -19,7 +19,7 @@ export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
   const steps = (safeDoc.steps || []).map(s => ({
     key: s.key,
     kind: s.kind,
-    kindLabel: wt.kinds[s.kind] || wt.sections?.[s.section] || '',
+    kindLabel: stepKindLabel(s, wt),
     sourceLabel: wt.sources[s.source] || s.source || '',
     title: s.title,
     summary: s.summary || s.text || '',
