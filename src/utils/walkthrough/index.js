@@ -3,3 +3,4 @@ export * from './draftWalkthrough';
 export * from './applyWalkthroughEdits';
 export * from './walkthroughLoader';
 export * from './walkthroughViewport';
+export * from './stepEvidence';
