@@ -109,7 +109,7 @@ const DIMENSIONS = [
   // The walkthrough (Recorrido) and the situation report's return link ship as
   // graph_toolbar_action{toolbar_action:'walkthrough_*'} and sitrep_return —
   // without toolbar_action registered every walkthrough event is invisible.
-  ['toolbar_action', 'Toolbar action', 'walkthrough', 'Which toolbar control was used (walkthrough_* events live here).'],
+  ['toolbar_action', 'Toolbar action', 'graph', 'Which toolbar control was used (walkthrough_* events live here too).'],
   ['section', 'Walkthrough step kind', 'walkthrough', 'company | person | note — which kind of step was shown.'],
   ['mode', 'Walkthrough mode', 'walkthrough', 'selection (author-picked steps) or draft (generated fallback).'],
   ['selected_action', 'Selected node action', 'graph', 'Action taken on an already-selected node.'],
