@@ -67,4 +67,11 @@ describe('exportCopy', () => {
       expect(t.steps(7).length).toBeGreaterThan(0);
     });
   });
+
+  it('formats chapterLabel with zero-padded number in both languages', () => {
+    expect(exportCopy('es').chapterLabel(1, 'ACME')).toBe('01 ACME');
+    expect(exportCopy('en').chapterLabel(1, 'ACME')).toBe('01 ACME');
+    expect(exportCopy('es').chapterLabel(12, 'BETA SL')).toBe('12 BETA SL');
+    expect(exportCopy('en').chapterLabel(12, 'BETA SL')).toBe('12 BETA SL');
+  });
 });

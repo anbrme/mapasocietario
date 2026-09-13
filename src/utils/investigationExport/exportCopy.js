@@ -54,6 +54,7 @@ const ES = {
   legendFlag: 'Señalado',
   steps: n => `${n} paso${n === 1 ? '' : 's'}`,
   evidenceLabel: 'Evidencia',
+  chapterLabel: (n, name) => `${String(n).padStart(2, "0")} ${name}`,
 };
 
 const EN = {
@@ -104,6 +105,7 @@ const EN = {
   legendFlag: 'Flagged',
   steps: n => `${n} step${n === 1 ? '' : 's'}`,
   evidenceLabel: 'Evidence',
+  chapterLabel: (n, name) => `${String(n).padStart(2, "0")} ${name}`,
 };
 
 export const EXPORT_COPY_KEYS = Object.freeze(Object.keys(ES));

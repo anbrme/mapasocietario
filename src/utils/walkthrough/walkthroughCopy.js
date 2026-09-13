@@ -46,6 +46,24 @@ const ES = {
     lastFiling: (d, ty) => `último acto BORME ${d}${ty ? `, ${ty}` : ''}`,
   },
   resetConfirm: (h, n) => `¿Descartar ${h} paso${h === 1 ? '' : 's'} oculto${h === 1 ? '' : 's'} y ${n} nota${n === 1 ? '' : 's'} y regenerar el borrador?`,
+  opening: n => `Recorrido por esta red · ${n} paso${n === 1 ? '' : 's'}`,
+  openingSelection: 'Tu selección, en el orden elegido',
+  openingDraft: 'Borrador generado: empresas, conexiones y tus notas',
+  openingCapped: n => `Se muestran los 12 primeros de ${n} seleccionados`,
+  kinds: { company: 'Empresa', person: 'Persona', note: 'Nota' },
+  hint: mod => `Selecciona nodos con ${mod}+clic (Ctrl+clic en Windows/Linux) para elegir los pasos. Sin selección, se genera un borrador.`,
+  blocks: { identity: 'Identidad', board: 'Órgano de administración', filings: 'Últimos actos', findings: 'Lo que destaca' },
+  subheads: { board: 'Órgano de administración', filings: 'Últimos actos', findings: 'Lo que destaca', unseen: 'Lo que el registro no muestra', seats: 'Cargos en las empresas del mapa' },
+  openPreview: 'Abrir vista previa',
+  seatColumns: { company: 'Empresa', role: 'Cargo', since: 'Desde', until: 'Hasta', status: 'Estado' },
+  boardColumns: { name: 'Nombre', role: 'Cargo', since: 'Desde', status: 'Estado' },
+  filingColumns: { date: 'Fecha', type: 'Acto' },
+  statusWords: { active: 'Vigente', ceased: 'Cesado', dissolved: 'Disuelta', concurso: 'En concurso' },
+  capitalLabel: 'Capital social',
+  activityLabel: 'Actividad declarada',
+  seatsLine: (k, m) => `${k} cargo${k === 1 ? '' : 's'} en ${m} empresa${m === 1 ? '' : 's'}`,
+  previewBlocked: 'El navegador bloqueó la pestaña; permite ventanas emergentes para la vista previa.',
+  noNarrative: '',
 };
 
 const EN = {
@@ -86,6 +104,29 @@ const EN = {
     lastFiling: (d, ty) => `last BORME filing ${d}${ty ? `, ${ty}` : ''}`,
   },
   resetConfirm: (h, n) => `Discard ${h} hidden step${h === 1 ? '' : 's'} and ${n} note${n === 1 ? '' : 's'} and rebuild the draft?`,
+  opening: n => `Walkthrough of this network · ${n} step${n === 1 ? '' : 's'}`,
+  openingSelection: 'Your selection, in the order you chose',
+  openingDraft: 'Generated draft: companies, connections and your notes',
+  openingCapped: n => `Showing the first 12 of ${n} selected`,
+  kinds: { company: 'Company', person: 'Person', note: 'Note' },
+  hint: mod => `Select nodes with ${mod}+click (Ctrl+click on Windows/Linux) to choose the steps. With no selection, a draft is generated.`,
+  blocks: { identity: 'Identity', board: 'Governing body', filings: 'Latest filings', findings: 'What stands out' },
+  subheads: { board: 'Governing body', filings: 'Latest filings', findings: 'What stands out', unseen: 'What the registry cannot show', seats: 'Seats across the companies on the map' },
+  openPreview: 'Open preview',
+  seatColumns: { company: 'Company', role: 'Role', since: 'Since', until: 'Until', status: 'Status' },
+  boardColumns: { name: 'Name', role: 'Role', since: 'Since', status: 'Status' },
+  filingColumns: { date: 'Date', type: 'Filing' },
+  statusWords: { active: 'Active', ceased: 'Ceased', dissolved: 'Dissolved', concurso: 'In insolvency' },
+  capitalLabel: 'Share capital',
+  activityLabel: 'Declared activity',
+  seatsLine: (k, m) => `${k} seat${k === 1 ? '' : 's'} across ${m} compan${m === 1 ? 'y' : 'ies'}`,
+  previewBlocked: 'The browser blocked the tab; allow pop-ups to open the preview.',
+  noNarrative: '',
+};
+
+export const platformModifier = nav => {
+  const p = String(nav?.userAgentData?.platform || nav?.platform || '');
+  return /mac|iphone|ipad/i.test(p) ? '⌘' : 'Ctrl';
 };
 
 export const walkthroughCopy = lang => (lang === 'en' ? EN : ES);
