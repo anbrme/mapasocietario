@@ -2,6 +2,7 @@
 // string, or '' when the section has nothing to say — the orchestrator and the
 // contents strip both rely on '' meaning "omit".
 import { escapeHtml as esc } from '../escapeHtml';
+import { stepKindLabel } from '../walkthrough/walkthroughCopy';
 import { correctionVerb } from './exportCopy';
 import { renderGraphSvg } from './renderGraphSvg';
 import { flagVar } from './documentStyle';
@@ -194,15 +195,20 @@ const companyEvidenceBlock = (s, t, wt, blocks) => {
     parts.push(`<ul class="plain">${
       ev.ownership.map(o => `<li>${esc(o.owner)} ${esc(o.lost ? t.lostOf : t.soleOf)} ${esc(o.owned)}</li>`).join('')}</ul>`);
   }
+  // A unified company also holds seats elsewhere — the same table a person
+  // chapter shows, under its own company evidence.
+  parts.push(seatsTable(s, wt));
   return parts.join('');
 };
 
-const personEvidenceBlock = (s, wt) => {
+const seatsTable = (s, wt) => {
   const seats = s.evidence?.seats || [];
   if (!seats.length) return '';
   return `<h4>${esc(wt.subheads.seats)}</h4>${evidenceTable(wt.seatColumns, seats,
     r => [r.company, r.role, r.since, r.until, wt.statusWords[r.status] || r.status])}`;
 };
+
+const personEvidenceBlock = (s, wt) => seatsTable(s, wt);
 
 export const renderChapters = (doc, t, wt, lang = 'es') => {
   const steps = doc.steps || [];
@@ -212,7 +218,7 @@ export const renderChapters = (doc, t, wt, lang = 'es') => {
   const blocks = doc.blocks || {};
   const num = sectionNumbers(doc).chapters;
   const rows = steps.map((s, i) => {
-    const head = `<span class="src">${esc(wt.sources[s.source] || s.source || '')}</span>${esc(wt.kinds[s.kind] || wt.sections?.[s.section] || '')}${s.moment ? ` · ${esc(fmtDay(s.moment, lang))}` : ''}`;
+    const head = `<span class="src">${esc(wt.sources[s.source] || s.source || '')}</span>${esc(stepKindLabel(s, wt))}${s.moment ? ` · ${esc(fmtDay(s.moment, lang))}` : ''}`;
     const narrative = noteBlock(s.narrative || s.authorNote, t);
     const evidence = s.kind === 'person' ? personEvidenceBlock(s, wt) : companyEvidenceBlock(s, t, wt, blocks);
     return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${evidence}</div></div>`;

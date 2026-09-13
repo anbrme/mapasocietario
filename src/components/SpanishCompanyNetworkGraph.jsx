@@ -3,7 +3,7 @@ import { graphInk } from '../theme/graphInk';
 import { debounce } from 'lodash';
 import { forceCollide } from 'd3-force';
 import { useWalkthrough } from '../hooks/useWalkthrough';
-import WalkthroughPlayer from './WalkthroughPlayer';
+import WalkthroughPlayer, { walkthroughControllerInset } from './WalkthroughPlayer';
 import {
   EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, walkthroughCopy, platformModifier, stepViewport,
   pairKey as walkthroughPairKey, buildTimeline,
@@ -51,7 +51,6 @@ import {
 } from '@mui/material';
 import { alpha, darken } from '@mui/material/styles';
 import TuneIcon from '@mui/icons-material/Tune';
-import TourIcon from '@mui/icons-material/Tour';
 import {
   Close as CloseIcon,
   Search as SearchIcon,
@@ -7368,16 +7367,22 @@ const SpanishCompanyNetworkGraph = ({
   // Camera follows the current step. containerEl is the graph container DOM
   // node (set by containerCallbackRef below) — the equivalent of a
   // graphContainerRef for reading live width/height.
+  //
+  // The frame is the CANVAS, not the container: canvasDimensions already
+  // leaves out the docked inspector and the data dock, and the controller's
+  // own height goes in as a bottom inset, so the step's nodes land in the
+  // band of canvas nothing covers.
   useEffect(() => {
     if (!tourActive || !walkthrough.current || !fgRef.current) return;
     const nodesById = new Map((filteredGraphData.nodes || []).map(n => [normalizeNodeId(n.id), n]));
     const v = stepViewport(walkthrough.current, nodesById, {
-      width: containerEl?.clientWidth || 800, height: containerEl?.clientHeight || 600,
+      width: canvasDimensions.width || 800, height: canvasDimensions.height || 600,
+      insets: { bottom: walkthroughControllerInset(isCompactViewport) },
     });
     if (!v) return;
     fgRef.current.centerAt(v.x, v.y, 500);
     fgRef.current.zoom(v.k, 500);
-  }, [tourActive, walkthrough.current, filteredGraphData.nodes, containerEl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tourActive, walkthrough.current, filteredGraphData.nodes, canvasDimensions, isCompactViewport]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const walkthroughEvidence = useCallback(step => {
     const node = (filteredGraphData.nodes || []).find(n => normalizeNodeId(n.id) === step.nodeIds[0]);
@@ -7417,6 +7422,18 @@ const SpanishCompanyNetworkGraph = ({
     setRelGeneratedAt(new Date().toISOString());
     setRelReportOpen(true);
   }, [relationshipDetailedScope, subjectCompanyName, resolveSubjectGroupKey, walkthrough]);
+
+  // The walkthrough plays from the report and comes back to it: the modal is
+  // the authoring surface, the controller on the canvas is read-only.
+  const playWalkthroughFromReport = useCallback(() => {
+    trackGraphToolbarAction('walkthrough_play');
+    setRelReportOpen(false);
+    walkthrough.start();
+  }, [walkthrough, trackGraphToolbarAction]);
+  const editWalkthroughInReport = useCallback(() => {
+    trackGraphToolbarAction('walkthrough_edit');
+    openRelationshipReport();
+  }, [openRelationshipReport, trackGraphToolbarAction]);
 
   // The situation report document. DERIVED, not captured once on open: it must
   // pick up networkNote as the user types it, and pick up removeCompanyFromReport
@@ -9488,10 +9505,17 @@ const SpanishCompanyNetworkGraph = ({
           </Button>
           </Tooltip>
         )}
-        {visibleCompanyCount >= 1 && (
-          <Tooltip title={text.situationReportTooltip}>
+        {visibleCompanyCount >= 1 && (() => {
+          // The walkthrough is a mode of the report: one button, whose badge
+          // counts the Cmd/Ctrl+click selection when there is one (the steps)
+          // and the visible companies otherwise, and whose tooltip carries the
+          // selection hint.
+          const wt = walkthroughCopy(uiLanguage);
+          const hint = wt.hint(platformModifier(typeof navigator !== 'undefined' ? navigator : undefined));
+          return (
+          <Tooltip title={`${text.situationReportTooltip} — ${hint}`}>
             <span>
-              <Badge badgeContent={visibleCompanyCount} color="primary"
+              <Badge badgeContent={walkthrough.selectedCount || visibleCompanyCount} color="primary"
                 sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
                 <Button
                   variant="outlined" color="primary" size="small"
@@ -9507,28 +9531,6 @@ const SpanishCompanyNetworkGraph = ({
               </Badge>
             </span>
           </Tooltip>
-        )}
-        {visibleCompanyCount >= 1 && (() => {
-          const wt = walkthroughCopy(uiLanguage);
-          const walkthroughTooltip = `${wt.tooltip} — ${wt.hint(platformModifier(typeof navigator !== 'undefined' ? navigator : undefined))}`;
-          return (
-            <Tooltip title={walkthroughTooltip}>
-              <span>
-                <Badge
-                  badgeContent={walkthrough.selectedCount || 0} color="primary"
-                  invisible={!walkthrough.selectedCount}
-                  sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
-                  <Button
-                    variant={tourActive ? 'contained' : 'outlined'} color="primary" size="small"
-                    startIcon={walkthrough.status === 'preparing' ? <CircularProgress size={14} color="inherit" /> : <TourIcon />}
-                    disabled={walkthrough.status === 'preparing'}
-                    sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
-                    onClick={() => (tourActive ? walkthrough.exit() : walkthrough.start())}>
-                    {walkthrough.status === 'preparing' ? wt.preparing : wt.button}
-                  </Button>
-                </Badge>
-              </span>
-            </Tooltip>
           );
         })()}
         {visibleCompanyCount >= 2 && (
@@ -10531,12 +10533,11 @@ const SpanishCompanyNetworkGraph = ({
           lang={uiLanguage}
           compact={isCompactViewport}
           opening={walkthrough.opening}
-          showOpening={walkthrough.index === 0}
+          bottomOffset={reservedDockHeight}
           onPrev={walkthrough.prev}
           onNext={walkthrough.next}
           onExit={walkthrough.exit}
-          onHide={walkthrough.hide}
-          onNote={walkthrough.setNote}
+          onEdit={editWalkthroughInReport}
           onEvidence={walkthroughEvidence}
         />
 
@@ -12205,6 +12206,7 @@ const SpanishCompanyNetworkGraph = ({
           onAuthorChange={updateSitrepAuthor}
           edits={walkthroughEdits}
           onPreview={() => trackGraphToolbarAction('walkthrough_preview')}
+          onPlay={playWalkthroughFromReport}
         />
         <AIInvestigationGate
           open={aiPanelOpen}
@@ -12297,6 +12299,7 @@ const SpanishCompanyNetworkGraph = ({
         onAuthorChange={updateSitrepAuthor}
         edits={walkthroughEdits}
         onPreview={() => trackGraphToolbarAction('walkthrough_preview')}
+        onPlay={playWalkthroughFromReport}
       />
       <AIInvestigationGate
         open={aiPanelOpen}
