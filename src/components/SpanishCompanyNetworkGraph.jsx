@@ -5,7 +5,8 @@ import { forceCollide } from 'd3-force';
 import { useWalkthrough } from '../hooks/useWalkthrough';
 import WalkthroughPlayer from './WalkthroughPlayer';
 import {
-  EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, walkthroughCopy, stepViewport, pairKey as walkthroughPairKey,
+  EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, walkthroughCopy, platformModifier, stepViewport,
+  pairKey as walkthroughPairKey,
 } from '../utils/walkthrough';
 import { loadSitrepAuthor, saveSitrepAuthor } from '../utils/sitrepAuthor';
 import {
@@ -7226,6 +7227,17 @@ const SpanishCompanyNetworkGraph = ({
   const fetchFindings = useCallback(
     ({ groupKey, name, lang }) => spanishCompaniesService.getCompanyFindings({ groupKey, name, lang }), []);
 
+  // The walkthrough reads its selection from the same Cmd/Ctrl+click
+  // investigation set the graph already tracks, and writes back to it the
+  // same way — one set, two consumers, no separate selection state to drift.
+  const walkthroughSelection = React.useMemo(() => Array.from(investigationSet), [investigationSet]);
+  const setWalkthroughSelection = useCallback(
+    next => setInvestigationSet(new Set((next || []).map(normalizeNodeId))), []);
+  const fetchWalkthroughProfile = useCallback(
+    ({ groupKey, name }) => spanishCompaniesService.getCompanyProfileV3(name, { groupKey }), []);
+  const fetchWalkthroughEvents = useCallback(
+    ({ groupKey, name, size }) => spanishCompaniesService.getCompanyEventsV3(name, { groupKey, size }), []);
+
   // A report open with its own language toggle drives the walkthrough's
   // language too — otherwise its steps would keep narrating in uiLanguage
   // while the modal chrome around them switched, mixing two languages in one
@@ -7234,7 +7246,9 @@ const SpanishCompanyNetworkGraph = ({
 
   const walkthrough = useWalkthrough({
     graphData: filteredGraphData, scope: relationshipDetailedScope, primarySubjectId: primarySubjectNodeId,
-    lang: walkthroughLang, fetchFindings, edits: walkthroughEdits, setEdits: setWalkthroughEdits,
+    lang: walkthroughLang, selection: walkthroughSelection, setSelection: setWalkthroughSelection,
+    fetchProfile: fetchWalkthroughProfile, fetchEvents: fetchWalkthroughEvents, fetchFindings,
+    edits: walkthroughEdits, setEdits: setWalkthroughEdits,
     onTrack: trackGraphToolbarAction, saveNodeNote: handleSaveNodeNoteFor,
   });
   const tourActive = walkthrough.status === 'playing';
@@ -7314,11 +7328,15 @@ const SpanishCompanyNetworkGraph = ({
       steps: walkthrough.steps,
       author: sitrepAuthor,
       coverage: walkthrough.coverage,
+      blocks: sitrepAuthor.blocks,
+      mode: walkthrough.mode,
+      opening: walkthrough.opening,
     });
   }, [
     relReportOpen, filteredGraphData, relationshipDetailedScope, networkNote,
     relCorrections, subjectCompanyName, relGeneratedAt,
     walkthrough.steps, sitrepAuthor, walkthrough.coverage,
+    sitrepAuthor.blocks, walkthrough.mode, walkthrough.opening,
   ]);
 
   // Remove a company from the report: hide it AND any officers/subsidiaries that
@@ -9379,20 +9397,29 @@ const SpanishCompanyNetworkGraph = ({
             </span>
           </Tooltip>
         )}
-        {visibleCompanyCount >= 1 && (
-          <Tooltip title={walkthroughCopy(uiLanguage).tooltip}>
-            <span>
-              <Button
-                variant={tourActive ? 'contained' : 'outlined'} color="primary" size="small"
-                startIcon={walkthrough.status === 'preparing' ? <CircularProgress size={14} color="inherit" /> : <TourIcon />}
-                disabled={walkthrough.status === 'preparing'}
-                sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
-                onClick={() => (tourActive ? walkthrough.exit() : walkthrough.start())}>
-                {walkthrough.status === 'preparing' ? walkthroughCopy(uiLanguage).preparing : walkthroughCopy(uiLanguage).button}
-              </Button>
-            </span>
-          </Tooltip>
-        )}
+        {visibleCompanyCount >= 1 && (() => {
+          const wt = walkthroughCopy(uiLanguage);
+          const walkthroughTooltip = `${wt.tooltip} — ${wt.hint(platformModifier(typeof navigator !== 'undefined' ? navigator : undefined))}`;
+          return (
+            <Tooltip title={walkthroughTooltip}>
+              <span>
+                <Badge
+                  badgeContent={walkthrough.selectedCount || 0} color="primary"
+                  invisible={!walkthrough.selectedCount}
+                  sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
+                  <Button
+                    variant={tourActive ? 'contained' : 'outlined'} color="primary" size="small"
+                    startIcon={walkthrough.status === 'preparing' ? <CircularProgress size={14} color="inherit" /> : <TourIcon />}
+                    disabled={walkthrough.status === 'preparing'}
+                    sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
+                    onClick={() => (tourActive ? walkthrough.exit() : walkthrough.start())}>
+                    {walkthrough.status === 'preparing' ? wt.preparing : wt.button}
+                  </Button>
+                </Badge>
+              </span>
+            </Tooltip>
+          );
+        })()}
         {visibleCompanyCount >= 2 && (
           <Tooltip title={showSharedConnections ? text.hideShared : text.showShared}>
             <Button
@@ -10392,6 +10419,8 @@ const SpanishCompanyNetworkGraph = ({
           total={walkthrough.steps.length}
           lang={uiLanguage}
           compact={isCompactViewport}
+          opening={walkthrough.opening}
+          showOpening={walkthrough.index === 0}
           onPrev={walkthrough.prev}
           onNext={walkthrough.next}
           onExit={walkthrough.exit}
