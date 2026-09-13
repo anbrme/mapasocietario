@@ -123,6 +123,6 @@ ${annex('corrections', t.corrections, corrections ? `<ul class="plain">${correct
 </section>`;
 };
 
-export const renderFooter = (doc, t) => `
+export const renderFooter = (doc, t, lang) => `
 <footer>${esc(t.sourceLine)}${doc.coverage?.since ? `<br>${esc(t.coverage(doc.coverage.since, doc.coverage.indexedThrough))}` : ''}
-<br>${esc(t.generated)} ${esc(doc.generatedAt)} · <a href="${SITE}">${esc(t.backLink)}</a></footer>`;
+<br>${esc(t.generated)} ${esc(fmtDate(doc.generatedAt, lang))} · <a href="${SITE}">${esc(t.backLink)}</a></footer>`;

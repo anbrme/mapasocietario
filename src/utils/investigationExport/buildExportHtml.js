@@ -42,7 +42,7 @@ ${renderSummary(safeDoc, t)}
 ${renderMapFigure(safeDoc, graphData, t)}
 ${renderChapters(safeDoc, t, wt)}
 ${renderAnnexes(safeDoc, t)}
-${renderFooter(safeDoc, t)}
+${renderFooter(safeDoc, t, lang)}
 </div>
 <script>window.__SITREP__=${stepJson};</script>
 <script>${WALKTHROUGH_SCRIPT}</script>

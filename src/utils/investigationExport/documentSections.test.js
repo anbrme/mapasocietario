@@ -92,9 +92,10 @@ describe('documentSections', () => {
   });
 
   it('footer carries source, coverage and the site link only', () => {
-    const html = renderFooter(doc, t);
+    const html = renderFooter(doc, t, 'es');
     expect(html).toContain('2009');
     expect(html).toContain('2026-09-11');
+    expect(html).toContain('12 de septiembre de 2026');
     // The bare-prefix pattern /https?:\/\// can never equal a full URL string;
     // match the whole href (up to the closing quote) to actually verify it.
     expect(html.match(/https?:\/\/[^"']+/g)).toEqual(['https://mapasocietario.es']);

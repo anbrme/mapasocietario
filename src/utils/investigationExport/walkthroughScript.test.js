@@ -32,6 +32,10 @@ describe('WALKTHROUGH_SCRIPT', () => {
     expect(WALKTHROUGH_SCRIPT).not.toContain("addEventListener('mousedown'");
   });
 
+  it('only zooms the map on a ctrl/cmd-modified wheel, letting the page scroll otherwise', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('ctrlKey');
+  });
+
   it('renders the registry text and the author note as separate blocks', () => {
     expect(WALKTHROUGH_SCRIPT).toContain("'wt-note'");
     expect(WALKTHROUGH_SCRIPT).toContain("'wt-text'");

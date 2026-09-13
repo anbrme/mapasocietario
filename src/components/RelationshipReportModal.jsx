@@ -1,5 +1,5 @@
 // mapasocietario/src/components/RelationshipReportModal.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, Button,
   Chip, ToggleButton, ToggleButtonGroup, Table, TableHead, TableBody, TableRow,
@@ -15,7 +15,6 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
-import { buildExportHtml, exportFileName } from '../utils/investigationExport';
 import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
 import { NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
 import { walkthroughCopy, editsCounts } from '../utils/walkthrough';
@@ -36,11 +35,10 @@ function StepNoteField({ stepKey, initialText, label, disabled, onCommit }) {
 
 export default function RelationshipReportModal({
   open, onClose, doc, graphData, networkNote, onNetworkNoteChange,
-  lang = 'es', onRemoveCompany, onDownload,
+  lang = 'es', reportLang = 'es', onReportLangChange = () => {}, onRemoveCompany, onDownload,
   walkthrough = null, author = { name: '', organisation: '' }, onAuthorChange = () => {},
   edits = null, onPreview = () => {},
 }) {
-  const [reportLang, setReportLang] = useState(lang === 'en' ? 'en' : 'es');
   const [copied, setCopied] = useState(false);
   const [tab, setTab] = useState('edit');
   const es = reportLang !== 'en';
@@ -49,13 +47,21 @@ export default function RelationshipReportModal({
   const steps = walkthrough?.steps || [];
 
   useEffect(() => {
-    if (open) setReportLang(lang === 'en' ? 'en' : 'es');
     setTab('edit');
-  }, [open, lang]);
+  }, [open]);
 
-  const previewHtml = useMemo(() => (
-    tab === 'preview' && doc ? buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' }) : null
-  ), [doc, graphData, es, tab]);
+  // The export module (and the 52KB embedded font it carries) has no reason
+  // to sit in the app's main bundle — it is loaded only once a preview is
+  // actually requested.
+  const [previewHtml, setPreviewHtml] = useState(null);
+  useEffect(() => {
+    let live = true;
+    if (!(open && tab === 'preview' && doc)) { setPreviewHtml(null); return undefined; }
+    import('../utils/investigationExport').then(m => {
+      if (live) setPreviewHtml(m.buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' }));
+    });
+    return () => { live = false; };
+  }, [open, tab, doc, graphData, es]);
 
   const companies = doc?.companies || [];
   const connectors = doc?.connectors || [];
@@ -85,7 +91,8 @@ export default function RelationshipReportModal({
     }
   };
 
-  const download = () => {
+  const download = async () => {
+    const { buildExportHtml, exportFileName } = await import('../utils/investigationExport');
     const html = buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' });
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
     const a = document.createElement('a');
@@ -111,7 +118,7 @@ export default function RelationshipReportModal({
             <TranslateIcon sx={{ fontSize: 15, color: 'text.disabled' }} />
             <ToggleButtonGroup
               value={reportLang} exclusive size="small"
-              onChange={(_, v) => v && setReportLang(v)}
+              onChange={(_, v) => v && onReportLangChange(v)}
               sx={{ '& .MuiToggleButton-root': { py: 0.2, px: 1.2, fontSize: '0.72rem', textTransform: 'none' } }}>
               <ToggleButton value="es">ES</ToggleButton>
               <ToggleButton value="en">EN</ToggleButton>
@@ -130,7 +137,7 @@ export default function RelationshipReportModal({
             title={t.title}
             srcDoc={previewHtml}
             style={{ width: '100%', height: '100%', border: 0, background: '#fff' }}
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts"
           />
         ) : (
           <>
@@ -183,7 +190,6 @@ export default function RelationshipReportModal({
                         stepKey={s.key}
                         initialText={s.source === 'author' ? s.text : (s.authorNote?.text || '')}
                         label={wt.noteField}
-                        disabled={s.source === 'author'}
                         onCommit={v => walkthrough.setNote(s.key, v)}
                       />
                     </Box>

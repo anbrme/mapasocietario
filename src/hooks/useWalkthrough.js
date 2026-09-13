@@ -10,7 +10,9 @@ import { initialWalkthroughState, walkthroughReducer, focusSets, stepTransition 
 
 const nid = id => (id == null ? '' : String(id));
 
-export function useWalkthrough({ graphData, scope, primarySubjectId, lang, fetchFindings, edits, setEdits, onTrack }) {
+export function useWalkthrough({
+  graphData, scope, primarySubjectId, lang, fetchFindings, edits, setEdits, onTrack, saveNodeNote,
+}) {
   const [state, dispatch] = useReducer(walkthroughReducer, initialWalkthroughState);
 
   const nodesById = useMemo(
@@ -71,7 +73,26 @@ export function useWalkthrough({ graphData, scope, primarySubjectId, lang, fetch
   const exit = useCallback(() => dispatch({ type: 'exit' }), []);
 
   const hide = useCallback(key => { setEdits(e => hideStep(e, key)); onTrack?.('walkthrough_step_hidden'); }, [setEdits, onTrack]);
-  const setNote = useCallback((key, text) => { setEdits(e => setStepNote(e, key, text)); onTrack?.('walkthrough_note_saved'); }, [setEdits, onTrack]);
+  // A step's note has exactly one owner. An author-source step's text IS a
+  // node note already (the walkthrough narrates it directly); a step whose
+  // primary node carries a node-origin note is the same. Either way, writing
+  // through `edits.notes` here would create a second, disconnected copy —
+  // save to the node note instead and skip the overlay entirely.
+  const setNote = useCallback((key, text) => {
+    const step = steps.find(s => s.key === key);
+    if (step?.source === 'author') {
+      saveNodeNote?.(step.nodeIds[0], text, step.flag);
+      onTrack?.('walkthrough_note_saved');
+      return;
+    }
+    if (step?.authorNote?.origin === 'node') {
+      saveNodeNote?.(step.nodeIds[0], text, step.authorNote.flag);
+      onTrack?.('walkthrough_note_saved');
+      return;
+    }
+    setEdits(e => setStepNote(e, key, text));
+    onTrack?.('walkthrough_note_saved');
+  }, [steps, saveNodeNote, setEdits, onTrack]);
   const move = useCallback((key, delta) => setEdits(e => moveStep(e, steps.map(s => s.key), key, delta)), [setEdits, steps]);
   const reset = useCallback(() => { setEdits(() => ({ hidden: [], order: [], notes: {} })); onTrack?.('walkthrough_reset'); }, [setEdits, onTrack]);
 

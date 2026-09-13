@@ -42,7 +42,7 @@ h2 span.num{color:var(--accent);margin-right:8px}
 .lead{font-size:1.12rem;line-height:1.55;margin:0}
 figure{margin:0}
 figure .frame{position:relative;background:var(--card);border:1px solid var(--line);border-radius:8px}
-#map{display:block;width:100%;height:520px;cursor:grab;touch-action:none;border-radius:8px}
+#map{display:block;width:100%;height:520px;cursor:grab;touch-action:pan-y pinch-zoom;border-radius:8px}
 #map .l{stroke:var(--link);stroke-width:1;transition:opacity .2s}
 #map .l[data-kind="ownership"]{stroke-dasharray:4 3;stroke:var(--muted)}
 #map g.n circle{fill:var(--officer)}

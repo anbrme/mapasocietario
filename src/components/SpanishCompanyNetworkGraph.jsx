@@ -4,7 +4,9 @@ import { debounce } from 'lodash';
 import { forceCollide } from 'd3-force';
 import { useWalkthrough } from '../hooks/useWalkthrough';
 import WalkthroughPlayer from './WalkthroughPlayer';
-import { EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, walkthroughCopy, stepViewport, pairKey } from '../utils/walkthrough';
+import {
+  EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, walkthroughCopy, stepViewport, pairKey as walkthroughPairKey,
+} from '../utils/walkthrough';
 import { loadSitrepAuthor, saveSitrepAuthor } from '../utils/sitrepAuthor';
 import {
   Dialog,
@@ -48,6 +50,7 @@ import {
 } from '@mui/material';
 import { alpha, darken } from '@mui/material/styles';
 import TuneIcon from '@mui/icons-material/Tune';
+import TourIcon from '@mui/icons-material/Tour';
 import {
   Close as CloseIcon,
   Search as SearchIcon,
@@ -1711,6 +1714,11 @@ const SpanishCompanyNetworkGraph = ({
   // it survives export/import with NO snapshot version bump.
   const [networkNote, setNetworkNote] = useState('');
   const [walkthroughEdits, setWalkthroughEdits] = useState(EMPTY_WALKTHROUGH_EDITS);
+  // The report has ONE language, chosen at open time from the app's own
+  // language — the toggle inside the modal then owns it independently of
+  // uiLanguage until the report is closed and reopened.
+  const [reportLang, setReportLang] = useState(uiLanguage);
+  useEffect(() => { if (relReportOpen) setReportLang(uiLanguage); }, [relReportOpen, uiLanguage]);
   const [sitrepAuthor, setSitrepAuthor] = useState(() => loadSitrepAuthor());
   const updateSitrepAuthor = useCallback(next => setSitrepAuthor(saveSitrepAuthor(next)), []);
   const [showSharedConnections, setShowSharedConnections] = useState(false);
@@ -7218,13 +7226,24 @@ const SpanishCompanyNetworkGraph = ({
   const fetchFindings = useCallback(
     ({ groupKey, name, lang }) => spanishCompaniesService.getCompanyFindings({ groupKey, name, lang }), []);
 
+  // A report open with its own language toggle drives the walkthrough's
+  // language too — otherwise its steps would keep narrating in uiLanguage
+  // while the modal chrome around them switched, mixing two languages in one
+  // document.
+  const walkthroughLang = relReportOpen ? reportLang : uiLanguage;
+
   const walkthrough = useWalkthrough({
     graphData: filteredGraphData, scope: relationshipDetailedScope, primarySubjectId: primarySubjectNodeId,
-    lang: uiLanguage, fetchFindings, edits: walkthroughEdits, setEdits: setWalkthroughEdits,
-    onTrack: trackGraphToolbarAction,
+    lang: walkthroughLang, fetchFindings, edits: walkthroughEdits, setEdits: setWalkthroughEdits,
+    onTrack: trackGraphToolbarAction, saveNodeNote: handleSaveNodeNoteFor,
   });
   const tourActive = walkthrough.status === 'playing';
   const { tourNodeIds, tourLinkKeys } = walkthrough;
+
+  // Re-fetch findings in the new language when the toggle changes while the
+  // report is open; steps otherwise keep displaying whatever language they
+  // were drafted in.
+  useEffect(() => { if (relReportOpen) walkthrough.prepare(); }, [walkthroughLang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Camera follows the current step. containerEl is the graph container DOM
   // node (set by containerCallbackRef below) — the equivalent of a
@@ -7862,7 +7881,7 @@ const SpanishCompanyNetworkGraph = ({
       const tId = normalizeNodeId(getNodeIdFromRef(link.target));
       // Walkthrough focus: the tour dims every link outside the current step's
       // pair, same as the pathfinder does for its own path.
-      const inTour = tourActive && tourLinkKeys.has(pairKey(sId, tId));
+      const inTour = tourActive && tourLinkKeys.has(walkthroughPairKey(sId, tId));
 
       // Determine link color based on appointment category
       const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
@@ -9365,7 +9384,7 @@ const SpanishCompanyNetworkGraph = ({
             <span>
               <Button
                 variant={tourActive ? 'contained' : 'outlined'} color="primary" size="small"
-                startIcon={walkthrough.status === 'preparing' ? <CircularProgress size={14} color="inherit" /> : <RouteIcon />}
+                startIcon={walkthrough.status === 'preparing' ? <CircularProgress size={14} color="inherit" /> : <TourIcon />}
                 disabled={walkthrough.status === 'preparing'}
                 sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
                 onClick={() => (tourActive ? walkthrough.exit() : walkthrough.start())}>
@@ -10377,11 +10396,7 @@ const SpanishCompanyNetworkGraph = ({
           onNext={walkthrough.next}
           onExit={walkthrough.exit}
           onHide={walkthrough.hide}
-          onNote={(key, noteText) => {
-            const step = walkthrough.current;
-            if (step?.source === 'author') { handleSaveNodeNoteFor(step.nodeIds[0], noteText, step.flag); return; }
-            walkthrough.setNote(key, noteText);
-          }}
+          onNote={walkthrough.setNote}
           onEvidence={walkthroughEvidence}
         />
 
@@ -12041,6 +12056,8 @@ const SpanishCompanyNetworkGraph = ({
           networkNote={networkNote}
           onNetworkNoteChange={setNetworkNote}
           lang={uiLanguage}
+          reportLang={reportLang}
+          onReportLangChange={setReportLang}
           onRemoveCompany={removeCompanyFromReport}
           onDownload={() => trackGraphToolbarAction('situation_report_download')}
           walkthrough={walkthrough}
@@ -12131,6 +12148,8 @@ const SpanishCompanyNetworkGraph = ({
         networkNote={networkNote}
         onNetworkNoteChange={setNetworkNote}
         lang={uiLanguage}
+        reportLang={reportLang}
+        onReportLangChange={setReportLang}
         onRemoveCompany={removeCompanyFromReport}
         onDownload={() => trackGraphToolbarAction('situation_report_download')}
         walkthrough={walkthrough}

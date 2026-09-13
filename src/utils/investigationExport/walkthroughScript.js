@@ -144,6 +144,7 @@ export const WALKTHROUGH_SCRIPT = `
   map.addEventListener('pointerup', up);
   map.addEventListener('pointercancel', up);
   map.addEventListener('wheel', function (e) {
+    if (!e.ctrlKey && !e.metaKey) return;
     e.preventDefault();
     scale = Math.min(6, Math.max(0.2, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
     apply();
