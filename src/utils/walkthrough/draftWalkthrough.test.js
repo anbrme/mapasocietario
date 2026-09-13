@@ -1,216 +1,167 @@
 import { describe, expect, it } from 'vitest';
 import {
-  draftWalkthrough, subjectCompanyIds, pairKey, STANDS_OUT_CAP, CONNECTS_CAP,
+  draftWalkthrough, subjectCompanyIds, pairKey, SELECTION_CAP, openingCard,
 } from './draftWalkthrough';
 
 const AT = '2026-09-12T09:00:00.000Z';
 const co = (id, name, extra = {}) => ({ id, type: 'spanish-company-group', name, groupKey: id, ...extra });
 const off = (id, name, extra = {}) => ({ id, type: 'officer', name, ...extra });
 const link = (a, b, extra = {}) => ({ source: a, target: b, ...extra });
+const note = (text, flag) => ({ text, flag, updatedAt: AT });
 
+// H:1/H:2 two companies with groupKey; o1 a connector at both; o2 at H:1 only
+// with an amber note; o3 unselected (no company link) with a red note.
 const graph = {
   nodes: [
-    co('H:1', 'ALFA SL'), co('H:2', 'BETA SL'),
-    off('o1', 'GARCIA LOPEZ ANA'), off('o2', 'RUIZ MARTIN LUIS', { userNote: { text: 'Left days before the filing', flag: 'blue', updatedAt: AT } }),
+    co('H:1', 'ALFA SL'),
+    co('H:2', 'BETA SL'),
+    off('o1', 'GARCIA LOPEZ ANA'),
+    off('o2', 'RUIZ MARTIN LUIS', { userNote: note('Left days before the filing', 'amber') }),
+    off('o3', 'ABAD SORIA CARLA', { userNote: note('Possible duplicate of another officer', 'red') }),
   ],
   links: [
     link('H:1', 'o1', { category: 'nombramiento', relationship: 'Administradora única' }),
     link('H:2', 'o1', { category: 'cese', relationship: 'Consejera' }),
-    link('H:1', 'o2', { category: 'cese', relationship: 'Apoderado' }),
-    link('H:1', 'H:2', { type: 'ownership', category: 'socio_unico' }),
+    link('H:1', 'o2', { category: 'nombramiento', relationship: 'Apoderado' }),
   ],
 };
 
 const scope = {
-  companies: ['ALFA SL', 'BETA SL'],
   companyNodes: [{ name: 'ALFA SL', nodeId: 'H:1' }, { name: 'BETA SL', nodeId: 'H:2' }],
-  connectors: [{ name: 'GARCIA LOPEZ ANA', nodeId: 'o1', type: 'individual', companies: ['ALFA SL', 'BETA SL'], roles: ['Administradora única', 'Consejera'], status: 'mixed' }],
-  ownership: [{ owner: 'ALFA SL', owned: 'BETA SL', lost: false }],
-  officersByCompany: { 'ALFA SL': ['GARCIA LOPEZ ANA', 'RUIZ MARTIN LUIS'], 'BETA SL': ['GARCIA LOPEZ ANA'] },
-  counts: { companies: 2, officers: 2, sharedPeople: 1 },
+  connectors: [{
+    name: 'GARCIA LOPEZ ANA', nodeId: 'o1', companies: ['ALFA SL', 'BETA SL'], roles: ['Administradora única', 'Consejera'], status: 'mixed',
+  }],
+  ownership: [],
 };
 
-const finding = (kind, cls, date, extra = {}) => ({
-  kind, cls, date, layer: 'shape', text: `${kind} text`, evidence: [], borme_ref: null, ...extra,
-});
-
-const alfaFindings = {
-  company: { name: 'ALFA SL', group_key: 'H:1', nif: 'B1', province: 'Valencia', registry: 'V-1', previous_names: [], last_filing: { date: '2026-06-03', type: 'Nombramiento' } },
-  findings: [
-    finding('capital_movement', 'concern', '2024-03-11'),
-    finding('governing_body_turnover', 'context', '2026-06-03', { evidence: [{ kind: 'officer', ref: 'Ana García López' }] }),
-    finding('no_insolvency_notice', 'limitation', null),
-    finding('sole_shareholder_declared', 'context', '2019-01-01'),
-    finding('previous_name', 'context', '2018-01-01'),
-    finding('structural_event', 'concern', '2020-05-05'),
+// Reuses the profile/events/findings shapes from stepEvidence.test.js.
+const profile = {
+  is_dissolved: false, is_in_concurso: false, share_capital: '3.006,00 €', activity: 'Consultoría',
+  officers_active: [
+    { name: 'GARCIA LOPEZ MARIA', position_normalized: 'Administradora única', appointed_date: '2021-03-01', status: 'active' },
   ],
-  verification: ['The registry does not show beneficial owners.'],
-  coverage: { since: '2009-01-01', indexed_through: '2026-09-11' },
+  officers_resigned: [
+    { name: 'RUIZ MARTIN LUIS', position_normalized: 'Apoderado', appointed_date: '2018-01-01', resigned_date: '2020-06-30', status: 'resigned' },
+  ],
+};
+const events = {
+  events: [
+    { event_date: '2026-06-03', event_types: [{ type: 'Datos registrales' }, { type: 'Nombramientos' }] },
+    { event_date: '2024-03-11', event_types: [{ type: 'Reducción de capital' }] },
+  ],
+};
+const findings = {
+  company: {
+    name: 'ALFA SL', nif: 'B1', province: 'Valencia', registry: 'V-1', previous_names: [], last_filing: { date: '2026-06-03', type: 'Nombramientos' },
+  },
+  findings: [
+    { kind: 'capital_movement', cls: 'concern', text: 'Capital reduced 2024-03-11.', date: '2024-03-11' },
+  ],
+  verification: [],
 };
 
-const draft = (over = {}) => draftWalkthrough({
-  graphData: graph, scope, findingsByKey: new Map([['H:1', alfaFindings], ['H:2', null]]),
-  primarySubjectId: 'H:1', lang: 'es', ...over,
+const stepData = new Map([
+  ['H:1', { profile, events, findings }],
+  ['H:2', null],
+]);
+
+const build = (over = {}) => draftWalkthrough({
+  graphData: graph, scope, stepData, primarySubjectId: 'H:1', lang: 'es', ...over,
 });
 
-describe('draftWalkthrough', () => {
-  it('emits sections in the fixed order', () => {
-    const sections = [...new Set(draft().map(s => s.section))];
-    expect(sections).toEqual(['subject', 'stands_out', 'connects', 'ownership', 'other_companies', 'unseen', 'author']);
+describe('draftWalkthrough — selection mode', () => {
+  it('honours the selection order and caps it at SELECTION_CAP', () => {
+    const many = Array.from({ length: 14 }, (_, i) => off(`p${i}`, `P${i}`));
+    const bigGraph = { nodes: [...graph.nodes, ...many], links: graph.links };
+    const selection = many.map(n => n.id).reverse();
+    const steps = build({ graphData: bigGraph, selection });
+    expect(steps).toHaveLength(SELECTION_CAP);
+    expect(steps.map(s => s.nodeId)).toEqual(selection.slice(0, SELECTION_CAP));
+    expect(steps.map(s => s.order)).toEqual(steps.map((_, i) => i));
   });
 
-  it('opens with the subject identity line from the findings header', () => {
-    const [first] = draft();
-    expect(first).toMatchObject({
-      key: 'subject:H:1', section: 'subject', nodeIds: ['H:1'], source: 'registry',
-      title: 'ALFA SL', deepLink: 'https://mapasocietario.es/app?gk=H%3A1&lang=es',
+  it('ignores selected ids that are not on the visible map', () => {
+    const steps = build({ selection: ['H:1', 'ghost-id', 'o1'] });
+    expect(steps.map(s => s.nodeId)).toEqual(['H:1', 'o1']);
+  });
+});
+
+describe('draftWalkthrough — company step', () => {
+  it('carries kind company, the identity line as summary, board evidence and focuses visible board members', () => {
+    const [step] = build({ selection: ['H:1'] });
+    expect(step).toMatchObject({
+      key: 'step:H:1', nodeId: 'H:1', kind: 'company', section: 'company', source: 'registry', title: 'ALFA SL',
     });
-    expect(first.text).toContain('NIF B1');
+    expect(step.summary).toContain('NIF B1');
+    expect(step.text).toBe(step.summary);
+    expect(step.evidence.board).toHaveLength(2);
+    expect([...step.nodeIds].sort()).toEqual(['H:1', 'o1', 'o2']);
+    expect([...step.linkKeys].sort()).toEqual([pairKey('H:1', 'o1'), pairKey('H:1', 'o2')].sort());
   });
 
-  it('puts concerns before context, drops limitations, and caps at STANDS_OUT_CAP', () => {
-    const standsOut = draft().filter(s => s.section === 'stands_out');
-    expect(standsOut.length).toBe(STANDS_OUT_CAP);
-    expect(standsOut.map(s => s.key)).toEqual([
-      'stands_out:H:1:capital_movement:2024-03-11',
-      'stands_out:H:1:structural_event:2020-05-05',
-      'stands_out:H:1:governing_body_turnover:2026-06-03',
-      'stands_out:H:1:sole_shareholder_declared:2019-01-01',
-    ]);
-    expect(standsOut.every(s => s.source === 'registry')).toBe(true);
-    expect(standsOut[0].text).toBe('capital_movement text');
+  it('falls back to the graph-only line when there is no stepData entry', () => {
+    const [step] = build({ selection: ['H:2'] });
+    expect(step).toMatchObject({ kind: 'company', source: 'graph', summary: '1 cargo visible en el mapa' });
+    expect(step.nodeIds).toEqual(['H:2', 'o1']);
   });
+});
 
-  it('resolves officer evidence to a visible node by folded name and links it to the subject', () => {
-    const turnover = draft().find(s => s.key.startsWith('stands_out:H:1:governing_body_turnover'));
-    expect(turnover.nodeIds).toEqual(['H:1', 'o1']);
-    expect(turnover.linkKeys).toEqual([pairKey('H:1', 'o1')]);
-  });
-
-  it('never rotates evidence onto the wrong officer when two visible officers share the same tokens in a different surname order', () => {
-    const graphData = {
-      nodes: [
-        co('H:1', 'ALFA SL'),
-        off('j1', 'GARCIA MARTIN JOSE'),
-        off('j2', 'MARTIN GARCIA JOSE'),
-      ],
-      links: [
-        link('H:1', 'j1', { category: 'nombramiento', relationship: 'Administrador' }),
-        link('H:1', 'j2', { category: 'nombramiento', relationship: 'Administrador' }),
-      ],
-    };
-    const twoOfficerScope = {
-      companies: ['ALFA SL'],
-      companyNodes: [{ name: 'ALFA SL', nodeId: 'H:1' }],
-      connectors: [],
-      ownership: [],
-      officersByCompany: { 'ALFA SL': ['GARCIA MARTIN JOSE', 'MARTIN GARCIA JOSE'] },
-    };
-    const payload = {
-      ...alfaFindings,
-      findings: [
-        finding('governing_body_turnover', 'context', '2026-06-03', { evidence: [{ kind: 'officer', ref: 'José García Martín' }] }),
-      ],
-    };
-    const steps = draftWalkthrough({
-      graphData, scope: twoOfficerScope, findingsByKey: new Map([['H:1', payload]]), primarySubjectId: 'H:1', lang: 'es',
+describe('draftWalkthrough — person step', () => {
+  it('carries kind person, the seats line as summary and seats evidence', () => {
+    const [step] = build({ selection: ['o1'] });
+    expect(step).toMatchObject({
+      key: 'step:o1', nodeId: 'o1', kind: 'person', section: 'person', source: 'graph', summary: '2 cargos en 2 empresas',
     });
-    const turnover = steps.find(s => s.key.startsWith('stands_out:H:1:governing_body_turnover'));
-    expect(turnover.nodeIds).toContain('j1');
-    expect(turnover.nodeIds).not.toContain('j2');
+    expect(step.evidence.seats).toHaveLength(2);
+    expect([...step.nodeIds].sort()).toEqual(['H:1', 'H:2', 'o1']);
+    expect([...step.linkKeys].sort()).toEqual([pairKey('o1', 'H:1'), pairKey('o1', 'H:2')].sort());
+  });
+});
+
+describe('draftWalkthrough — notes', () => {
+  it('turns a note on a selected node into narrative, and drops notes on unselected nodes', () => {
+    const steps = build({ selection: ['H:1', 'o2'] });
+    const person = steps.find(s => s.nodeId === 'o2');
+    expect(person.narrative).toEqual({ text: 'Left days before the filing', flag: 'amber' });
+    expect(person.authorNote).toEqual({ text: 'Left days before the filing', flag: 'amber', origin: 'node' });
+    expect(person.flag).toBe('amber');
+    expect(steps.some(s => s.nodeId === 'o3')).toBe(false);
+  });
+});
+
+describe('draftWalkthrough — draft mode', () => {
+  it('orders subject, other companies, connectors, then loose notes, with no node repeated', () => {
+    const steps = build();
+    expect(steps.map(s => s.nodeId)).toEqual(['H:1', 'H:2', 'o1', 'o3', 'o2']);
+    const titles = steps.map(s => s.title);
+    expect(new Set(titles).size).toBe(titles.length);
+  });
+});
+
+describe('draftWalkthrough — keys and purity', () => {
+  it('keys every step step:<nodeId>', () => {
+    const steps = build({ selection: ['H:1', 'o1'] });
+    expect(steps.map(s => s.key)).toEqual(['step:H:1', 'step:o1']);
   });
 
-  it('writes one connects step per connector with both companies and their links', () => {
-    const connects = draft().filter(s => s.section === 'connects');
-    expect(connects).toHaveLength(1);
-    expect(connects[0]).toMatchObject({
-      key: 'connects:o1', source: 'graph', title: 'GARCIA LOPEZ ANA',
-      nodeIds: ['o1', 'H:1', 'H:2'],
+  it('never mutates the graph, scope or stepData inputs', () => {
+    const before = JSON.stringify({ graph, scope, stepData: [...stepData] });
+    build({ selection: ['H:1', 'o1'] });
+    build();
+    expect(JSON.stringify({ graph, scope, stepData: [...stepData] })).toBe(before);
+  });
+});
+
+describe('openingCard', () => {
+  it('titles the card by step count and picks the line by mode', () => {
+    expect(openingCard({ steps: [1, 2, 3], mode: 'selection', selectedCount: 3, lang: 'es' })).toEqual({
+      title: 'Recorrido por esta red · 3 pasos', line: 'Tu selección, en el orden elegido',
     });
-    expect(connects[0].linkKeys.sort()).toEqual([pairKey('H:1', 'o1'), pairKey('H:2', 'o1')].sort());
-    expect(connects[0].text).toBe('GARCIA LOPEZ ANA ocupa y ocupó Administradora única, Consejera en ALFA SL y BETA SL');
-  });
-
-  it('caps connectors at CONNECTS_CAP, most companies first', () => {
-    const many = Array.from({ length: CONNECTS_CAP + 3 }, (_, i) => ({
-      name: `P${i}`, nodeId: `p${i}`, type: 'individual', companies: i === 0 ? ['ALFA SL', 'BETA SL', 'GAMMA SL'] : ['ALFA SL', 'BETA SL'],
-      roles: ['Consejero'], status: 'active',
-    }));
-    const nodes = [...graph.nodes, ...many.map(c => off(c.nodeId, c.name))];
-    const steps = draft({ graphData: { ...graph, nodes }, scope: { ...scope, connectors: many } });
-    const connects = steps.filter(s => s.section === 'connects');
-    expect(connects).toHaveLength(CONNECTS_CAP);
-    expect(connects[0].key).toBe('connects:p0');
-  });
-
-  it('writes an ownership step focusing both nodes and their edge', () => {
-    const own = draft().find(s => s.section === 'ownership');
-    expect(own).toMatchObject({
-      key: 'ownership:H:1|H:2', nodeIds: ['H:1', 'H:2'], linkKeys: [pairKey('H:1', 'H:2')],
-      text: 'ALFA SL es socio único de BETA SL', source: 'graph',
-    });
-  });
-
-  it('gives a company with no findings payload the graph-only line', () => {
-    const other = draft().find(s => s.section === 'other_companies');
-    expect(other).toMatchObject({ key: 'other_companies:H:2', title: 'BETA SL', source: 'graph', text: '1 cargo visible en el mapa' });
-  });
-
-  it('gives a company with a concern its top concern as the other_companies text', () => {
-    const betaFindings = { ...alfaFindings, company: { ...alfaFindings.company, name: 'BETA SL', group_key: 'H:2' } };
-    const other = draft({ findingsByKey: new Map([['H:1', alfaFindings], ['H:2', betaFindings]]) })
-      .find(s => s.section === 'other_companies');
-    expect(other).toMatchObject({ source: 'registry', text: 'capital_movement text', date: '2024-03-11' });
-  });
-
-  it('collects verification lines and limitation findings into one unseen step', () => {
-    const unseen = draft().find(s => s.section === 'unseen');
-    expect(unseen.key).toBe('unseen:H:1');
-    expect(unseen.text).toContain('The registry does not show beneficial owners.');
-    expect(unseen.text).toContain('no_insolvency_notice text');
-  });
-
-  it('turns a note on an unfocused node into an author step, and attaches focused notes', () => {
-    const nodes = graph.nodes.map(n => (n.id === 'o1'
-      ? { ...n, userNote: { text: 'Same person as the 2019 apoderada?', flag: 'amber', updatedAt: AT } } : n));
-    const steps = draft({ graphData: { ...graph, nodes } });
-    const author = steps.filter(s => s.section === 'author');
-    expect(author).toEqual([expect.objectContaining({
-      key: 'author:o2', title: 'RUIZ MARTIN LUIS', text: 'Left days before the filing', flag: 'blue', source: 'author', nodeIds: ['o2'],
-    })]);
-    const connects = steps.find(s => s.key === 'connects:o1');
-    expect(connects.authorNote).toEqual({ text: 'Same person as the 2019 apoderada?', flag: 'amber', origin: 'node' });
-  });
-
-  it('orders author steps red, amber, then the rest, then by name', () => {
-    const nodes = [
-      ...graph.nodes.filter(n => n.id !== 'o2'),
-      off('z', 'ZETA', { userNote: { text: 'z', flag: 'none', updatedAt: AT } }),
-      off('r', 'ROJO', { userNote: { text: 'r', flag: 'red', updatedAt: AT } }),
-      off('a', 'AMBAR', { userNote: { text: 'a', flag: 'amber', updatedAt: AT } }),
-      off('b', 'BLUE', { userNote: { text: 'b', flag: 'blue', updatedAt: AT } }),
-    ];
-    const keys = draft({ graphData: { ...graph, nodes } }).filter(s => s.section === 'author').map(s => s.key);
-    expect(keys).toEqual(['author:r', 'author:a', 'author:b', 'author:z']);
-  });
-
-  it('yields exactly one subject step for a lone company with no payload', () => {
-    const lone = { nodes: [co('H:9', 'SOLA SL')], links: [] };
-    const loneScope = { ...scope, companies: ['SOLA SL'], companyNodes: [{ name: 'SOLA SL', nodeId: 'H:9' }], connectors: [], ownership: [], officersByCompany: { 'SOLA SL': [] } };
-    const steps = draft({ graphData: lone, scope: loneScope, findingsByKey: new Map(), primarySubjectId: null });
-    expect(steps).toHaveLength(1);
-    expect(steps[0]).toMatchObject({ key: 'subject:H:9', source: 'graph', text: '0 cargos visibles en el mapa' });
-  });
-
-  it('falls back to the first pinned company when the primary subject is not on the map', () => {
-    const [first] = draft({ primarySubjectId: 'H:404' });
-    expect(first.key).toBe('subject:H:1');
-  });
-
-  it('does not mutate its inputs', () => {
-    const before = JSON.stringify({ graph, scope, alfaFindings });
-    draft();
-    expect(JSON.stringify({ graph, scope, alfaFindings })).toBe(before);
+    expect(openingCard({ steps: [1, 2, 3], mode: 'draft', selectedCount: 0, lang: 'es' }).line)
+      .toBe('Borrador generado: empresas, conexiones y tus notas');
+    expect(openingCard({
+      steps: Array.from({ length: SELECTION_CAP }), mode: 'selection', selectedCount: 15, lang: 'es',
+    }).line).toBe('Se muestran los 12 primeros de 15 seleccionados');
   });
 });
 
