@@ -25,20 +25,20 @@ export const renderCover = (doc, t, lang) => `
 </header>`;
 
 // Rows a chapter already narrates must not repeat in the annexes. A company
-// is covered when its own id (or one of the officer ids its chapter draws
-// in) appears in ANY step's nodeIds; a connector is covered only when it got
-// its OWN chapter (its id is some step's primary nodeId) — being merely
-// pictured inside another chapter's board table does not retire it here.
-// Ownership rows are covered when either side is a chapter's own title.
+// or a connector is covered only when it got its OWN chapter (its id is some
+// step's PRIMARY nodeId) — being merely pictured inside another chapter's
+// board/seats table (e.g. a company that is only a seat of a selected
+// person) does not retire it here; it keeps its annex row, and any note on
+// it. Ownership rows are covered only when either side is a COMPANY
+// chapter's own title — a person chapter's title never retires one.
 export const annexRows = doc => {
   const steps = doc.steps || [];
-  const stepNodeIds = new Set(steps.flatMap(s => s.nodeIds || []));
-  const stepIds = new Set(steps.map(s => s.nodeId));
-  const chapterTitles = new Set(steps.map(s => s.title));
+  const stepIds = new Set(steps.map(s => s.nodeId || s.nodeIds?.[0]));
+  const companyChapterTitles = new Set(steps.filter(s => s.kind === 'company').map(s => s.title));
   return {
-    companies: (doc.companies || []).filter(c => !stepNodeIds.has(c.nodeId)),
+    companies: (doc.companies || []).filter(c => !stepIds.has(c.nodeId)),
     connectors: (doc.connectors || []).filter(c => !stepIds.has(c.nodeId)),
-    ownership: (doc.ownership || []).filter(o => !chapterTitles.has(o.owner) && !chapterTitles.has(o.owned)),
+    ownership: (doc.ownership || []).filter(o => !companyChapterTitles.has(o.owner) && !companyChapterTitles.has(o.owned)),
     corrections: doc.corrections || [],
   };
 };
@@ -178,14 +178,12 @@ const personEvidenceBlock = (s, wt) => {
     r => [r.company, r.role, r.since, r.until, wt.statusWords[r.status] || r.status])}`;
 };
 
-const DEFAULT_CHAPTER_BLOCKS = Object.freeze({
-  identity: true, board: true, filings: true, findings: true,
-});
-
 export const renderChapters = (doc, t, wt) => {
   const steps = doc.steps || [];
   if (!steps.length) return '';
-  const blocks = doc.blocks || DEFAULT_CHAPTER_BLOCKS;
+  // Any block missing from doc.blocks defaults to shown — the same rule
+  // companyEvidenceBlock's per-block `!== false` checks already apply.
+  const blocks = doc.blocks || {};
   const num = sectionNumbers(doc).chapters;
   const rows = steps.map((s, i) => {
     const head = `<span class="src">${esc(wt.sources[s.source] || s.source || '')}</span>${esc(wt.kinds[s.kind] || wt.sections?.[s.section] || '')}`;
@@ -215,8 +213,8 @@ export const stepEvidenceLine = (s, wt) => {
 const annex = (id, title, inner) => (inner ? `<div class="annex" id="${id}"><h3>${esc(title)}</h3>${inner}</div>` : '');
 
 export const renderAnnexes = (doc, t) => {
+  if (!hasAnnexes(doc)) return '';
   const rows = annexRows(doc);
-  if (!rows.companies.length && !rows.connectors.length && !rows.ownership.length && !rows.corrections.length) return '';
   const companies = rows.companies.map(c => `<li><strong>${esc(c.name)}</strong>${c.note?.text ? noteBlock(c.note, t) : ''}</li>`).join('');
   const connectors = rows.connectors.map(c => `<tr>
     <td>${esc(c.name)} <em>(${c.type === 'entity' ? esc(t.entity) : esc(t.individual)})</em>${c.note?.text ? noteBlock(c.note, t) : ''}</td>
@@ -228,7 +226,7 @@ export const renderAnnexes = (doc, t) => {
 ${annex('companies', t.companies, companies ? `<ul class="plain">${companies}</ul>` : '')}
 ${annex('connections', t.connections, connectors
     ? `<div class="scroll"><table><thead><tr><th>${esc(t.person)}</th><th>${esc(t.inCompanies)}</th><th>${esc(t.role)}</th><th>${esc(t.status)}</th></tr></thead><tbody>${connectors}</tbody></table></div>`
-    : `<p class="meta">${esc(t.none)}</p>`)}
+    : '')}
 ${annex('ownership', t.ownership, ownership ? `<ul class="plain">${ownership}</ul>` : '')}
 ${annex('corrections', t.corrections, corrections ? `<ul class="plain">${corrections}</ul>` : '')}
 </section>`;

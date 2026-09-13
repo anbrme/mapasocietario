@@ -66,6 +66,21 @@ describe('personSeats', () => {
       { company: 'NORTE, SL', companyId: 'H:2', role: 'Consejera', since: '2019-01-01', until: '', status: 'ceased' },
     ]);
   });
+
+  it('skips an ownership link — a sole-shareholder relation is not a seat', () => {
+    const graphWithOwnership = {
+      nodes: graph.nodes,
+      links: [
+        { source: 'H:1', target: 'o1', category: 'nombramiento', relationship: 'Administradora única', date: '2021-03-01' },
+        {
+          source: 'o1', target: 'H:2', type: 'ownership', category: 'socio_unico', relationship: 'Socio único', date: '2019-01-01',
+        },
+      ],
+    };
+    expect(personSeats(graph.nodes[0], graphWithOwnership, 'es')).toEqual([
+      { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Administradora única', since: '2021-03-01', until: '', status: 'active' },
+    ]);
+  });
 });
 
 describe('companyEvidence', () => {

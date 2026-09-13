@@ -88,7 +88,7 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .chapter ul{margin:0;padding-left:18px}
 .kv{color:var(--muted);font-size:.9rem;margin:2px 0}
 .chapter .ev{color:var(--muted);font-size:.82rem;margin-top:4px}
-.chapter .note .who{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+#wt-note .who,.chapter .note .who{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .annex{margin-bottom:28px}
 .annex h3{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
 table{border-collapse:collapse;width:100%;font-size:.88rem}

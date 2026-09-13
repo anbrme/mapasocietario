@@ -264,6 +264,36 @@ describe('documentSections', () => {
     expect(rows.ownership).toEqual([{ owner: 'GAMMA SL', owned: 'DELTA SL', lost: false }]);
   });
 
+  it('keeps a company in the annex, note and all, when it is only a seat inside a person chapter (not itself a chapter)', () => {
+    // o1's person step here has c2 among its nodeIds/seats — being pictured
+    // in that seats table must NOT retire c2's own annex row.
+    const richDoc = {
+      ...doc,
+      steps: [personStep('o1', {
+        nodeIds: ['o1', 'c2'],
+        evidence: { seats: [{
+          company: 'BETA SL', companyId: 'c2', role: 'Apoderado', since: '2020-01-01', until: '', status: 'active',
+        }] },
+      })],
+      companies: [{ nodeId: 'c2', name: 'BETA SL', note: { text: 'Same registered address', flag: 'amber' } }],
+    };
+    const rows = annexRows(richDoc);
+    expect(rows.companies.map(c => c.nodeId)).toEqual(['c2']);
+    expect(renderAnnexes(richDoc, t)).toContain('Same registered address');
+  });
+
+  it('keeps an ownership row in the annex when owner/owned only match a PERSON chapter title, never a company one', () => {
+    const richDoc = {
+      ...doc,
+      steps: [personStep('o1')], // title 'GARCIA LOPEZ ANA'
+      companies: [],
+      connectors: [],
+      ownership: [{ owner: 'GARCIA LOPEZ ANA', owned: 'BETA SL', lost: false }],
+    };
+    const rows = annexRows(richDoc);
+    expect(rows.ownership).toEqual([{ owner: 'GARCIA LOPEZ ANA', owned: 'BETA SL', lost: false }]);
+  });
+
   it('renderAnnexes returns an empty string when every annex would be empty', () => {
     const covered = {
       ...doc,
@@ -280,6 +310,12 @@ describe('documentSections', () => {
     expect(html).toContain('id="annexes"');
     expect(html).toContain('OTRA SL');
     expect(html).not.toContain('id="corrections"');
+  });
+
+  it('omits the connections annex entirely when there are no connectors, with no "none detected" fallback', () => {
+    const html = renderAnnexes(doc, t);
+    expect(html).not.toContain('id="connections"');
+    expect(html).not.toContain(t.none);
   });
 
   it('footer carries source, coverage and the site link only', () => {

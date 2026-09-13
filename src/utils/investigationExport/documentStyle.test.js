@@ -39,6 +39,10 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).toContain('#wt-panel{margin-top:12px');
   });
 
+  it('styles the note eyebrow span in both the walkthrough card and the chapter note', () => {
+    expect(DOCUMENT_STYLE).toContain('#wt-note .who,.chapter .note .who{display:block');
+  });
+
   it('styles the opening block, the evidence line and the chapter sub-heads', () => {
     expect(DOCUMENT_STYLE).toContain('#wt-opening{');
     expect(DOCUMENT_STYLE).toContain('#wt-ev{');

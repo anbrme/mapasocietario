@@ -44,6 +44,9 @@ export const personSeats = (node, graphData, lang) => {
     const other = a === id ? b : b === id ? a : null;
     const company = other ? byId.get(other) : null;
     if (!company || !isCompany(company)) return [];
+    // A sole-shareholder link is ownership, not a seat — it never belongs in
+    // the "cargos" table, however it happens to be categorised.
+    if (l.type === 'ownership') return [];
     return [{
       company: company.name || '', companyId: other,
       role: l.relationship || l.category || '',
