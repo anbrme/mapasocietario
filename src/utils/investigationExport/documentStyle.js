@@ -59,10 +59,12 @@ figcaption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;ma
 .legend i.co{background:var(--company)}.legend i.of{background:var(--officer)}
 .legend i.own{width:18px;height:0;border-top:2px dashed var(--muted);border-radius:0;vertical-align:3px}
 .legend i.flag{background:transparent;border:2px solid #ef4444}
-#wt-panel{position:sticky;bottom:12px;margin-top:12px;background:var(--card);border:1px solid var(--line);
+#wt-panel{margin-top:12px;background:var(--card);border:1px solid var(--line);
 border-radius:8px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+#wt-opening{border-bottom:1px solid var(--line);margin-bottom:8px;padding-bottom:8px}
 #wt-title{display:block;font-weight:700;margin:2px 0 4px}
 #wt-text{margin:0 0 6px;white-space:pre-line}
+#wt-ev{color:var(--muted);font-size:.86rem;margin:0 0 6px}
 #wt-note,.chapter .note{margin:8px 0 0;padding:8px 12px;border-left:3px solid var(--f,#94a3b8);background:var(--soft);
 border-radius:0 6px 6px 0;font-size:.92rem;white-space:pre-line}
 #wt-note[data-flag="red"]{--f:#ef4444}#wt-note[data-flag="amber"]{--f:#f59e0b}
@@ -75,12 +77,16 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .chapter{display:grid;grid-template-columns:44px 1fr;gap:0 16px;padding:16px 0;border-top:1px solid var(--line);page-break-inside:avoid}
 .chapter:last-child{border-bottom:1px solid var(--line)}
 .chapter.current{background:var(--accent-soft);margin:0 -12px;padding-left:12px;padding-right:12px;border-radius:6px}
-.chapter .num{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;cursor:pointer}
+.chapter .num{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;cursor:pointer;text-align:left}
 .chapter .num:hover{text-decoration:underline}
 .chapter .head{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .chapter .head .src{display:inline-block;padding:0 6px;border:1px solid var(--line);border-radius:10px;margin-right:6px;letter-spacing:.04em}
 .chapter h3{margin:0 0 4px;font-size:1.02rem}
 .chapter p{margin:0;white-space:pre-line}
+.chapter h4{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 4px}
+.chapter table{font-size:.82rem}
+.chapter ul{margin:0;padding-left:18px}
+.kv{color:var(--muted);font-size:.9rem;margin:2px 0}
 .chapter .ev{color:var(--muted);font-size:.82rem;margin-top:4px}
 .chapter .note .who{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .annex{margin-bottom:28px}
@@ -91,6 +97,7 @@ th{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut
 td.date{font-variant-numeric:tabular-nums;white-space:nowrap}
 .scroll{overflow-x:auto}
 ul.plain{list-style:none;padding:0;margin:0}ul.plain li{padding:6px 0;border-bottom:1px solid var(--line)}
+nav.contents a.sub{margin-left:14px;font-size:.8rem}
 footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem;line-height:1.7}
 @page{size:A4;margin:18mm}
 @media print{

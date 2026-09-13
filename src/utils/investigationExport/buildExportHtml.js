@@ -9,6 +9,7 @@ import { DOCUMENT_STYLE } from './documentStyle';
 import { WALKTHROUGH_SCRIPT } from './walkthroughScript';
 import {
   renderCover, renderContents, renderSummary, renderMapFigure, renderChapters, renderAnnexes, renderFooter,
+  stepEvidenceLine,
 } from './documentSections';
 
 export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
@@ -16,14 +17,20 @@ export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
   const t = exportCopy(lang);
   const wt = walkthroughCopy(lang);
   const steps = (safeDoc.steps || []).map(s => ({
-    key: s.key, section: s.section, nodeIds: s.nodeIds, linkKeys: s.linkKeys || [],
-    title: s.title, text: s.text, source: s.source, date: s.date, flag: s.flag,
-    authorNote: s.authorNote ? { text: s.authorNote.text, flag: s.authorNote.flag } : null,
-    sectionLabel: wt.sections[s.section] || s.section,
-    sourceLabel: wt.sources[s.source] || s.source,
+    key: s.key,
+    kind: s.kind,
+    kindLabel: wt.kinds[s.kind] || wt.sections?.[s.section] || '',
+    sourceLabel: wt.sources[s.source] || s.source || '',
+    title: s.title,
+    summary: s.summary || s.text || '',
+    evidenceLine: stepEvidenceLine(s, wt),
+    narrative: s.narrative || (s.authorNote ? { text: s.authorNote.text, flag: s.authorNote.flag } : null),
+    nodeIds: s.nodeIds,
+    linkKeys: s.linkKeys || [],
+    flag: s.flag,
   }));
   // JSON is embedded as text, so "</script>" inside a note would close the tag.
-  const stepJson = JSON.stringify({ steps }).replace(/</g, '\\u003c');
+  const stepJson = JSON.stringify({ steps, opening: safeDoc.opening || null, noteLabel: t.authorNote }).replace(/</g, '\\u003c');
 
   return `<!doctype html>
 <html lang="${lang === 'en' ? 'en' : 'es'}">

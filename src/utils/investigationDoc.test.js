@@ -198,4 +198,35 @@ describe('buildInvestigationDoc', () => {
     expect(doc.steps).not.toBe(steps);
     expect(doc.author).toEqual({ name: 'A', organisation: '' });
   });
+
+  it('defaults blocks to all-true, mode to null and opening to null', () => {
+    const doc = build();
+
+    expect(doc.blocks).toEqual({
+      identity: true, board: true, filings: true, findings: true,
+    });
+    expect(doc.mode).toBeNull();
+    expect(doc.opening).toBeNull();
+  });
+
+  it('merges a partial blocks override over the defaults, ignoring non-boolean values', () => {
+    const doc = build({ blocks: { board: false, filings: 'nope', extra: true } });
+
+    expect(doc.blocks).toEqual({
+      identity: true, board: false, filings: true, findings: true,
+    });
+    expect(doc.blocks.extra).toBeUndefined();
+  });
+
+  it('passes mode through only when it is a known value', () => {
+    expect(build({ mode: 'selection' }).mode).toBe('selection');
+    expect(build({ mode: 'draft' }).mode).toBe('draft');
+    expect(build({ mode: 'bogus' }).mode).toBeNull();
+  });
+
+  it('carries opening through when it has a title or line, else null', () => {
+    expect(build({ opening: { title: 'Recorrido', line: '' } }).opening).toEqual({ title: 'Recorrido', line: '' });
+    expect(build({ opening: { title: '', line: '' } }).opening).toBeNull();
+    expect(build({ opening: null }).opening).toBeNull();
+  });
 });

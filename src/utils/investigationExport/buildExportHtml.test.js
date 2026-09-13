@@ -3,10 +3,45 @@ import { buildExportHtml, exportFileName } from './buildExportHtml';
 
 const graphData = { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 10, y: 10 }], links: [] };
 const doc = {
-  subject: 'ALFA SL', generatedAt: '2026-09-12T09:00:00.000Z', networkNote: '', author: null, coverage: null,
-  steps: [{ key: 'subject:c1', section: 'subject', nodeIds: ['c1'], linkKeys: [], title: 'ALFA SL', text: 'NIF B1', source: 'registry', date: null, evidence: null, flag: null, deepLink: 'https://mapasocietario.es/app?gk=c1&lang=es', authorNote: { text: 'x</script><script>alert(1)', flag: 'red', origin: 'step' } }],
-  flagged: [], companies: [{ nodeId: 'c1', name: 'ALFA SL', note: null }], connectors: [], ownership: [], otherNotes: [], corrections: [],
-  counts: { companies: 1, officers: 0, sharedPeople: 0, notes: 1, flagged: 0 },
+  subject: 'ALFA SL',
+  generatedAt: '2026-09-12T09:00:00.000Z',
+  networkNote: '',
+  author: null,
+  coverage: null,
+  opening: { title: 'Recorrido por esta red · 1 paso', line: 'Tu selección, en el orden elegido' },
+  steps: [{
+    key: 'step:c1',
+    nodeId: 'c1',
+    kind: 'company',
+    title: 'ALFA SL',
+    summary: 'NIF B1',
+    source: 'registry',
+    nodeIds: ['c1'],
+    linkKeys: [],
+    flag: 'red',
+    deepLink: 'https://mapasocietario.es/app?gk=c1&lang=es',
+    evidence: {
+      identity: 'NIF B1',
+      status: { dissolved: false, concurso: false, lastFiling: null },
+      capital: null,
+      activity: null,
+      board: [],
+      filings: [],
+      findings: [{ text: 'Sin hallazgos relevantes', date: '2024-01-01', cls: 'context' }],
+      unseen: [],
+      ownership: [],
+    },
+    narrative: { text: 'x</script><script>alert(1)', flag: 'red' },
+  }],
+  flagged: [],
+  companies: [{ nodeId: 'c1', name: 'ALFA SL', note: null }],
+  connectors: [],
+  ownership: [],
+  otherNotes: [],
+  corrections: [],
+  counts: {
+    companies: 1, officers: 0, sharedPeople: 0, notes: 1, flagged: 0,
+  },
 };
 
 describe('buildExportHtml', () => {
@@ -15,11 +50,29 @@ describe('buildExportHtml', () => {
     expect(html.startsWith('<!doctype html>')).toBe(true);
     expect(html).toContain('data:font/woff2;base64,');
     expect(html).toContain('window.__SITREP__=');
-    expect(html).toContain('"sectionLabel":"Sujeto"');
+    expect(html).toContain('"kindLabel":"Empresa"');
     expect(html).toContain('"sourceLabel":"Registro (BORME)"');
     expect(html).not.toContain('</script><script>alert');
     expect(html.match(/https?:\/\/[^"' )]+/g).every(u => u.startsWith('https://mapasocietario.es'))).toBe(true);
     expect(html).not.toMatch(/wordmark|<img/);
+  });
+
+  it('embeds the opening block and the step evidenceLine', () => {
+    const html = buildExportHtml(doc, graphData, { lang: 'es' });
+    const dataScript = html.match(/window\.__SITREP__=(.*?);<\/script>/s);
+    const parsed = JSON.parse(dataScript[1]);
+
+    expect(parsed.opening).toEqual(doc.opening);
+    expect(parsed.noteLabel).toBe('Nota del autor');
+    expect(parsed.steps[0].evidenceLine).toBe('Sin hallazgos relevantes');
+    expect(parsed.steps[0].narrative).toEqual({ text: 'x</script><script>alert(1)', flag: 'red' });
+  });
+
+  it('embeds null for opening when the doc carries none', () => {
+    const html = buildExportHtml({ ...doc, opening: null }, graphData, { lang: 'es' });
+    const dataScript = html.match(/window\.__SITREP__=(.*?);<\/script>/s);
+    const parsed = JSON.parse(dataScript[1]);
+    expect(parsed.opening).toBeNull();
   });
 
   it('stays under 400 KB with a 200-node graph', () => {
@@ -61,18 +114,18 @@ describe('buildExportHtml', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
-  it('escapes a literal </script> inside a step note so the file is not truncated', () => {
+  it('escapes a literal </script> inside a step narrative so the file is not truncated', () => {
     const html = buildExportHtml(doc, graphData, { lang: 'es' });
 
     // Only the two script tags the template itself writes (the JSON payload
-    // and the walkthrough script) may close — the note's own "</script>"
-    // must not produce a third one that truncates the document.
+    // and the walkthrough script) may close — the narrative's own
+    // "</script>" must not produce a third one that truncates the document.
     expect((html.match(/<\/script>/gi) || []).length).toBe(2);
 
     const dataScript = html.match(/window\.__SITREP__=(.*?);<\/script>/s);
     expect(dataScript).not.toBeNull();
     const parsed = JSON.parse(dataScript[1]);
-    expect(parsed.steps[0].authorNote.text).toBe('x</script><script>alert(1)');
+    expect(parsed.steps[0].narrative.text).toBe('x</script><script>alert(1)');
   });
 
   it('does not throw on a null doc', () => {

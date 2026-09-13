@@ -33,4 +33,17 @@ describe('DOCUMENT_STYLE', () => {
     expect(flagVar('red')).toBe(`--f:${FLAG_COLORS.red}`);
     expect(flagVar('bogus')).toBe(`--f:${FLAG_COLORS.none}`);
   });
+
+  it('the walkthrough card is no longer pinned over the map', () => {
+    expect(DOCUMENT_STYLE).not.toMatch(/#wt-panel\{[^}]*position:sticky/);
+    expect(DOCUMENT_STYLE).toContain('#wt-panel{margin-top:12px');
+  });
+
+  it('styles the opening block, the evidence line and the chapter sub-heads', () => {
+    expect(DOCUMENT_STYLE).toContain('#wt-opening{');
+    expect(DOCUMENT_STYLE).toContain('#wt-ev{');
+    expect(DOCUMENT_STYLE).toContain('.chapter h4{');
+    expect(DOCUMENT_STYLE).toContain('.kv{');
+    expect(DOCUMENT_STYLE).toContain('nav.contents a.sub{');
+  });
 });

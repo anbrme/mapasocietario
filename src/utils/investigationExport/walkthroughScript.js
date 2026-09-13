@@ -17,9 +17,13 @@ export const WALKTHROUGH_SCRIPT = `
   if (!map) return;
 
   var panel = document.getElementById('wt-panel');
+  var opening = document.getElementById('wt-opening');
+  var openTitle = document.getElementById('wt-open-title');
+  var openLine = document.getElementById('wt-open-line');
   var eyebrow = document.getElementById('wt-eyebrow');
   var title = document.getElementById('wt-title');
   var text = document.getElementById('wt-text');
+  var ev = document.getElementById('wt-ev');
   var note = document.getElementById('wt-note');
   var counter = document.getElementById('wt-counter');
   var idx = -1;
@@ -55,7 +59,7 @@ export const WALKTHROUGH_SCRIPT = `
     var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
     var cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
     var span = Math.max(maxX - minX, maxY - minY, 1);
-    scale = xs.length === 1 ? 2 : Math.max(0.5, Math.min(2.5, (Math.min(v.width, v.height) * 0.6) / span));
+    scale = xs.length === 1 ? 1.3 : Math.max(0.5, Math.min(2.5, (Math.min(v.width, v.height) * 0.6) / span));
     tx = v.x + v.width / 2 - cx * scale;
     ty = v.y + v.height / 2 - cy * scale;
     apply();
@@ -75,14 +79,31 @@ export const WALKTHROUGH_SCRIPT = `
       Array.prototype.forEach.call(map.querySelectorAll(sel), function (el) { el.classList.add('on'); });
     });
     panTo(step.nodeIds || []);
-    if (eyebrow) eyebrow.textContent = (step.sectionLabel || '') + (step.sourceLabel ? ' · ' + step.sourceLabel : '') + (step.date ? ' · ' + step.date : '');
+    if (opening) {
+      var hasOpening = !!(data.opening && (data.opening.title || data.opening.line));
+      if (openTitle) openTitle.textContent = (data.opening && data.opening.title) || '';
+      if (openLine) openLine.textContent = (data.opening && data.opening.line) || '';
+      opening.hidden = !hasOpening || i !== 0;
+    }
+    if (eyebrow) eyebrow.textContent = (step.kindLabel || '') + (step.sourceLabel ? ' · ' + step.sourceLabel : '');
     if (title) title.textContent = step.title || '';
-    if (text) { text.textContent = step.source === 'author' ? '' : (step.text || ''); text.hidden = !text.textContent; }
+    if (text) { text.textContent = step.summary || ''; text.hidden = !text.textContent; }
+    if (ev) { ev.textContent = step.evidenceLine || ''; ev.hidden = !ev.textContent; }
     if (note) {
-      var n = step.source === 'author' ? { text: step.text, flag: step.flag } : step.authorNote;
-      note.textContent = n && n.text ? n.text : '';
-      note.hidden = !note.textContent;
-      note.setAttribute('data-flag', (n && n.flag) || 'none');
+      note.textContent = '';
+      var n = step.narrative;
+      if (n && n.text) {
+        var who = document.createElement('span');
+        who.className = 'who';
+        who.textContent = data.noteLabel || '';
+        note.appendChild(who);
+        note.appendChild(document.createTextNode(n.text));
+        note.hidden = false;
+        note.setAttribute('data-flag', n.flag || 'none');
+      } else {
+        note.hidden = true;
+        note.setAttribute('data-flag', 'none');
+      }
     }
     if (counter) counter.textContent = (i + 1) + ' / ' + data.steps.length;
     if (panel) panel.hidden = false;

@@ -40,4 +40,28 @@ describe('WALKTHROUGH_SCRIPT', () => {
     expect(WALKTHROUGH_SCRIPT).toContain("'wt-note'");
     expect(WALKTHROUGH_SCRIPT).toContain("'wt-text'");
   });
+
+  it('zooms a single-node step to 1.3, not the old 2', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('1.3');
+    expect(WALKTHROUGH_SCRIPT).not.toMatch(/xs\.length === 1 \? 2\b/);
+  });
+
+  it('reads and shows the opening block only on the first step', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('wt-opening');
+    expect(WALKTHROUGH_SCRIPT).toContain('wt-open-title');
+    expect(WALKTHROUGH_SCRIPT).toContain('wt-open-line');
+    expect(WALKTHROUGH_SCRIPT).toContain('i !== 0');
+  });
+
+  it('shows the precomputed evidence line', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('wt-ev');
+    expect(WALKTHROUGH_SCRIPT).toContain('evidenceLine');
+  });
+
+  it('builds the note with createElement/textContent, never innerHTML', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('createElement');
+    expect(WALKTHROUGH_SCRIPT).toContain('noteLabel');
+    expect(WALKTHROUGH_SCRIPT).toContain('createTextNode');
+    expect(WALKTHROUGH_SCRIPT).not.toMatch(/\.innerHTML/);
+  });
 });

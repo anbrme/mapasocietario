@@ -13,6 +13,7 @@
 // the graph you are looking at.
 
 import { hasNodeNote } from './nodeNotes';
+import { DEFAULT_BLOCKS } from './sitrepAuthor';
 
 // Flags a person reaches for when something is wrong, most urgent first. Any
 // other flag ('blue', 'green', 'none') is a note, not a finding.
@@ -38,6 +39,9 @@ export function buildInvestigationDoc({
   steps = [],
   author = null,
   coverage = null,
+  blocks = null,
+  mode = null,
+  opening = null,
 }) {
   const notedNodes = (graphData?.nodes || []).filter(hasNodeNote);
   const notesById = new Map(notedNodes.map(n => [normalizeNodeId(n.id), n.userNote]));
@@ -108,5 +112,12 @@ export function buildInvestigationDoc({
       ? { name: String(author.name || ''), organisation: String(author.organisation || '') } : null,
     coverage: coverage && (coverage.since || coverage.indexedThrough)
       ? { since: String(coverage.since || ''), indexedThrough: String(coverage.indexedThrough || '') } : null,
+    blocks: Object.keys(DEFAULT_BLOCKS).reduce((acc, key) => ({
+      ...acc,
+      [key]: typeof blocks?.[key] === 'boolean' ? blocks[key] : DEFAULT_BLOCKS[key],
+    }), {}),
+    mode: mode === 'selection' || mode === 'draft' ? mode : null,
+    opening: opening && (opening.title || opening.line)
+      ? { title: String(opening.title || ''), line: String(opening.line || '') } : null,
   };
 }
