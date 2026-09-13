@@ -104,8 +104,15 @@ describe('stateAt', () => {
     expect(stateAt(tl, '2020-01-01').links.get('o1-H:1-adm')).toBe('live');
     expect(stateAt(tl, '2022-05-01').links.get('o1-H:1-adm')).toBe('ceased');
   });
-  it('an undated link is live at every date', () => {
-    expect(stateAt(tl, '2000-01-01').links.get('H:2|o3|consejero')).toBe('live');
+  it('an undated link is live at every date its endpoints exist', () => {
+    expect(stateAt(tl, '2020-01-01').links.get('H:2|o3|consejero')).toBe('live');
+  });
+  it('a link to a company that does not exist yet is hidden with it, and so is the person on it', () => {
+    expect(stateAt(tl, '2000-01-01').nodes.get('H:2')).toBe('hidden');
+    expect(stateAt(tl, '2000-01-01').links.get('H:2|o3|consejero')).toBe('hidden');
+    expect(stateAt(tl, '2000-01-01').nodes.get('o3')).toBe('hidden');
+    expect(stateAt(tl, '2015-02-02').links.get('H:2|o3|consejero')).toBe('live');
+    expect(stateAt(tl, '2015-02-02').nodes.get('o3')).toBe('live');
   });
   it('a dissolved company is live before and a ghost from its last filing; its seats read ceased then', () => {
     expect(stateAt(tl, '2020-01-01').nodes.get('H:2')).toBe('live');

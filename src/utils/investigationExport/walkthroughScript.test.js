@@ -49,6 +49,38 @@ describe('WALKTHROUGH_SCRIPT', () => {
     expect(WALKTHROUGH_SCRIPT).toContain("'IntersectionObserver' in window");
   });
 
+  // block:'center' centres the chapter's scroll-margin box, so a short chapter
+  // never reaches the observer's mid-viewport band; 'start' is what the 45vh
+  // scroll-margin was written for.
+  it('scrolls a chapter to the top of its scroll-margin, never to the centre', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain("block: 'start'");
+    expect(WALKTHROUGH_SCRIPT).not.toContain("block: 'center'");
+  });
+
+  it('releases the drag class only when no pointer is down', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('pointers.size === 0 && !dragging');
+  });
+
+  it('hides a link whose endpoint node is hidden, so no line is drawn to nowhere', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain("nodeState[L.a] === 'hidden' || nodeState[L.b] === 'hidden'");
+  });
+
+  it('indexes the map elements once instead of querying per node and link on every date', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('function buildIndex');
+    expect(WALKTHROUGH_SCRIPT).toContain('querySelectorAll');
+    const renderAtBody = WALKTHROUGH_SCRIPT.split('function renderAt')[1].split('\n  function ')[0];
+    expect(renderAtBody).not.toContain('querySelector');
+  });
+
+  it('gives the chapters the date back when the reader navigates after scrubbing', () => {
+    expect(WALKTHROUGH_SCRIPT).toMatch(/detached = false/g);
+    expect((WALKTHROUGH_SCRIPT.match(/detached = false/g) || []).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('no longer writes the unread ghost-title attribute', () => {
+    expect(WALKTHROUGH_SCRIPT).not.toContain('data-ghost-title');
+  });
+
   it('is parseable JavaScript', () => {
     expect(() => new Function(WALKTHROUGH_SCRIPT)).not.toThrow();
   });

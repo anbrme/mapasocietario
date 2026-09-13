@@ -119,7 +119,9 @@ const companyState = (d, date) => {
 };
 
 /**
- * The map as of one day. Persons follow their seats; a ghost company's seats read ceased.
+ * The map as of one day. Persons follow their seats; a ghost company's seats
+ * read ceased, and a seat of a company that does not exist yet is hidden with
+ * it — a drawn line to an invisible node is a line to nowhere.
  * @returns {{ nodes: Map<string, 'live'|'ghost'|'hidden'>, links: Map<string, 'live'|'ceased'|'hidden'> }}
  */
 export const stateAt = (timeline, date) => {
@@ -134,7 +136,10 @@ export const stateAt = (timeline, date) => {
   });
   Object.entries(linkTable).forEach(([key, d]) => {
     let st = linkState(d, date);
-    if (st !== 'hidden' && (nodesOut.get(d.a) === 'ghost' || nodesOut.get(d.b) === 'ghost')) st = 'ceased';
+    const a = nodesOut.get(d.a);
+    const b = nodesOut.get(d.b);
+    if (a === 'hidden' || b === 'hidden') st = 'hidden';
+    else if (st !== 'hidden' && (a === 'ghost' || b === 'ghost')) st = 'ceased';
     linksOut.set(key, st);
   });
   Object.keys(nodeTable).forEach(id => {

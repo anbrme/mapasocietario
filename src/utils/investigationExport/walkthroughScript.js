@@ -49,7 +49,29 @@ export const WALKTHROUGH_SCRIPT = `
   }
   function esc(id) { return window.CSS && CSS.escape ? CSS.escape(id) : id; }
   function nodeEl(id) { return map.querySelector('g.n[data-id="' + esc(id) + '"]'); }
-  function linkEl(key) { return map.querySelector('line.l[data-key="' + esc(key) + '"]'); }
+
+  // Dragging the slider re-dates the whole map on every step, so the elements
+  // are found once here and never queried again: id -> node group, timeline
+  // key -> the lines carrying it (a key can be drawn more than once), and the
+  // keys touching each node.
+  var nodeEls = Object.create(null);
+  var lineEls = Object.create(null);
+  var linksOf = Object.create(null);
+  function buildIndex() {
+    var nodes = (tl && tl.nodes) || {}, links = (tl && tl.links) || {};
+    Object.keys(nodes).forEach(function (id) {
+      var el = nodeEl(id); if (el) nodeEls[id] = el;
+      linksOf[id] = [];
+    });
+    Object.keys(links).forEach(function (k) {
+      var found = map.querySelectorAll('line.l[data-key="' + esc(k) + '"]');
+      if (found.length) lineEls[k] = Array.prototype.slice.call(found);
+      [links[k].a, links[k].b].forEach(function (id) {
+        if (!linksOf[id]) linksOf[id] = [];
+        linksOf[id].push(k);
+      });
+    });
+  }
 
   function clearFocus() {
     map.classList.remove('focused');
@@ -78,19 +100,21 @@ export const WALKTHROUGH_SCRIPT = `
     Object.keys(links).forEach(function (k) {
       var L = links[k];
       var st = L.from && d < L.from ? 'hidden' : (L.to && d >= L.to ? 'ceased' : 'live');
-      if (st !== 'hidden' && (nodeState[L.a] === 'ghost' || nodeState[L.b] === 'ghost')) st = 'ceased';
+      // A line to a company that does not exist yet is a line to nowhere.
+      if (nodeState[L.a] === 'hidden' || nodeState[L.b] === 'hidden') st = 'hidden';
+      else if (st !== 'hidden' && (nodeState[L.a] === 'ghost' || nodeState[L.b] === 'ghost')) st = 'ceased';
       linkState[k] = st;
-      var el = linkEl(k); if (el) el.setAttribute('data-state', st);
+      var els = lineEls[k];
+      if (els) els.forEach(function (el) { el.setAttribute('data-state', st); });
     });
     Object.keys(nodes).forEach(function (id) {
       if (nodeState[id]) return;
-      var mine = Object.keys(links).filter(function (k) { return links[k].a === id || links[k].b === id; }).map(function (k) { return linkState[k]; });
+      var mine = (linksOf[id] || []).map(function (k) { return linkState[k]; });
       nodeState[id] = mine.length === 0 || mine.indexOf('live') >= 0 ? 'live' : (mine.indexOf('ceased') >= 0 ? 'ghost' : 'hidden');
     });
     Object.keys(nodeState).forEach(function (id) {
-      var el = nodeEl(id); if (!el) return;
-      el.setAttribute('data-state', nodeState[id]);
-      if (nodeState[id] === 'ghost' && nodes[id] && nodes[id].dissolved) el.setAttribute('data-ghost-title', data.dissolvedProxy || '');
+      var el = nodeEls[id];
+      if (el) el.setAttribute('data-state', nodeState[id]);
     });
     if (dateLabel) dateLabel.textContent = (data.registryAsOf || '{d}').replace('{d}', fmtDay(d));
     if (slider && dates.indexOf(d) >= 0) slider.value = String(dates.indexOf(d));
@@ -137,6 +161,7 @@ export const WALKTHROUGH_SCRIPT = `
   // document was written, with the opening note in the panel.
   function renderOpening() {
     idx = -1;
+    detached = false;
     clearFocus();
     clearCard();
     clearCurrent();
@@ -192,8 +217,11 @@ export const WALKTHROUGH_SCRIPT = `
   window.__sitrepShow = function (i) {
     var n = Math.max(0, Math.min(i, steps.length - 1));
     var ch = document.getElementById('ch-' + n);
-    if (ch && ch.scrollIntoView) ch.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
-    if (!('IntersectionObserver' in window)) show(n);
+    // 'start' lands the chapter top on its 45vh scroll-margin, just above the
+    // observer's mid-viewport band; 'center' would centre that margin box and
+    // a short chapter would never cross the band at all.
+    if (ch && ch.scrollIntoView) ch.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    if (!('IntersectionObserver' in window)) { detached = false; show(n); }
   };
 
   if ('IntersectionObserver' in window) {
@@ -272,14 +300,22 @@ export const WALKTHROUGH_SCRIPT = `
   }
   map.addEventListener('pointerup', up);
   map.addEventListener('pointercancel', up);
+  // A trackpad pinch arrives as a burst of wheel events: releasing the class
+  // per event would restart the 0.6s transition on every frame. Only the end
+  // of the burst releases it, and never while a finger is still down.
+  var WHEEL_IDLE_MS = 140;
+  var wheelTimer = 0;
   map.addEventListener('wheel', function (e) {
     if (!e.ctrlKey && !e.metaKey) return;
     e.preventDefault();
     map.classList.add('dragging');
     scale = Math.min(6, Math.max(0.2, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
     apply();
-    if (window.requestAnimationFrame) requestAnimationFrame(function () { map.classList.remove('dragging'); });
-    else map.classList.remove('dragging');
+    if (wheelTimer) clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(function () {
+      wheelTimer = 0;
+      if (pointers.size === 0 && !dragging) map.classList.remove('dragging');
+    }, WHEEL_IDLE_MS);
   }, { passive: false });
 
   // The annex explorer: one tab strip, roving tabindex, panels toggled by
@@ -303,6 +339,7 @@ export const WALKTHROUGH_SCRIPT = `
     });
   });
 
+  buildIndex();
   renderOpening();
 })();
 `;
