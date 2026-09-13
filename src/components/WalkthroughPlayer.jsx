@@ -29,10 +29,7 @@ export default function WalkthroughPlayer({
 }) {
   const t = walkthroughCopy(lang);
   const [note, setNote] = useState('');
-  const initialText = step?.narrative?.text
-    || step?.authorNote?.text
-    || (step?.source === 'author' ? (step?.text || '') : '')
-    || '';
+  const initialText = step?.narrative?.text || step?.authorNote?.text || '';
   useEffect(() => {
     setNote(initialText);
   }, [step?.key, initialText]);

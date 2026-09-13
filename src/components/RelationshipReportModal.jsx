@@ -80,8 +80,8 @@ export default function RelationshipReportModal({
     const { buildExportHtml } = await import('../utils/investigationExport');
     const html = buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' });
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-    const w = window.open(url, '_blank', 'noopener');
-    if (!w) { setPreviewBlocked(true); }
+    const w = window.open(url, '_blank');
+    if (w) { w.opener = null; } else { setPreviewBlocked(true); }
     setTimeout(() => URL.revokeObjectURL(url), 60000);
     onPreview?.();
   };
