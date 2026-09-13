@@ -100,3 +100,16 @@ export const swapInSelection = (selection, idA, idB) => {
   [next[i], next[j]] = [next[j], next[i]];
   return next;
 };
+
+/**
+ * The selection without one node — in selection mode this IS "remove the
+ * step", since every step is one selected node. Same array back when the id
+ * is not there, so callers can skip a no-op update.
+ * @param {Array<string>} selection
+ * @param {string} id
+ * @returns {Array<string>}
+ */
+export const removeFromSelection = (selection, id) => {
+  const list = selection || [];
+  return list.includes(id) ? list.filter(x => x !== id) : list;
+};

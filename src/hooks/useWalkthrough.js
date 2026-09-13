@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import {
   draftWalkthrough, openingCard, subjectCompanyIds, applyWalkthroughEdits, hideStep, setStepNote, setStepMoment,
-  moveStep, swapInSelection, loadStepData,
+  moveStep, swapInSelection, removeFromSelection, loadStepData,
 } from '../utils/walkthrough';
 import { initialWalkthroughState, walkthroughReducer, focusSets, stepTransition } from './walkthroughState';
 
@@ -104,7 +104,21 @@ export function useWalkthrough({
   const prev = useCallback(() => goTo(state.index - 1), [goTo, state.index]);
   const exit = useCallback(() => dispatch({ type: 'exit' }), []);
 
-  const hide = useCallback(key => { setEdits(e => hideStep(e, key)); onTrack?.('walkthrough_step_hidden'); }, [setEdits, onTrack]);
+  // In selection mode a step IS a selected node, so removing the step means
+  // deselecting the node — the badge, the AI panel and the list then agree.
+  // A hidden-overlay entry would leave the node selected and the count wrong.
+  // In draft mode the overlay is the right place: the draft is recomputed
+  // from the graph and the entry keeps the step away.
+  const hide = useCallback(key => {
+    if (mode === 'selection') {
+      const step = steps.find(s => s.key === key);
+      if (!step) return;
+      setSelection?.(removeFromSelection(selection, step.nodeId));
+    } else {
+      setEdits(e => hideStep(e, key));
+    }
+    onTrack?.('walkthrough_step_hidden');
+  }, [mode, steps, selection, setSelection, setEdits, onTrack]);
   const setMoment = useCallback((key, iso) => {
     setEdits(e => setStepMoment(e, key, iso));
     onTrack?.('walkthrough_moment_set');

@@ -20,7 +20,7 @@ import { DEFAULT_BLOCKS } from '../utils/sitrepAuthor';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
 import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
 import { NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
-import { walkthroughCopy, editsCounts } from '../utils/walkthrough';
+import { walkthroughCopy, editsCounts, platformModifier } from '../utils/walkthrough';
 
 function StepNoteField({ stepKey, initialText, label, disabled, onCommit }) {
   const [value, setValue] = useState(initialText);
@@ -184,6 +184,11 @@ export default function RelationshipReportModal({
                 if (window.confirm(wt.resetConfirm(c.hidden, c.notes))) walkthrough.reset();
               }} sx={{ textTransform: 'none' }}>{wt.reset}</Button>
             </Box>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+              {walkthrough?.mode === 'selection'
+                ? wt.selectionHelp(platformModifier(typeof navigator !== 'undefined' ? navigator : undefined))
+                : wt.draftHelp}
+            </Typography>
             {steps.map((s, i) => (
               <Box key={s.key} sx={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 1, py: 0.75, borderTop: '1px solid', borderColor: 'divider', alignItems: 'start' }}>
                 <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700, pt: 0.5 }}>{String(i + 1).padStart(2, '0')}</Typography>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, applyWalkthroughEdits,
-  hideStep, setStepNote, moveStep, editsCounts, swapInSelection, setStepMoment,
+  hideStep, setStepNote, moveStep, editsCounts, swapInSelection, setStepMoment, removeFromSelection,
 } from './applyWalkthroughEdits';
 
 const s = (key, extra = {}) => ({ key, section: 'connects', nodeIds: ['n'], linkKeys: [], title: key, text: '', source: 'graph', date: null, evidence: null, flag: null, deepLink: '', authorNote: null, ...extra });
@@ -111,5 +111,16 @@ describe('moments', () => {
     expect(setStepMoment(e1, 'a', '').moments).toEqual({});
     expect(setStepMoment(e1, 'a', '2024-3-1').moments).toEqual({});
     expect(EMPTY_WALKTHROUGH_EDITS.moments).toEqual({});
+  });
+});
+
+describe('removeFromSelection', () => {
+  it('drops the id and keeps the order of the rest', () => {
+    expect(removeFromSelection(['a', 'b', 'c'], 'b')).toEqual(['a', 'c']);
+  });
+  it('returns the same array when the id is absent or the selection is empty', () => {
+    const selection = ['a', 'b'];
+    expect(removeFromSelection(selection, 'nope')).toBe(selection);
+    expect(removeFromSelection(undefined, 'a')).toEqual([]);
   });
 });
