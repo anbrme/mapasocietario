@@ -3,7 +3,7 @@ import { exportCopy } from './exportCopy';
 import { walkthroughCopy } from '../walkthrough/walkthroughCopy';
 import {
   renderCover, renderContents, renderSummary, renderMapFigure, renderChapters, renderAnnexes, renderFooter,
-  annexRows, stepEvidenceLine,
+  renderStory, annexRows, stepEvidenceLine,
 } from './documentSections';
 
 const t = exportCopy('es');
@@ -115,12 +115,16 @@ describe('documentSections', () => {
     expect(renderSummary(doc, t)).toContain('<p class="lead">Lo que vi</p>');
   });
 
-  it('map figure carries legend, caption counts and the walkthrough controls', () => {
+  it('map figure carries legend, caption counts and the panel the story fills, with no start button', () => {
     const html = renderMapFigure(doc, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
     expect(html).toContain('id="map"');
     expect(html).toContain('class="legend"');
     expect(html).toContain('1 empresas · 3 personas · 0 conexiones compartidas');
-    expect(html).toContain('id="wt-start"');
+    // The story starts on scroll: no start button, and the panel is present
+    // from the first paint (the opening block fills it until a chapter enters).
+    expect(html).not.toContain('id="wt-start"');
+    expect(html).toContain('id="wt-panel"');
+    expect(html).not.toMatch(/id="wt-panel"[^>]*hidden/);
   });
 
   it('moves the walkthrough panel out of the figure and adds the opening block and evidence line', () => {
@@ -135,7 +139,7 @@ describe('documentSections', () => {
     expect(html).toContain('id="wt-ev"');
   });
 
-  it('omits the walkthrough controls and panel entirely when there are no steps', () => {
+  it('omits the walkthrough panel entirely when there are no steps', () => {
     const html = renderMapFigure({ ...doc, steps: [] }, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
     expect(html).not.toContain('id="wt-start"');
     expect(html).not.toContain('id="wt-panel"');
@@ -416,5 +420,100 @@ describe('documentSections', () => {
       expect(contentsNums).toEqual([1, 2, 3]);
       expect(renderContents(d, t)).not.toContain('href="#annexes"');
     });
+  });
+});
+
+describe('renderStory', () => {
+  const graphData = { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 0, y: 0 }], links: [] };
+  const timeline = { dates: ['2024-03-11', '2026-09-13'], nodes: {}, links: {}, undated: 2, readOn: '2026-09-13' };
+  const storyDoc = { steps: [companyStep('c1', { moment: '2024-03-11' })], counts: {}, timeline };
+
+  it('renders the grid with the map pane and the chapters once each', () => {
+    const html = renderStory(storyDoc, graphData, t, wt);
+    expect(html.match(/id="story"/g)).toHaveLength(1);
+    expect(html.match(/id="graph"/g)).toHaveLength(1);
+    expect(html.match(/id="walkthrough"/g)).toHaveLength(1);
+    expect(html.match(/<svg id="map"/g)).toHaveLength(1);
+  });
+
+  it('chapters carry their index and moment, and show the moment in the head', () => {
+    const html = renderStory(storyDoc, graphData, t, wt);
+    expect(html).toContain('data-i="0"');
+    expect(html).toContain('data-moment="2024-03-11"');
+    expect(html).toContain('11 de marzo de 2024');
+  });
+
+  it('renders the slider with one tick per chapter moment and the undated caption', () => {
+    const html = renderStory(storyDoc, graphData, t, wt);
+    expect(html).toContain('id="wt-slider"');
+    expect(html).toContain('max="1"');
+    expect(html).toContain('<option value="0"');
+    expect(html).toContain(t.undated(2));
+  });
+
+  it('omits the slider when the domain has fewer than two dates', () => {
+    const html = renderStory({ ...storyDoc, timeline: { ...timeline, dates: ['2026-09-13'] } }, graphData, t, wt);
+    expect(html).not.toContain('id="wt-slider"');
+  });
+
+  it('renders only the map pane when there are no steps', () => {
+    const html = renderStory({ steps: [], counts: {}, timeline }, graphData, t, wt);
+    expect(html).toContain('id="graph"');
+    expect(html).not.toContain('id="walkthrough"');
+  });
+});
+
+describe('renderAnnexes explorer', () => {
+  const base = {
+    steps: [],
+    companies: [{ nodeId: 'x', name: 'GAMMA SL', note: null }],
+    connectors: [{
+      nodeId: 'p', name: 'PEREZ RUIZ JUAN', type: 'individual', companies: ['GAMMA SL'], roles: ['Apoderado'], status: 'active',
+    }],
+    ownership: [],
+    corrections: [],
+  };
+
+  it('wraps two or more non-empty annexes in a tab strip, first selected, every panel present', () => {
+    const html = renderAnnexes(base, t);
+    expect(html).toContain(t.explorer);
+    expect(html.match(/role="tab"/g)).toHaveLength(2);
+    expect(html).toContain('aria-selected="true"');
+    expect(html.match(/role="tabpanel"/g)).toHaveLength(2);
+    expect(html).toContain('id="companies"');
+    expect(html).toContain('id="connections"');
+  });
+
+  it('renders no tab strip when only one annex has rows', () => {
+    const html = renderAnnexes({ ...base, connectors: [] }, t);
+    expect(html).not.toContain('role="tab"');
+    expect(html).toContain('id="companies"');
+  });
+});
+
+describe('renderFooter return links', () => {
+  const docWithKeys = {
+    generatedAt: '2026-09-13T10:00:00.000Z',
+    companies: [
+      { nodeId: 'a', name: 'ALFA SL', groupKey: 'gk-a', note: null },
+      { nodeId: 'b', name: 'BETA SL', groupKey: null, note: null },
+    ],
+    coverage: null,
+  };
+
+  it('links back with one c= per keyed company, since and source', () => {
+    const html = renderFooter(docWithKeys, t, 'es');
+    expect(html).toContain('c=gk-a%7CALFA+SL');
+    expect(html).not.toContain('BETA');
+    expect(html).toContain('since=2026-09-13');
+    expect(html).toContain('source=sitrep');
+    expect(html).toContain('watch=1');
+    expect(html).toContain(t.watchLink);
+  });
+
+  it('renders no return links when no company has a key', () => {
+    const html = renderFooter({ ...docWithKeys, companies: [docWithKeys.companies[1]] }, t, 'es');
+    expect(html).not.toContain('since=');
+    expect(html).not.toContain(t.watchLink);
   });
 });

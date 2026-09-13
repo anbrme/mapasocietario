@@ -39,6 +39,18 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).toContain('#wt-panel{margin-top:12px');
   });
 
+  it('lays the story out as a sticky pane beside the chapters, animates, respects reduced motion, stacks annex tabs in print', () => {
+    expect(DOCUMENT_STYLE).toContain('.story{display:grid');
+    expect(DOCUMENT_STYLE).toContain('position:sticky');
+    expect(DOCUMENT_STYLE).toContain('#viewport{transition:transform');
+    expect(DOCUMENT_STYLE).toContain('prefers-reduced-motion');
+    expect(DOCUMENT_STYLE).toContain('[data-state="hidden"]');
+    expect(DOCUMENT_STYLE).toContain('[data-state="ceased"]');
+    expect(DOCUMENT_STYLE).toContain('[data-state="ghost"]');
+    expect(DOCUMENT_STYLE).toMatch(/@media print\{[\s\S]*\.annex-panel\[hidden\]\{display:block!important\}/);
+    expect(DOCUMENT_STYLE).toMatch(/@media print\{[\s\S]*\.story\{display:block\}/);
+  });
+
   it('styles the note eyebrow span in both the walkthrough card and the chapter note', () => {
     expect(DOCUMENT_STYLE).toContain('#wt-note .who,.chapter .note .who{display:block');
   });

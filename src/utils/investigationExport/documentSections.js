@@ -11,6 +11,10 @@ const SITE = 'https://mapasocietario.es';
 const fmtDate = (iso, lang) => new Date(iso).toLocaleDateString(
   lang === 'en' ? 'en-GB' : 'es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 
+// A bare 'YYYY-MM-DD' parses as UTC midnight, which renders as the previous
+// day west of Greenwich. Reading it at noon keeps the day the registry meant.
+const fmtDay = (iso, lang) => (iso ? fmtDate(`${iso}T12:00:00`, lang) : '');
+
 const authorLine = (doc, t) => {
   const parts = [doc.author?.name, doc.author?.organisation].map(v => String(v || '').trim()).filter(Boolean);
   return parts.length ? ` · ${esc(t.elaboratedBy)} ${esc(parts.join(' · '))}` : '';
@@ -89,20 +93,36 @@ const isFlaggedStep = s => (
   || (s.authorNote?.flag === 'red' || s.authorNote?.flag === 'amber')
 );
 
-export const renderMapFigure = (doc, graphData, t) => {
+// The registry-state slider: one stop per distinct date the timeline holds,
+// a tick at every date a chapter is pinned to, and the count of links the
+// registry never dated (which therefore stay visible at every stop).
+const renderTimeControl = (doc, t, lang) => {
+  const tl = doc.timeline;
+  if (!tl || !Array.isArray(tl.dates) || tl.dates.length < 2) return '';
+  const idx = new Map(tl.dates.map((d, i) => [d, i]));
+  const ticks = (doc.steps || []).map(s => s.moment).filter(m => idx.has(m))
+    .map(m => `<option value="${idx.get(m)}"></option>`).join('');
+  const undated = tl.undated > 0
+    ? `<span id="wt-undated">${esc(t.undated(tl.undated))}</span>`
+    : '<span id="wt-undated"></span>';
+  return `<div id="wt-time" class="hide-print">
+    <input type="range" id="wt-slider" min="0" max="${tl.dates.length - 1}" step="1" value="${tl.dates.length - 1}" list="wt-ticks" aria-label="${esc(t.registryAsOf(''))}">
+    <datalist id="wt-ticks">${ticks}</datalist>
+    <div class="meta"><span id="wt-date">${esc(t.registryAsOf(fmtDay(tl.readOn, lang)))}</span> · ${undated}</div>
+  </div>`;
+};
+
+export const renderMapFigure = (doc, graphData, t, lang = 'es') => {
   const steps = doc.steps || [];
   const hasSteps = steps.length > 0;
   const flaggedIds = new Set(steps.filter(isFlaggedStep).map(s => s.nodeIds?.[0]).filter(Boolean));
   const c = doc.counts || {};
   const num = sectionNumbers(doc).map;
-  // The walkthrough has nothing to play until steps exist, so the button and
-  // its panel would just be dead chrome — omit both rather than ship a
-  // control with no wiring behind it yet.
-  const controls = hasSteps
-    ? `<div class="wt-controls hide-print"><button id="wt-start" class="primary">${esc(t.walkthrough)}</button></div>`
-    : '';
+  // The story starts on scroll, so there is no start button; the panel is
+  // present from the first paint (the opening block fills it until a chapter
+  // enters). With no steps there is nothing to narrate — omit it entirely.
   const panel = hasSteps
-    ? `<div id="wt-panel" hidden>
+    ? `<div id="wt-panel">
     <div id="wt-opening" hidden><strong id="wt-open-title"></strong><p id="wt-open-line"></p></div>
     <div id="wt-eyebrow" class="eyebrow"></div>
     <strong id="wt-title"></strong>
@@ -117,13 +137,13 @@ export const renderMapFigure = (doc, graphData, t) => {
 <figure>
   <div class="frame">
     ${renderGraphSvg(graphData, { flaggedIds })}
-    ${controls}
   </div>
   <figcaption>
     <span>${esc(t.mapCaption(c.companies || 0, c.officers || 0, c.sharedPeople || 0))}</span>
     <span class="legend"><span><i class="co"></i>${esc(t.legendCompany)}</span><span><i class="of"></i>${esc(t.legendPerson)}</span><span><i class="own"></i>${esc(t.legendOwnership)}</span><span><i class="flag"></i>${esc(t.legendFlag)}</span></span>
   </figcaption>
 </figure>
+${renderTimeControl(doc, t, lang)}
 ${panel}
 </section>`;
 };
@@ -178,7 +198,7 @@ const personEvidenceBlock = (s, wt) => {
     r => [r.company, r.role, r.since, r.until, wt.statusWords[r.status] || r.status])}`;
 };
 
-export const renderChapters = (doc, t, wt) => {
+export const renderChapters = (doc, t, wt, lang = 'es') => {
   const steps = doc.steps || [];
   if (!steps.length) return '';
   // Any block missing from doc.blocks defaults to shown — the same rule
@@ -186,12 +206,20 @@ export const renderChapters = (doc, t, wt) => {
   const blocks = doc.blocks || {};
   const num = sectionNumbers(doc).chapters;
   const rows = steps.map((s, i) => {
-    const head = `<span class="src">${esc(wt.sources[s.source] || s.source || '')}</span>${esc(wt.kinds[s.kind] || wt.sections?.[s.section] || '')}`;
+    const head = `<span class="src">${esc(wt.sources[s.source] || s.source || '')}</span>${esc(wt.kinds[s.kind] || wt.sections?.[s.section] || '')}${s.moment ? ` · ${esc(fmtDay(s.moment, lang))}` : ''}`;
     const narrative = noteBlock(s.narrative || s.authorNote, t);
     const evidence = s.kind === 'person' ? personEvidenceBlock(s, wt) : companyEvidenceBlock(s, t, wt, blocks);
-    return `<div class="chapter" id="ch-${i}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${evidence}</div></div>`;
+    return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${evidence}</div></div>`;
   }).join('');
   return `<section id="walkthrough"><h2><span class="num">${num}</span>${esc(t.walkthroughSection)}</h2><div class="chapters">${rows}</div></section>`;
+};
+
+// The story: the map pane and the chapters side by side, scrolled as one.
+// The chapters drive the map; without them the pane stands alone (`.solo`).
+export const renderStory = (doc, graphData, t, wt, lang = 'es') => {
+  const hasSteps = (doc.steps || []).length > 0;
+  return `<div id="story" class="story${hasSteps ? '' : ' solo'}">${
+    renderMapFigure(doc, graphData, t, lang)}${hasSteps ? renderChapters(doc, t, wt, lang) : ''}</div>`;
 };
 
 // The step's short evidence line, shared by the export's inline JSON and the
@@ -210,7 +238,12 @@ export const stepEvidenceLine = (s, wt) => {
   return '';
 };
 
-const annex = (id, title, inner) => (inner ? `<div class="annex" id="${id}"><h3>${esc(title)}</h3>${inner}</div>` : '');
+// One annex block. `id` is carried by the block itself only when it stands
+// alone; inside the tabbed explorer the panel owns the id, so the block goes
+// id-free and the document keeps one element per id.
+const annex = (title, inner, id) => (inner
+  ? `<div class="annex"${id ? ` id="${esc(id)}"` : ''}><h3>${esc(title)}</h3>${inner}</div>`
+  : '');
 
 export const renderAnnexes = (doc, t) => {
   if (!hasAnnexes(doc)) return '';
@@ -222,16 +255,52 @@ export const renderAnnexes = (doc, t) => {
   const ownership = rows.ownership.map(o => `<li>${esc(o.owner)} ${esc(o.lost ? t.lostOf : t.soleOf)} ${esc(o.owned)}</li>`).join('');
   const corrections = rows.corrections.map(c => `<li>${esc(c.nameA)} — ${esc(correctionVerb(t, c.action))}${c.nameB ? ` ${esc(c.nameB)}` : ''}${c.resignedDate ? ` <span class="date">(${esc(c.resignedDate)})</span>` : ''}</li>`).join('');
   const num = sectionNumbers(doc).annexes;
-  return `<section id="annexes"><h2><span class="num">${num}</span>${esc(t.annexes)}</h2>
-${annex('companies', t.companies, companies ? `<ul class="plain">${companies}</ul>` : '')}
-${annex('connections', t.connections, connectors
-    ? `<div class="scroll"><table><thead><tr><th>${esc(t.person)}</th><th>${esc(t.inCompanies)}</th><th>${esc(t.role)}</th><th>${esc(t.status)}</th></tr></thead><tbody>${connectors}</tbody></table></div>`
-    : '')}
-${annex('ownership', t.ownership, ownership ? `<ul class="plain">${ownership}</ul>` : '')}
-${annex('corrections', t.corrections, corrections ? `<ul class="plain">${corrections}</ul>` : '')}
+  const panels = [
+    { id: 'companies', title: t.companies, body: companies ? `<ul class="plain">${companies}</ul>` : '' },
+    {
+      id: 'connections',
+      title: t.connections,
+      body: connectors
+        ? `<div class="scroll"><table><thead><tr><th>${esc(t.person)}</th><th>${esc(t.inCompanies)}</th><th>${esc(t.role)}</th><th>${esc(t.status)}</th></tr></thead><tbody>${connectors}</tbody></table></div>`
+        : '',
+    },
+    { id: 'ownership', title: t.ownership, body: ownership ? `<ul class="plain">${ownership}</ul>` : '' },
+    { id: 'corrections', title: t.corrections, body: corrections ? `<ul class="plain">${corrections}</ul>` : '' },
+  ].filter(p => p.body);
+  const head = `<section id="annexes"><h2><span class="num">${num}</span>${esc(t.annexes)}</h2>`;
+  // A single annex is just a block: a tab strip over one tab explores nothing.
+  if (panels.length < 2) {
+    return `${head}
+${panels.map(p => annex(p.title, p.body, p.id)).join('\n')}
 </section>`;
+  }
+  const strip = `<div class="annex-tabs" role="tablist" aria-label="${esc(t.explorer)}">${
+    panels.map((p, i) => `<button type="button" role="tab" id="tab-${p.id}" aria-controls="${p.id}" aria-selected="${i === 0 ? 'true' : 'false'}" tabindex="${i === 0 ? 0 : -1}">${esc(p.title)}</button>`).join('')}</div>`;
+  const body = panels.map((p, i) => `<div class="annex-panel" role="tabpanel" id="${p.id}" aria-labelledby="tab-${p.id}"${i === 0 ? '' : ' hidden'}>${annex(p.title, p.body)}</div>`).join('');
+  return `${head}<h3 class="explorer">${esc(t.explorer)}</h3>${strip}${body}</section>`;
 };
 
-export const renderFooter = (doc, t, lang) => `
+// The way back into the live map: every company the reader can be handed by
+// key, the day this document was written (so the app can show what changed
+// since), and where the visit came from. No key, no link — a name alone would
+// resolve to the wrong company often enough to be worse than nothing.
+const returnUrl = (doc, watch) => {
+  const keyed = (doc.companies || []).filter(c => c.groupKey && c.name);
+  if (!keyed.length) return '';
+  const p = new URLSearchParams();
+  keyed.forEach(c => p.append('c', `${c.groupKey}|${c.name}`));
+  p.set('since', String(doc.generatedAt || '').slice(0, 10));
+  p.set('source', 'sitrep');
+  if (watch) p.set('watch', '1');
+  return `${SITE}/app?${p}`;
+};
+
+export const renderFooter = (doc, t, lang) => {
+  const back = returnUrl(doc, false);
+  const links = back
+    ? `<br><a href="${esc(back)}">${esc(t.returnLink(fmtDate(doc.generatedAt, lang)))}</a><br><a href="${esc(returnUrl(doc, true))}">${esc(t.watchLink)}</a>`
+    : '';
+  return `
 <footer>${esc(t.sourceLine)}${doc.coverage?.since ? `<br>${esc(t.coverage(doc.coverage.since, doc.coverage.indexedThrough))}` : ''}
-<br>${esc(t.generated)} ${esc(fmtDate(doc.generatedAt, lang))} · <a href="${SITE}">${esc(t.backLink)}</a></footer>`;
+<br>${esc(t.generated)} ${esc(fmtDate(doc.generatedAt, lang))} · <a href="${SITE}">${esc(t.backLink)}</a>${links}</footer>`;
+};

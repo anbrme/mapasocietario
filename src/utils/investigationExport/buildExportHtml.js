@@ -8,7 +8,7 @@ import { walkthroughCopy } from '../walkthrough/walkthroughCopy';
 import { DOCUMENT_STYLE } from './documentStyle';
 import { WALKTHROUGH_SCRIPT } from './walkthroughScript';
 import {
-  renderCover, renderContents, renderSummary, renderMapFigure, renderChapters, renderAnnexes, renderFooter,
+  renderCover, renderContents, renderSummary, renderStory, renderAnnexes, renderFooter,
   stepEvidenceLine,
 } from './documentSections';
 
@@ -28,9 +28,20 @@ export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
     nodeIds: s.nodeIds,
     linkKeys: s.linkKeys || [],
     flag: s.flag,
+    moment: s.moment || null,
   }));
   // JSON is embedded as text, so "</script>" inside a note would close the tag.
-  const stepJson = JSON.stringify({ steps, opening: safeDoc.opening || null, noteLabel: t.authorNote }).replace(/</g, '\\u003c');
+  // `registryAsOf('{d}')` hands the script the sentence, not the date: it
+  // swaps {d} for whichever day the slider is standing on.
+  const stepJson = JSON.stringify({
+    steps,
+    opening: safeDoc.opening || null,
+    noteLabel: t.authorNote,
+    timeline: safeDoc.timeline || null,
+    lang: lang === 'en' ? 'en' : 'es',
+    dissolvedProxy: t.dissolvedProxy,
+    registryAsOf: t.registryAsOf('{d}'),
+  }).replace(/</g, '\\u003c');
 
   return `<!doctype html>
 <html lang="${lang === 'en' ? 'en' : 'es'}">
@@ -46,8 +57,7 @@ export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
 ${renderCover(safeDoc, t, lang)}
 ${renderContents(safeDoc, t)}
 ${renderSummary(safeDoc, t)}
-${renderMapFigure(safeDoc, graphData, t)}
-${renderChapters(safeDoc, t, wt)}
+${renderStory(safeDoc, graphData, t, wt, lang)}
 ${renderAnnexes(safeDoc, t)}
 ${renderFooter(safeDoc, t, lang)}
 </div>

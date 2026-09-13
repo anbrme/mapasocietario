@@ -68,6 +68,21 @@ describe('buildExportHtml', () => {
     expect(parsed.steps[0].narrative).toEqual({ text: 'x</script><script>alert(1)', flag: 'red' });
   });
 
+  it('embeds the timeline and the language, with < escaped, and the chapter moment', () => {
+    const html = buildExportHtml({
+      ...doc,
+      timeline: {
+        dates: ['2026-09-12'], nodes: {}, links: {}, undated: 0, readOn: '2026-09-12', evil: '</script>',
+      },
+      steps: [{ ...doc.steps[0], moment: '2024-03-11' }],
+    }, graphData, { lang: 'es' });
+    expect(html).toContain('"timeline":{');
+    expect(html).toContain('"lang":"es"');
+    expect(html).toContain('"moment":"2024-03-11"');
+    expect(html).not.toContain('</script>"');
+    expect(html).toContain('id="story"');
+  });
+
   it('embeds null for opening when the doc carries none', () => {
     const html = buildExportHtml({ ...doc, opening: null }, graphData, { lang: 'es' });
     const dataScript = html.match(/window\.__SITREP__=(.*?);<\/script>/s);
