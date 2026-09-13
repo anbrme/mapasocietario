@@ -4,10 +4,11 @@
 // It must never contain the sequence "</script>" or it truncates the file it
 // lives in — walkthroughScript.test.js pins that.
 //
-// Scope is deliberately small: pan to each step's nodes, highlight its links,
-// show its text/note, and step through the flagged notes. Anything more
-// belongs in the app, not in a file that leaves our control the moment it is
-// downloaded.
+// Scope is deliberately small, and driven by the reader's scroll: the chapter
+// crossing the middle of the viewport focuses its nodes on the map, pans to
+// them and dates the map to that chapter's moment. A slider re-dates the map
+// by hand; the annex tab strip switches panels. Anything more belongs in the
+// app, not in a file that leaves our control the moment it is downloaded.
 
 export const WALKTHROUGH_SCRIPT = `
 (function () {
@@ -16,7 +17,6 @@ export const WALKTHROUGH_SCRIPT = `
   var viewport = document.getElementById('viewport');
   if (!map) return;
 
-  var panel = document.getElementById('wt-panel');
   var opening = document.getElementById('wt-opening');
   var openTitle = document.getElementById('wt-open-title');
   var openLine = document.getElementById('wt-open-line');
@@ -26,11 +26,20 @@ export const WALKTHROUGH_SCRIPT = `
   var ev = document.getElementById('wt-ev');
   var note = document.getElementById('wt-note');
   var counter = document.getElementById('wt-counter');
+  var slider = document.getElementById('wt-slider');
+  var dateLabel = document.getElementById('wt-date');
+  var steps = data.steps || [];
+  var tl = data.timeline || null;
+  var dates = (tl && tl.dates) || [];
   var idx = -1;
+  // True once the reader has scrubbed the slider: the chapters stop re-dating
+  // the map until a scroll puts them back in charge.
+  var detached = false;
+  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   var tx = 0, ty = 0, scale = 1;
   function apply() {
-    if (viewport) viewport.setAttribute('transform', 'translate(' + tx + ',' + ty + ') scale(' + scale + ')');
+    if (viewport) viewport.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
   }
   function vb() { return map.viewBox && map.viewBox.baseVal; }
   function screenToUserScale() {
@@ -40,10 +49,51 @@ export const WALKTHROUGH_SCRIPT = `
   }
   function esc(id) { return window.CSS && CSS.escape ? CSS.escape(id) : id; }
   function nodeEl(id) { return map.querySelector('g.n[data-id="' + esc(id) + '"]'); }
+  function linkEl(key) { return map.querySelector('line.l[data-key="' + esc(key) + '"]'); }
 
   function clearFocus() {
     map.classList.remove('focused');
     Array.prototype.forEach.call(map.querySelectorAll('.on'), function (el) { el.classList.remove('on'); });
+  }
+
+  // A bare 'YYYY-MM-DD' read as UTC midnight renders as the previous day west
+  // of Greenwich; noon keeps the day the registry meant.
+  function fmtDay(d) {
+    var parts = String(d).split('-');
+    var dt = new Date(+parts[0], +parts[1] - 1, +parts[2], 12);
+    return dt.toLocaleDateString(data.lang === 'en' ? 'en-GB' : 'es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  // The same rule as stateAt() in registryTimeline.js — keep them in step.
+  function renderAt(d) {
+    if (!tl || !d) return;
+    var nodeState = {};
+    var links = tl.links || {}, nodes = tl.nodes || {};
+    Object.keys(nodes).forEach(function (id) {
+      var n = nodes[id];
+      if (n.from === null && n.to === null && !n.dissolved) return;
+      nodeState[id] = n.from && d < n.from ? 'hidden' : (n.to && d >= n.to ? 'ghost' : 'live');
+    });
+    var linkState = {};
+    Object.keys(links).forEach(function (k) {
+      var L = links[k];
+      var st = L.from && d < L.from ? 'hidden' : (L.to && d >= L.to ? 'ceased' : 'live');
+      if (st !== 'hidden' && (nodeState[L.a] === 'ghost' || nodeState[L.b] === 'ghost')) st = 'ceased';
+      linkState[k] = st;
+      var el = linkEl(k); if (el) el.setAttribute('data-state', st);
+    });
+    Object.keys(nodes).forEach(function (id) {
+      if (nodeState[id]) return;
+      var mine = Object.keys(links).filter(function (k) { return links[k].a === id || links[k].b === id; }).map(function (k) { return linkState[k]; });
+      nodeState[id] = mine.length === 0 || mine.indexOf('live') >= 0 ? 'live' : (mine.indexOf('ceased') >= 0 ? 'ghost' : 'hidden');
+    });
+    Object.keys(nodeState).forEach(function (id) {
+      var el = nodeEl(id); if (!el) return;
+      el.setAttribute('data-state', nodeState[id]);
+      if (nodeState[id] === 'ghost' && nodes[id] && nodes[id].dissolved) el.setAttribute('data-ghost-title', data.dissolvedProxy || '');
+    });
+    if (dateLabel) dateLabel.textContent = (data.registryAsOf || '{d}').replace('{d}', fmtDay(d));
+    if (slider && dates.indexOf(d) >= 0) slider.value = String(dates.indexOf(d));
   }
 
   // Centre the step's nodes in the viewBox; fit when there are several.
@@ -65,8 +115,37 @@ export const WALKTHROUGH_SCRIPT = `
     apply();
   }
 
-  function show(i) {
-    var step = data.steps[i];
+  // Fills the opening block and reports whether it has anything to say.
+  function fillOpening() {
+    if (openTitle) openTitle.textContent = (data.opening && data.opening.title) || '';
+    if (openLine) openLine.textContent = (data.opening && data.opening.line) || '';
+    return !!(data.opening && (data.opening.title || data.opening.line));
+  }
+  function clearCard() {
+    if (eyebrow) eyebrow.textContent = '';
+    if (title) title.textContent = '';
+    if (text) { text.textContent = ''; text.hidden = true; }
+    if (ev) { ev.textContent = ''; ev.hidden = true; }
+    if (note) { note.textContent = ''; note.hidden = true; note.setAttribute('data-flag', 'none'); }
+    if (counter) counter.textContent = '';
+  }
+  function clearCurrent() {
+    Array.prototype.forEach.call(document.querySelectorAll('.chapter.current'), function (el) { el.classList.remove('current'); });
+  }
+
+  // The state before (and after) the story: the whole map, read on the day the
+  // document was written, with the opening note in the panel.
+  function renderOpening() {
+    idx = -1;
+    clearFocus();
+    clearCard();
+    clearCurrent();
+    if (opening) opening.hidden = !fillOpening();
+    renderAt(tl && tl.readOn);
+  }
+
+  function show(i, opts) {
+    var step = steps[i];
     if (!step) return;
     idx = i;
     clearFocus();
@@ -79,12 +158,9 @@ export const WALKTHROUGH_SCRIPT = `
       Array.prototype.forEach.call(map.querySelectorAll(sel), function (el) { el.classList.add('on'); });
     });
     panTo(step.nodeIds || []);
-    if (opening) {
-      var hasOpening = !!(data.opening && (data.opening.title || data.opening.line));
-      if (openTitle) openTitle.textContent = (data.opening && data.opening.title) || '';
-      if (openLine) openLine.textContent = (data.opening && data.opening.line) || '';
-      opening.hidden = !hasOpening || i !== 0;
-    }
+    var m = step.moment;
+    if (!detached || (opts && opts.fromScroll)) { detached = false; renderAt(m && dates.indexOf(m) >= 0 ? m : (tl && tl.readOn)); }
+    if (opening) opening.hidden = !fillOpening() || i !== 0;
     if (eyebrow) eyebrow.textContent = (step.kindLabel || '') + (step.sourceLabel ? ' · ' + step.sourceLabel : '');
     if (title) title.textContent = step.title || '';
     if (text) { text.textContent = step.summary || ''; text.hidden = !text.textContent; }
@@ -105,43 +181,71 @@ export const WALKTHROUGH_SCRIPT = `
         note.setAttribute('data-flag', 'none');
       }
     }
-    if (counter) counter.textContent = (i + 1) + ' / ' + data.steps.length;
-    if (panel) panel.hidden = false;
+    if (counter) counter.textContent = (i + 1) + ' / ' + steps.length;
+    clearCurrent();
     var chapter = document.getElementById('ch-' + i);
-    Array.prototype.forEach.call(document.querySelectorAll('.chapter.current'), function (el) { el.classList.remove('current'); });
     if (chapter) chapter.classList.add('current');
   }
+
+  // The one way in: scroll the chapter into view and let the observer focus it.
+  // Without an observer (old browser, print preview) focus it directly.
   window.__sitrepShow = function (i) {
-    show(i);
-    var fig = document.getElementById('graph');
-    if (fig && fig.scrollIntoView) fig.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    var n = Math.max(0, Math.min(i, steps.length - 1));
+    var ch = document.getElementById('ch-' + n);
+    if (ch && ch.scrollIntoView) ch.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    if (!('IntersectionObserver' in window)) show(n);
   };
 
-  function exit() { idx = -1; clearFocus(); if (panel) panel.hidden = true; }
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var i = parseInt(en.target.getAttribute('data-i'), 10);
+        if (i !== idx) show(i, { fromScroll: true });
+      });
+    }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
+    Array.prototype.forEach.call(document.querySelectorAll('.chapter[data-i]'), function (el) { io.observe(el); });
+  }
+
+  if (slider) {
+    slider.addEventListener('input', function () { detached = true; renderAt(dates[+slider.value]); });
+  }
+
+  // Leaving the story hands the map back whole; the chapters stay where the
+  // reader left them.
+  function exit() { renderOpening(); }
   function on(id, fn) { var el = document.getElementById(id); if (el) el.addEventListener('click', fn); }
-  on('wt-start', function () { show(0); });
-  on('wt-next', function () { show(Math.min(idx + 1, data.steps.length - 1)); });
-  on('wt-prev', function () { show(Math.max(idx - 1, 0)); });
+  on('wt-next', function () { window.__sitrepShow(idx + 1); });
+  on('wt-prev', function () { window.__sitrepShow(idx - 1); });
   on('wt-exit', exit);
+  // The slider and the tab strip own the arrow keys while they are focused.
+  function ownsArrows(el) {
+    if (!el || !el.tagName) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+      || (el.getAttribute && el.getAttribute('role') === 'tab');
+  }
   document.addEventListener('keydown', function (e) {
-    if (idx < 0) return;
-    if (e.key === 'ArrowRight') show(Math.min(idx + 1, data.steps.length - 1));
-    if (e.key === 'ArrowLeft') show(Math.max(idx - 1, 0));
-    if (e.key === 'Escape') exit();
+    if (e.key === 'Escape') { exit(); return; }
+    if (idx < 0 || ownsArrows(e.target)) return;
+    if (e.key === 'ArrowRight') window.__sitrepShow(idx + 1);
+    if (e.key === 'ArrowLeft') window.__sitrepShow(idx - 1);
   });
   map.addEventListener('click', function (e) {
     var g = e.target.closest ? e.target.closest('g.n') : null;
     if (!g) return;
     var id = g.getAttribute('data-id');
-    for (var i = 0; i < data.steps.length; i++) {
-      if ((data.steps[i].nodeIds || [])[0] === id) { show(i); return; }
+    for (var i = 0; i < steps.length; i++) {
+      if ((steps[i].nodeIds || [])[0] === id) { window.__sitrepShow(i); return; }
     }
   });
 
   // Pan and pinch with pointer events — a forwarded file opens on a phone.
+  // 'dragging' suspends the CSS transition so the map tracks the finger.
   var pointers = new Map(), lastDist = 0, dragging = false, lastX = 0, lastY = 0;
   map.addEventListener('pointerdown', function (e) {
     map.setPointerCapture(e.pointerId);
+    map.classList.add('dragging');
     pointers.set(e.pointerId, e);
     if (pointers.size === 1) { dragging = true; lastX = e.clientX; lastY = e.clientY; }
   });
@@ -161,14 +265,44 @@ export const WALKTHROUGH_SCRIPT = `
     lastX = e.clientX; lastY = e.clientY;
     apply();
   });
-  function up(e) { pointers.delete(e.pointerId); if (pointers.size < 2) lastDist = 0; if (pointers.size === 0) dragging = false; }
+  function up(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) lastDist = 0;
+    if (pointers.size === 0) { dragging = false; map.classList.remove('dragging'); }
+  }
   map.addEventListener('pointerup', up);
   map.addEventListener('pointercancel', up);
   map.addEventListener('wheel', function (e) {
     if (!e.ctrlKey && !e.metaKey) return;
     e.preventDefault();
+    map.classList.add('dragging');
     scale = Math.min(6, Math.max(0.2, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
     apply();
+    if (window.requestAnimationFrame) requestAnimationFrame(function () { map.classList.remove('dragging'); });
+    else map.classList.remove('dragging');
   }, { passive: false });
+
+  // The annex explorer: one tab strip, roving tabindex, panels toggled by
+  // the hidden attribute so print can show them all.
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.annex-tabs [role="tab"]'));
+  function selectTab(tab) {
+    tabs.forEach(function (t) {
+      var isOn = t === tab;
+      t.setAttribute('aria-selected', isOn ? 'true' : 'false');
+      t.tabIndex = isOn ? 0 : -1;
+      var pane = document.getElementById(t.getAttribute('aria-controls'));
+      if (pane) pane.hidden = !isOn;
+    });
+    if (tab.focus) tab.focus();
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { selectTab(t); });
+    t.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') selectTab(tabs[(i + 1) % tabs.length]);
+      if (e.key === 'ArrowLeft') selectTab(tabs[(i - 1 + tabs.length) % tabs.length]);
+    });
+  });
+
+  renderOpening();
 })();
 `;

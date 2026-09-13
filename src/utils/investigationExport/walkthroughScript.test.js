@@ -11,9 +11,42 @@ describe('WALKTHROUGH_SCRIPT', () => {
   });
 
   it('binds the controls the template renders', () => {
-    ['wt-next', 'wt-prev', 'wt-exit', 'wt-start'].forEach(id => {
+    ['wt-next', 'wt-prev', 'wt-exit', 'wt-slider'].forEach(id => {
       expect(WALKTHROUGH_SCRIPT, id).toContain(id);
     });
+    expect(WALKTHROUGH_SCRIPT).not.toContain('wt-start');
+  });
+
+  it('drives focus from scroll position with an IntersectionObserver at mid-viewport', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('IntersectionObserver');
+    expect(WALKTHROUGH_SCRIPT).toContain("'-50% 0px -50% 0px'");
+  });
+
+  it('renders the registry state for a date through data-state, never innerHTML', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('renderAt');
+    expect(WALKTHROUGH_SCRIPT).toContain("'data-state'");
+    expect(WALKTHROUGH_SCRIPT).toContain('data-key');
+    expect(WALKTHROUGH_SCRIPT).not.toMatch(/\.innerHTML/);
+  });
+
+  it('detaches the slider from the chapters when scrubbed by hand and re-attaches on the next chapter', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('detached');
+  });
+
+  it('animates the pan with a CSS transform and disables it while dragging', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('style.transform');
+    expect(WALKTHROUGH_SCRIPT).toContain("'dragging'");
+    expect(WALKTHROUGH_SCRIPT).not.toContain("setAttribute('transform'");
+  });
+
+  it('binds the annex tabs with roving focus', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('role="tab"');
+    expect(WALKTHROUGH_SCRIPT).toContain('aria-selected');
+    expect(WALKTHROUGH_SCRIPT).toContain('aria-controls');
+  });
+
+  it('falls back to click-through when IntersectionObserver is missing', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain("'IntersectionObserver' in window");
   });
 
   it('is parseable JavaScript', () => {
