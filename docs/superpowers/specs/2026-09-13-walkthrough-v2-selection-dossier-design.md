@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-13
 **Repo:** `mapasocietario` only (frontend). No backend change.
-**Status:** design approved in chat 2026-09-13, not yet implemented
+**Status:** implemented 2026-09-13 on feat/walkthrough-v2 (9 tasks, subagent-driven, live-checked). Not verified: real-device touch, print pagination.
 **Supersedes parts of:** `2026-09-12-drafted-walkthrough-design.md` (the draft
 engine's section spine and the export's chapter/annex split). Everything not
 named here stays as v1 built it.
