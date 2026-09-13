@@ -2,19 +2,37 @@
 // The docked card of the live walkthrough. Reads one step, writes one note.
 // Reordering lives in the situation-report modal, not here.
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Chip, IconButton, Paper, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Chip, Divider, IconButton, Paper, TextField, Tooltip, Typography } from '@mui/material';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CloseIcon from '@mui/icons-material/Close';
 import { walkthroughCopy } from '../utils/walkthrough/walkthroughCopy';
 import { NODE_NOTE_FLAGS, NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
 
+const evidenceLine = (step, t) => {
+  const ev = step?.evidence;
+  if (!ev) return '';
+  if (step.kind === 'company') {
+    const findingText = ev.findings?.[0]?.text;
+    if (findingText) return findingText;
+    const lastFiling = ev.status?.lastFiling;
+    return lastFiling ? `${t.subheads.filings}: ${lastFiling.date} · ${lastFiling.type}` : '';
+  }
+  if (step.kind === 'person') {
+    return (ev.seats || []).slice(0, 2).map(s => `${s.role} · ${s.company}`).join(' · ');
+  }
+  return '';
+};
+
 export default function WalkthroughPlayer({
-  open, step, index, total, lang = 'es', compact = false,
+  open, step, index, total, lang = 'es', compact = false, opening = null, showOpening = false,
   onPrev, onNext, onExit, onHide, onNote, onEvidence,
 }) {
   const t = walkthroughCopy(lang);
   const [note, setNote] = useState('');
-  const initialText = step?.source === 'author' ? (step?.text || '') : (step?.authorNote?.text || '');
+  const initialText = step?.narrative?.text
+    || step?.authorNote?.text
+    || (step?.source === 'author' ? (step?.text || '') : '')
+    || '';
   useEffect(() => {
     setNote(initialText);
   }, [step?.key, initialText]);
@@ -33,9 +51,12 @@ export default function WalkthroughPlayer({
   }, [open, onNext, onPrev, onExit]);
 
   if (!open || !step) return null;
-  const isAuthor = step.source === 'author';
-  const flagColor = NODE_NOTE_FLAGS[isAuthor ? step.flag : step.authorNote?.flag] || null;
-  const canEvidence = !!onEvidence && (!!step.evidence || step.section === 'connects' || step.section === 'subject');
+  const flagColor = NODE_NOTE_FLAGS[step.narrative?.flag || step.authorNote?.flag] || null;
+  const canEvidence = !!onEvidence;
+  const eyebrow = t.kinds?.[step.kind] || t.sections?.[step.section] || '';
+  const body = step.summary || step.text;
+  const evidence = evidenceLine(step, t);
+  const noteLabel = step.narrative ? `${t.kinds.note} · ${t.noteField}` : t.noteField;
 
   return (
     <Paper
@@ -48,7 +69,7 @@ export default function WalkthroughPlayer({
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
         <Typography variant="overline" sx={{ color: 'primary.main', fontWeight: 700, lineHeight: 1.6 }}>
-          {t.sections[step.section]}
+          {eyebrow}
         </Typography>
         <Chip size="small" variant="outlined" label={t.sources[step.source]} sx={{ height: 20, fontSize: '0.7rem' }} />
         {step.date && <Typography variant="caption" color="text.secondary">{step.date}</Typography>}
@@ -56,16 +77,26 @@ export default function WalkthroughPlayer({
         <Tooltip title={t.hideStep}><IconButton size="small" onClick={() => onHide?.(step.key)}><VisibilityOffIcon fontSize="small" /></IconButton></Tooltip>
         <Tooltip title={t.exit}><IconButton size="small" onClick={onExit}><CloseIcon fontSize="small" /></IconButton></Tooltip>
       </Box>
+      {showOpening && opening && (
+        <>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{opening.title}</Typography>
+          <Typography variant="caption" color="text.secondary">{opening.line}</Typography>
+          <Divider sx={{ mb: 1 }} />
+        </>
+      )}
       <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{step.title}</Typography>
-      {!isAuthor && (
-        <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mb: 1 }}>{step.text}</Typography>
+      {body && (
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mb: evidence ? 0.5 : 1 }}>{body}</Typography>
+      )}
+      {evidence && (
+        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line', mb: 1 }}>{evidence}</Typography>
       )}
       {canEvidence && (
         <Button size="small" onClick={() => onEvidence(step)} sx={{ textTransform: 'none', px: 0, mb: 1 }}>{t.evidence} →</Button>
       )}
       <TextField
         fullWidth size="small" multiline minRows={1} maxRows={4}
-        label={t.noteField} value={note}
+        label={noteLabel} value={note}
         onChange={e => setNote(e.target.value.slice(0, NODE_NOTE_MAX_LENGTH))}
         onBlur={() => { if (note !== initialText) onNote?.(step.key, note); }}
       />

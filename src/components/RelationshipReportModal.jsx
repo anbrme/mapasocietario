@@ -4,16 +4,18 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, Button,
   Chip, ToggleButton, ToggleButtonGroup, Table, TableHead, TableBody, TableRow,
   TableCell, Accordion, AccordionSummary, AccordionDetails, Snackbar, TextField,
-  Tabs, Tab, IconButton,
+  IconButton, FormControlLabel, Checkbox,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import TranslateIcon from '@mui/icons-material/Translate';
 import DownloadIcon from '@mui/icons-material/Download';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import { DEFAULT_BLOCKS } from '../utils/sitrepAuthor';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
 import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
 import { NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
@@ -40,28 +42,11 @@ export default function RelationshipReportModal({
   edits = null, onPreview = () => {},
 }) {
   const [copied, setCopied] = useState(false);
-  const [tab, setTab] = useState('edit');
+  const [previewBlocked, setPreviewBlocked] = useState(false);
   const es = reportLang !== 'en';
   const t = exportCopy(es ? 'es' : 'en');
   const wt = walkthroughCopy(es ? 'es' : 'en');
   const steps = walkthrough?.steps || [];
-
-  useEffect(() => {
-    setTab('edit');
-  }, [open]);
-
-  // The export module (and the 52KB embedded font it carries) has no reason
-  // to sit in the app's main bundle — it is loaded only once a preview is
-  // actually requested.
-  const [previewHtml, setPreviewHtml] = useState(null);
-  useEffect(() => {
-    let live = true;
-    if (!(open && tab === 'preview' && doc)) { setPreviewHtml(null); return undefined; }
-    import('../utils/investigationExport').then(m => {
-      if (live) setPreviewHtml(m.buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' }));
-    });
-    return () => { live = false; };
-  }, [open, tab, doc, graphData, es]);
 
   const companies = doc?.companies || [];
   const connectors = doc?.connectors || [];
@@ -89,6 +74,16 @@ export default function RelationshipReportModal({
       await navigator.clipboard.writeText(html);
       setCopied(true);
     }
+  };
+
+  const openPreview = async () => {
+    const { buildExportHtml } = await import('../utils/investigationExport');
+    const html = buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' });
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    const w = window.open(url, '_blank', 'noopener');
+    if (!w) { setPreviewBlocked(true); }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    onPreview?.();
   };
 
   const download = async () => {
@@ -127,241 +122,245 @@ export default function RelationshipReportModal({
         </Box>
       </DialogTitle>
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3 }}>
-        <Tab value="edit" label={wt.edit} sx={{ textTransform: 'none' }} />
-        <Tab value="preview" label={wt.preview} sx={{ textTransform: 'none' }} onClick={() => onPreview?.()} />
-      </Tabs>
-      <DialogContent dividers sx={tab === 'preview' ? { p: 0, height: '70vh' } : undefined}>
-        {tab === 'preview' ? (
-          <iframe
-            title={t.title}
-            srcDoc={previewHtml}
-            style={{ width: '100%', height: '100%', border: 0, background: '#fff' }}
-            sandbox="allow-scripts"
-          />
-        ) : (
-          <>
-            <TextField
-              fullWidth
-              multiline
-              minRows={2}
-              size="small"
-              value={networkNote}
-              onChange={(e) => onNetworkNoteChange(e.target.value.slice(0, NODE_NOTE_MAX_LENGTH))}
-              placeholder={es
-                ? '¿Qué estás mirando y qué has concluido?'
-                : 'What are you looking at, and what did you conclude?'}
-              label={es ? 'Resumen' : 'Summary'}
-              sx={{ mb: 2 }}
+      <DialogContent dividers>
+        <TextField
+          fullWidth
+          multiline
+          minRows={2}
+          size="small"
+          value={networkNote}
+          onChange={(e) => onNetworkNoteChange(e.target.value.slice(0, NODE_NOTE_MAX_LENGTH))}
+          placeholder={es
+            ? '¿Qué estás mirando y qué has concluido?'
+            : 'What are you looking at, and what did you conclude?'}
+          label={es ? 'Resumen' : 'Summary'}
+          sx={{ mb: 2 }}
+        />
+
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          <strong>{counts.companies}</strong>{' '}{es ? 'empresas' : 'companies'} ·{' '}
+          <strong>{counts.officers}</strong>{' '}{es ? 'administradores' : 'officers'} ·{' '}
+          <strong>{counts.sharedPeople}</strong>{' '}{es ? 'conexiones compartidas' : 'shared connections'}
+        </Typography>
+
+        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <TextField size="small" label={wt.authorField} value={author.name}
+            onChange={e => onAuthorChange({ ...author, name: e.target.value })} sx={{ flex: 1 }} />
+          <TextField size="small" label={wt.organisationField} value={author.organisation}
+            onChange={e => onAuthorChange({ ...author, organisation: e.target.value })} sx={{ flex: 1 }} />
+        </Box>
+
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+          {Object.keys(DEFAULT_BLOCKS).map(k => (
+            <FormControlLabel
+              key={k}
+              control={(
+                <Checkbox
+                  size="small"
+                  checked={author.blocks?.[k] ?? true}
+                  onChange={e => onAuthorChange({
+                    ...author,
+                    blocks: { ...(author.blocks || DEFAULT_BLOCKS), [k]: e.target.checked },
+                  })}
+                />
+              )}
+              label={wt.blocks[k]}
             />
+          ))}
+        </Box>
 
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              <strong>{counts.companies}</strong>{' '}{es ? 'empresas' : 'companies'} ·{' '}
-              <strong>{counts.officers}</strong>{' '}{es ? 'administradores' : 'officers'} ·{' '}
-              <strong>{counts.sharedPeople}</strong>{' '}{es ? 'conexiones compartidas' : 'shared connections'}
-            </Typography>
-
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-              <TextField size="small" label={wt.authorField} value={author.name}
-                onChange={e => onAuthorChange({ ...author, name: e.target.value })} sx={{ flex: 1 }} />
-              <TextField size="small" label={wt.organisationField} value={author.organisation}
-                onChange={e => onAuthorChange({ ...author, organisation: e.target.value })} sx={{ flex: 1 }} />
+        {steps.length > 0 && (
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 0.5 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>{t.walkthroughSection}</Typography>
+              <Button size="small" onClick={() => {
+                const c = editsCounts(edits);
+                if (window.confirm(wt.resetConfirm(c.hidden, c.notes))) walkthrough.reset();
+              }} sx={{ textTransform: 'none' }}>{wt.reset}</Button>
             </Box>
-
-            {steps.length > 0 && (
-              <>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 0.5 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>{t.walkthroughSection}</Typography>
-                  <Button size="small" onClick={() => {
-                    const c = editsCounts(edits);
-                    if (window.confirm(wt.resetConfirm(c.hidden, c.notes))) walkthrough.reset();
-                  }} sx={{ textTransform: 'none' }}>{wt.reset}</Button>
+            {steps.map((s, i) => (
+              <Box key={s.key} sx={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 1, py: 0.75, borderTop: '1px solid', borderColor: 'divider', alignItems: 'start' }}>
+                <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700, pt: 0.5 }}>{String(i + 1).padStart(2, '0')}</Typography>
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {wt.kinds?.[s.kind] || wt.sections?.[s.section]} · {wt.sources[s.source]}{s.date ? ` · ${s.date}` : ''}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{s.title}</Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{s.summary || s.text}</Typography>
+                  <StepNoteField
+                    stepKey={s.key}
+                    initialText={s.narrative?.text || s.authorNote?.text || ''}
+                    label={wt.noteField}
+                    onCommit={v => walkthrough.setNote(s.key, v)}
+                  />
                 </Box>
-                {steps.map((s, i) => (
-                  <Box key={s.key} sx={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 1, py: 0.75, borderTop: '1px solid', borderColor: 'divider', alignItems: 'start' }}>
-                    <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700, pt: 0.5 }}>{String(i + 1).padStart(2, '0')}</Typography>
-                    <Box>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {wt.sections[s.section]} · {wt.sources[s.source]}{s.date ? ` · ${s.date}` : ''}
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{s.title}</Typography>
-                      {s.source !== 'author' && <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{s.text}</Typography>}
-                      <StepNoteField
-                        stepKey={s.key}
-                        initialText={s.source === 'author' ? s.text : (s.authorNote?.text || '')}
-                        label={wt.noteField}
-                        onCommit={v => walkthrough.setNote(s.key, v)}
-                      />
-                    </Box>
-                    <Box sx={{ display: 'flex' }}>
-                      <IconButton size="small" disabled={i === 0} onClick={() => walkthrough.move(s.key, -1)} title={wt.moveUp}><ArrowUpwardIcon fontSize="inherit" /></IconButton>
-                      <IconButton size="small" disabled={i === steps.length - 1} onClick={() => walkthrough.move(s.key, 1)} title={wt.moveDown}><ArrowDownwardIcon fontSize="inherit" /></IconButton>
-                      <IconButton size="small" onClick={() => walkthrough.hide(s.key)} title={wt.hideStep}><VisibilityOffIcon fontSize="inherit" /></IconButton>
-                    </Box>
-                  </Box>
-                ))}
-              </>
-            )}
-
-            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
-              {es ? 'Empresas analizadas' : 'Companies analysed'}
-            </Typography>
-            <Box sx={{ mb: 1 }}>
-              {companies.map(c => (
-                <Box key={c.nodeId} sx={{ display: 'inline-block', mr: 0.5, mb: 0.5, verticalAlign: 'top' }}>
-                  <Chip label={c.name}
-                    onDelete={onRemoveCompany ? () => onRemoveCompany(c.name) : undefined} />
-                  {c.note?.text && (
-                    <Typography variant="caption" component="div" sx={{ color: 'text.secondary', maxWidth: 220 }}>
-                      {c.note.text}
-                    </Typography>
-                  )}
+                <Box sx={{ display: 'flex' }}>
+                  <IconButton size="small" disabled={i === 0} onClick={() => walkthrough.move(s.key, -1)} title={wt.moveUp}><ArrowUpwardIcon fontSize="inherit" /></IconButton>
+                  <IconButton size="small" disabled={i === steps.length - 1} onClick={() => walkthrough.move(s.key, 1)} title={wt.moveDown}><ArrowDownwardIcon fontSize="inherit" /></IconButton>
+                  <IconButton size="small" onClick={() => walkthrough.hide(s.key)} title={wt.hideStep}><VisibilityOffIcon fontSize="inherit" /></IconButton>
                 </Box>
-              ))}
-            </Box>
-
-            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
-              {es ? 'Conexiones compartidas' : 'Shared connections'}
-            </Typography>
-            {connectors.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                {es ? 'Ninguna detectada.' : 'None detected.'}
-              </Typography>
-            ) : (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{es ? 'Persona / entidad' : 'Person / entity'}</TableCell>
-                    <TableCell>{es ? 'Empresas' : 'Companies'}</TableCell>
-                    <TableCell>{es ? 'Cargo' : 'Role'}</TableCell>
-                    <TableCell>{es ? 'Estado' : 'Status'}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {connectors.map(con => (
-                    <TableRow key={con.nodeId || con.name}>
-                      <TableCell>
-                        {con.name}{' '}
-                        <Typography component="span" variant="caption" color="text.secondary">
-                          ({con.type === 'entity' ? (es ? 'Entidad' : 'Entity') : (es ? 'Persona' : 'Person')})
-                        </Typography>
-                        {con.note?.text && (
-                          <Typography variant="caption" component="div" sx={{ color: 'text.secondary' }}>
-                            {con.note.text}
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>{con.companies.join(', ')}</TableCell>
-                      <TableCell>{con.roles.join(' / ')}</TableCell>
-                      <TableCell>{statusLabel(con.status)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-
-            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
-              {es ? 'Vínculos de propiedad' : 'Ownership links'}
-            </Typography>
-            {ownership.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                {es ? 'Ninguno detectado.' : 'None detected.'}
-              </Typography>
-            ) : (
-              <Box component="ul" sx={{ pl: 3, my: 0.5 }}>
-                {ownership.map((o, i) => (
-                  <li key={i}>
-                    <Typography variant="body2">
-                      <strong>{o.owner}</strong>{' '}
-                      {o.lost ? (es ? 'fue socio único de' : 'was sole shareholder of') : (es ? 'es socio único de' : 'is sole shareholder of')}{' '}
-                      <strong>{o.owned}</strong>
-                    </Typography>
-                  </li>
-                ))}
               </Box>
-            )}
-
-            {otherNotes.length > 0 && (
-              <>
-                <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
-                  {es ? 'Otras notas' : 'Other notes'}
-                </Typography>
-                <Box component="ul" sx={{ pl: 3, my: 0.5 }}>
-                  {otherNotes.map((n, i) => (
-                    <li key={n.nodeId || i}>
-                      <Typography variant="body2">
-                        <strong>{n.name}</strong>
-                        {n.text && (
-                          <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
-                            {' — '}{n.text}
-                          </Typography>
-                        )}
-                      </Typography>
-                    </li>
-                  ))}
-                </Box>
-              </>
-            )}
-
-            {corrections.length > 0 && (
-              <>
-                <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
-                  {t.corrections}
-                </Typography>
-                <Box component="ul" sx={{ pl: 3, my: 0.5 }}>
-                  {corrections.map((c, i) => (
-                    <li key={i}>
-                      <Typography variant="body2">
-                        <strong>{c.nameA}</strong>{' '}
-                        {correctionVerb(t, c.action)}
-                        {c.nameB ? ` ${c.nameB}` : ''}
-                        {c.resignedDate ? ` (${c.resignedDate})` : ''}
-                      </Typography>
-                    </li>
-                  ))}
-                </Box>
-              </>
-            )}
-
-            <Accordion sx={{ mt: 2 }} disableGutters elevation={0}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  {es ? 'Administradores por empresa' : 'Officers per company'}
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                {companies.map(c => {
-                  const list = [...(officersByCompany[c.name] || [])].sort((a, b) => a.localeCompare(b));
-                  return (
-                    <Box key={c.nodeId} sx={{ mb: 1.5 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {c.name}{' '}
-                        <Typography component="span" variant="caption" color="text.secondary">
-                          ({list.length})
-                        </Typography>
-                      </Typography>
-                      {list.length === 0 ? (
-                        <Typography variant="caption" color="text.secondary">—</Typography>
-                      ) : (
-                        <Box component="ul" sx={{
-                          listStyle: 'none', pl: 0, mt: 0.5, mb: 0,
-                          columnWidth: '180px', columnGap: 24,
-                        }}>
-                          {list.map((name, i) => (
-                            <Typography key={i} component="li" variant="caption"
-                              sx={{ color: 'text.secondary', breakInside: 'avoid', display: 'block' }}>
-                              {name}
-                            </Typography>
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  );
-                })}
-              </AccordionDetails>
-            </Accordion>
+            ))}
           </>
         )}
+
+        <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
+          {es ? 'Empresas analizadas' : 'Companies analysed'}
+        </Typography>
+        <Box sx={{ mb: 1 }}>
+          {companies.map(c => (
+            <Box key={c.nodeId} sx={{ display: 'inline-block', mr: 0.5, mb: 0.5, verticalAlign: 'top' }}>
+              <Chip label={c.name}
+                onDelete={onRemoveCompany ? () => onRemoveCompany(c.name) : undefined} />
+              {c.note?.text && (
+                <Typography variant="caption" component="div" sx={{ color: 'text.secondary', maxWidth: 220 }}>
+                  {c.note.text}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
+
+        <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
+          {es ? 'Conexiones compartidas' : 'Shared connections'}
+        </Typography>
+        {connectors.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            {es ? 'Ninguna detectada.' : 'None detected.'}
+          </Typography>
+        ) : (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>{es ? 'Persona / entidad' : 'Person / entity'}</TableCell>
+                <TableCell>{es ? 'Empresas' : 'Companies'}</TableCell>
+                <TableCell>{es ? 'Cargo' : 'Role'}</TableCell>
+                <TableCell>{es ? 'Estado' : 'Status'}</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {connectors.map(con => (
+                <TableRow key={con.nodeId || con.name}>
+                  <TableCell>
+                    {con.name}{' '}
+                    <Typography component="span" variant="caption" color="text.secondary">
+                      ({con.type === 'entity' ? (es ? 'Entidad' : 'Entity') : (es ? 'Persona' : 'Person')})
+                    </Typography>
+                    {con.note?.text && (
+                      <Typography variant="caption" component="div" sx={{ color: 'text.secondary' }}>
+                        {con.note.text}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>{con.companies.join(', ')}</TableCell>
+                  <TableCell>{con.roles.join(' / ')}</TableCell>
+                  <TableCell>{statusLabel(con.status)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
+          {es ? 'Vínculos de propiedad' : 'Ownership links'}
+        </Typography>
+        {ownership.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            {es ? 'Ninguno detectado.' : 'None detected.'}
+          </Typography>
+        ) : (
+          <Box component="ul" sx={{ pl: 3, my: 0.5 }}>
+            {ownership.map((o, i) => (
+              <li key={i}>
+                <Typography variant="body2">
+                  <strong>{o.owner}</strong>{' '}
+                  {o.lost ? (es ? 'fue socio único de' : 'was sole shareholder of') : (es ? 'es socio único de' : 'is sole shareholder of')}{' '}
+                  <strong>{o.owned}</strong>
+                </Typography>
+              </li>
+            ))}
+          </Box>
+        )}
+
+        {otherNotes.length > 0 && (
+          <>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
+              {es ? 'Otras notas' : 'Other notes'}
+            </Typography>
+            <Box component="ul" sx={{ pl: 3, my: 0.5 }}>
+              {otherNotes.map((n, i) => (
+                <li key={n.nodeId || i}>
+                  <Typography variant="body2">
+                    <strong>{n.name}</strong>
+                    {n.text && (
+                      <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
+                        {' — '}{n.text}
+                      </Typography>
+                    )}
+                  </Typography>
+                </li>
+              ))}
+            </Box>
+          </>
+        )}
+
+        {corrections.length > 0 && (
+          <>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>
+              {t.corrections}
+            </Typography>
+            <Box component="ul" sx={{ pl: 3, my: 0.5 }}>
+              {corrections.map((c, i) => (
+                <li key={i}>
+                  <Typography variant="body2">
+                    <strong>{c.nameA}</strong>{' '}
+                    {correctionVerb(t, c.action)}
+                    {c.nameB ? ` ${c.nameB}` : ''}
+                    {c.resignedDate ? ` (${c.resignedDate})` : ''}
+                  </Typography>
+                </li>
+              ))}
+            </Box>
+          </>
+        )}
+
+        <Accordion sx={{ mt: 2 }} disableGutters elevation={0}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              {es ? 'Administradores por empresa' : 'Officers per company'}
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            {companies.map(c => {
+              const list = [...(officersByCompany[c.name] || [])].sort((a, b) => a.localeCompare(b));
+              return (
+                <Box key={c.nodeId} sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {c.name}{' '}
+                    <Typography component="span" variant="caption" color="text.secondary">
+                      ({list.length})
+                    </Typography>
+                  </Typography>
+                  {list.length === 0 ? (
+                    <Typography variant="caption" color="text.secondary">—</Typography>
+                  ) : (
+                    <Box component="ul" sx={{
+                      listStyle: 'none', pl: 0, mt: 0.5, mb: 0,
+                      columnWidth: '180px', columnGap: 24,
+                    }}>
+                      {list.map((name, i) => (
+                        <Typography key={i} component="li" variant="caption"
+                          sx={{ color: 'text.secondary', breakInside: 'avoid', display: 'block' }}>
+                          {name}
+                        </Typography>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
+          </AccordionDetails>
+        </Accordion>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap' }}>
@@ -377,6 +376,9 @@ export default function RelationshipReportModal({
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           {es ? 'se abre en tu navegador' : 'opens in your browser'}
         </Typography>
+        <Button variant="outlined" startIcon={<OpenInNewIcon />} onClick={openPreview} disabled={noCompanies}>
+          {wt.openPreview}
+        </Button>
         <Button variant="contained" startIcon={<DownloadIcon />} onClick={download} disabled={noCompanies}>
           {es ? 'Descargar' : 'Download'}
         </Button>
@@ -385,6 +387,10 @@ export default function RelationshipReportModal({
       <Snackbar
         open={copied} autoHideDuration={2500} onClose={() => setCopied(false)}
         message={es ? 'Copiado — pégalo en Word' : 'Copied — paste into Word'}
+      />
+      <Snackbar
+        open={previewBlocked} autoHideDuration={4000} onClose={() => setPreviewBlocked(false)}
+        message={wt.previewBlocked}
       />
     </Dialog>
   );
