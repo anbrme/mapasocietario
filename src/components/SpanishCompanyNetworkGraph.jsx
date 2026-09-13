@@ -1528,6 +1528,7 @@ const SpanishCompanyNetworkGraph = ({
   initialCompanyName,
   initialGroupKey,
   initialWatchlistToken,
+  initialReturn = null,
   initialSearchType,
   language = 'es',
   embedded = false,
@@ -2425,6 +2426,32 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [initialCompanyName, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Stamp the entity key onto the nodes a seeding pass just created.
+  //
+  // loadCompanyRecordIntoGraph takes a group_key as a HINT for its own lookup
+  // but does not put it on the node, and the search path stamps it separately.
+  // Without this a seeded node carries no key at all, so expanding it would
+  // re-resolve the company by fuzzy name — the precise failure group_key exists
+  // to prevent — and the changed-since marker would have nothing to match on.
+  // Shared by the watchlist and situation-report seeding effects, which both
+  // hand over [{ name, groupKey }].
+  const stampGroupKeys = useCallback(seeds => {
+    const keyByName = new Map(
+      (seeds || []).map(sd => [(sd.name || '').trim().toUpperCase(), sd.groupKey])
+    );
+    setGraphData(prev => ({
+      links: prev.links,
+      nodes: prev.nodes.map(n => {
+        // isMonitorableNode, not a literal 'company' check: this loader
+        // creates 'spanish-company-group' nodes, so testing for 'company'
+        // silently matches nothing.
+        if (n.groupKey || !isMonitorableNode(n)) return n;
+        const key = keyByName.get((n.name || '').trim().toUpperCase());
+        return key ? { ...n, groupKey: key } : n;
+      }),
+    }));
+  }, []);
+
   // A watchlist link from a monitoring email: /app?watchlist=<token>.
   //
   // The set is arbitrary and user-assembled, so its members are UNRELATED
@@ -2474,28 +2501,7 @@ const SpanishCompanyNetworkGraph = ({
           setError(text.watchlistEmpty);
           return;
         }
-        // Stamp the entity key onto the nodes the loader just created.
-        //
-        // loadCompanyRecordIntoGraph takes a group_key as a HINT for its own
-        // lookup but does not put it on the node, and the search path stamps
-        // it separately. Without this a watchlist-seeded node carries no key
-        // at all, so expanding it would re-resolve the company by fuzzy name —
-        // the precise failure group_key exists to prevent — and the
-        // changed-since marker below would have nothing to match on.
-        const keyByName = new Map(
-          seeds.map(sd => [(sd.name || '').trim().toUpperCase(), sd.groupKey])
-        );
-        setGraphData(prev => ({
-          links: prev.links,
-          nodes: prev.nodes.map(n => {
-            // isMonitorableNode, not a literal 'company' check: this loader
-            // creates 'spanish-company-group' nodes, so testing for 'company'
-            // silently matches nothing.
-            if (n.groupKey || !isMonitorableNode(n)) return n;
-            const key = keyByName.get((n.name || '').trim().toUpperCase());
-            return key ? { ...n, groupKey: key } : n;
-          }),
-        }));
+        stampGroupKeys(seeds);
 
         setSearchQuery('');
         trackEvent('watchlist_opened', {
@@ -2517,6 +2523,73 @@ const SpanishCompanyNetworkGraph = ({
       }
     })();
   }, [initialWatchlistToken, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The return path from an exported situation report: its footer links back
+  // to /app?c=<groupKey>|<name>&…&since=<export day>, so the reader lands on
+  // the same set of companies the document drew rather than on an empty canvas.
+  //
+  // Deliberately modelled on the watchlist seeding above — same sequential
+  // loader, same group-key stamping, same "one unreachable company must not
+  // cost the others" rule. What it adds is the since comparison: a company
+  // whose last filing postdates the export gets the existing changed-since
+  // ring, which is the reason to come back at all.
+  //
+  // fetchWalkthroughEvents is declared further down the component; effects run
+  // after the whole body has executed, so the binding is live by the time this
+  // reads it — the same reason the watchlist effect above can call
+  // loadCompanyRecordIntoGraph. Keeping it here (rather than lifting the
+  // fetcher) sits the two seeding effects side by side.
+  const returnSeededRef = useRef(false);
+  useEffect(() => {
+    const ret = initialReturn;
+    if (!ret || !ret.companies?.length || returnSeededRef.current) return;
+    if (!visible && !embedded) return;
+    returnSeededRef.current = true;
+
+    (async () => {
+      setIsLoading(true);
+      const changes = new Map();
+      let loaded = 0;
+      try {
+        for (const c of ret.companies) {
+          try {
+            const result = await loadCompanyRecordIntoGraph(c.name, null, c.groupKey);
+            if (!result?.loaded) continue;
+            loaded += 1;
+            if (ret.since && result.lastSeen && String(result.lastSeen).slice(0, 10) > ret.since) {
+              // last_seen already proved something moved; the event count only
+              // sharpens the badge, so a failed fetch falls back to "at least one".
+              let count = 1;
+              try {
+                const ev = await fetchWalkthroughEvents({ groupKey: c.groupKey, name: c.name, size: 25 });
+                const list = ev?.events || ev?.results || [];
+                count = Math.max(1, list.filter(
+                  e => String(e.event_date || e.date || '').slice(0, 10) > ret.since
+                ).length);
+              } catch { /* the last_seen comparison already proved a change */ }
+              changes.set(c.groupKey, count);
+            }
+          } catch { /* one unreachable company must not cost the others */ }
+        }
+        if (loaded === 0) {
+          setError(text.watchlistEmpty);
+          return;
+        }
+        stampGroupKeys(ret.companies);
+        if (changes.size) setWatchlistChanges(changes);
+        setSearchQuery('');
+        trackEvent('sitrep_return', {
+          companies: ret.companies.length,
+          loaded,
+          changed: changes.size,
+          watch: ret.watch ? 1 : 0,
+        });
+        if (ret.watch) setWatchlistOpen(true);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [initialReturn, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refetch when the per-company officer cap ("Cargos/empresa") changes, so
   // the selector is live — e.g. raise it to 500 to pull in apoderados without
@@ -4771,7 +4844,7 @@ const SpanishCompanyNetworkGraph = ({
   const loadCompanyRecordIntoGraph = useCallback(
     async (rawName, anchorNode, groupKeyHint = null) => {
       const companyName = (rawName || '').trim();
-      if (!companyName) return { loaded: false, isDissolved: false };
+      if (!companyName) return { loaded: false, isDissolved: false, lastSeen: null };
       // Use borme_companies_v3 for clean, pre-aggregated officers with
       // explicit active/resigned status. Resolve a stable group_key first
       // (preferring one already on the node) so an ambiguous name binds to the
@@ -4781,13 +4854,19 @@ const SpanishCompanyNetworkGraph = ({
         groupKeyHint
       );
       const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName, { groupKey });
-      if (!v3.company) return { loaded: false, isDissolved: false };
+      if (!v3.company) return { loaded: false, isDissolved: false, lastSeen: null };
 
       const company = await applyPendingOfficerEvents(v3.company);
       const baseEntries = await v3DocsToCappedEntries([company], officersPerCompany);
       const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
       await addCompanyWithOfficersToGraph(entries, anchorNode, aliasMap);
-      return { loaded: true, isDissolved: !!v3.company.is_dissolved };
+      return {
+        loaded: true,
+        isDissolved: !!v3.company.is_dissolved,
+        // The report's return link asks what moved since it was exported; the
+        // company's last filing date answers that without a second fetch.
+        lastSeen: v3.company.last_seen || null,
+      };
     },
     [addCompanyWithOfficersToGraph, fetchWithNameChangeRelations, officersPerCompany]
   );

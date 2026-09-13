@@ -16,6 +16,7 @@ import { DATA_MAINTENANCE } from './config/dataMaintenance';
 import { siteNav, isHtmlNav, isExternalNav, isStaticNav } from './utils/siteNav';
 import { isNativeApp, openListedCompanies } from './services/listedCompaniesNav';
 import { trackEvent, trackUserManualDownload } from './utils/track';
+import { parseReturnParams } from './utils/returnParams';
 import {
   getBrowserLanguage,
   getStoredSearchLanguage,
@@ -186,6 +187,12 @@ export default function App() {
     const value = (new URLSearchParams(window.location.search).get('watchlist') || '').trim();
     return value || undefined;
   }, []);
+
+  // The return link an exported situation report carries in its footer:
+  // /app?c=<groupKey>|<name>&c=…&since=YYYY-MM-DD&source=sitrep[&watch=1].
+  // Parsed once here so the graph receives a settled object rather than
+  // re-reading the URL, and so a link with no c= params costs nothing.
+  const initialReturn = React.useMemo(() => parseReturnParams(window.location.search), []);
 
   // Set by the graph overlay on /empresa, which frames this app in a dialog.
   // The company page has its own title, breadcrumb and language switch, so the
@@ -397,6 +404,7 @@ export default function App() {
         initialSearchType={initialSearchType}
         initialGroupKey={initialGroupKey}
         initialWatchlistToken={initialWatchlistToken}
+        initialReturn={initialReturn}
         language={language}
         entrySource={graphEntrySource}
         forceCompactMode={isNativeApp()}
