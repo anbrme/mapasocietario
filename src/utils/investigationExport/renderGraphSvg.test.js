@@ -87,6 +87,15 @@ describe('renderGraphSvg', () => {
     });
     expect(svg).toContain('data-id="a" data-x="10" data-y="20"');
     expect(svg).toContain('data-id="b" data-x="30" data-y="40"');
-    expect(svg).toContain('<line class="l" data-a="a" data-b="b"');
+    expect(svg).toContain('<line class="l" data-key="a|b|" data-a="a" data-b="b"');
+  });
+
+  it('stamps every line with the timeline link key', () => {
+    const svg = renderGraphSvg({
+      nodes: [{ id: 'a', type: 'officer', name: 'A', x: 0, y: 0 }, { id: 'b', type: 'company', name: 'B', x: 10, y: 10 }],
+      links: [{ id: 'a-b-adm', source: 'a', target: 'b' }, { source: 'a', target: 'b', relationship: 'Apoderado' }],
+    });
+    expect(svg).toContain('data-key="a-b-adm"');
+    expect(svg).toContain('data-key="a|b|apoderado"');
   });
 });

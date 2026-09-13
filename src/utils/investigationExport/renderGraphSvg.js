@@ -9,6 +9,7 @@
 // by walkthroughScript.js, which finds nodes via their data-id attribute.
 
 import { escapeHtml } from '../escapeHtml';
+import { linkKey } from '../walkthrough/registryTimeline';
 
 const MARGIN = 40;
 const COMPANY_RADIUS = 11;
@@ -53,7 +54,7 @@ export function renderGraphSvg(graphData, { flaggedIds } = {}) {
     // it would throw on the missing coordinates.
     if (!a || !b) return '';
     const kindAttr = l.type === 'ownership' ? ' data-kind="ownership"' : '';
-    return `<line class="l"${kindAttr} data-a="${escapeHtml(nodeId(a.id))}" data-b="${escapeHtml(nodeId(b.id))}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    return `<line class="l" data-key="${escapeHtml(linkKey(l))}"${kindAttr} data-a="${escapeHtml(nodeId(a.id))}" data-b="${escapeHtml(nodeId(b.id))}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
   }).join('');
 
   const groups = nodes.map(n => {

@@ -74,4 +74,18 @@ describe('exportCopy', () => {
     expect(exportCopy('es').chapterLabel(12, 'BETA SL')).toBe('12 BETA SL');
     expect(exportCopy('en').chapterLabel(12, 'BETA SL')).toBe('12 BETA SL');
   });
+
+  it('carries the v3 story keys in both languages', () => {
+    ['es', 'en'].forEach(lang => {
+      const c = exportCopy(lang);
+      expect(c.registryAsOf('2024-03-11')).toContain('2024-03-11');
+      expect(c.undated(3)).toContain('3');
+      expect(typeof c.dissolvedProxy).toBe('string');
+      expect(c.returnLink('13 de septiembre de 2026')).toContain('2026');
+      expect(typeof c.watchLink).toBe('string');
+      expect(typeof c.explorer).toBe('string');
+    });
+    expect(exportCopy('es').explorer).toBe('Explorar la evidencia');
+    expect(exportCopy('en').explorer).toBe('Explore the evidence');
+  });
 });

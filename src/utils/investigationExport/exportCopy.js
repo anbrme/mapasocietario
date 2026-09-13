@@ -55,6 +55,13 @@ const ES = {
   steps: n => `${n} paso${n === 1 ? '' : 's'}`,
   evidenceLabel: 'Evidencia',
   chapterLabel: (n, name) => `${String(n).padStart(2, "0")} ${name}`,
+  registryAsOf: d => `Estado del registro el ${d}`,
+  undated: n => `${n} vínculo${n === 1 ? '' : 's'} sin fecha, siempre visible${n === 1 ? '' : 's'}`,
+  dissolvedProxy: 'Disuelta · según su último acto',
+  returnLink: d => `Ver esta red en Mapa Societario, con los cambios desde el ${d}`,
+  watchLink: 'Avísame si alguna de estas empresas cambia',
+  explorer: 'Explorar la evidencia',
+  momentLabel: 'Momento',
 };
 
 const EN = {
@@ -106,6 +113,13 @@ const EN = {
   steps: n => `${n} step${n === 1 ? '' : 's'}`,
   evidenceLabel: 'Evidence',
   chapterLabel: (n, name) => `${String(n).padStart(2, "0")} ${name}`,
+  registryAsOf: d => `Registry as of ${d}`,
+  undated: n => `${n} undated link${n === 1 ? '' : 's'}, always shown`,
+  dissolvedProxy: 'Dissolved · as of its last filing',
+  returnLink: d => `See this network on Mapa Societario, with changes since ${d}`,
+  watchLink: 'Alert me when any of these companies changes',
+  explorer: 'Explore the evidence',
+  momentLabel: 'Moment',
 };
 
 export const EXPORT_COPY_KEYS = Object.freeze(Object.keys(ES));
