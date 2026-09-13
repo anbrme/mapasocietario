@@ -110,6 +110,7 @@ import {
   isSameUnifiableEntity,
 } from '../utils/companyName';
 import { findCompanyNode } from '../utils/companyNodeLookup';
+import { resolveCompanyGroupName } from '../utils/companyGroupName';
 import { buildCompanyAliasMap } from '../utils/companyAliasLookup';
 import { mobileGraphMode } from '../utils/mobileGraphMode';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
@@ -261,6 +262,12 @@ const companyNameToId = name => {
   const clean = normalizeCompanyName(name);
   return `company-${clean.replace(/\s+/g, '-').toLowerCase()}`;
 };
+
+// What loadCompanyRecordIntoGraph returns when it drew nothing: same shape as a
+// success, so a caller can read .nodeId without testing .loaded first.
+const EMPTY_COMPANY_LOAD = Object.freeze({
+  loaded: false, isDissolved: false, lastSeen: null, nodeId: null, groupKey: null, name: '',
+});
 
 // Inspector panel width, by viewport. Reserved out of the canvas so the graph
 // reflows rather than hiding behind the panel.
@@ -2430,30 +2437,36 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, [initialCompanyName, visible, embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Stamp the entity key onto the nodes a seeding pass just created.
+  // Take custody of one company a seeding pass just drew: stamp its entity key
+  // and pin it. Both halves are keyed on the node id the LOADER reported, never
+  // on the name the seed asked for — a company the registry renamed after the
+  // report was exported draws under its current denomination, so a name match
+  // would miss it and leave the reader with neither an expandable key nor the
+  // report buttons.
   //
-  // loadCompanyRecordIntoGraph takes a group_key as a HINT for its own lookup
-  // but does not put it on the node, and the search path stamps it separately.
-  // Without this a seeded node carries no key at all, so expanding it would
-  // re-resolve the company by fuzzy name — the precise failure group_key exists
-  // to prevent — and the changed-since marker would have nothing to match on.
-  // Shared by the watchlist and situation-report seeding effects, which both
-  // hand over [{ name, groupKey }].
-  const stampGroupKeys = useCallback(seeds => {
-    const keyByName = new Map(
-      (seeds || []).map(sd => [(sd.name || '').trim().toUpperCase(), sd.groupKey])
-    );
-    setGraphData(prev => ({
-      links: prev.links,
-      nodes: prev.nodes.map(n => {
-        // isMonitorableNode, not a literal 'company' check: this loader
-        // creates 'spanish-company-group' nodes, so testing for 'company'
-        // silently matches nothing.
-        if (n.groupKey || !isMonitorableNode(n)) return n;
-        const key = keyByName.get((n.name || '').trim().toUpperCase());
-        return key ? { ...n, groupKey: key } : n;
-      }),
-    }));
+  // Stamping: loadCompanyRecordIntoGraph takes a group_key as a HINT for its own
+  // lookup but does not put it on the node, and the search path stamps it
+  // separately. Without this a seeded node carries no key at all, so expanding
+  // it would re-resolve the company by fuzzy name — the precise failure
+  // group_key exists to prevent — and the changed-since marker would have
+  // nothing to match on. A node that already carries a key keeps it.
+  //
+  // Pinning: the report and walkthrough buttons count PINNED company nodes
+  // (relationshipSubjectIds = pinnedNodeIds), so an unpinned seed leaves a
+  // reader who arrived from a file or a monitoring email with no way to reopen
+  // the report they came from.
+  const adoptSeededCompany = useCallback((nodeId, groupKey) => {
+    const id = normalizeNodeId(nodeId);
+    if (!id) return;
+    if (groupKey) {
+      setGraphData(prev => ({
+        links: prev.links,
+        nodes: prev.nodes.map(n =>
+          (n.groupKey || !isSameNodeId(n.id, id)) ? n : { ...n, groupKey }
+        ),
+      }));
+    }
+    setPinnedNodeIds(prev => new Set([...prev, id]));
   }, []);
 
   // A watchlist link from a monitoring email: /app?watchlist=<token>.
@@ -2495,7 +2508,10 @@ const SpanishCompanyNetworkGraph = ({
         for (const seed of seeds) {
           try {
             const result = await loadCompanyRecordIntoGraph(seed.name, null, seed.groupKey);
-            if (result?.loaded) loaded += 1;
+            if (result?.loaded) {
+              loaded += 1;
+              adoptSeededCompany(result.nodeId, result.groupKey || seed.groupKey);
+            }
           } catch {
             // One unreachable company must not cost the reader the other
             // thirteen. Counted, not thrown.
@@ -2505,7 +2521,6 @@ const SpanishCompanyNetworkGraph = ({
           setError(text.watchlistEmpty);
           return;
         }
-        stampGroupKeys(seeds);
 
         setSearchQuery('');
         trackEvent('watchlist_opened', {
@@ -2543,30 +2558,6 @@ const SpanishCompanyNetworkGraph = ({
   // reads it — the same reason the watchlist effect above can call
   // loadCompanyRecordIntoGraph. Keeping it here (rather than lifting the
   // fetcher) sits the two seeding effects side by side.
-  // Drawing the companies is not enough: the report and walkthrough buttons
-  // count PINNED company nodes (relationshipSubjectIds = pinnedNodeIds), so an
-  // unpinned seed leaves the reader who came back from a file with no way to
-  // reopen the report they arrived from. This pins them the way a search pins
-  // its subject — setPinnedNodeIds with the node's id — matching the seeds to
-  // the drawn nodes by the group key just stamped on them, and falling back to
-  // the trimmed upper-cased name (a renamed company draws under its current
-  // name, which is not the one the document was written under). The id derived
-  // from the seed name is added too: graphDataRef trails the loader's last
-  // commit by a render, and pinning an id no node carries is inert.
-  const pinSeededCompanies = useCallback(seeds => {
-    const list = (seeds || []).filter(sd => sd?.name);
-    if (!list.length) return;
-    const keys = new Set(list.map(sd => sd.groupKey).filter(Boolean));
-    const names = new Set(list.map(sd => sd.name.trim().toUpperCase()));
-    const matched = graphDataRef.current.nodes
-      .filter(n => isMonitorableNode(n)
-        && ((n.groupKey && keys.has(n.groupKey))
-          || names.has(String(n.name || '').trim().toUpperCase())))
-      .map(n => normalizeNodeId(n.id));
-    const derived = list.map(sd => companyNameToId(sd.name));
-    setPinnedNodeIds(prev => new Set([...prev, ...matched, ...derived]));
-  }, []);
-
   const returnSeededRef = useRef(false);
   useEffect(() => {
     const ret = initialReturn;
@@ -2584,18 +2575,23 @@ const SpanishCompanyNetworkGraph = ({
             const result = await loadCompanyRecordIntoGraph(c.name, null, c.groupKey);
             if (!result?.loaded) continue;
             loaded += 1;
+            // The key the node now carries — the loader's resolution of the URL's
+            // key — so the changed-since badge looks the marker up under the same
+            // key the ring is drawn from.
+            const nodeKey = result.groupKey || c.groupKey;
+            adoptSeededCompany(result.nodeId, nodeKey);
             if (ret.since && result.lastSeen && String(result.lastSeen).slice(0, 10) > ret.since) {
               // last_seen already proved something moved; the event count only
               // sharpens the badge, so a failed fetch falls back to "at least one".
               let count = 1;
               try {
-                const ev = await fetchWalkthroughEvents({ groupKey: c.groupKey, name: c.name, size: 25 });
+                const ev = await fetchWalkthroughEvents({ groupKey: nodeKey, name: result.name || c.name, size: 25 });
                 const list = ev?.events || ev?.results || [];
                 count = Math.max(1, list.filter(
                   e => String(e.event_date || e.date || e.indexed_date || '').slice(0, 10) > ret.since
                 ).length);
               } catch { /* the last_seen comparison already proved a change */ }
-              changes.set(c.groupKey, count);
+              changes.set(nodeKey, count);
             }
           } catch { /* one unreachable company must not cost the others */ }
         }
@@ -2603,8 +2599,6 @@ const SpanishCompanyNetworkGraph = ({
           setError(text.sitrepReturnEmpty);
           return;
         }
-        stampGroupKeys(ret.companies);
-        pinSeededCompanies(ret.companies);
         if (changes.size) setWatchlistChanges(changes);
         setSearchQuery('');
         trackEvent('sitrep_return', {
@@ -3800,26 +3794,11 @@ const SpanishCompanyNetworkGraph = ({
             if (companyName.length > 200) return;
             const cleanName = normalizeCompanyName(companyName);
 
-            // Resolve name change aliases: group old name entries under the new (current) name.
-            //
-            // Previously the fallback (no matching newNameEntry in searchResults) silently
-            // kept ``cleanName`` (the old name) as the group key, so the graph node ended
-            // up labelled with the previous denomination even though autocomplete had
-            // correctly resolved the current one. Fall back to the ``resolved`` new name
-            // instead — it's already normalised, so at worst the label is uppercase but
-            // always correct; a nicer-cased sibling entry still wins when present.
-            let groupKey = cleanName;
-            if (nameChangeAliasMap) {
-              const resolved = nameChangeAliasMap.get(cleanName.toUpperCase());
-              if (resolved) {
-                const newNameEntry = searchResults.find(
-                  c => normalizeCompanyName(c.name || c.company_name || '').toUpperCase() === resolved
-                );
-                groupKey = newNameEntry
-                  ? normalizeCompanyName(newNameEntry.name || newNameEntry.company_name)
-                  : resolved;
-              }
-            }
+            // Resolve name change aliases: group old name entries under the new
+            // (current) name. Shared with loadCompanyRecordIntoGraph, which has
+            // to predict the id of the node this insert mints, so the fold lives
+            // in resolveCompanyGroupName rather than being written twice.
+            const groupKey = resolveCompanyGroupName(companyName, searchResults, nameChangeAliasMap);
 
             if (!companiesByName[groupKey]) {
               companiesByName[groupKey] = {
@@ -4869,11 +4848,17 @@ const SpanishCompanyNetworkGraph = ({
   // graph, anchored at `anchorNode`. Shared by the company double-click and by
   // the corporate-officer promotion below, which needs the identical fetch for
   // an entity the graph currently holds as an officer node.
-  // Returns { loaded, isDissolved }.
+  // Returns { loaded, isDissolved, lastSeen, nodeId, groupKey, name } — the
+  // identity of the company node this call put on the canvas, so a caller can
+  // stamp or pin THAT node instead of looking it back up by the name it asked
+  // for. The two matter because neither is reliable: the graph labels a company
+  // by its CURRENT denomination (a report exported before a rename asks for the
+  // old one), and graphDataRef still holds the pre-insert nodes when this
+  // returns, so there is nothing to search yet either.
   const loadCompanyRecordIntoGraph = useCallback(
     async (rawName, anchorNode, groupKeyHint = null) => {
       const companyName = (rawName || '').trim();
-      if (!companyName) return { loaded: false, isDissolved: false, lastSeen: null };
+      if (!companyName) return EMPTY_COMPANY_LOAD;
       // Use borme_companies_v3 for clean, pre-aggregated officers with
       // explicit active/resigned status. Resolve a stable group_key first
       // (preferring one already on the node) so an ambiguous name binds to the
@@ -4883,18 +4868,31 @@ const SpanishCompanyNetworkGraph = ({
         groupKeyHint
       );
       const v3 = await spanishCompaniesService.getCompanyProfileV3(companyName, { groupKey });
-      if (!v3.company) return { loaded: false, isDissolved: false, lastSeen: null };
+      if (!v3.company) return EMPTY_COMPANY_LOAD;
 
       const company = await applyPendingOfficerEvents(v3.company);
       const baseEntries = await v3DocsToCappedEntries([company], officersPerCompany);
       const { entries, aliasMap } = await fetchWithNameChangeRelations(baseEntries, { cap: officersPerCompany });
       await addCompanyWithOfficersToGraph(entries, anchorNode, aliasMap);
+
+      // The node addCompanyWithOfficersToGraph just made, named the way IT names
+      // it: the resolved document's name, folded onto the current denomination
+      // when an alias map says the registry renamed it. A node already on the
+      // canvas under another spelling of the same entity keeps its own id (the
+      // insert path reuses it), so ask findCompanyNode first.
+      const nodeName = resolveCompanyGroupName(
+        baseEntries[0]?.name || company.company_name || companyName, entries, aliasMap
+      );
+      const existing = findCompanyNode(graphDataRef.current.nodes, nodeName, companyNameToId(nodeName));
       return {
         loaded: true,
         isDissolved: !!v3.company.is_dissolved,
         // The report's return link asks what moved since it was exported; the
         // company's last filing date answers that without a second fetch.
         lastSeen: v3.company.last_seen || null,
+        nodeId: existing ? normalizeNodeId(existing.id) : companyNameToId(nodeName),
+        groupKey: groupKey || null,
+        name: nodeName,
       };
     },
     [addCompanyWithOfficersToGraph, fetchWithNameChangeRelations, officersPerCompany]
