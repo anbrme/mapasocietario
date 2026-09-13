@@ -57,3 +57,23 @@ export const editsCounts = edits => {
   const e = normalizeWalkthroughEdits(edits);
   return { hidden: e.hidden.length, notes: Object.keys(e.notes).length };
 };
+
+/**
+ * Swap two node ids within the FULL ordered selection array (not a filtered
+ * view of it), by value rather than by position. A no-op — returning the
+ * same array reference — when either id is not present, so a caller can
+ * treat "unchanged" as "nothing to write back".
+ * @param {Array<string>} selection
+ * @param {string} idA
+ * @param {string} idB
+ * @returns {Array<string>}
+ */
+export const swapInSelection = (selection, idA, idB) => {
+  const list = selection || [];
+  const i = list.indexOf(idA);
+  const j = list.indexOf(idB);
+  if (i < 0 || j < 0) return list;
+  const next = [...list];
+  [next[i], next[j]] = [next[j], next[i]];
+  return next;
+};

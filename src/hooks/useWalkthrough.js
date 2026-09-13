@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import {
   draftWalkthrough, openingCard, subjectCompanyIds, applyWalkthroughEdits, hideStep, setStepNote, moveStep,
-  loadStepData,
+  swapInSelection, loadStepData,
 } from '../utils/walkthrough';
 import { initialWalkthroughState, walkthroughReducer, focusSets, stepTransition } from './walkthroughState';
 
@@ -20,10 +20,14 @@ export function useWalkthrough({
     () => new Map((graphData?.nodes || []).map(n => [nid(n.id), n])), [graphData]);
 
   // The graph's own selection may carry ids for nodes that are no longer
-  // visible (filtered out, dissolved, etc.) — only ids the current graph
-  // still knows about count toward mode, count and the drafted steps.
+  // visible (filtered out, dissolved, etc.) or repeat one — only ids the
+  // current graph still knows about, deduped, count toward mode, count and
+  // the drafted steps (the engine dedupes independently, but the hook must
+  // agree with it or `selectedCount`/`opening` disagree with the step list).
   const visibleSelection = useMemo(
-    () => selection.filter(id => nodesById.has(id)), [selection, nodesById]);
+    () => [...new Set((Array.isArray(selection) ? selection : []).map(String))]
+      .filter(id => nodesById.has(id)),
+    [selection, nodesById]);
 
   const mode = visibleSelection.length ? 'selection' : 'draft';
   const selectedCount = visibleSelection.length;
@@ -52,8 +56,9 @@ export function useWalkthrough({
     [mode, visibleSelection, scope, primarySubjectId]);
 
   const coverage = useMemo(() => {
-    const firstId = loadIds[0];
-    return state.stepData.get(firstId)?.findings?.coverage || null;
+    const withCoverage = loadIds.find(id => state.stepData.get(id)?.findings?.coverage);
+    const c = withCoverage ? state.stepData.get(withCoverage).findings.coverage : null;
+    return c ? { since: c.since, indexedThrough: c.indexed_through } : null;
   }, [state.stepData, loadIds]);
 
   // The graph component may not wire fetchProfile/fetchEvents (v1 callers,
@@ -110,6 +115,11 @@ export function useWalkthrough({
     if (!step) return;
     if (mode === 'selection' || step.authorNote?.origin === 'node') {
       saveNodeNote?.(step.nodeId, text, step.narrative?.flag || 'none');
+      // The node note is now the single source of truth for this step's
+      // text; drop any stale overlay note left over from before it had one
+      // (e.g. from a previous draft-mode edit on the same node) so the two
+      // copies can't disagree.
+      if (mode === 'selection') setEdits(e => setStepNote(e, key, ''));
       onTrack?.('walkthrough_note_saved');
       return;
     }
@@ -117,23 +127,21 @@ export function useWalkthrough({
     onTrack?.('walkthrough_note_saved');
   }, [steps, mode, saveNodeNote, setEdits, onTrack]);
 
+  // Positions are computed from `steps` (draft + edits applied), not from
+  // `visibleSelection` directly — a hidden step, a selection over the
+  // SELECTION_CAP, or a restored `edits.order` all mean the visible step
+  // order isn't the same array as the raw selection, and picking the
+  // neighbour from the wrong one swaps the wrong ids.
   const move = useCallback((key, delta) => {
     if (mode === 'selection') {
-      const step = steps.find(s => s.key === key);
-      if (!step) return;
-      const i = visibleSelection.indexOf(step.nodeId);
-      const j = i + delta;
-      if (i < 0 || j < 0 || j >= visibleSelection.length) return;
-      const fullI = selection.indexOf(step.nodeId);
-      const fullJ = selection.indexOf(visibleSelection[j]);
-      if (fullI < 0 || fullJ < 0) return;
-      const next = [...selection];
-      [next[fullI], next[fullJ]] = [next[fullJ], next[fullI]];
-      setSelection?.(next);
+      const idx = steps.findIndex(s => s.key === key);
+      const nb = steps[idx + delta];
+      if (idx < 0 || !nb) return;
+      setSelection?.(swapInSelection(selection, steps[idx].nodeId, nb.nodeId));
       return;
     }
     setEdits(e => moveStep(e, steps.map(s => s.key), key, delta));
-  }, [mode, steps, visibleSelection, selection, setSelection, setEdits]);
+  }, [mode, steps, selection, setSelection, setEdits]);
 
   const reset = useCallback(() => { setEdits(() => ({ hidden: [], order: [], notes: {} })); onTrack?.('walkthrough_reset'); }, [setEdits, onTrack]);
 

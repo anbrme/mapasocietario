@@ -58,7 +58,12 @@ const concernFirst = (a, b) => {
   return r(a.cls) - r(b.cls) || String(b.date || '').localeCompare(String(a.date || ''));
 };
 
-export const companyEvidence = ({ node, profile, events, findings, lang = 'es' }) => {
+const ownershipRows = (node, scope) => (scope?.ownership || [])
+  .filter(o => o.owner === node?.name || o.owned === node?.name);
+
+export const companyEvidence = ({
+  node, profile, events, findings, scope, lang = 'es',
+}) => {
   const t = walkthroughCopy(lang);
   const header = findings?.company || null;
   const all = findings?.findings || [];
@@ -72,6 +77,6 @@ export const companyEvidence = ({ node, profile, events, findings, lang = 'es' }
     findings: [...all.filter(f => f.cls !== 'limitation')].sort(concernFirst).slice(0, 3)
       .map(f => ({ text: f.text || '', date: f.date || null, cls: f.cls || 'context' })),
     unseen: [...(findings?.verification || []), ...all.filter(f => f.cls === 'limitation').map(f => f.text)].filter(Boolean),
-    ownership: [],
+    ownership: ownershipRows(node, scope),
   };
 };

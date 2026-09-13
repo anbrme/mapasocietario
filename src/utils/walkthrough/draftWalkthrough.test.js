@@ -110,22 +110,12 @@ describe('draftWalkthrough — company step', () => {
     expect(step.nodeIds).toEqual(['H:2', 'o1']);
   });
 
-  it('populates evidence.ownership from scope rows naming the node as owner or owned', () => {
-    const scopeWithOwnership = {
-      ...scope,
-      ownership: [
-        { owner: 'ALFA SL', owned: 'GAMA SL' },
-        { owner: 'BETA SL', owned: 'ALFA SL' },
-        { owner: 'OTHER SL', owned: 'OTHER2 SL' },
-      ],
-    };
+  it('passes scope through to evidence.ownership (see stepEvidence.test.js for the filter itself)', () => {
+    const scopeWithOwnership = { ...scope, ownership: [{ owner: 'ALFA SL', owned: 'GAMA SL' }] };
     const [step] = draftWalkthrough({
       graphData: graph, scope: scopeWithOwnership, stepData, selection: ['H:1'], primarySubjectId: 'H:1', lang: 'es',
     });
-    expect(step.evidence.ownership).toEqual([
-      { owner: 'ALFA SL', owned: 'GAMA SL' },
-      { owner: 'BETA SL', owned: 'ALFA SL' },
-    ]);
+    expect(step.evidence.ownership).toEqual([{ owner: 'ALFA SL', owned: 'GAMA SL' }]);
   });
 });
 

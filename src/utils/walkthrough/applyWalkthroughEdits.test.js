@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, applyWalkthroughEdits,
-  hideStep, setStepNote, moveStep, editsCounts,
+  hideStep, setStepNote, moveStep, editsCounts, swapInSelection,
 } from './applyWalkthroughEdits';
 
 const s = (key, extra = {}) => ({ key, section: 'connects', nodeIds: ['n'], linkKeys: [], title: key, text: '', source: 'graph', date: null, evidence: null, flag: null, deepLink: '', authorNote: null, ...extra });
@@ -59,6 +59,18 @@ describe('reducers', () => {
 
   it('editsCounts counts hidden and notes', () => {
     expect(editsCounts({ hidden: ['a', 'b'], order: [], notes: { c: 'x' } })).toEqual({ hidden: 2, notes: 1 });
+  });
+});
+
+describe('swapInSelection', () => {
+  it('swaps two ids by value, wherever they sit in the array', () => {
+    expect(swapInSelection(['a', 'b', 'c', 'd'], 'a', 'd')).toEqual(['d', 'b', 'c', 'a']);
+  });
+
+  it('returns the array unchanged when either id is missing', () => {
+    const selection = ['a', 'b', 'c'];
+    expect(swapInSelection(selection, 'a', 'nope')).toBe(selection);
+    expect(swapInSelection(selection, 'nope', 'b')).toBe(selection);
   });
 });
 

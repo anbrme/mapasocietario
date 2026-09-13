@@ -76,18 +76,12 @@ const officersOfCompany = (companyId, graphData, byId) => (graphData?.links || [
   return n && n.type === 'officer' ? [other] : [];
 });
 
-const ownershipRows = (node, scope) => (scope?.ownership || [])
-  .filter(o => o.owner === node.name || o.owned === node.name);
-
 const companyStep = ({
   node, order, data, graphData, byId, scope, lang, t,
 }) => {
-  const evidence = {
-    ...companyEvidence({
-      node, profile: data?.profile, events: data?.events, findings: data?.findings, lang,
-    }),
-    ownership: ownershipRows(node, scope),
-  };
+  const evidence = companyEvidence({
+    node, profile: data?.profile, events: data?.events, findings: data?.findings, scope, lang,
+  });
   const officerIds = [...new Set(officersOfCompany(nid(node.id), graphData, byId))];
   const summary = evidence.identity || graphOnlyLine(t, officerIds.length);
   return {

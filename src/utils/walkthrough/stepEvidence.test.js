@@ -79,9 +79,30 @@ describe('companyEvidence', () => {
     expect(ev.filings).toHaveLength(3);
     expect(ev.findings.map(f => f.kind || f.text)).toEqual(['Capital reduced 2024-03-11.', '2 changes.']);
     expect(ev.unseen).toEqual(['No beneficial owners in the registry.', 'No insolvency notice.']);
+    expect(ev.ownership).toEqual([]);
   });
   it('degrades to empty values with no payloads', () => {
     const ev = companyEvidence({ node: { id: 'H:9', name: 'X' }, profile: null, events: null, findings: null, lang: 'en' });
     expect(ev).toEqual({ identity: '', status: { dissolved: false, concurso: false, lastFiling: null }, capital: null, activity: null, board: [], filings: [], findings: [], unseen: [], ownership: [] });
+  });
+  it('populates ownership from scope rows naming the node as owner or owned', () => {
+    const scope = {
+      ownership: [
+        { owner: 'ACME IBERIA, SL', owned: 'GAMA SL' },
+        { owner: 'BETA SL', owned: 'ACME IBERIA, SL' },
+        { owner: 'OTHER SL', owned: 'OTHER2 SL' },
+      ],
+    };
+    const ev = companyEvidence({
+      node: { id: 'H:1', name: 'ACME IBERIA, SL' }, profile, events, findings, scope, lang: 'es',
+    });
+    expect(ev.ownership).toEqual([
+      { owner: 'ACME IBERIA, SL', owned: 'GAMA SL' },
+      { owner: 'BETA SL', owned: 'ACME IBERIA, SL' },
+    ]);
+  });
+  it('ownership is empty with no scope', () => {
+    const ev = companyEvidence({ node: { id: 'H:1', name: 'ACME IBERIA, SL' }, profile, events, findings, lang: 'es' });
+    expect(ev.ownership).toEqual([]);
   });
 });
