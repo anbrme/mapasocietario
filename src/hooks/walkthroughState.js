@@ -1,18 +1,18 @@
 // Pure play-position reducer for the drafted walkthrough. Owns only status,
-// index, the current step's KEY, and the fetched findings map — never the
+// index, the current step's KEY, and the fetched step data map — never the
 // step list itself, which is derived (draft + edits) by the hook.
-// findingsByKey is replaced wholesale on every 'ready' action, never mutated
+// stepData is replaced wholesale on every 'ready' action, never mutated
 // in place. Position is anchored on currentKey rather than index alone so
 // that hiding or reordering a step ahead of the current one (which shifts
 // every later index) does not silently swap `current` to a different step.
 export const initialWalkthroughState = Object.freeze({
-  status: 'idle', index: -1, currentKey: null, findingsByKey: new Map(),
+  status: 'idle', index: -1, currentKey: null, stepData: new Map(),
 });
 
 export function walkthroughReducer(state, action) {
   switch (action.type) {
     case 'prepare': return { ...state, status: 'preparing' };
-    case 'ready': return { ...state, status: 'idle', findingsByKey: action.findingsByKey || new Map() };
+    case 'ready': return { ...state, status: 'idle', stepData: action.stepData || new Map() };
     case 'start': return { ...state, status: 'playing', index: 0, currentKey: action.firstKey ?? null };
     case 'goto': {
       const max = Math.max(0, (action.total || 0) - 1);

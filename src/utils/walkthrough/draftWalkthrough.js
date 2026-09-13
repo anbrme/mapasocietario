@@ -76,12 +76,18 @@ const officersOfCompany = (companyId, graphData, byId) => (graphData?.links || [
   return n && n.type === 'officer' ? [other] : [];
 });
 
+const ownershipRows = (node, scope) => (scope?.ownership || [])
+  .filter(o => o.owner === node.name || o.owned === node.name);
+
 const companyStep = ({
-  node, order, data, graphData, byId, lang, t,
+  node, order, data, graphData, byId, scope, lang, t,
 }) => {
-  const evidence = companyEvidence({
-    node, profile: data?.profile, events: data?.events, findings: data?.findings, lang,
-  });
+  const evidence = {
+    ...companyEvidence({
+      node, profile: data?.profile, events: data?.events, findings: data?.findings, lang,
+    }),
+    ownership: ownershipRows(node, scope),
+  };
   const officerIds = [...new Set(officersOfCompany(nid(node.id), graphData, byId))];
   const summary = evidence.identity || graphOnlyLine(t, officerIds.length);
   return {
@@ -128,13 +134,13 @@ export function draftWalkthrough({
 
   const build = (node, order) => (isCompany(node)
     ? companyStep({
-      node, order, data: data.get(nid(node.id)) || null, graphData, byId, lang, t,
+      node, order, data: data.get(nid(node.id)) || null, graphData, byId, scope, lang, t,
     })
     : personStep({
       node, order, graphData, lang, t,
     }));
 
-  const chosen = (selection || []).map(nid).filter(id => byId.has(id)).slice(0, SELECTION_CAP);
+  const chosen = [...new Set((selection || []).map(nid))].filter(id => byId.has(id)).slice(0, SELECTION_CAP);
   if (chosen.length) return chosen.map((id, i) => build(byId.get(id), i));
 
   // Draft: subject companies, other companies, connectors, loose notes —

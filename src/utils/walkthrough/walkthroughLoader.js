@@ -52,7 +52,3 @@ export async function loadStepData({
   }
   return new Map(results);
 }
-
-// removed in Task 5: kept as a no-op shim so useWalkthrough.js still compiles
-// until it is switched over to loadStepData.
-export const loadFindingsForSubjects = async () => new Map();

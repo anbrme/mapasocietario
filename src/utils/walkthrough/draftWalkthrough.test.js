@@ -84,6 +84,11 @@ describe('draftWalkthrough — selection mode', () => {
     const steps = build({ selection: ['H:1', 'ghost-id', 'o1'] });
     expect(steps.map(s => s.nodeId)).toEqual(['H:1', 'o1']);
   });
+
+  it('dedupes a selection that repeats the same id, keeping its first position', () => {
+    const steps = build({ selection: ['H:1', 'o1', 'H:1', 'o1'] });
+    expect(steps.map(s => s.nodeId)).toEqual(['H:1', 'o1']);
+  });
 });
 
 describe('draftWalkthrough — company step', () => {
@@ -103,6 +108,24 @@ describe('draftWalkthrough — company step', () => {
     const [step] = build({ selection: ['H:2'] });
     expect(step).toMatchObject({ kind: 'company', source: 'graph', summary: '1 cargo visible en el mapa' });
     expect(step.nodeIds).toEqual(['H:2', 'o1']);
+  });
+
+  it('populates evidence.ownership from scope rows naming the node as owner or owned', () => {
+    const scopeWithOwnership = {
+      ...scope,
+      ownership: [
+        { owner: 'ALFA SL', owned: 'GAMA SL' },
+        { owner: 'BETA SL', owned: 'ALFA SL' },
+        { owner: 'OTHER SL', owned: 'OTHER2 SL' },
+      ],
+    };
+    const [step] = draftWalkthrough({
+      graphData: graph, scope: scopeWithOwnership, stepData, selection: ['H:1'], primarySubjectId: 'H:1', lang: 'es',
+    });
+    expect(step.evidence.ownership).toEqual([
+      { owner: 'ALFA SL', owned: 'GAMA SL' },
+      { owner: 'BETA SL', owned: 'ALFA SL' },
+    ]);
   });
 });
 

@@ -5,9 +5,9 @@ describe('walkthroughReducer', () => {
   it('moves idle → preparing → playing and clamps navigation', () => {
     let s = walkthroughReducer(initialWalkthroughState, { type: 'prepare' });
     expect(s.status).toBe('preparing');
-    s = walkthroughReducer(s, { type: 'ready', findingsByKey: new Map([['a', null]]) });
+    s = walkthroughReducer(s, { type: 'ready', stepData: new Map([['a', null]]) });
     expect(s.status).toBe('idle');
-    expect(s.findingsByKey.get('a')).toBeNull();
+    expect(s.stepData.get('a')).toBeNull();
     s = walkthroughReducer(s, { type: 'start' });
     expect(s).toMatchObject({ status: 'playing', index: 0 });
     s = walkthroughReducer(s, { type: 'goto', index: 5, total: 3 });
