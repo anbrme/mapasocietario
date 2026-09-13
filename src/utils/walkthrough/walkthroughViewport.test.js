@@ -33,3 +33,26 @@ describe('stepViewport', () => {
     expect(stepViewport({ nodeIds: ['nan', 'a'] }, nodesById, frame)).toEqual({ x: 100, y: 100, k: 2.2 });
   });
 });
+
+describe('stepViewport with a bottom inset', () => {
+  it('shifts the centre down in graph space by half the inset over the zoom, so the nodes sit mid-band', () => {
+    // A 100px controller covers the bottom: the visible band's centre is 50px
+    // above the canvas centre, so the graph point at the canvas centre must
+    // lie 50/k below the node.
+    const v = stepViewport({ nodeIds: ['a'] }, nodesById, { ...frame, insets: { bottom: 100 } });
+    expect(v.k).toBe(2.2);
+    expect(v.x).toBe(100);
+    expect(v.y).toBeCloseTo(100 + 50 / 2.2, 6);
+  });
+
+  it('fits several nodes into the uncovered band, not the full height', () => {
+    // span 200 x 400; usable 600 x (600-100-200) = 300 → k = min(3, 0.75)
+    const v = stepViewport({ nodeIds: ['a', 'b'] }, nodesById, { ...frame, padding: 100, insets: { bottom: 100 } });
+    expect(v.k).toBe(0.75);
+    expect(v.y).toBeCloseTo(300 + 50 / 0.75, 6);
+  });
+
+  it('treats a missing or zero inset as today', () => {
+    expect(stepViewport({ nodeIds: ['a'] }, nodesById, { ...frame, insets: {} })).toEqual({ x: 100, y: 100, k: 2.2 });
+  });
+});

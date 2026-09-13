@@ -87,14 +87,20 @@ const companyStep = ({
   });
   const officerIds = [...new Set(officersOfCompany(nid(node.id), graphData, byId))];
   const summary = evidence.identity || graphOnlyLine(t, officerIds.length);
+  // A unified node is a company that also holds seats elsewhere. The step
+  // stays a company step (the document keys on `kind`) but carries both
+  // sides: its seats as evidence, and the companies it sits at in focus.
+  const seats = node.unified ? personSeats(node, graphData, lang) : [];
+  const seatCompanyIds = [...new Set(seats.map(s => s.companyId))].filter(c => !officerIds.includes(c));
   return withMoment({
     ...base(node, 'company', order, lang),
-    evidence,
+    ...(node.unified ? { unified: true } : {}),
+    evidence: node.unified ? { ...evidence, seats } : evidence,
     summary,
     text: summary,
     source: evidence.identity ? 'registry' : 'graph',
-    nodeIds: [nid(node.id), ...officerIds],
-    linkKeys: officerIds.map(o => pairKey(node.id, o)),
+    nodeIds: [nid(node.id), ...officerIds, ...seatCompanyIds],
+    linkKeys: [...officerIds, ...seatCompanyIds].map(o => pairKey(node.id, o)),
   });
 };
 

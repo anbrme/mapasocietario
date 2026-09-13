@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  walkthroughCopy, graphOnlyLine, identityLine, platformModifier,
+  walkthroughCopy, graphOnlyLine, identityLine, platformModifier, stepKindLabel,
 } from './walkthroughCopy';
 
 describe('walkthroughCopy', () => {
   it('falls back to Spanish for any unknown language', () => {
-    expect(walkthroughCopy('fr').button).toBe('Recorrido');
-    expect(walkthroughCopy('en').button).toBe('Walkthrough');
+    expect(walkthroughCopy('fr').noteField).toBe('Tu nota');
+    expect(walkthroughCopy('en').noteField).toBe('Your note');
   });
 
   it('labels all seven sections and three sources in both languages', () => {
@@ -58,7 +58,7 @@ describe('v2 copy', () => {
   });
   it('carries kinds, blocks and subheads', () => {
     const t = walkthroughCopy('es');
-    expect(t.kinds).toEqual({ company: 'Empresa', person: 'Persona', note: 'Nota' });
+    expect(t.kinds).toEqual({ company: 'Empresa', person: 'Persona', note: 'Nota', unified: 'Empresa y cargo' });
     expect(Object.keys(t.blocks)).toEqual(['identity', 'board', 'filings', 'findings']);
     expect(t.subheads.seats).toBe('Cargos en las empresas del mapa');
     expect(walkthroughCopy('en').openPreview).toBe('Open preview');
@@ -76,5 +76,24 @@ describe('v2 copy', () => {
   it('labels the moment field in both languages', () => {
     expect(walkthroughCopy('es').momentLabel).toBe('Momento');
     expect(walkthroughCopy('en').momentLabel).toBe('Moment');
+  });
+});
+
+describe('walkthroughCopy — v4 report mode', () => {
+  it('names the play and edit actions and the unified kind in both languages', () => {
+    expect(walkthroughCopy('es').playOnMap).toBe('Ver en el mapa');
+    expect(walkthroughCopy('en').playOnMap).toBe('Play on the map');
+    expect(walkthroughCopy('es').editInReport).toBe('Editar en el informe');
+    expect(walkthroughCopy('en').editInReport).toBe('Edit in the report');
+    expect(walkthroughCopy('es').kinds.unified).toBe('Empresa y cargo');
+    expect(walkthroughCopy('en').kinds.unified).toBe('Company and officer');
+  });
+
+  it('stepKindLabel reads the unified label for a unified company step, the kind otherwise', () => {
+    const t = walkthroughCopy('es');
+    expect(stepKindLabel({ kind: 'company', unified: true }, t)).toBe('Empresa y cargo');
+    expect(stepKindLabel({ kind: 'company' }, t)).toBe('Empresa');
+    expect(stepKindLabel({ kind: 'person' }, t)).toBe('Persona');
+    expect(stepKindLabel({ section: 'connects' }, t)).toBe('Quién conecta');
   });
 });

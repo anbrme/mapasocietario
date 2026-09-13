@@ -201,3 +201,36 @@ describe('moments', () => {
     expect(steps[2].moment).toBeNull();
   });
 });
+
+describe('draftWalkthrough — unified node (a company that also holds seats)', () => {
+  const unifiedGraph = {
+    nodes: [
+      co('H:1', 'ALFA SL', { unified: true }),
+      co('H:2', 'BETA SL'),
+      off('o1', 'GARCIA LOPEZ ANA'),
+    ],
+    links: [
+      link('H:1', 'o1', { category: 'nombramiento', relationship: 'Administradora única' }),
+      link('H:1', 'H:2', { type: 'officer-company', unified: true, category: 'nombramiento', relationship: 'Administrador único', date: '2020-01-01' }),
+    ],
+  };
+
+  it('stays a company step, is flagged unified, carries its seats and focuses the companies it sits at', () => {
+    const [s] = draftWalkthrough({
+      graphData: unifiedGraph, scope, stepData, selection: ['H:1'], lang: 'es',
+    });
+    expect(s.kind).toBe('company');
+    expect(s.unified).toBe(true);
+    expect(s.evidence.seats).toEqual([
+      { company: 'BETA SL', companyId: 'H:2', role: 'Administrador único', since: '2020-01-01', until: '', status: 'active' },
+    ]);
+    expect(s.nodeIds).toEqual(['H:1', 'o1', 'H:2']);
+    expect(s.linkKeys).toContain(pairKey('H:1', 'H:2'));
+  });
+
+  it('a plain company step has no unified flag and no seats', () => {
+    const [s] = build({ selection: ['H:2'] });
+    expect(s.unified).toBeUndefined();
+    expect(s.evidence.seats).toBeUndefined();
+  });
+});

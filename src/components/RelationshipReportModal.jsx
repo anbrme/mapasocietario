@@ -15,6 +15,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { DEFAULT_BLOCKS } from '../utils/sitrepAuthor';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
 import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
@@ -39,7 +40,7 @@ export default function RelationshipReportModal({
   open, onClose, doc, graphData, networkNote, onNetworkNoteChange,
   lang = 'es', reportLang = 'es', onReportLangChange = () => {}, onRemoveCompany, onDownload,
   walkthrough = null, author = { name: '', organisation: '' }, onAuthorChange = () => {},
-  edits = null, onPreview = () => {},
+  edits = null, onPreview = () => {}, onPlay = null,
 }) {
   const [copied, setCopied] = useState(false);
   const [previewBlocked, setPreviewBlocked] = useState(false);
@@ -178,6 +179,11 @@ export default function RelationshipReportModal({
           <>
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 0.5 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>{t.walkthroughSection}</Typography>
+              {onPlay && (
+                <Button size="small" startIcon={<PlayArrowIcon />} onClick={onPlay} sx={{ textTransform: 'none' }}>
+                  {wt.playOnMap}
+                </Button>
+              )}
               <Button size="small" onClick={() => {
                 const c = editsCounts(edits);
                 if (window.confirm(wt.resetConfirm(c.hidden, c.notes))) walkthrough.reset();

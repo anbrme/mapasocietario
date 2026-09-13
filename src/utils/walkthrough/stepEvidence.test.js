@@ -179,3 +179,31 @@ describe('companyEvidence', () => {
     expect(ev.capital).toBeNull();
   });
 });
+
+describe('personSeats — a company that holds seats (unified node)', () => {
+  const graph = {
+    nodes: [
+      { id: 'H:1', type: 'spanish-company-group', name: 'HOLDING SL', unified: true },
+      { id: 'H:2', type: 'spanish-company-group', name: 'FILIAL SL' },
+      { id: 'H:3', type: 'spanish-company-group', name: 'GESTORA SA', unified: true },
+    ],
+    links: [
+      // HOLDING sits on FILIAL's board
+      { source: 'H:1', target: 'H:2', type: 'officer-company', unified: true, category: 'nombramiento', relationship: 'Administrador único', date: '2020-01-01' },
+      // GESTORA sits on HOLDING's board — the reverse direction, not a seat HOLDING holds
+      { source: 'H:3', target: 'H:1', type: 'officer-company', unified: true, category: 'nombramiento', relationship: 'Consejero', date: '2021-01-01' },
+      // ownership is never a seat
+      { source: 'H:1', target: 'H:2', type: 'ownership', category: 'socio_unico', relationship: 'Socio único', date: '2019-01-01' },
+    ],
+  };
+
+  it('returns only the seats the company itself holds, by link direction', () => {
+    expect(personSeats(graph.nodes[0], graph, 'es')).toEqual([
+      { company: 'FILIAL SL', companyId: 'H:2', role: 'Administrador único', since: '2020-01-01', until: '', status: 'active' },
+    ]);
+  });
+
+  it('a plain company with no unified links holds no seats', () => {
+    expect(personSeats(graph.nodes[1], graph, 'es')).toEqual([]);
+  });
+});

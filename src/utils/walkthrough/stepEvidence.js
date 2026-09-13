@@ -47,8 +47,15 @@ export const lastFilings = (payload, lang, n = 3) => {
     .slice(0, n);
 };
 
+// The seats a node holds across the visible companies. For a person every
+// link to a company is a seat. For a COMPANY (a unified node: a company that
+// also sits on other boards) only the unified officer-company links where it
+// is the SOURCE count — direction matters, because the reverse link is another
+// company sitting on ITS board, and a company-to-company ownership link is
+// never a seat.
 export const personSeats = (node, graphData, lang) => {
   const id = nid(node?.id);
+  const holderIsCompany = isCompany(node);
   const byId = new Map((graphData?.nodes || []).map(n => [nid(n.id), n]));
   return (graphData?.links || []).flatMap(l => {
     const a = nid(refId(l.source)); const b = nid(refId(l.target));
@@ -58,6 +65,7 @@ export const personSeats = (node, graphData, lang) => {
     // A sole-shareholder link is ownership, not a seat — it never belongs in
     // the "cargos" table, however it happens to be categorised.
     if (l.type === 'ownership') return [];
+    if (holderIsCompany && !(l.unified && a === id)) return [];
     // The link's effective category (latest event, falling back to the
     // build-time category) decides active/ceased — same rule the graph draws
     // by. A seat at a dissolved company can hold nothing, regardless of what
