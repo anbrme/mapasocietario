@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import {
   draftWalkthrough, openingCard, subjectCompanyIds, applyWalkthroughEdits, hideStep, setStepNote, setStepMoment,
-  moveStep, swapInSelection, removeFromSelection, loadStepData,
+  moveStep, swapInSelection, removeFromSelection, loadStepData, mergeCoverage,
 } from '../utils/walkthrough';
 import { initialWalkthroughState, walkthroughReducer, focusSets, stepTransition } from './walkthroughState';
 
@@ -55,11 +55,12 @@ export function useWalkthrough({
     () => (mode === 'selection' ? visibleSelection : subjectCompanyIds(scope, primarySubjectId)),
     [mode, visibleSelection, scope, primarySubjectId]);
 
-  const coverage = useMemo(() => {
-    const withCoverage = loadIds.find(id => state.stepData.get(id)?.findings?.coverage);
-    const c = withCoverage ? state.stepData.get(withCoverage).findings.coverage : null;
-    return c ? { since: c.since, indexedThrough: c.indexed_through } : null;
-  }, [state.stepData, loadIds]);
+  // Each company's findings payload reports its OWN coverage, and a dissolved
+  // company's runs out at its last filing. The document's coverage is the
+  // union: the earliest start, the latest end.
+  const coverage = useMemo(
+    () => mergeCoverage(loadIds.map(id => state.stepData.get(id)?.findings?.coverage)),
+    [state.stepData, loadIds]);
 
   // The graph component may not wire fetchProfile/fetchEvents (v1 callers,
   // or a selection-less draft that never needs them) — guard here so the

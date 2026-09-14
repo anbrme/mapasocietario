@@ -89,3 +89,13 @@ describe('exportCopy', () => {
     expect(exportCopy('en').explorer).toBe('Explore the evidence');
   });
 });
+
+
+describe('mapCaption plurals', () => {
+  it('singularises each count independently in both languages', () => {
+    expect(exportCopy('es').mapCaption(1, 8, 0)).toBe('1 empresa · 8 personas · 0 conexiones compartidas · disposición del autor');
+    expect(exportCopy('es').mapCaption(2, 1, 1)).toBe('2 empresas · 1 persona · 1 conexión compartida · disposición del autor');
+    expect(exportCopy('en').mapCaption(1, 1, 1)).toBe("1 company · 1 person · 1 shared connection · author's layout");
+    expect(exportCopy('en').mapCaption(2, 8, 0)).toBe("2 companies · 8 people · 0 shared connections · author's layout");
+  });
+});

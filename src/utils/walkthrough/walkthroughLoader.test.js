@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loadStepData } from './walkthroughLoader';
+import { loadStepData, mergeCoverage } from './walkthroughLoader';
 
 const nodesById = new Map([
   ['H:1', {
@@ -156,5 +156,20 @@ describe('loadStepData', () => {
       ids: ['H:1'], nodesById, fetchProfile, fetchEvents, fetchFindings, lang: 'es', clearTimeoutFn,
     });
     expect(clearTimeoutFn).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('mergeCoverage', () => {
+  it('takes the earliest since and the latest indexed_through across companies', () => {
+    expect(mergeCoverage([
+      { since: '2009-01-01', indexed_through: '2012-03-01' },
+      null,
+      { since: '2010-05-05', indexed_through: '2026-09-13' },
+    ])).toEqual({ since: '2009-01-01', indexedThrough: '2026-09-13' });
+  });
+  it('is null when nothing carries coverage', () => {
+    expect(mergeCoverage([null, undefined])).toBeNull();
+    expect(mergeCoverage([])).toBeNull();
   });
 });

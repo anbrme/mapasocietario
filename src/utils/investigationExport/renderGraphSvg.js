@@ -42,10 +42,12 @@ const truncate = (name) => {
   return s.length > LABEL_MAX_CHARS ? `${s.slice(0, LABEL_MAX_CHARS - 1)}…` : s;
 };
 
-export function renderGraphSvg(graphData, { flaggedIds } = {}) {
+export function renderGraphSvg(graphData, { flaggedIds, stepIds } = {}) {
   const nodes = (graphData?.nodes || []).filter(n => finite(n?.x) !== null && finite(n?.y) !== null);
   const byId = new Map(nodes.map(n => [nodeId(n.id), n]));
   const flagged = flaggedIds instanceof Set ? flaggedIds : new Set(flaggedIds || []);
+  // A step's own node carries data-step so its label reads over the others.
+  const stepped = stepIds instanceof Set ? stepIds : new Set(stepIds || []);
 
   const lines = (graphData?.links || []).map(l => {
     const a = byId.get(nodeId(endpointId(l.source)));
@@ -63,8 +65,9 @@ export function renderGraphSvg(graphData, { flaggedIds } = {}) {
     const flag = flagged.has(id) ? (n.userNote?.flag || 'none') : '';
     const flagAttr = flag ? ` data-flag="${escapeHtml(flag)}"` : '';
     const kind = isCompany(n) ? 'company' : 'officer';
+    const stepAttr = stepped.has(id) ? ' data-step="1"' : '';
     return (
-      `<g class="n" data-id="${escapeHtml(id)}" data-x="${n.x}" data-y="${n.y}" data-kind="${kind}"${flagAttr}>`
+      `<g class="n" data-id="${escapeHtml(id)}" data-x="${n.x}" data-y="${n.y}" data-kind="${kind}"${flagAttr}${stepAttr}>`
       + `<circle cx="${n.x}" cy="${n.y}" r="${r}"/>`
       + `<text x="${n.x}" y="${n.y - r - LABEL_OFFSET}">${escapeHtml(truncate(n.name))}</text>`
       + '</g>'

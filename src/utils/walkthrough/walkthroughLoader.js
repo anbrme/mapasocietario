@@ -64,3 +64,17 @@ export async function loadStepData({
   }
   return new Map(results);
 }
+
+/**
+ * The union of per-company coverage blocks: earliest `since`, latest
+ * `indexed_through`. Null when nothing carries coverage.
+ * @param {Array<{since?: string, indexed_through?: string} | null | undefined>} blocks
+ * @returns {{ since: string, indexedThrough: string } | null}
+ */
+export const mergeCoverage = blocks => {
+  const list = (blocks || []).filter(Boolean);
+  if (!list.length) return null;
+  const sinces = list.map(c => c.since).filter(Boolean).sort();
+  const throughs = list.map(c => c.indexed_through).filter(Boolean).sort();
+  return { since: sinces[0] || '', indexedThrough: throughs[throughs.length - 1] || '' };
+};

@@ -48,9 +48,12 @@ figure .frame{position:relative;background:var(--card);border:1px solid var(--li
 #map g.n circle{fill:var(--officer)}
 #map g.n[data-kind="company"] circle{fill:var(--company)}
 #map g.n text{fill:var(--fg);font-size:9px;text-anchor:middle;pointer-events:none}
+#map g.n[data-kind="officer"] text{font-size:7.5px;fill:var(--muted)}
+#map g.n[data-step] text{font-weight:700;fill:var(--fg)}
 #map g.n[data-flag] circle{stroke:#ef4444;stroke-width:2.5}
 #map g.n[data-flag="amber"] circle{stroke:#f59e0b}
 #map.focused g.n{opacity:.16}#map.focused g.n.on{opacity:1}
+#map.focused g.n:not(.on) text{opacity:0}
 #map.focused .l{opacity:.12}#map.focused .l.on{opacity:1;stroke:var(--accent);stroke-width:2}
 figcaption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:.82rem}
 .legend{display:flex;gap:14px;flex-wrap:wrap}
@@ -96,7 +99,8 @@ th{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut
 td.date{font-variant-numeric:tabular-nums;white-space:nowrap}
 .scroll{overflow-x:auto}
 ul.plain{list-style:none;padding:0;margin:0}ul.plain li{padding:6px 0;border-bottom:1px solid var(--line)}
-nav.contents a.sub{margin-left:14px;font-size:.8rem}
+nav.contents .subs{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:4px 18px;padding-left:14px}
+nav.contents a.sub{font-size:.8rem}
 footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem;line-height:1.7}
 .story{display:grid;grid-template-columns:minmax(0,1fr);gap:0 32px;align-items:start}
 .story #graph{position:sticky;top:0;z-index:2;background:var(--bg);padding-top:8px;margin:0;display:flex;flex-direction:column}
@@ -105,7 +109,10 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
 #viewport{transition:transform .6s cubic-bezier(.22,.61,.36,1);transform-origin:0 0;transform-box:view-box}
 #map.dragging #viewport{transition:none}
 #map g.n,#map .l{transition:opacity .45s ease}
-#map [data-state="hidden"]{opacity:0!important;pointer-events:none}
+#map .l[data-state="hidden"]{opacity:0!important;pointer-events:none}
+#map g.n[data-state="hidden"]{pointer-events:none}
+#map g.n[data-state="hidden"] circle{fill:var(--bg);stroke:var(--line);stroke-width:1.2}
+#map g.n[data-state="hidden"] text{opacity:.3}
 #map .l[data-state="ceased"]{stroke-dasharray:3 3;opacity:.45}
 #map g.n[data-state="ghost"] circle{opacity:.35}
 #map g.n[data-state="ghost"] text{opacity:.5}
@@ -129,8 +136,13 @@ h3.explorer{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:
 .wrap>header,.wrap>nav,.wrap>#summary,.wrap>#annexes,.wrap>footer{max-width:820px;margin-left:auto;margin-right:auto}
 .story{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .story.solo{grid-template-columns:minmax(0,820px);justify-content:center}
-.story #graph{top:16px;max-height:calc(100vh - 32px);overflow:auto;padding-top:0}
-.story #graph #map{height:min(52vh,520px)}
+.story{min-height:calc(100vh - 32px);margin-bottom:24px}
+.story #graph{top:16px;max-height:calc(100vh - 32px);overflow:hidden;padding-top:0}
+/* The pane must never scroll on its own (a wheel over the map would scroll it
+   instead of the page), so the map takes what the viewport leaves after the
+   heading, caption, slider and the opening card at its tallest (~392px). */
+.story #graph #map{height:clamp(220px,calc(100vh - 392px),520px)}
+#wt-text,#wt-ev,#wt-note{display:none}
 .chapter{scroll-margin-top:50vh}
 }
 @media (prefers-reduced-motion:reduce){#viewport,#map g.n,#map .l{transition:none}}
@@ -153,6 +165,7 @@ body{background:#fff;color:#0B1324;font-size:11pt}
 .annex-panel[hidden]{display:block!important}
 #map [data-state]{opacity:1!important;stroke-dasharray:none}
 #map g.n[data-state="ghost"] circle,#map g.n[data-state="ghost"] text{opacity:1!important}
+#map g.n[data-state="hidden"] circle{fill:var(--officer);stroke:none}#map g.n[data-state="hidden"][data-kind="company"] circle{fill:var(--company)}#map g.n[data-state="hidden"] text{opacity:1!important}
 #map .l[data-state="ceased"]{stroke-dasharray:none!important;opacity:1!important}
 #viewport{transform:none!important;transition:none}
 #walkthrough{page-break-before:always}

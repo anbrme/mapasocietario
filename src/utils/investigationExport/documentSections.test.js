@@ -119,7 +119,7 @@ describe('documentSections', () => {
     const html = renderMapFigure(doc, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
     expect(html).toContain('id="map"');
     expect(html).toContain('class="legend"');
-    expect(html).toContain('1 empresas · 3 personas · 0 conexiones compartidas');
+    expect(html).toContain('1 empresa · 3 personas · 0 conexiones compartidas');
     // The story starts on scroll: no start button, and the panel is present
     // from the first paint (the opening block fills it until a chapter enters).
     expect(html).not.toContain('id="wt-start"');
@@ -585,5 +585,31 @@ describe('renderChapters — unified company step', () => {
   it('a plain company chapter has no seats table', () => {
     const html = renderChapters({ ...doc, steps: [companyStep('H:1')] }, t, wt);
     expect(html).not.toContain('Cargos en las empresas del mapa');
+  });
+});
+
+
+describe('polish pass — contents row, date cells, step marks, annex company line', () => {
+  it('lists the chapters in their own row under the section strip', () => {
+    const html = renderContents(doc, t);
+    expect(html).toMatch(/<span class="subs"><a href="#ch-0" class="sub">01 ALFA SL<\/a><a href="#ch-1" class="sub">02 GARCIA LOPEZ ANA<\/a><\/span>/);
+  });
+
+  it('marks day-shaped evidence cells so they never wrap', () => {
+    const html = renderChapters({ ...doc, steps: [companyStep('c1')] }, t, wt);
+    expect(html).toContain('<td class="date">2020-01-01</td>');
+    expect(html).toContain('<td class="date">2024-03-11</td>');
+    expect(html).not.toContain('<td class="date">Administrador</td>');
+  });
+
+  it('flags the step nodes on the map so their labels read over the rest', () => {
+    const html = renderMapFigure(doc, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }, { id: 'x', type: 'officer', name: 'OTRO', x: 3, y: 4 }], links: [] }, t);
+    expect(html).toMatch(/data-id="c1"[^>]*data-step="1"/);
+    expect(html).not.toMatch(/data-id="x"[^>]*data-step/);
+  });
+
+  it('gives an annex company its visible-officer count instead of a bare name', () => {
+    const html = renderAnnexes({ ...doc, officersByCompany: { 'OTRA SL': [{ name: 'A' }, { name: 'B' }] } }, t);
+    expect(html).toContain('<strong>OTRA SL</strong><span class="kv">2 cargos visibles en el mapa</span>');
   });
 });

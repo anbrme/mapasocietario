@@ -76,7 +76,9 @@ export const renderContents = (doc, t) => {
   items.push(`<a href="#graph"><b>${nums.map}</b>${esc(t.map)}</a>`);
   if (nums.chapters != null) {
     items.push(`<a href="#walkthrough"><b>${nums.chapters}</b>${esc(t.walkthroughSection)}</a>`);
-    steps.forEach((s, i) => items.push(`<a href="#ch-${i}" class="sub">${esc(t.chapterLabel(i + 1, s.title))}</a>`));
+    // The chapter list is its own row under the section names, so a long
+    // title never breaks the section strip mid-list.
+    items.push(`<span class="subs">${steps.map((s, i) => `<a href="#ch-${i}" class="sub">${esc(t.chapterLabel(i + 1, s.title))}</a>`).join('')}</span>`);
   }
   if (nums.annexes != null) items.push(`<a href="#annexes"><b>${nums.annexes}</b>${esc(t.annexes)}</a>`);
   return `<nav class="contents" aria-label="${esc(t.contents)}">${items.join('')}</nav>`;
@@ -123,6 +125,7 @@ export const renderMapFigure = (doc, graphData, t, lang = 'es') => {
   const steps = doc.steps || [];
   const hasSteps = steps.length > 0;
   const flaggedIds = new Set(steps.filter(isFlaggedStep).map(s => s.nodeIds?.[0]).filter(Boolean));
+  const stepIds = new Set(steps.map(s => s.nodeId || s.nodeIds?.[0]).filter(Boolean));
   const c = doc.counts || {};
   const num = sectionNumbers(doc).map;
   // The story starts on scroll, so there is no start button; the panel is
@@ -143,7 +146,7 @@ export const renderMapFigure = (doc, graphData, t, lang = 'es') => {
 <section id="graph"><h2><span class="num">${num}</span>${esc(t.map)}</h2>
 <figure>
   <div class="frame">
-    ${renderGraphSvg(graphData, { flaggedIds })}
+    ${renderGraphSvg(graphData, { flaggedIds, stepIds })}
   </div>
   <figcaption>
     <span>${esc(t.mapCaption(c.companies || 0, c.officers || 0, c.sharedPeople || 0))}</span>
@@ -161,9 +164,12 @@ const noteBlock = (note, t, flag) => (note?.text
 
 const kv = (label, value) => (value ? `<p class="kv">${label ? `${esc(label)}: ` : ''}${esc(value)}</p>` : '');
 
+// A registry day never wraps into "2011-12-" / "23": date-shaped cells get
+// the nowrap class the annex tables already use.
+const isDay = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
 const evidenceTable = (columns, rows, cells) => (rows.length
   ? `<div class="scroll"><table><thead><tr>${Object.values(columns).map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${
-    rows.map(r => `<tr>${cells(r).map(v => `<td>${esc(v || '')}</td>`).join('')}</tr>`).join('')
+    rows.map(r => `<tr>${cells(r).map(v => `<td${isDay(v) ? ' class="date"' : ''}>${esc(v || '')}</td>`).join('')}</tr>`).join('')
   }</tbody></table></div>`
   : '');
 
@@ -260,7 +266,10 @@ const annex = (title, inner, id) => (inner
 export const renderAnnexes = (doc, t) => {
   if (!hasAnnexes(doc)) return '';
   const rows = annexRows(doc);
-  const companies = rows.companies.map(c => `<li><strong>${esc(c.name)}</strong>${c.note?.text ? noteBlock(c.note, t) : ''}</li>`).join('');
+  // A company that is not a chapter still says how much of it the map holds,
+  // so the annex never reads as an empty table.
+  const officersOf = name => (doc.officersByCompany?.[name] || []).length;
+  const companies = rows.companies.map(c => `<li><strong>${esc(c.name)}</strong><span class="kv">${esc(t.officersVisible(officersOf(c.name)))}</span>${c.note?.text ? noteBlock(c.note, t) : ''}</li>`).join('');
   const connectors = rows.connectors.map(c => `<tr>
     <td>${esc(c.name)} <em>(${c.type === 'entity' ? esc(t.entity) : esc(t.individual)})</em>${c.note?.text ? noteBlock(c.note, t) : ''}</td>
     <td>${(c.companies || []).map(esc).join(', ')}</td><td>${(c.roles || []).map(esc).join(' / ')}</td><td>${esc(t[c.status] || c.status)}</td></tr>`).join('');
