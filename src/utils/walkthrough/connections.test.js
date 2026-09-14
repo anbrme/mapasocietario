@@ -116,3 +116,22 @@ describe('connectionStep', () => {
     expect(whoAt).toContain('LOPEZ LUIS@GAMMA SL');
   });
 });
+
+
+describe('hopRows attribution per link', () => {
+  it('two companies holding seats at each other in opposite directions each keep their own actor', () => {
+    const g = {
+      nodes: [co('A', 'ALFA SL', { unified: true }), co('B', 'BETA SL', { unified: true }), co('C', 'GAMMA SL')],
+      links: [
+        link('A', 'B', { type: 'officer-company', unified: true, category: 'nombramiento', relationship: 'Administrador único', date: '2020-01-01' }),
+        link('B', 'A', { type: 'officer-company', unified: true, category: 'nombramiento', relationship: 'Auditor', date: '2021-01-01' }),
+        link('B', 'C', { type: 'officer-company', unified: true, category: 'nombramiento', relationship: 'Consejero', date: '2022-01-01' }),
+      ],
+    };
+    const s = connectionStep({ suggestion: { key: 'conn:B', via: ['B'], ends: ['A', 'C'], hops: 2 }, graphData: g, order: 0, lang: 'es' });
+    const rows = s.evidence.hops.map(h => `${h.who} ${h.role} @ ${h.at}`);
+    expect(rows).toContain('ALFA SL Administrador único @ BETA SL');
+    expect(rows).toContain('BETA SL Auditor @ ALFA SL');
+    expect(rows).toContain('BETA SL Consejero @ GAMMA SL');
+  });
+});

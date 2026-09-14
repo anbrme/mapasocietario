@@ -71,13 +71,19 @@ const hopRows = (graphData, byId, path) => {
     const na = byId.get(a); const nb = byId.get(b);
     const aIsOfficer = na?.type === 'officer';
     const bIsOfficer = nb?.type === 'officer';
-    const who = aIsOfficer || (!bIsOfficer && links.some(l => nid(refId(l.source)) === a)) ? na : nb;
-    const at = who === na ? nb : na;
+    // Decided per LINK, not per hop: two companies can hold seats at each
+    // other in opposite directions, and each row must name its own actor.
+    const attribution = l => {
+      const who = aIsOfficer || (!bIsOfficer && nid(refId(l.source)) === a) ? na : nb;
+      return { who, at: who === na ? nb : na };
+    };
     if (!links.length) {
+      const { who, at } = attribution({ source: a });
       rows.push({ who: who?.name || '', whoId: nid(who?.id), at: at?.name || '', atId: nid(at?.id), role: '', status: '', date: '' });
       continue;
     }
     links.forEach(l => {
+      const { who, at } = attribution(l);
       const ownership = l.type === 'ownership';
       const cat = getLinkEffectiveCategory(l) || l.category;
       const active = ownership ? !l.lost : isActiveOfficerCategory(cat) && !at?.isDissolved && !at?.is_dissolved;

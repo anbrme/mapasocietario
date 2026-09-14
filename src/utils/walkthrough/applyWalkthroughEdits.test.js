@@ -141,3 +141,19 @@ describe('connections in the overlay', () => {
     expect(removeConnection(e, 'conn:nope')).toEqual(e);
   });
 });
+
+
+describe('connection placement under a stale order', () => {
+  const node = (key, nodeId) => ({ key, nodeId, kind: 'company' });
+  const conn = (key, ends) => ({ key, nodeId: null, kind: 'connection', evidence: { ends } });
+  it('a connection the saved order does not name lands right after the last of its ends', () => {
+    const draft = [node('a', 'A'), node('b', 'B'), node('c', 'C'), node('d', 'D'), node('e', 'E'), conn('conn:x2', ['B', 'D'])];
+    const edits = { ...EMPTY_WALKTHROUGH_EDITS, order: ['a', 'b', 'c', 'd', 'e'] };
+    expect(applyWalkthroughEdits(draft, edits).map(x => x.key)).toEqual(['a', 'b', 'c', 'd', 'conn:x2', 'e']);
+  });
+  it('a connection the saved order names stays where the author put it', () => {
+    const draft = [node('a', 'A'), node('b', 'B'), conn('conn:x', ['A', 'B'])];
+    const edits = { ...EMPTY_WALKTHROUGH_EDITS, order: ['conn:x', 'a', 'b'] };
+    expect(applyWalkthroughEdits(draft, edits).map(x => x.key)).toEqual(['conn:x', 'a', 'b']);
+  });
+});

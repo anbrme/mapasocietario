@@ -32,7 +32,7 @@ export const applyWalkthroughEdits = (steps, edits) => {
   const ordered = e.order.filter(k => byKey.has(k)).map(k => byKey.get(k));
   const placed = new Set(ordered.map(s => s.key));
   const rest = visible.filter(s => !placed.has(s.key));
-  return [...ordered, ...rest].map(s => {
+  return placeConnections([...ordered, ...rest], placed).map(s => {
     const withNote = Object.prototype.hasOwnProperty.call(e.notes, s.key)
       ? { ...s, authorNote: { text: e.notes[s.key], flag: null, origin: 'step' } }
       : s;
@@ -40,6 +40,22 @@ export const applyWalkthroughEdits = (steps, edits) => {
       ? { ...withNote, moment: e.moments[s.key] }
       : withNote;
   });
+};
+
+// A connection step the saved order does not know yet (accepted after the
+// author last reordered) belongs right after the last of its ends, not at the
+// tail where unordered steps otherwise go. Steps the order names stay put.
+const placeConnections = (list, placed) => {
+  let out = [...list];
+  out.filter(s => s.kind === 'connection' && !placed.has(s.key)).forEach(conn => {
+    const ends = conn.evidence?.ends || [];
+    const without = out.filter(s => s !== conn);
+    const lastEnd = Math.max(-1, ...ends.map(e => without.findIndex(s => s.nodeId === e)));
+    if (lastEnd < 0) return;
+    without.splice(lastEnd + 1, 0, conn);
+    out = without;
+  });
+  return out;
 };
 
 export const hideStep = (edits, key) => {
