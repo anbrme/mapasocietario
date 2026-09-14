@@ -6,8 +6,10 @@ import { getLinkEffectiveCategory } from '../linkDirectionality';
 import { hasIncoherentCapital } from '../capitalCoherence';
 import { walkthroughCopy, identityLine } from './walkthroughCopy';
 import { linkDates } from './registryTimeline';
+import { positionCategoryFor, SIMPLIFIED_EXCLUDED_CATEGORIES } from '../positionCategories';
 
-export const BOARD_CAP = 12;
+/** Categories that are powers of attorney, not the governing body. */
+export const isProxyRole = role => SIMPLIFIED_EXCLUDED_CATEGORIES.has(positionCategoryFor(role));
 const nid = id => (id == null ? '' : String(id));
 const refId = ref => (ref && typeof ref === 'object' ? ref.id : ref);
 const isCompany = n => !!n && (n.type === 'company' || n.type === 'spanish-company-group');
@@ -25,16 +27,21 @@ export const formatEur = (value, lang) => new Intl.NumberFormat(lang === 'en' ? 
 }).format(value);
 
 export const boardRows = (profile) => {
-  const active = (profile?.officers_active || []).map(o => ({
-    name: o.name || o.name_normalized || '', role: o.position_normalized || o.position || '', since: day(o.appointed_date), until: '', status: 'active',
-  }));
+  // The whole roster, never cut: the document splits it by category and
+  // folds what is long, rather than dropping rows.
+  const row = (o, status) => {
+    const role = o.position_normalized || o.position || '';
+    return {
+      name: o.name || o.name_normalized || '', role, category: positionCategoryFor(role),
+      since: day(o.appointed_date), until: status === 'ceased' ? day(o.resigned_date) : '', status,
+    };
+  };
+  const active = (profile?.officers_active || []).map(o => row(o, 'active'));
   const ceased = (profile?.officers_resigned || [])
     .filter(o => String(o.status || '').toLowerCase() !== 'superseded')
-    .map(o => ({
-      name: o.name || o.name_normalized || '', role: o.position_normalized || o.position || '', since: day(o.appointed_date), until: day(o.resigned_date), status: 'ceased',
-    }));
+    .map(o => row(o, 'ceased'));
   const byDate = (a, b) => b.since.localeCompare(a.since);
-  return [...active.sort(byDate), ...ceased.sort(byDate)].filter(r => r.name).slice(0, BOARD_CAP);
+  return [...active.sort(byDate), ...ceased.sort(byDate)].filter(r => r.name);
 };
 
 export const lastFilings = (payload, lang, n = 3) => {

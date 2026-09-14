@@ -185,3 +185,12 @@ describe('print and share', () => {
     expect(WALKTHROUGH_SCRIPT).toContain("on('wt-save', saveCopy);");
   });
 });
+
+
+describe('folds and print', () => {
+  it('opens every fold before printing and closes the ones it opened afterwards', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain("window.addEventListener('beforeprint'");
+    expect(WALKTHROUGH_SCRIPT).toContain("window.addEventListener('afterprint'");
+    expect(WALKTHROUGH_SCRIPT).toContain("document.querySelectorAll('details.fold')");
+  });
+});

@@ -696,3 +696,37 @@ describe('both dates of a seat', () => {
     expect(html).toContain('<td>RUIZ MARTIN LUIS</td><td>Apoderado</td><td class="date">2018-01-01</td><td class="date">2020-06-30</td><td>Cesado</td>');
   });
 });
+
+
+describe('company roster: governing body, folded apoderados, ceased folded, on-map line', () => {
+  const board = [
+    { name: 'GARCIA LOPEZ ANA', role: 'Administradora única', category: 'Administrador', since: '2021-03-01', until: '', status: 'active' },
+    { name: 'RUIZ MARTIN LUIS', role: 'Consejero', category: 'Consejero', since: '2018-01-01', until: '2020-06-30', status: 'ceased' },
+    { name: 'PEREZ APO UNO', role: 'APODERADO', category: 'Apoderado', since: '2022-02-02', until: '', status: 'active' },
+    { name: 'PEREZ APO DOS', role: 'Apo.Man.Soli', category: 'Apoderado', since: '2019-02-02', until: '2021-02-02', status: 'ceased' },
+  ];
+  const html = renderChapters({ ...doc, steps: [companyStep('c1', { evidence: companyEvidence({ board, onMap: 1 }) })] }, t, wt);
+  it('lists the governing body open, with its ceased rows folded', () => {
+    const gov = html.slice(html.indexOf('Órgano de administración'), html.indexOf('class="fold proxies"'));
+    expect(gov).toContain('<td>GARCIA LOPEZ ANA</td>');
+    expect(gov).toContain('<details class="fold"><summary>Cesados (1)</summary>');
+    expect(gov).toContain('<td>RUIZ MARTIN LUIS</td>');
+    expect(gov).not.toContain('PEREZ APO');
+  });
+  it('folds the apoderados under their count, never under the governing-body heading', () => {
+    expect(html).toContain('<details class="fold proxies"><summary>Apoderados (2)</summary>');
+    const prox = html.slice(html.indexOf('class="fold proxies"'));
+    expect(prox).toContain('<td>PEREZ APO UNO</td>');
+    expect(prox).toContain('<summary>Cesados (1)</summary>');
+    expect(prox).toContain('<td>PEREZ APO DOS</td>');
+  });
+  it('says how many of the roster the map holds', () => {
+    expect(html).toContain('<p class="kv onmap">En el mapa: 1 de 4 cargos</p>');
+  });
+  it('falls back to the role text when a row carries no category', () => {
+    const bare = [{ name: 'X', role: 'APO.SOL', since: '', until: '', status: 'active' }];
+    const h = renderChapters({ ...doc, steps: [companyStep('c1', { evidence: companyEvidence({ board: bare }) })] }, t, wt);
+    expect(h).toContain('Apoderados (1)');
+    expect(h).not.toContain('Órgano de administración');
+  });
+});

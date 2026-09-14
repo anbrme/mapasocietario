@@ -93,10 +93,13 @@ const companyStep = ({
   // sides: its seats as evidence, and the companies it sits at in focus.
   const seats = node.unified ? personSeats(node, graphData, lang) : [];
   const seatCompanyIds = [...new Set(seats.map(s => s.companyId))].filter(c => !officerIds.includes(c));
+  // The map holds the officers the graph loaded; the table holds the
+  // registry's roster. The chapter says how the two relate.
+  const withMap = { ...evidence, onMap: officerIds.length };
   return withMoment({
     ...base(node, 'company', order, lang),
     ...(node.unified ? { unified: true } : {}),
-    evidence: node.unified ? { ...evidence, seats } : evidence,
+    evidence: node.unified ? { ...withMap, seats } : withMap,
     summary,
     text: summary,
     source: evidence.identity ? 'registry' : 'graph',

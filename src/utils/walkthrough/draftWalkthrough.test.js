@@ -256,3 +256,11 @@ describe('draftWalkthrough — accepted connections', () => {
     expect(steps.some(s => s.kind === 'connection')).toBe(false);
   });
 });
+
+
+describe('company step — on-map count', () => {
+  it('carries how many officers the visible graph holds for the company', () => {
+    const [s] = build({ selection: ['H:1'] });
+    expect(s.evidence.onMap).toBe(2);
+  });
+});

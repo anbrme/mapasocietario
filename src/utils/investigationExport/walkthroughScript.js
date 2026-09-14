@@ -291,6 +291,17 @@ export const WALKTHROUGH_SCRIPT = `
   on('wt-exit', exit);
   on('wt-present', enterPresent);
   on('wt-print', function () { window.print(); });
+  // Paper cannot click a fold: every <details> opens for print and closes
+  // again afterwards unless the reader had opened it.
+  var openedForPrint = [];
+  window.addEventListener('beforeprint', function () {
+    openedForPrint = Array.prototype.filter.call(document.querySelectorAll('details.fold'), function (d) { return !d.open; });
+    openedForPrint.forEach(function (d) { d.open = true; });
+  });
+  window.addEventListener('afterprint', function () {
+    openedForPrint.forEach(function (d) { d.open = false; });
+    openedForPrint = [];
+  });
   // Share the FILE, not a URL: a blob: or file: address means nothing to the
   // recipient. Web Share with files where the platform has it (phones, Safari,
   // Chrome on Android); otherwise a copy is saved for the reader to attach.

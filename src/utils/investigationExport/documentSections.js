@@ -3,6 +3,7 @@
 // contents strip both rely on '' meaning "omit".
 import { escapeHtml as esc } from '../escapeHtml';
 import { stepKindLabel } from '../walkthrough/walkthroughCopy';
+import { isProxyRole } from '../walkthrough/stepEvidence';
 import { correctionVerb } from './exportCopy';
 import { renderGraphSvg } from './renderGraphSvg';
 import { flagVar } from './documentStyle';
@@ -220,10 +221,7 @@ const companyEvidenceBlock = (s, t, wt, blocks) => {
     parts.push(kv(wt.capitalLabel, ev.capital));
     parts.push(kv(wt.activityLabel, ev.activity));
   }
-  if (blocks.board !== false && (ev.board || []).length) {
-    parts.push(`<h4>${esc(wt.subheads.board)}</h4>${evidenceTable(wt.boardColumns, ev.board,
-      r => [r.name, r.role, r.since, r.until, wt.statusWords[r.status] || r.status])}`);
-  }
+  if (blocks.board !== false && (ev.board || []).length) parts.push(boardBlock(ev, wt));
   if (blocks.filings !== false && (ev.filings || []).length) {
     parts.push(`<h4>${esc(wt.subheads.filings)}</h4>${evidenceTable(wt.filingColumns, ev.filings, r => [r.date, r.type])}`);
   }
@@ -249,6 +247,33 @@ const seatsTable = (s, wt) => {
   if (!seats.length) return '';
   return `<h4>${esc(wt.subheads.seats)}</h4>${evidenceTable(wt.seatColumns, seats,
     r => [r.company, r.role, r.since, r.until, wt.statusWords[r.status] || r.status])}`;
+};
+
+// The roster, whole: the governing body first (current rows open, ceased
+// folded), then the powers of attorney folded under their count — they are
+// not the governing body and they are what makes the list long. Folds open
+// for print. Then how many of these seats the map actually holds.
+const rosterTables = (rows, wt) => {
+  const active = rows.filter(r => r.status === 'active');
+  const ceased = rows.filter(r => r.status !== 'active');
+  const table = list => evidenceTable(wt.boardColumns, list, r => [r.name, r.role, r.since, r.until, wt.statusWords[r.status] || r.status]);
+  const fold = ceased.length
+    ? `<details class="fold"><summary>${esc(wt.ceasedFold(ceased.length))}</summary>${table(ceased)}</details>`
+    : '';
+  return `${table(active)}${fold}`;
+};
+const boardBlock = (ev, wt) => {
+  const rows = ev.board || [];
+  const isProxy = r => (r.category ? r.category === 'Apoderado' : isProxyRole(r.role));
+  const governing = rows.filter(r => !isProxy(r));
+  const proxies = rows.filter(isProxy);
+  const parts = [];
+  if (governing.length) parts.push(`<h4>${esc(wt.subheads.board)}</h4>${rosterTables(governing, wt)}`);
+  if (proxies.length) {
+    parts.push(`<details class="fold proxies"><summary>${esc(wt.proxiesFold(proxies.length))}</summary>${rosterTables(proxies, wt)}</details>`);
+  }
+  if (Number.isFinite(ev.onMap)) parts.push(`<p class="kv onmap">${esc(wt.onMapLine(ev.onMap, rows.length))}</p>`);
+  return parts.join('');
 };
 
 const personEvidenceBlock = (s, wt) => seatsTable(s, wt);

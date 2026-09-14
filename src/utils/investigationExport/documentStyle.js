@@ -111,6 +111,13 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .chapter table{font-size:.82rem}
 .chapter ul{margin:0;padding-left:18px}
 .kv{color:var(--muted);font-size:.9rem;margin:2px 0}
+details.fold{margin:6px 0 0}
+details.fold>summary{cursor:pointer;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:4px 0;list-style:none}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"+ ";color:var(--accent)}
+details.fold[open]>summary::before{content:"\\2212 "}
+details.fold.proxies{margin-top:12px}
+.onmap{margin-top:8px}
 .chapter .ev{color:var(--muted);font-size:.82rem;margin-top:4px}
 #wt-note .who,.chapter .note .who{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .annex{margin-bottom:28px}

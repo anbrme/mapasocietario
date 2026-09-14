@@ -229,3 +229,14 @@ describe('both dates from the link events', () => {
     expect(rows.find(r => r.name === 'GARCIA LOPEZ MARIA')).toMatchObject({ until: '' });
   });
 });
+
+
+describe('boardRows — whole roster, categorised', () => {
+  it('never cuts the roster and tags each row with its role category', () => {
+    const many = { officers_active: Array.from({ length: 15 }, (_, i) => ({ name: `PERSONA ${i}`, position_normalized: i % 3 ? 'APODERADO' : 'CONSEJERO', appointed_date: '2020-01-01' })), officers_resigned: [] };
+    const rows = boardRows(many);
+    expect(rows).toHaveLength(15);
+    expect(rows.filter(r => r.category === 'Apoderado')).toHaveLength(10);
+    expect(rows.filter(r => r.category === 'Consejero')).toHaveLength(5);
+  });
+});

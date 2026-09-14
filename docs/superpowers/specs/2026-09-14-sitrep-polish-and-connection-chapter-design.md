@@ -126,5 +126,17 @@ recipient. *Presentar* as above.
   date. Every node is still re-rendered at each stop; other nodes' private
   dates no longer become stops. With no steps every date is a stop.
 
+## Part 6 — the company roster (shipped)
+
+The board table came from the company profile (the registry's full roster)
+cut at twelve rows, under a heading that also covered apoderados, beside a map
+that only holds the officers the graph loaded. Now: the roster is whole and
+each row carries its role category; *Órgano de administración* lists the
+governing body (current rows open, ceased folded under a count); apoderados —
+powers of attorney, not the governing body — are folded under their own count;
+folds open for print (beforeprint/afterprint); and a line under the block says
+*En el mapa: N de M cargos*, making the two sources explicit. The map stays
+"what you see is what you export": it never fetches at export time.
+
 ## Deferred
 Nothing from this round.
