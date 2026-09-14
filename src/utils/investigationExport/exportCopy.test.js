@@ -23,6 +23,15 @@ describe('exportCopy', () => {
         expect(typeof enVal, `en.${key}`).toBe('function');
         return;
       }
+      // A nested group (facts): same keys on both sides, each a string or function.
+      if (esVal && typeof esVal === 'object') {
+        expect(Object.keys(enVal || {}).sort(), `en.${key}`).toEqual(Object.keys(esVal).sort());
+        Object.keys(esVal).forEach(k => {
+          expect(typeof enVal[k], `en.${key}.${k}`).toBe(typeof esVal[k]);
+          if (typeof esVal[k] === 'string') expect(esVal[k].length, `es.${key}.${k}`).toBeGreaterThan(0);
+        });
+        return;
+      }
       expect(typeof esVal, `es.${key}`).toBe('string');
       expect(esVal.length, `es.${key}`).toBeGreaterThan(0);
       expect(typeof enVal, `en.${key}`).toBe('string');

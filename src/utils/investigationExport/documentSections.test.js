@@ -3,7 +3,7 @@ import { exportCopy } from './exportCopy';
 import { walkthroughCopy } from '../walkthrough/walkthroughCopy';
 import {
   renderCover, renderContents, renderSummary, renderMapFigure, renderChapters, renderAnnexes, renderFooter,
-  renderStory, annexRows, stepEvidenceLine,
+  renderStory, annexRows, stepEvidenceLine, renderChronology,
 } from './documentSections';
 
 const t = exportCopy('es');
@@ -635,5 +635,37 @@ describe('renderChapters — connection step', () => {
   });
   it('the evidence line names the first hops', () => {
     expect(stepEvidenceLine(connection, wt)).toBe('GARCIA LOPEZ ANA · Administradora única · ALFA SL · GARCIA LOPEZ ANA · Consejera · OTRA SL');
+  });
+});
+
+
+describe('cover facts and chronology', () => {
+  it('the cover carries the counts, the step count, the notes and the read date, skipping zeros', () => {
+    const html = renderCover(doc, t, 'es');
+    expect(html).toContain('<ul class="facts">');
+    expect(html).toContain('<li><b>1</b><span>empresa</span></li>');
+    expect(html).toContain('<li><b>3</b><span>personas</span></li>');
+    expect(html).toContain('<li><b>2</b><span>pasos</span></li>');
+    expect(html).toContain('<li><b>1</b><span>nota</span></li>');
+    expect(html).toContain('<span>registro leído</span>');
+    expect(renderCover({ ...doc, counts: { companies: 0, officers: 0, notes: 0 }, steps: [] }, t, 'es')).not.toContain('<b>0</b>');
+  });
+
+  it('the chronology lists dated steps in date order with a link into each chapter, and needs two of them', () => {
+    const dated = { ...doc, steps: [companyStep('c1', { moment: '2024-03-11' }), personStep('o1', { moment: '2021-03-01' })] };
+    const html = renderChronology(dated, t, wt, 'es');
+    expect(html).toContain('id="chronology"');
+    expect(html.indexOf('2021')).toBeLessThan(html.indexOf('2024'));
+    expect(html).toContain('<time datetime="2021-03-01">1 de marzo de 2021</time><a href="#ch-1">GARCIA LOPEZ ANA</a><span class="kind">Persona</span>');
+    expect(renderChronology({ ...doc, steps: [companyStep('c1', { moment: '2024-03-11' })] }, t, wt)).toBe('');
+    expect(renderChronology({ ...doc, steps: [companyStep('c1'), personStep('o1')] }, t, wt)).toBe('');
+  });
+
+  it('the chronology takes a section number before the map and appears in the contents', () => {
+    const dated = { ...doc, steps: [companyStep('c1', { moment: '2024-03-11' }), personStep('o1', { moment: '2021-03-01' })] };
+    const contents = renderContents(dated, t);
+    expect(contents).toContain('<a href="#chronology"><b>2</b>Cronología</a>');
+    expect(contents).toContain('<a href="#graph"><b>3</b>Mapa</a>');
+    expect(renderContents(doc, t)).toContain('<a href="#graph"><b>2</b>Mapa</a>');
   });
 });

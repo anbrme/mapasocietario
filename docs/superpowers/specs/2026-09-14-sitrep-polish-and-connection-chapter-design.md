@@ -70,5 +70,14 @@ collapse into one suggestion ("C conecta A, B y D").
 
 **Analytics.** `walkthrough_connection_added` (toolbar action).
 
+## Part 3 — chronology and cover facts (shipped after the round)
+
+- **Cover facts:** a quiet strip under the title — companies, people, steps,
+  notes (each omitted when zero) and the day the registry was read.
+- **Chronology:** a numbered section between the summary and the map, present
+  only when at least two steps carry a moment: the steps in date order, each a
+  link into its chapter, with its kind. Takes a section number, so the map and
+  everything after shift by one; the contents strip follows.
+
 ## Deferred
-Chronology strip, cover key facts, presenter mode, print treatment.
+Presenter mode, print treatment.

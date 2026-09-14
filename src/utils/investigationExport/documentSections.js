@@ -23,11 +23,28 @@ const authorLine = (doc, t) => {
   return parts.length ? ` · ${esc(t.elaboratedBy)} ${esc(parts.join(' · '))}` : '';
 };
 
+// Five quiet numbers under the title: what the map holds, how many steps the
+// story has, how many notes the author wrote, and the day the registry was
+// read. A fact with nothing to say is left out rather than shown as zero.
+const renderFacts = (doc, t, lang) => {
+  const c = doc.counts || {};
+  const steps = (doc.steps || []).length;
+  const fact = (n, label) => `<li><b>${esc(String(n))}</b><span>${esc(label)}</span></li>`;
+  const items = [];
+  if (c.companies) items.push(fact(c.companies, t.facts.companies(c.companies)));
+  if (c.officers) items.push(fact(c.officers, t.facts.people(c.officers)));
+  if (steps) items.push(fact(steps, t.facts.steps(steps)));
+  if (c.notes) items.push(fact(c.notes, t.facts.notes(c.notes)));
+  if (doc.generatedAt) items.push(fact(fmtDate(doc.generatedAt, lang), t.facts.registry));
+  return items.length ? `<ul class="facts">${items.join('')}</ul>` : '';
+};
+
 export const renderCover = (doc, t, lang) => `
 <header class="cover">
   <div class="eyebrow">${esc(t.title)}</div>
   <h1>${esc(doc.subject || t.title)}</h1>
   <div class="meta">${esc(t.generated)} ${esc(fmtDate(doc.generatedAt, lang))}${authorLine(doc, t)}</div>
+  ${renderFacts(doc, t, lang)}
   <div class="status">${esc(t.nonAuthoritative)}<br>${esc(t.sourceLine)}</div>
 </header>`;
 
@@ -57,15 +74,32 @@ const hasAnnexes = doc => {
 
 // Section numbers, computed once from the same rules that decide whether a
 // section renders at all, so the contents nav and every <h2> agree.
+// The chronology needs two dated steps to be a sequence at all.
+const datedSteps = doc => (doc.steps || [])
+  .map((s, i) => ({ step: s, index: i }))
+  .filter(x => /^\d{4}-\d{2}-\d{2}$/.test(String(x.step.moment || '')))
+  .sort((a, b) => a.step.moment.localeCompare(b.step.moment) || a.index - b.index);
+const hasChronology = doc => datedSteps(doc).length >= 2;
+
 const sectionNumbers = doc => {
   let n = 0;
   const summary = doc.networkNote ? (n += 1) : null;
+  const chronology = hasChronology(doc) ? (n += 1) : null;
   const map = (n += 1);
   const chapters = (doc.steps || []).length ? (n += 1) : null;
   const annexes = hasAnnexes(doc) ? (n += 1) : null;
   return {
-    summary, map, chapters, annexes,
+    summary, chronology, map, chapters, annexes,
   };
+};
+
+// The story's moments in date order, each a link into its chapter: the
+// sequence of events before the story tells them.
+export const renderChronology = (doc, t, wt, lang = 'es') => {
+  if (!hasChronology(doc)) return '';
+  const num = sectionNumbers(doc).chronology;
+  const items = datedSteps(doc).map(({ step, index }) => `<li><time datetime="${esc(step.moment)}">${esc(fmtDay(step.moment, lang))}</time><a href="#ch-${index}">${esc(step.title)}</a><span class="kind">${esc(stepKindLabel(step, wt))}</span></li>`).join('');
+  return `<section id="chronology"><h2><span class="num">${num}</span>${esc(t.chronology)}</h2><ol class="chrono">${items}</ol></section>`;
 };
 
 export const renderContents = (doc, t) => {
@@ -73,6 +107,7 @@ export const renderContents = (doc, t) => {
   const nums = sectionNumbers(doc);
   const items = [];
   if (nums.summary != null) items.push(`<a href="#summary"><b>${nums.summary}</b>${esc(t.summaryNote)}</a>`);
+  if (nums.chronology != null) items.push(`<a href="#chronology"><b>${nums.chronology}</b>${esc(t.chronology)}</a>`);
   items.push(`<a href="#graph"><b>${nums.map}</b>${esc(t.map)}</a>`);
   if (nums.chapters != null) {
     items.push(`<a href="#walkthrough"><b>${nums.chapters}</b>${esc(t.walkthroughSection)}</a>`);

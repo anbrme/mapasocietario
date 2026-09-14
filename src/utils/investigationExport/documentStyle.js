@@ -34,6 +34,17 @@ header.cover{padding-bottom:28px;border-bottom:1px solid var(--line);margin-bott
 header.cover h1{font-size:2rem;line-height:1.15;margin:8px 0 10px;font-weight:700;letter-spacing:-.01em}
 .meta{color:var(--muted);font-size:.88rem}
 .status{margin-top:18px;padding:10px 14px;border-left:2px solid var(--line);color:var(--muted);font-size:.86rem}
+.facts{list-style:none;display:flex;flex-wrap:wrap;gap:8px 28px;margin:18px 0 0;padding:0}
+.facts li{display:flex;flex-direction:column;line-height:1.25}
+.facts b{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.facts span{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.chrono{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--line)}
+.chrono li{position:relative;display:grid;grid-template-columns:200px 1fr auto;gap:0 14px;align-items:baseline;padding:6px 0}
+.chrono li::before{content:"";position:absolute;left:-19px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.chrono time{color:var(--muted);font-size:.86rem;font-variant-numeric:tabular-nums}
+.chrono a{color:var(--fg);font-weight:600}
+.chrono .kind{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+@media (max-width:600px){.chrono li{grid-template-columns:1fr;gap:0}.chrono .kind{display:none}}
 nav.contents{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 36px;font-size:.86rem}
 nav.contents a{color:var(--muted)}nav.contents a b{color:var(--fg);font-weight:600;margin-right:6px}
 section{margin:0 0 40px}
@@ -133,7 +144,7 @@ h3.explorer{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:
 }
 @media (min-width:960px){
 .wrap{max-width:1180px}
-.wrap>header,.wrap>nav,.wrap>#summary,.wrap>#annexes,.wrap>footer{max-width:820px;margin-left:auto;margin-right:auto}
+.wrap>header,.wrap>nav,.wrap>#summary,.wrap>#chronology,.wrap>#annexes,.wrap>footer{max-width:820px;margin-left:auto;margin-right:auto}
 .story{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .story.solo{grid-template-columns:minmax(0,820px);justify-content:center}
 .story{min-height:calc(100vh - 32px);margin-bottom:24px}

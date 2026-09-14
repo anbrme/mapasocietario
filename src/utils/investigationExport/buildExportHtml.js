@@ -8,7 +8,7 @@ import { walkthroughCopy, stepKindLabel } from '../walkthrough/walkthroughCopy';
 import { DOCUMENT_STYLE } from './documentStyle';
 import { WALKTHROUGH_SCRIPT } from './walkthroughScript';
 import {
-  renderCover, renderContents, renderSummary, renderStory, renderAnnexes, renderFooter,
+  renderCover, renderContents, renderSummary, renderChronology, renderStory, renderAnnexes, renderFooter,
   stepEvidenceLine,
 } from './documentSections';
 
@@ -56,6 +56,7 @@ export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
 ${renderCover(safeDoc, t, lang)}
 ${renderContents(safeDoc, t)}
 ${renderSummary(safeDoc, t)}
+${renderChronology(safeDoc, t, wt, lang)}
 ${renderStory(safeDoc, graphData, t, wt, lang)}
 ${renderAnnexes(safeDoc, t)}
 ${renderFooter(safeDoc, t, lang)}
