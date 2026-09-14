@@ -43,7 +43,7 @@ export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
   }).replace(/</g, '\\u003c');
 
   return `<!doctype html>
-<html lang="${lang === 'en' ? 'en' : 'es'}">
+<html lang="${lang === 'en' ? 'en' : 'es'}" class="nojs">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -61,7 +61,7 @@ ${renderStory(safeDoc, graphData, t, wt, lang)}
 ${renderAnnexes(safeDoc, t)}
 ${renderFooter(safeDoc, t, lang)}
 </div>
-<script>window.__SITREP__=${stepJson};</script>
+<script>document.documentElement.classList.remove('nojs');window.__SITREP__=${stepJson};</script>
 <script>${WALKTHROUGH_SCRIPT}</script>
 </body>
 </html>`;

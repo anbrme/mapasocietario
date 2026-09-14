@@ -182,5 +182,6 @@ describe('print and share', () => {
     expect(WALKTHROUGH_SCRIPT).toContain("var pristine = '<!doctype html>\\n' + document.documentElement.outerHTML;");
     expect(WALKTHROUGH_SCRIPT).toContain('navigator.canShare({ files: [file] })');
     expect(WALKTHROUGH_SCRIPT).toContain('a.download = fileName();');
+    expect(WALKTHROUGH_SCRIPT).toContain("on('wt-save', saveCopy);");
   });
 });

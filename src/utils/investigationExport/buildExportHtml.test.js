@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { buildExportHtml, exportFileName } from './buildExportHtml';
 
+describe('no-script viewers', () => {
+  it('marks the document nojs until the script runs, and carries the static-view note', () => {
+    const html = buildExportHtml({ steps: [], companies: [], counts: {} }, { nodes: [], links: [] }, { lang: 'es' });
+    expect(html).toContain('<html lang="es" class="nojs">');
+    expect(html).toContain("<script>document.documentElement.classList.remove('nojs');window.__SITREP__=");
+    expect(html).toContain('<noscript><p class="nojs-note">Vista estática');
+  });
+});
+
 const graphData = { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 10, y: 10 }], links: [] };
 const doc = {
   subject: 'ALFA SL',

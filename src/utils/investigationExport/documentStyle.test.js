@@ -137,7 +137,10 @@ describe('presenter mode and print treatment', () => {
     expect(printBlock).toContain('h3.explorer{display:none!important}');
     expect(printBlock).toContain('thead{display:table-header-group}');
     expect(printBlock).toContain('footer a[href^="http"]::after{content:" (" attr(href) ")"');
-    expect(printBlock).toContain('.wt-nav,#wt-present,.slide0{display:none!important}');
+    expect(printBlock).toContain('.wt-nav,.wt-tools,.slide0{display:none!important}');
+    expect(DOCUMENT_STYLE).toContain('.wt-tools{display:flex;flex-wrap:wrap');
+    expect(DOCUMENT_STYLE).toContain('html.nojs #wt-panel,html.nojs #wt-time{display:none}');
+    expect(DOCUMENT_STYLE).toContain('#wt-counter,#wt-exit{white-space:nowrap}');
     expect(printBlock).toContain('.chapter.current{background:none!important');
   });
 });

@@ -298,13 +298,8 @@ export const WALKTHROUGH_SCRIPT = `
     var base = (document.title || 'informe').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\\s+/g, ' ').trim();
     return base + '.html';
   }
-  on('wt-share', function () {
+  function saveCopy() {
     var blob = new Blob([pristine], { type: 'text/html' });
-    var file = (typeof File === 'function') ? new File([blob], fileName(), { type: 'text/html' }) : null;
-    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: document.title }).catch(function () {});
-      return;
-    }
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = fileName();
@@ -312,6 +307,16 @@ export const WALKTHROUGH_SCRIPT = `
     a.click();
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  on('wt-save', saveCopy);
+  on('wt-share', function () {
+    var blob = new Blob([pristine], { type: 'text/html' });
+    var file = (typeof File === 'function') ? new File([blob], fileName(), { type: 'text/html' }) : null;
+    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: document.title }).catch(function () {});
+      return;
+    }
+    saveCopy();
   });
   // The slider and the tab strip own the arrow keys while they are focused.
   function ownsArrows(el) {

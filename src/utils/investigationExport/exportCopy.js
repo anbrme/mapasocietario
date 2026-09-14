@@ -48,7 +48,9 @@ const ES = {
   present: 'Presentar',
   print: 'Imprimir',
   share: 'Compartir',
-  shareHint: 'Envía este archivo tal cual; si el navegador no puede compartirlo, guarda una copia.',
+  shareHint: 'Comparte este archivo tal cual. Algunas apps (Telegram, por ejemplo) solo reciben el título: usa entonces Guardar copia y adjúntala.',
+  saveCopy: 'Guardar copia',
+  noScript: 'Vista estática: este visor no ejecuta el recorrido interactivo. Abre el archivo en un navegador (Safari, Chrome) para el mapa animado, la presentación y los botones.',
   presentHint: 'Flechas o espacio para avanzar · Esc para salir',
   facts: {
     companies: n => (n === 1 ? 'empresa' : 'empresas'),
@@ -120,7 +122,9 @@ const EN = {
   present: 'Present',
   print: 'Print',
   share: 'Share',
-  shareHint: 'Send this file as it is; if the browser cannot share it, a copy is saved.',
+  shareHint: 'Share this file as it is. Some apps (Telegram, for one) only take the title: use Save a copy and attach it instead.',
+  saveCopy: 'Save a copy',
+  noScript: 'Static view: this viewer does not run the interactive walkthrough. Open the file in a browser (Safari, Chrome) for the animated map, the presentation and the buttons.',
   presentHint: 'Arrows or space to advance · Esc to leave',
   facts: {
     companies: n => (n === 1 ? 'company' : 'companies'),

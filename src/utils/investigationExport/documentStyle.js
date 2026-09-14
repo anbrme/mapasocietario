@@ -82,7 +82,11 @@ border-radius:8px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.08);flex:1
 border-radius:0 6px 6px 0;font-size:.92rem;white-space:pre-line}
 #wt-note[data-flag="red"]{--f:#ef4444}#wt-note[data-flag="amber"]{--f:#f59e0b}
 #wt-note[data-flag="blue"]{--f:#3b82f6}#wt-note[data-flag="green"]{--f:#22c55e}
-.wt-nav{display:flex;align-items:center;gap:8px;margin-top:10px}
+.wt-nav{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+#wt-counter,#wt-exit{white-space:nowrap}
+.wt-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.wt-tools button{font-size:.78rem;padding:3px 10px;color:var(--muted);border-color:transparent;background:var(--soft)}
+.wt-tools button:hover{color:var(--fg);border-color:var(--line)}
 button{font:inherit;font-size:.86rem;padding:5px 12px;border:1px solid var(--line);border-radius:6px;
 background:var(--card);color:var(--fg);cursor:pointer}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -129,6 +133,11 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
 #map g.n[data-state="ghost"] circle{opacity:.35}
 #map g.n[data-state="ghost"] text{opacity:.5}
 #wt-time{margin-top:8px}
+/* A viewer that runs no script (an in-app document preview, Quick Look) gets
+   the document, not dead controls. */
+html.nojs #wt-panel,html.nojs #wt-time{display:none}
+.nojs-note{margin:0 0 12px;padding:10px 14px;border-left:3px solid var(--accent);background:var(--accent-soft);font-size:.9rem}
+@media print{.nojs-note{display:none}}
 #wt-time input[type=range]{width:100%;accent-color:var(--accent)}
 #wt-time .meta{display:flex;gap:6px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
 .chapter{scroll-margin-top:45vh}
@@ -153,7 +162,7 @@ h3.explorer{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:
 /* The pane must never scroll on its own (a wheel over the map would scroll it
    instead of the page), so the map takes what the viewport leaves after the
    heading, caption, slider and the opening card at its tallest (~392px). */
-.story #graph #map{height:clamp(220px,calc(100vh - 392px),520px)}
+.story #graph #map{height:clamp(220px,calc(100vh - 430px),520px)}
 #wt-text,#wt-ev,#wt-note{display:none}
 .chapter{scroll-margin-top:50vh}
 }
@@ -181,7 +190,7 @@ body.presenting .chapter .num{font-size:1.4rem}
 body.presenting.at-opening .slide0{display:block;padding-top:8vh}
 body.presenting.at-opening .slide0 strong{display:block;font-size:2rem;line-height:1.15;margin-bottom:12px}
 body.presenting.at-opening .slide0 p{font-size:1.2rem;color:var(--muted);margin:0}
-body.presenting #wt-present,body.presenting #wt-text,body.presenting #wt-ev,body.presenting #wt-note{display:none}
+body.presenting .wt-tools,body.presenting #wt-text,body.presenting #wt-ev,body.presenting #wt-note{display:none}
 body.presenting #wt-panel{box-shadow:none}
 @media (max-width:959px){
 body.presenting .story{display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr}
@@ -231,7 +240,7 @@ thead{display:table-header-group}
 .story #graph .legend{display:flex}
 h3.explorer{display:none!important}
 .chapter.current{background:none!important;margin:0;padding-left:0;padding-right:0}
-.wt-nav,#wt-present,.slide0{display:none!important}
+.wt-nav,.wt-tools,.slide0{display:none!important}
 footer a[href^="http"]::after{content:" (" attr(href) ")";font-size:.9em;word-break:break-all}
 a{color:inherit}
 }
