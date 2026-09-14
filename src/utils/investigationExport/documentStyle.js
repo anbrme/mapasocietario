@@ -155,6 +155,10 @@ html.nojs #wt-panel,html.nojs #wt-time{display:none}
 #wt-time input[type=range]{width:100%;accent-color:var(--accent)}
 #wt-time .meta{display:flex;gap:6px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
 .chapter{scroll-margin-top:45vh}
+/* Runway after the last chapter: the observer makes a chapter current when it
+   crosses mid-viewport, and without room below the last one the page has to
+   scroll on to the footer to get it there — taking the sticky map with it. */
+.story .chapters::after{content:"";display:block;height:30vh}
 .annex-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
 .annex-tabs [role=tab]{border-radius:999px}
 .annex-tabs [role=tab][aria-selected=true]{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -172,6 +176,7 @@ h3.explorer{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:
 .story{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .story.solo{grid-template-columns:minmax(0,820px);justify-content:center}
 .story{min-height:calc(100vh - 32px);margin-bottom:24px}
+.story .chapters::after{height:55vh}
 .story #graph{top:16px;max-height:calc(100vh - 32px);overflow:hidden;padding-top:0}
 /* The pane must never scroll on its own (a wheel over the map would scroll it
    instead of the page), so the map takes what the viewport leaves after the
@@ -195,6 +200,7 @@ body.presenting .story #graph #map{height:calc(100vh - 320px)}
 body.presenting #walkthrough{height:100vh;overflow:auto;margin:0;padding:40px 44px;border-left:1px solid var(--line)}
 body.presenting #walkthrough h2{display:none}
 body.presenting .chapter{display:none}
+body.presenting .chapters::after{display:none}
 body.presenting .chapter.current{display:grid;background:none;margin:0;padding:0;border:0}
 body.presenting .chapter h3{font-size:1.7rem;line-height:1.2;margin-bottom:10px}
 body.presenting .chapter p,body.presenting .chapter .note,body.presenting .chapter li{font-size:1.08rem}
@@ -256,6 +262,7 @@ thead{display:table-header-group}
 h3.explorer{display:none!important}
 .chapter.current{background:none!important;margin:0;padding-left:0;padding-right:0}
 .wt-nav,.wt-tools,.slide0{display:none!important}
+.chapters::after{display:none!important}
 footer a[href^="http"]::after{content:" (" attr(href) ")";font-size:.9em;word-break:break-all}
 a{color:inherit}
 }

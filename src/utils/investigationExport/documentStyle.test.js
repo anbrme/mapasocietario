@@ -145,6 +145,10 @@ describe('presenter mode and print treatment', () => {
     expect(printBlock).toContain('.wt-nav,.wt-tools,.slide0{display:none!important}');
     expect(DOCUMENT_STYLE).toContain('.wt-tools{display:flex;flex-wrap:wrap');
     expect(DOCUMENT_STYLE).toContain('html.nojs #wt-panel,html.nojs #wt-time{display:none}');
+    // Runway after the last chapter keeps the sticky map in view for it.
+    expect(DOCUMENT_STYLE).toContain('.story .chapters::after{content:"";display:block;height:30vh}');
+    expect(DOCUMENT_STYLE).toContain('.story .chapters::after{height:55vh}');
+    expect(DOCUMENT_STYLE.slice(DOCUMENT_STYLE.indexOf('@media print{'))).toContain('.chapters::after{display:none!important}');
     expect(DOCUMENT_STYLE).toContain('#wt-counter,#wt-exit{white-space:nowrap}');
     expect(printBlock).toContain('.chapter.current{background:none!important');
   });
