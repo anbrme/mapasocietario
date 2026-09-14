@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, applyWalkthroughEdits,
   hideStep, setStepNote, moveStep, editsCounts, swapInSelection, setStepMoment, removeFromSelection,
+  addConnection, removeConnection,
 } from './applyWalkthroughEdits';
 
 const s = (key, extra = {}) => ({ key, section: 'connects', nodeIds: ['n'], linkKeys: [], title: key, text: '', source: 'graph', date: null, evidence: null, flag: null, deepLink: '', authorNote: null, ...extra });
@@ -59,9 +60,9 @@ describe('reducers', () => {
 
   it('editsCounts counts hidden, notes and re-dated moments', () => {
     expect(editsCounts({ hidden: ['a', 'b'], order: [], notes: { c: 'x' } }))
-      .toEqual({ hidden: 2, notes: 1, moments: 0 });
+      .toEqual({ hidden: 2, notes: 1, moments: 0, connections: 0 });
     expect(editsCounts({ hidden: [], order: [], notes: {}, moments: { a: '2024-03-11', b: 'not a day' } }))
-      .toEqual({ hidden: 0, notes: 0, moments: 1 });
+      .toEqual({ hidden: 0, notes: 0, moments: 1, connections: 0 });
   });
 });
 
@@ -86,7 +87,7 @@ describe('normalizeWalkthroughEdits', () => {
   it('keeps only string keys and string notes', () => {
     expect(normalizeWalkthroughEdits({ hidden: ['a', 1], order: ['b', null], notes: { c: 'ok', d: 2 } }))
       .toEqual({
-        hidden: ['a'], order: ['b'], notes: { c: 'ok' }, moments: {},
+        hidden: ['a'], order: ['b'], notes: { c: 'ok' }, moments: {}, connections: [],
       });
   });
 });
@@ -122,5 +123,21 @@ describe('removeFromSelection', () => {
     const selection = ['a', 'b'];
     expect(removeFromSelection(selection, 'nope')).toBe(selection);
     expect(removeFromSelection(undefined, 'a')).toEqual([]);
+  });
+});
+
+
+describe('connections in the overlay', () => {
+  it('EMPTY carries an empty connections list and normalize keeps only string keys', () => {
+    expect(EMPTY_WALKTHROUGH_EDITS.connections).toEqual([]);
+    expect(normalizeWalkthroughEdits({ connections: ['conn:a', 3, null] }).connections).toEqual(['conn:a']);
+  });
+  it('addConnection adds once, removeConnection drops, editsCounts counts them', () => {
+    let e = addConnection(EMPTY_WALKTHROUGH_EDITS, 'conn:x');
+    e = addConnection(e, 'conn:x');
+    expect(e.connections).toEqual(['conn:x']);
+    expect(editsCounts(e).connections).toBe(1);
+    expect(removeConnection(e, 'conn:x').connections).toEqual([]);
+    expect(removeConnection(e, 'conn:nope')).toEqual(e);
   });
 });

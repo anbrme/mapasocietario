@@ -6,7 +6,7 @@
 import { isIsoDay } from './registryTimeline';
 
 export const EMPTY_WALKTHROUGH_EDITS = Object.freeze({
-  hidden: [], order: [], notes: {}, moments: {},
+  hidden: [], order: [], notes: {}, moments: {}, connections: [],
 });
 
 const strings = v => (Array.isArray(v) ? v.filter(x => typeof x === 'string') : []);
@@ -20,7 +20,7 @@ export const normalizeWalkthroughEdits = raw => {
     ? Object.fromEntries(Object.entries(raw.moments).filter(([, v]) => isIsoDay(v)))
     : {};
   return {
-    hidden: strings(raw.hidden), order: strings(raw.order), notes, moments,
+    hidden: strings(raw.hidden), order: strings(raw.order), notes, moments, connections: strings(raw.connections),
   };
 };
 
@@ -78,7 +78,20 @@ export const editsCounts = edits => {
     hidden: e.hidden.length,
     notes: Object.keys(e.notes).length,
     moments: Object.keys(e.moments).length,
+    connections: e.connections.length,
   };
+};
+
+// Accepted connection suggestions, by key. The step itself is rebuilt from
+// the graph on every draft; only the author's acceptance is stored.
+export const addConnection = (edits, key) => {
+  const e = normalizeWalkthroughEdits(edits);
+  return e.connections.includes(key) ? e : { ...e, connections: [...e.connections, key] };
+};
+
+export const removeConnection = (edits, key) => {
+  const e = normalizeWalkthroughEdits(edits);
+  return e.connections.includes(key) ? { ...e, connections: e.connections.filter(k => k !== key) } : e;
 };
 
 /**

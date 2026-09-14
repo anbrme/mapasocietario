@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import {
   draftWalkthrough, openingCard, subjectCompanyIds, applyWalkthroughEdits, hideStep, setStepNote, setStepMoment,
   moveStep, swapInSelection, removeFromSelection, loadStepData, mergeCoverage,
+  suggestConnections, addConnection, removeConnection,
 } from '../utils/walkthrough';
 import { initialWalkthroughState, walkthroughReducer, focusSets, stepTransition } from './walkthroughState';
 
@@ -34,7 +35,16 @@ export function useWalkthrough({
 
   const draft = useMemo(() => draftWalkthrough({
     graphData, scope, stepData: state.stepData, selection: visibleSelection, primarySubjectId, lang,
-  }), [graphData, scope, state.stepData, visibleSelection, primarySubjectId, lang]);
+    connections: edits?.connections,
+  }), [graphData, scope, state.stepData, visibleSelection, primarySubjectId, lang, edits?.connections]);
+
+  // Connections the author has not accepted yet: selected entities that only
+  // reach each other through unselected nodes. Selection mode only.
+  const suggestions = useMemo(() => {
+    if (mode !== 'selection') return [];
+    const accepted = new Set(edits?.connections || []);
+    return suggestConnections({ graphData, selection: visibleSelection }).filter(s => !accepted.has(s.key));
+  }, [mode, graphData, visibleSelection, edits?.connections]);
 
   const steps = useMemo(() => applyWalkthroughEdits(draft, edits), [draft, edits]);
   const current = state.status === 'playing' ? steps[state.index] || null : null;
@@ -86,7 +96,7 @@ export function useWalkthrough({
     // yet), so a walkthrough with zero visible steps must be checked against
     // a freshly-derived list, not the stale one, before entering 'playing'.
     const fresh = applyWalkthroughEdits(draftWalkthrough({
-      graphData, scope, stepData, selection: visibleSelection, primarySubjectId, lang,
+      graphData, scope, stepData, selection: visibleSelection, primarySubjectId, lang, connections: edits?.connections,
     }), edits);
     if (fresh.length === 0) return;
     dispatch({ type: 'start', firstKey: fresh[0].key });
@@ -111,8 +121,10 @@ export function useWalkthrough({
   // In draft mode the overlay is the right place: the draft is recomputed
   // from the graph and the entry keeps the step away.
   const hide = useCallback(key => {
-    if (mode === 'selection') {
-      const step = steps.find(s => s.key === key);
+    const step = steps.find(s => s.key === key);
+    if (step?.kind === 'connection') {
+      setEdits(e => removeConnection(e, key));
+    } else if (mode === 'selection') {
       if (!step) return;
       setSelection?.(removeFromSelection(selection, step.nodeId));
     } else {
@@ -132,7 +144,8 @@ export function useWalkthrough({
   const setNote = useCallback((key, text) => {
     const step = steps.find(s => s.key === key);
     if (!step) return;
-    if (mode === 'selection' || step.authorNote?.origin === 'node') {
+    // A connection step has no node: its note can only live in the overlay.
+    if (step.kind !== 'connection' && (mode === 'selection' || step.authorNote?.origin === 'node')) {
       saveNodeNote?.(step.nodeId, text, step.narrative?.flag || 'none');
       // The node note is now the single source of truth for this step's
       // text; drop any stale overlay note left over from before it had one
@@ -152,21 +165,28 @@ export function useWalkthrough({
   // order isn't the same array as the raw selection, and picking the
   // neighbour from the wrong one swaps the wrong ids.
   const move = useCallback((key, delta) => {
-    if (mode === 'selection') {
-      const idx = steps.findIndex(s => s.key === key);
-      const nb = steps[idx + delta];
-      if (idx < 0 || !nb) return;
+    const idx = steps.findIndex(s => s.key === key);
+    const nb = steps[idx + delta];
+    if (idx < 0 || !nb) return;
+    // Two node steps swap in the selection itself; a connection step has no
+    // node to swap, so any move involving one goes through the overlay order.
+    if (mode === 'selection' && steps[idx].nodeId && nb.nodeId) {
       setSelection?.(swapInSelection(selection, steps[idx].nodeId, nb.nodeId));
       return;
     }
     setEdits(e => moveStep(e, steps.map(s => s.key), key, delta));
   }, [mode, steps, selection, setSelection, setEdits]);
 
-  const reset = useCallback(() => { setEdits(() => ({ hidden: [], order: [], notes: {}, moments: {} })); onTrack?.('walkthrough_reset'); }, [setEdits, onTrack]);
+  const acceptConnection = useCallback(key => {
+    setEdits(e => addConnection(e, key));
+    onTrack?.('walkthrough_connection_added');
+  }, [setEdits, onTrack]);
+
+  const reset = useCallback(() => { setEdits(() => ({ hidden: [], order: [], notes: {}, moments: {}, connections: [] })); onTrack?.('walkthrough_reset'); }, [setEdits, onTrack]);
 
   return {
     status: state.status, steps, draft, index: state.index, current, stepData: state.stepData,
-    mode, opening, selectedCount,
-    prepare, start, next, prev, goTo, exit, hide, setNote, setMoment, move, reset, coverage, ...focus,
+    mode, opening, selectedCount, suggestions,
+    prepare, start, next, prev, goTo, exit, hide, setNote, setMoment, move, reset, acceptConnection, coverage, ...focus,
   };
 }

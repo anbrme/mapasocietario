@@ -216,6 +216,20 @@ const seatsTable = (s, wt) => {
 
 const personEvidenceBlock = (s, wt) => seatsTable(s, wt);
 
+// A connection chapter's evidence is the path itself: one row per hop.
+const connectionEvidenceBlock = (s, wt) => {
+  const hops = s.evidence?.hops || [];
+  if (!hops.length) return '';
+  return `<p>${esc(s.summary || s.text || '')}</p>${evidenceTable(wt.hopColumns, hops,
+    r => [r.who, r.at, r.role, wt.statusWords[r.status] || r.status, r.date])}`;
+};
+
+const evidenceBlockFor = (s, t, wt, blocks) => {
+  if (s.kind === 'person') return personEvidenceBlock(s, wt);
+  if (s.kind === 'connection') return connectionEvidenceBlock(s, wt);
+  return companyEvidenceBlock(s, t, wt, blocks);
+};
+
 export const renderChapters = (doc, t, wt, lang = 'es') => {
   const steps = doc.steps || [];
   if (!steps.length) return '';
@@ -226,7 +240,7 @@ export const renderChapters = (doc, t, wt, lang = 'es') => {
   const rows = steps.map((s, i) => {
     const head = `<span class="src">${esc(wt.sources[s.source] || s.source || '')}</span>${esc(stepKindLabel(s, wt))}${s.moment ? ` · ${esc(fmtDay(s.moment, lang))}` : ''}`;
     const narrative = noteBlock(s.narrative || s.authorNote, t);
-    const evidence = s.kind === 'person' ? personEvidenceBlock(s, wt) : companyEvidenceBlock(s, t, wt, blocks);
+    const evidence = evidenceBlockFor(s, t, wt, blocks);
     return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${evidence}</div></div>`;
   }).join('');
   return `<section id="walkthrough"><h2><span class="num">${num}</span>${esc(t.walkthroughSection)}</h2><div class="chapters">${rows}</div></section>`;
@@ -246,6 +260,9 @@ export const stepEvidenceLine = (s, wt) => {
   const ev = s.evidence || {};
   if (s.kind === 'person') {
     return (ev.seats || []).slice(0, 2).map(seat => `${seat.role} · ${seat.company}`).join(' · ');
+  }
+  if (s.kind === 'connection') {
+    return (ev.hops || []).slice(0, 2).map(h => `${h.who} · ${h.role} · ${h.at}`).join(' · ');
   }
   const finding = (ev.findings || [])[0];
   if (finding?.text) return finding.text;

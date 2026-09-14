@@ -1,0 +1,74 @@
+# Situation report: polish pass and the connection chapter
+
+**Date:** 2026-09-14
+**Repo:** `mapasocietario` only (frontend). No backend change.
+**Status:** approved in chat 2026-09-14 ("go ahead" on the recommended round); implementing on feat/sitrep-polish-connections.
+**Builds on:** walkthrough v4 (2026-09-14).
+
+## Part 1 — polish (shipped as one commit)
+
+Read against a real export at desktop, tablet and phone width. Nine defects,
+all in the exported file's stylesheet and section renderers:
+
+1. A dated chapter hid every node that did not exist yet, so the map emptied
+   to one pale circle. Not-yet nodes are now faint outlines; links stay hidden.
+2. The sticky pane was taller than a short story and overlapped the annexes.
+   The story row is at least the pane's height; the pane ends with a margin.
+3. The pane was its own scroll container, so the wheel over the map scrolled
+   the pane, not the page, and clipped the card. The pane no longer scrolls;
+   the map takes `clamp(220px, 100vh − 392px, 520px)` — what the viewport
+   leaves after heading, caption, slider and the opening card at its tallest.
+4. The desktop card repeated the chapter beside it. It now shows eyebrow,
+   title and controls only; phone keeps the full card (chapters are below).
+5. Day cells wrapped ("2011-12-" / "23"): day-shaped cells get `td.date`.
+6. Chapter names ran inline in the contents strip: they get their own row.
+7. Label collisions: officer labels smaller and muted, step nodes carry
+   `data-step` (bold label), focused mode hides labels of dimmed nodes.
+8. "1 empresas": caption plurals per count. Footer coverage stamped a
+   dissolved company's last filing: coverage is now the union across the
+   loaded companies (earliest since, latest indexed_through).
+9. An annex company was a bare name: it states its visible-officer count.
+
+## Part 2 — the connection chapter
+
+**What it is.** When two selected entities are not directly linked, the
+shortest path between them across the visible graph, through nodes that are
+NOT selected, is offered as a step. The author adds it with one click. Its
+chapter names the intermediary, the seats that make the path, their status
+and dates; on the map it lights the path and dims the rest.
+
+A shared connector (a person or company sitting on two or more selected
+companies) is the one-hop case of the same thing and needs no second
+mechanism. Several selected entities reached through the same intermediary
+collapse into one suggestion ("C conecta A, B y D").
+
+**Rules.**
+- Pure graph work on data already in the app: BFS over the visible graph,
+  undirected, ownership links included (an owner is a connection too).
+- Only selection mode. Only pairs whose shortest path has at least one
+  intermediary, and none of the intermediaries is itself selected (that
+  connection is already told by the intermediary's own chapter).
+- Suggestions are keyed by the intermediary path (`conn:<via ids joined by +>`),
+  so a fan of pairs through one node is one suggestion with several ends.
+- Accepting stores the key in `walkthroughEdits.connections`; the step is
+  rebuilt from the graph on every draft, like every other step. Reset clears
+  it. Removing the step (the eye) removes the key.
+- A connection step: `kind: 'connection'`, no `nodeId`, `nodeIds` = ends then
+  intermediaries, `linkKeys` = one per hop, `title` = the intermediaries'
+  names, `summary` = the sentence, `evidence.hops` = one row per hop (who,
+  at which company, role, status, date), `moment` = the latest hop date,
+  `source: 'graph'`. Its note lives in the edits overlay (there is no node).
+- Default position: right after the last of its ends in the step order.
+  Manual order applies through the existing overlay.
+
+**Where it shows.**
+- Modal: a "Conexiones detectadas" list under the steps, one line per
+  suggestion with *Añadir al recorrido*. Empty when there is nothing to add.
+- Live controller: kind chip "Conexión"; no evidence button (no single node).
+- Document: eyebrow "Conexión · Del mapa", the sentence as lead, a hops table
+  under the note. Map focus is the path.
+
+**Analytics.** `walkthrough_connection_added` (toolbar action).
+
+## Deferred
+Chronology strip, cover key facts, presenter mode, print treatment.

@@ -17,6 +17,7 @@ import { companyEvidence, personSeats } from './stepEvidence';
 import { walkthroughCopy, graphOnlyLine } from './walkthroughCopy';
 import { pairKey } from './pairKey';
 import { defaultMoment } from './registryTimeline';
+import { suggestConnections, connectionStep } from './connections';
 
 export { pairKey } from './pairKey';
 
@@ -128,7 +129,7 @@ const personStep = ({
  * @returns {Array<object>} ordered steps, `selection` mode when `selection` is non-empty, drafted otherwise
  */
 export function draftWalkthrough({
-  graphData, scope, stepData, selection = [], primarySubjectId, lang = 'es',
+  graphData, scope, stepData, selection = [], primarySubjectId, lang = 'es', connections = [],
 }) {
   const t = walkthroughCopy(lang);
   const nodes = graphData?.nodes || [];
@@ -144,7 +145,11 @@ export function draftWalkthrough({
     }));
 
   const chosen = [...new Set((selection || []).map(nid))].filter(id => byId.has(id)).slice(0, SELECTION_CAP);
-  if (chosen.length) return chosen.map((id, i) => build(byId.get(id), i));
+  if (chosen.length) {
+    return withConnections(chosen.map((id, i) => build(byId.get(id), i)), {
+      graphData, selection: chosen, accepted: connections, lang,
+    });
+  }
 
   // Draft: subject companies, other companies, connectors, loose notes —
   // each node appears at most once, wherever it is first pushed.
@@ -167,6 +172,25 @@ export function draftWalkthrough({
 
   return out;
 }
+
+// The connection steps the author accepted, each placed right after the last
+// of its ends so the path is told once both sides have been introduced. A key
+// whose path no longer exists on the graph is simply not built.
+const withConnections = (steps, {
+  graphData, selection, accepted, lang,
+}) => {
+  const keys = new Set(accepted || []);
+  if (!keys.size) return steps;
+  const suggestions = suggestConnections({ graphData, selection }).filter(s => keys.has(s.key));
+  if (!suggestions.length) return steps;
+  const out = [...steps];
+  suggestions.forEach(sg => {
+    const lastEnd = Math.max(...sg.ends.map(e => out.findIndex(s => s.nodeId === e)));
+    const at = lastEnd < 0 ? out.length : lastEnd + 1;
+    out.splice(at, 0, connectionStep({ suggestion: sg, graphData, order: at, lang }));
+  });
+  return out.map((s, i) => ({ ...s, order: i }));
+};
 
 /** Title and subtitle for the walkthrough's opening card. */
 export const openingCard = ({

@@ -16,6 +16,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import AddIcon from '@mui/icons-material/Add';
 import { DEFAULT_BLOCKS } from '../utils/sitrepAuthor';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
 import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
@@ -48,6 +49,9 @@ export default function RelationshipReportModal({
   const t = exportCopy(es ? 'es' : 'en');
   const wt = walkthroughCopy(es ? 'es' : 'en');
   const steps = walkthrough?.steps || [];
+  const suggestions = walkthrough?.suggestions || [];
+  const nodeName = id => (graphData?.nodes || []).find(n => String(n.id) === String(id))?.name || id;
+  const joinNames = names => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} ${wt.and} ${names[names.length - 1]}`);
 
   const companies = doc?.companies || [];
   const connectors = doc?.connectors || [];
@@ -220,6 +224,23 @@ export default function RelationshipReportModal({
               </Box>
             ))}
           </>
+        )}
+
+        {suggestions.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{wt.suggestionsTitle}</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>{wt.suggestionsHelp}</Typography>
+            {suggestions.map(sg => (
+              <Box key={sg.key} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="body2" sx={{ flex: 1 }}>
+                  {wt.connectionLine(joinNames(sg.ends.map(nodeName)), joinNames(sg.via.map(nodeName)), sg.hops)}
+                </Typography>
+                <Button size="small" startIcon={<AddIcon />} onClick={() => walkthrough.acceptConnection(sg.key)} sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
+                  {wt.addStep}
+                </Button>
+              </Box>
+            ))}
+          </Box>
         )}
 
         <Typography variant="subtitle2" sx={{ mt: 2, mb: 0.5, fontWeight: 700 }}>

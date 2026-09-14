@@ -234,3 +234,25 @@ describe('draftWalkthrough — unified node (a company that also holds seats)', 
     expect(s.evidence.seats).toBeUndefined();
   });
 });
+
+
+describe('draftWalkthrough — accepted connections', () => {
+  // ALFA and BETA share o1 on the fixture graph; selecting both offers o1.
+  it('inserts an accepted connection step right after the last of its ends, in selection mode only', () => {
+    const noConn = build({ selection: ['H:1', 'H:2'] });
+    expect(noConn.map(s => s.kind)).toEqual(['company', 'company']);
+    const steps = build({ selection: ['H:1', 'H:2'], connections: ['conn:o1'] });
+    expect(steps.map(s => s.kind)).toEqual(['company', 'company', 'connection']);
+    expect(steps[2].key).toBe('conn:o1');
+    expect(steps[2].nodeIds).toEqual(['H:1', 'H:2', 'o1']);
+    expect(steps.map(s => s.order)).toEqual([0, 1, 2]);
+  });
+  it('ignores an accepted key whose path is no longer on the graph', () => {
+    const steps = build({ selection: ['H:1', 'H:2'], connections: ['conn:ghost'] });
+    expect(steps).toHaveLength(2);
+  });
+  it('draft mode never carries connection steps', () => {
+    const steps = build({ connections: ['conn:o1'] });
+    expect(steps.some(s => s.kind === 'connection')).toBe(false);
+  });
+});

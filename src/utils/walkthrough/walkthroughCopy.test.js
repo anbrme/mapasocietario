@@ -58,7 +58,7 @@ describe('v2 copy', () => {
   });
   it('carries kinds, blocks and subheads', () => {
     const t = walkthroughCopy('es');
-    expect(t.kinds).toEqual({ company: 'Empresa', person: 'Persona', note: 'Nota', unified: 'Empresa y cargo' });
+    expect(t.kinds).toEqual({ company: 'Empresa', person: 'Persona', note: 'Nota', unified: 'Empresa y cargo', connection: 'Conexión' });
     expect(Object.keys(t.blocks)).toEqual(['identity', 'board', 'filings', 'findings']);
     expect(t.subheads.seats).toBe('Cargos en las empresas del mapa');
     expect(walkthroughCopy('en').openPreview).toBe('Open preview');

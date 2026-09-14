@@ -84,7 +84,7 @@ export default function WalkthroughPlayer({
       {step.moment && (
         <Chip size="small" label={fmtMoment(step.moment, lang)} sx={{ height: 20, fontSize: '0.7rem' }} />
       )}
-      {onEvidence && (
+      {onEvidence && step.nodeId && (
         <Button size="small" onClick={() => onEvidence(step)} sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
           {t.evidence} →
         </Button>

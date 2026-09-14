@@ -613,3 +613,27 @@ describe('polish pass — contents row, date cells, step marks, annex company li
     expect(html).toContain('<strong>OTRA SL</strong><span class="kv">2 cargos visibles en el mapa</span>');
   });
 });
+
+
+describe('renderChapters — connection step', () => {
+  const connection = {
+    key: 'conn:o1', nodeId: null, kind: 'connection', order: 2, title: 'GARCIA LOPEZ ANA', source: 'graph',
+    summary: 'ALFA SL y OTRA SL se conectan a través de GARCIA LOPEZ ANA · 2 pasos', text: '',
+    narrative: null, authorNote: null, moment: '2021-03-01', nodeIds: ['c1', 'other', 'o1'], linkKeys: [],
+    evidence: { ends: ['c1', 'other'], via: ['o1'], hops: [
+      { who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'ALFA SL', atId: 'c1', role: 'Administradora única', status: 'active', date: '2021-03-01' },
+      { who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'OTRA SL', atId: 'other', role: 'Consejera', status: 'ceased', date: '2019-01-01' },
+    ] },
+  };
+  it('renders the Conexión eyebrow, the sentence and one row per hop', () => {
+    const html = renderChapters({ ...doc, steps: [connection] }, t, wt);
+    expect(html).toContain('Conexión');
+    expect(html).toContain('<h3>GARCIA LOPEZ ANA</h3>');
+    expect(html).toContain('se conectan a través de GARCIA LOPEZ ANA');
+    expect(html).toContain('<th>Quién</th><th>En</th><th>Cargo</th><th>Estado</th><th>Fecha</th>');
+    expect(html).toContain('<td>OTRA SL</td><td>Consejera</td><td>Cesado</td><td class="date">2019-01-01</td>');
+  });
+  it('the evidence line names the first hops', () => {
+    expect(stepEvidenceLine(connection, wt)).toBe('GARCIA LOPEZ ANA · Administradora única · ALFA SL · GARCIA LOPEZ ANA · Consejera · OTRA SL');
+  });
+});
