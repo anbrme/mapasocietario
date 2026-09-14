@@ -153,7 +153,7 @@ export const LANDING_COPY = {
       rel: {
         title: 'Situation report',
         badge: 'Free · your notes included',
-        desc: 'Download the map you built as one self-contained HTML file — the companies and people on it, the links between them, your own corrections, and the notes you wrote. Flagged notes become a guided walkthrough. It opens in any browser, works offline, and you can email it on. Free, and available as soon as one company is on the graph.',
+        desc: 'Download the map you built as one self-contained HTML file — the companies and people on it, the links between them, your corrections and your notes. The entities you select become a guided walkthrough, in your order, with the registry evidence under each. It opens in any browser, works offline, and you can email it on. Free, and available as soon as one company is on the graph.',
       },
       howToBuy: 'How to buy a Due Diligence report: search a company → open it in the graph → click the Due Diligence button.',
     },
@@ -426,7 +426,7 @@ export const LANDING_COPY = {
       rel: {
         title: 'Informe de situación',
         badge: 'Gratis · con tus notas',
-        desc: 'Descarga el mapa que has construido como un único archivo HTML autónomo: las empresas y personas que hay en él, los vínculos entre ellas, tus propias correcciones y las notas que hayas escrito. Las notas señaladas se convierten en un recorrido guiado. Se abre en cualquier navegador, funciona sin conexión y puedes enviarlo por correo. Gratis, y disponible en cuanto haya una empresa en el grafo.',
+        desc: 'Descarga el mapa que has construido como un único archivo HTML autónomo: las empresas y personas que hay en él, los vínculos entre ellas, tus correcciones y tus notas. Las entidades que seleccionas forman un recorrido guiado, en tu orden, con la evidencia registral bajo cada una. Se abre en cualquier navegador, funciona sin conexión y puedes enviarlo por correo. Gratis, y disponible en cuanto haya una empresa en el grafo.',
       },
       howToBuy: 'Cómo comprar un informe due diligence: busca una empresa → ábrela en el grafo → pulsa el botón Due Diligence.',
     },
