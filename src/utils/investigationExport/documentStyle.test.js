@@ -114,3 +114,23 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).toContain('nav.contents a.sub{');
   });
 });
+
+
+describe('presenter mode and print treatment', () => {
+  it('lays presenting out as map beside one chapter, hides the rest, and has a slide zero', () => {
+    expect(DOCUMENT_STYLE).toContain('body.presenting .story{display:grid;grid-template-columns:3fr 2fr');
+    expect(DOCUMENT_STYLE).toContain('body.presenting .chapter{display:none}');
+    expect(DOCUMENT_STYLE).toContain('body.presenting .chapter.current{display:grid');
+    expect(DOCUMENT_STYLE).toContain('body.presenting.at-opening .slide0{display:block');
+    expect(DOCUMENT_STYLE).toContain('.slide0{display:none}');
+  });
+  it('prints the map on its own page, keeps rows and chapters whole, repeats table heads and spells out footer links', () => {
+    const printBlock = DOCUMENT_STYLE.slice(DOCUMENT_STYLE.indexOf('@media print{'));
+    expect(printBlock).toContain('#graph{page-break-before:always}');
+    expect(printBlock).toContain('.chapter,tr,.facts,.chrono li,#chronology{page-break-inside:avoid}');
+    expect(printBlock).toContain('thead{display:table-header-group}');
+    expect(printBlock).toContain('footer a[href^="http"]::after{content:" (" attr(href) ")"');
+    expect(printBlock).toContain('.wt-nav,#wt-present,.slide0{display:none!important}');
+    expect(printBlock).toContain('.chapter.current{background:none!important');
+  });
+});

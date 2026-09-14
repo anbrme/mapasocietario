@@ -35,6 +35,10 @@ export const WALKTHROUGH_SCRIPT = `
   // True once the reader has scrubbed the slider: the chapters stop re-dating
   // the map until a scroll puts them back in charge.
   var detached = false;
+  // Presenter mode: one chapter at a time, keyboard-driven, scroll observer
+  // paused. savedScroll brings the reader back where they were on exit.
+  var presenting = false;
+  var savedScroll = 0;
   var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   var tx = 0, ty = 0, scale = 1;
@@ -172,6 +176,7 @@ export const WALKTHROUGH_SCRIPT = `
     clearCard();
     clearCurrent();
     if (opening) opening.hidden = !fillOpening();
+    document.body.classList.toggle('at-opening', presenting);
     renderAt(tl && tl.readOn);
   }
 
@@ -216,12 +221,41 @@ export const WALKTHROUGH_SCRIPT = `
     clearCurrent();
     var chapter = document.getElementById('ch-' + i);
     if (chapter) chapter.classList.add('current');
+    document.body.classList.remove('at-opening');
+    if (presenting) {
+      var column = document.getElementById('walkthrough');
+      if (column) column.scrollTop = 0;
+    }
   }
+
+  function enterPresent() {
+    if (presenting) return;
+    presenting = true;
+    savedScroll = window.scrollY || 0;
+    document.body.classList.add('presenting');
+    var root = document.documentElement;
+    if (root.requestFullscreen) { try { root.requestFullscreen().catch(function () {}); } catch (err) { /* stays in-page */ } }
+    if (idx < 0) renderOpening(); else show(idx);
+    window.scrollTo(0, 0);
+  }
+  function exitPresent() {
+    if (!presenting) return;
+    presenting = false;
+    document.body.classList.remove('presenting');
+    document.body.classList.remove('at-opening');
+    if (document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen().catch(function () {}); } catch (err) { /* already out */ } }
+    window.scrollTo(0, savedScroll);
+  }
+  document.addEventListener('fullscreenchange', function () {
+    if (!document.fullscreenElement && presenting) exitPresent();
+  });
 
   // The one way in: scroll the chapter into view and let the observer focus it.
   // Without an observer (old browser, print preview) focus it directly.
   window.__sitrepShow = function (i) {
     var n = Math.max(0, Math.min(i, steps.length - 1));
+    // Presenting: slides, not scroll. Going back past the first is slide zero.
+    if (presenting) { detached = false; if (i < 0) renderOpening(); else show(n); return; }
     var ch = document.getElementById('ch-' + n);
     // 'start' lands the chapter top on its 45vh scroll-margin, just above the
     // observer's mid-viewport band; 'center' would centre that margin box and
@@ -233,7 +267,7 @@ export const WALKTHROUGH_SCRIPT = `
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
+        if (presenting || !en.isIntersecting) return;
         var i = parseInt(en.target.getAttribute('data-i'), 10);
         if (i !== idx) show(i, { fromScroll: true });
       });
@@ -247,11 +281,12 @@ export const WALKTHROUGH_SCRIPT = `
 
   // Leaving the story hands the map back whole; the chapters stay where the
   // reader left them.
-  function exit() { renderOpening(); }
+  function exit() { if (presenting) exitPresent(); else renderOpening(); }
   function on(id, fn) { var el = document.getElementById(id); if (el) el.addEventListener('click', fn); }
   on('wt-next', function () { window.__sitrepShow(idx + 1); });
   on('wt-prev', function () { window.__sitrepShow(idx - 1); });
   on('wt-exit', exit);
+  on('wt-present', enterPresent);
   // The slider and the tab strip own the arrow keys while they are focused.
   function ownsArrows(el) {
     if (!el || !el.tagName) return false;
@@ -261,7 +296,15 @@ export const WALKTHROUGH_SCRIPT = `
   }
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { exit(); return; }
-    if (idx < 0 || ownsArrows(e.target)) return;
+    if (ownsArrows(e.target)) return;
+    if (presenting) {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); window.__sitrepShow(idx + 1); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); window.__sitrepShow(idx - 1); }
+      if (e.key === 'Home') { e.preventDefault(); renderOpening(); }
+      if (e.key === 'End') { e.preventDefault(); window.__sitrepShow(steps.length - 1); }
+      return;
+    }
+    if (idx < 0) return;
     if (e.key === 'ArrowRight') window.__sitrepShow(idx + 1);
     if (e.key === 'ArrowLeft') window.__sitrepShow(idx - 1);
   });

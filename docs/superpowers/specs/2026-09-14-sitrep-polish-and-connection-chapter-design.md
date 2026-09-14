@@ -79,5 +79,23 @@ collapse into one suggestion ("C conecta A, B y D").
   link into its chapter, with its kind. Takes a section number, so the map and
   everything after shift by one; the contents strip follows.
 
+## Part 4 — presenter mode and print (shipped)
+
+**Presenter mode.** *Presentar* on the card requests fullscreen and puts
+`presenting` on the body. Cover, contents, summary, chronology, annexes and
+footer are hidden; the map fills the left with the slider under it; the right
+shows one chapter at a time in larger type. Slide zero is the opening (the
+`#wt-slide0` block, shown under `at-opening`). Keys: arrows / space / Page
+Down and Up move, Home is slide zero, End the last chapter; a node click
+jumps to its chapter. The scroll observer is paused while presenting; Escape,
+the exit button or leaving fullscreen restore the reader's scroll position.
+Phone: map over chapter, stacked. Fullscreen is best-effort: without a user
+gesture (or in an iframe) the layout still applies in-page.
+
+**Print.** The map is a figure on its own page; chapters, rows, the facts strip
+and chronology items never split; table heads repeat; the current-chapter tint,
+the card, the slider, the tab strip and slide zero are gone; footer links are
+spelled out as URLs; every annex panel prints; registry-state dimming is reset.
+
 ## Deferred
-Presenter mode, print treatment.
+Nothing from this round.

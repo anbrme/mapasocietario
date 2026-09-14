@@ -152,3 +152,25 @@ describe('WALKTHROUGH_SCRIPT', () => {
     expect(WALKTHROUGH_SCRIPT).not.toMatch(/\.innerHTML/);
   });
 });
+
+
+describe('presenter mode', () => {
+  it('enters fullscreen behind a body class, pauses the observer, and leaves on Escape or fullscreenchange', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain("document.body.classList.add('presenting')");
+    expect(WALKTHROUGH_SCRIPT).toContain('root.requestFullscreen()');
+    expect(WALKTHROUGH_SCRIPT).toContain('if (presenting || !en.isIntersecting) return;');
+    expect(WALKTHROUGH_SCRIPT).toContain("document.addEventListener('fullscreenchange'");
+    expect(WALKTHROUGH_SCRIPT).toContain('if (presenting) exitPresent(); else renderOpening();');
+  });
+  it('drives slides from the keyboard: arrows, space, page keys, home and end', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain("e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown'");
+    expect(WALKTHROUGH_SCRIPT).toContain("e.key === 'ArrowLeft' || e.key === 'PageUp'");
+    expect(WALKTHROUGH_SCRIPT).toContain("if (e.key === 'Home')");
+    expect(WALKTHROUGH_SCRIPT).toContain("if (e.key === 'End')");
+  });
+  it('shows slides directly instead of scrolling while presenting, and restores the scroll on exit', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain('if (presenting) { detached = false; if (i < 0) renderOpening(); else show(n); return; }');
+    expect(WALKTHROUGH_SCRIPT).toContain('window.scrollTo(0, savedScroll)');
+    expect(WALKTHROUGH_SCRIPT).toContain("on('wt-present', enterPresent)");
+  });
+});

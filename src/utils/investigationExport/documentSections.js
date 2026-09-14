@@ -174,7 +174,7 @@ export const renderMapFigure = (doc, graphData, t, lang = 'es') => {
     <p id="wt-text"></p>
     <p id="wt-ev" class="ev" hidden></p>
     <div id="wt-note" hidden></div>
-    <div class="wt-nav"><button id="wt-prev">${esc(t.prev)}</button><button id="wt-next">${esc(t.next)}</button><span id="wt-counter" class="meta"></span><span style="flex:1"></span><button id="wt-exit">${esc(t.exit)}</button></div>
+    <div class="wt-nav"><button id="wt-prev">${esc(t.prev)}</button><button id="wt-next">${esc(t.next)}</button><span id="wt-counter" class="meta"></span><span style="flex:1"></span><button id="wt-present" class="hide-print" title="${esc(t.presentHint)}">${esc(t.present)}</button><button id="wt-exit">${esc(t.exit)}</button></div>
   </div>`
     : '';
   return `
@@ -278,7 +278,12 @@ export const renderChapters = (doc, t, wt, lang = 'es') => {
     const evidence = evidenceBlockFor(s, t, wt, blocks);
     return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${evidence}</div></div>`;
   }).join('');
-  return `<section id="walkthrough"><h2><span class="num">${num}</span>${esc(t.walkthroughSection)}</h2><div class="chapters">${rows}</div></section>`;
+  // Slide zero of the presentation: the opening, shown where a chapter would
+  // be while the map stands whole. Inert outside presenting.
+  const opening = doc.opening && (doc.opening.title || doc.opening.line)
+    ? `<div id="wt-slide0" class="slide0"><strong>${esc(doc.opening.title || '')}</strong><p>${esc(doc.opening.line || '')}</p></div>`
+    : '';
+  return `<section id="walkthrough"><h2><span class="num">${num}</span>${esc(t.walkthroughSection)}</h2>${opening}<div class="chapters">${rows}</div></section>`;
 };
 
 // The story: the map pane and the chapters side by side, scrolled as one.

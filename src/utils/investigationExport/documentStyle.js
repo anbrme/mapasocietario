@@ -157,6 +157,37 @@ h3.explorer{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:
 .chapter{scroll-margin-top:50vh}
 }
 @media (prefers-reduced-motion:reduce){#viewport,#map g.n,#map .l{transition:none}}
+/* Presenter mode: the map on the left, one chapter at a time on the right,
+   nothing else on screen. Slide zero is the opening; the card under the map
+   is the controller. */
+.slide0{display:none}
+body.presenting{overflow:hidden}
+body.presenting .wrap{max-width:none;padding:0;height:100vh}
+body.presenting .wrap>header,body.presenting .wrap>nav,body.presenting #summary,body.presenting #chronology,body.presenting #annexes,body.presenting footer{display:none}
+body.presenting .story{display:grid;grid-template-columns:3fr 2fr;gap:0;height:100vh;min-height:0;margin:0}
+body.presenting .story #graph{position:static;top:auto;max-height:none;height:100vh;overflow:hidden;padding:16px 20px;display:flex;flex-direction:column}
+body.presenting .story #graph h2{display:none}
+body.presenting .story #graph #map{height:calc(100vh - 320px)}
+body.presenting #walkthrough{height:100vh;overflow:auto;margin:0;padding:40px 44px;border-left:1px solid var(--line)}
+body.presenting #walkthrough h2{display:none}
+body.presenting .chapter{display:none}
+body.presenting .chapter.current{display:grid;background:none;margin:0;padding:0;border:0}
+body.presenting .chapter h3{font-size:1.7rem;line-height:1.2;margin-bottom:10px}
+body.presenting .chapter p,body.presenting .chapter .note,body.presenting .chapter li{font-size:1.08rem}
+body.presenting .chapter table{font-size:.98rem}
+body.presenting .chapter .head{font-size:.8rem}
+body.presenting .chapter .num{font-size:1.4rem}
+body.presenting.at-opening .slide0{display:block;padding-top:8vh}
+body.presenting.at-opening .slide0 strong{display:block;font-size:2rem;line-height:1.15;margin-bottom:12px}
+body.presenting.at-opening .slide0 p{font-size:1.2rem;color:var(--muted);margin:0}
+body.presenting #wt-present,body.presenting #wt-text,body.presenting #wt-ev,body.presenting #wt-note{display:none}
+body.presenting #wt-panel{box-shadow:none}
+@media (max-width:959px){
+body.presenting .story{display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr}
+body.presenting .story #graph{height:auto;max-height:none;padding:8px 12px}
+body.presenting .story #graph #map{height:34vh}
+body.presenting #walkthrough{height:auto;min-height:0;padding:16px;border-left:0;border-top:1px solid var(--line)}
+}
 @page{size:A4;margin:18mm}
 @media print{
 :root{--bg:#FFFFFF;--fg:#0B1324;--muted:#58677D;--line:#CCD6E3;--card:#FFFFFF;--soft:#F3F6FA;
@@ -181,7 +212,13 @@ body{background:#fff;color:#0B1324;font-size:11pt}
 #viewport{transform:none!important;transition:none}
 #walkthrough{page-break-before:always}
 #annexes{page-break-before:always}
-.chapter,tr{page-break-inside:avoid}
+/* The map is a figure on its own page; the rest flows. */
+#graph{page-break-before:always}
+.chapter,tr,.facts,.chrono li,#chronology{page-break-inside:avoid}
+thead{display:table-header-group}
+.chapter.current{background:none!important;margin:0;padding-left:0;padding-right:0}
+.wt-nav,#wt-present,.slide0{display:none!important}
+footer a[href^="http"]::after{content:" (" attr(href) ")";font-size:.9em;word-break:break-all}
 a{color:inherit}
 }
 @media (max-width:600px){.wrap{padding:32px 16px 56px}header.cover h1{font-size:1.5rem}#map{height:360px}.chapter{grid-template-columns:32px 1fr}}

@@ -45,6 +45,8 @@ const ES = {
   mapCaption: (n, m, k) => `${n} empresa${n === 1 ? '' : 's'} · ${m} persona${m === 1 ? '' : 's'} · ${k} ${k === 1 ? 'conexión compartida' : 'conexiones compartidas'} · disposición del autor`,
   officersVisible: n => `${n} cargo${n === 1 ? '' : 's'} visible${n === 1 ? '' : 's'} en el mapa`,
   chronology: 'Cronología',
+  present: 'Presentar',
+  presentHint: 'Flechas o espacio para avanzar · Esc para salir',
   facts: {
     companies: n => (n === 1 ? 'empresa' : 'empresas'),
     people: n => (n === 1 ? 'persona' : 'personas'),
@@ -112,6 +114,8 @@ const EN = {
   mapCaption: (n, m, k) => `${n} compan${n === 1 ? 'y' : 'ies'} · ${m} ${m === 1 ? 'person' : 'people'} · ${k} shared connection${k === 1 ? '' : 's'} · author's layout`,
   officersVisible: n => `${n} officer${n === 1 ? '' : 's'} visible on the map`,
   chronology: 'Chronology',
+  present: 'Present',
+  presentHint: 'Arrows or space to advance · Esc to leave',
   facts: {
     companies: n => (n === 1 ? 'company' : 'companies'),
     people: n => (n === 1 ? 'person' : 'people'),
