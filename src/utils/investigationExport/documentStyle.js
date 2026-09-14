@@ -110,6 +110,7 @@ th{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut
 td.date{font-variant-numeric:tabular-nums;white-space:nowrap}
 .scroll{overflow-x:auto}
 ul.plain{list-style:none;padding:0;margin:0}ul.plain li{padding:6px 0;border-bottom:1px solid var(--line)}
+ul.plain li .kv{display:block}
 nav.contents .subs{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:4px 18px;padding-left:14px}
 nav.contents a.sub{font-size:.8rem}
 footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem;line-height:1.7}
@@ -194,7 +195,9 @@ body.presenting #walkthrough{height:auto;min-height:0;padding:16px;border-left:0
 --accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1}
 #wt-panel,.hide-print{display:none!important}
 body{background:#fff;color:#0B1324;font-size:11pt}
-.wrap{max-width:none;padding:0}
+/* Margins live on the wrapper too: a "Margins: none" print setting must not
+   push the chapter numbers off the sheet. */
+.wrap{max-width:none;padding:6mm 10mm}
 #map,.story #graph #map{height:150mm}
 .story{display:block}
 .story #graph{position:static;max-height:none;overflow:visible;display:block}
@@ -214,8 +217,19 @@ body{background:#fff;color:#0B1324;font-size:11pt}
 #annexes{page-break-before:always}
 /* The map is a figure on its own page; the rest flows. */
 #graph{page-break-before:always}
-.chapter,tr,.facts,.chrono li,#chronology{page-break-inside:avoid}
+/* A long chapter may break across pages; what must not happen is a heading
+   left alone at the foot of one, or a row or note split in two. */
+.chapter{page-break-inside:auto}
+/* Grids fragment badly across pages (Chrome leaves half a page blank); in
+   print a chapter is a block with its number floated beside the content. */
+.chapter{display:block}
+.chapter .num{float:left;width:44px}
+.chapter>div{margin-left:60px}
+.chapter h3,.chapter .head,.chapter h4,h2{page-break-after:avoid}
+tr,.facts,.chrono li,#chronology,.note,.chapter ul{page-break-inside:avoid}
 thead{display:table-header-group}
+.story #graph .legend{display:flex}
+h3.explorer{display:none!important}
 .chapter.current{background:none!important;margin:0;padding-left:0;padding-right:0}
 .wt-nav,#wt-present,.slide0{display:none!important}
 footer a[href^="http"]::after{content:" (" attr(href) ")";font-size:.9em;word-break:break-all}

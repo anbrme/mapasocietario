@@ -46,6 +46,9 @@ const ES = {
   officersVisible: n => `${n} cargo${n === 1 ? '' : 's'} visible${n === 1 ? '' : 's'} en el mapa`,
   chronology: 'Cronología',
   present: 'Presentar',
+  print: 'Imprimir',
+  share: 'Compartir',
+  shareHint: 'Envía este archivo tal cual; si el navegador no puede compartirlo, guarda una copia.',
   presentHint: 'Flechas o espacio para avanzar · Esc para salir',
   facts: {
     companies: n => (n === 1 ? 'empresa' : 'empresas'),
@@ -115,6 +118,9 @@ const EN = {
   officersVisible: n => `${n} officer${n === 1 ? '' : 's'} visible on the map`,
   chronology: 'Chronology',
   present: 'Present',
+  print: 'Print',
+  share: 'Share',
+  shareHint: 'Send this file as it is; if the browser cannot share it, a copy is saved.',
   presentHint: 'Arrows or space to advance · Esc to leave',
   facts: {
     companies: n => (n === 1 ? 'company' : 'companies'),

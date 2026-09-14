@@ -13,6 +13,9 @@
 export const WALKTHROUGH_SCRIPT = `
 (function () {
   var data = window.__SITREP__ || { steps: [] };
+  // The file as it was written, captured before any state class touches the
+  // DOM: this is what "Compartir" hands on, never the reader's current view.
+  var pristine = '<!doctype html>\\n' + document.documentElement.outerHTML;
   var map = document.getElementById('map');
   var viewport = document.getElementById('viewport');
   if (!map) return;
@@ -287,6 +290,29 @@ export const WALKTHROUGH_SCRIPT = `
   on('wt-prev', function () { window.__sitrepShow(idx - 1); });
   on('wt-exit', exit);
   on('wt-present', enterPresent);
+  on('wt-print', function () { window.print(); });
+  // Share the FILE, not a URL: a blob: or file: address means nothing to the
+  // recipient. Web Share with files where the platform has it (phones, Safari,
+  // Chrome on Android); otherwise a copy is saved for the reader to attach.
+  function fileName() {
+    var base = (document.title || 'informe').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\\s+/g, ' ').trim();
+    return base + '.html';
+  }
+  on('wt-share', function () {
+    var blob = new Blob([pristine], { type: 'text/html' });
+    var file = (typeof File === 'function') ? new File([blob], fileName(), { type: 'text/html' }) : null;
+    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: document.title }).catch(function () {});
+      return;
+    }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
   // The slider and the tab strip own the arrow keys while they are focused.
   function ownsArrows(el) {
     if (!el || !el.tagName) return false;

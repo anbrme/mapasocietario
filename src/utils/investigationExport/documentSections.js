@@ -174,7 +174,7 @@ export const renderMapFigure = (doc, graphData, t, lang = 'es') => {
     <p id="wt-text"></p>
     <p id="wt-ev" class="ev" hidden></p>
     <div id="wt-note" hidden></div>
-    <div class="wt-nav"><button id="wt-prev">${esc(t.prev)}</button><button id="wt-next">${esc(t.next)}</button><span id="wt-counter" class="meta"></span><span style="flex:1"></span><button id="wt-present" class="hide-print" title="${esc(t.presentHint)}">${esc(t.present)}</button><button id="wt-exit">${esc(t.exit)}</button></div>
+    <div class="wt-nav"><button id="wt-prev">${esc(t.prev)}</button><button id="wt-next">${esc(t.next)}</button><span id="wt-counter" class="meta"></span><span style="flex:1"></span><button id="wt-print" class="hide-print">${esc(t.print)}</button><button id="wt-share" class="hide-print" title="${esc(t.shareHint)}">${esc(t.share)}</button><button id="wt-present" class="hide-print" title="${esc(t.presentHint)}">${esc(t.present)}</button><button id="wt-exit">${esc(t.exit)}</button></div>
   </div>`
     : '';
   return `

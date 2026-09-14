@@ -675,6 +675,8 @@ describe('presenter markup', () => {
   it('the card carries a Presentar button and the walkthrough a slide zero built from the opening', () => {
     const fig = renderMapFigure(doc, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
     expect(fig).toContain('<button id="wt-present" class="hide-print" title="Flechas o espacio para avanzar · Esc para salir">Presentar</button>');
+    expect(fig).toContain('<button id="wt-print" class="hide-print">Imprimir</button>');
+    expect(fig).toContain('<button id="wt-share" class="hide-print" title="Envía este archivo tal cual; si el navegador no puede compartirlo, guarda una copia.">Compartir</button>');
     const withOpening = { ...doc, opening: { title: 'Recorrido por esta red · 2 pasos', line: 'Tu selección, en el orden elegido' } };
     const html = renderChapters(withOpening, t, wt);
     expect(html).toContain('<div id="wt-slide0" class="slide0"><strong>Recorrido por esta red · 2 pasos</strong><p>Tu selección, en el orden elegido</p></div>');

@@ -127,7 +127,14 @@ describe('presenter mode and print treatment', () => {
   it('prints the map on its own page, keeps rows and chapters whole, repeats table heads and spells out footer links', () => {
     const printBlock = DOCUMENT_STYLE.slice(DOCUMENT_STYLE.indexOf('@media print{'));
     expect(printBlock).toContain('#graph{page-break-before:always}');
-    expect(printBlock).toContain('.chapter,tr,.facts,.chrono li,#chronology{page-break-inside:avoid}');
+    expect(printBlock).toContain('.chapter{page-break-inside:auto}');
+    expect(printBlock).toContain('.chapter{display:block}');
+    expect(printBlock).toContain('.chapter .num{float:left;width:44px}');
+    expect(printBlock).toContain('.chapter h3,.chapter .head,.chapter h4,h2{page-break-after:avoid}');
+    expect(printBlock).toContain('tr,.facts,.chrono li,#chronology,.note,.chapter ul{page-break-inside:avoid}');
+    expect(printBlock).toContain('.wrap{max-width:none;padding:6mm 10mm}');
+    expect(printBlock).toContain('.story #graph .legend{display:flex}');
+    expect(printBlock).toContain('h3.explorer{display:none!important}');
     expect(printBlock).toContain('thead{display:table-header-group}');
     expect(printBlock).toContain('footer a[href^="http"]::after{content:" (" attr(href) ")"');
     expect(printBlock).toContain('.wt-nav,#wt-present,.slide0{display:none!important}');

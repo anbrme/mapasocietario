@@ -92,10 +92,21 @@ the exit button or leaving fullscreen restore the reader's scroll position.
 Phone: map over chapter, stacked. Fullscreen is best-effort: without a user
 gesture (or in an iframe) the layout still applies in-page.
 
-**Print.** The map is a figure on its own page; chapters, rows, the facts strip
-and chronology items never split; table heads repeat; the current-chapter tint,
-the card, the slider, the tab strip and slide zero are gone; footer links are
-spelled out as URLs; every annex panel prints; registry-state dimming is reset.
+**Print.** The map is a figure on its own page with its legend; a chapter may
+break across pages but a heading is never left alone at the foot of one, and
+rows, notes, lists, the facts strip and chronology items never split; in print
+a chapter is a block with its number floated (grids fragment badly in Chrome);
+the wrapper carries its own margins so a "Margins: none" setting cannot clip
+the numbers; table heads repeat; the current-chapter tint, the card, the
+slider, the tab strip, the explorer heading and slide zero are gone; footer
+links are spelled out as URLs; every annex panel prints; registry-state
+dimming is reset. Checked against a real Chrome printout and a headless one.
+
+**Card buttons.** *Imprimir* calls the browser's print. *Compartir* hands the
+FILE (the pristine document, captured before any state class) to the system
+share sheet through Web Share where files are supported, and otherwise saves
+a copy for the reader to attach — a blob: or file: address is nothing to a
+recipient. *Presentar* as above.
 
 ## Deferred
 Nothing from this round.

@@ -174,3 +174,13 @@ describe('presenter mode', () => {
     expect(WALKTHROUGH_SCRIPT).toContain("on('wt-present', enterPresent)");
   });
 });
+
+
+describe('print and share', () => {
+  it('prints through the browser and shares the pristine file, saving a copy when Web Share cannot take files', () => {
+    expect(WALKTHROUGH_SCRIPT).toContain("on('wt-print', function () { window.print(); });");
+    expect(WALKTHROUGH_SCRIPT).toContain("var pristine = '<!doctype html>\\n' + document.documentElement.outerHTML;");
+    expect(WALKTHROUGH_SCRIPT).toContain('navigator.canShare({ files: [file] })');
+    expect(WALKTHROUGH_SCRIPT).toContain('a.download = fileName();');
+  });
+});
