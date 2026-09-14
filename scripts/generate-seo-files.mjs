@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { STUDIES, LANGS, studyPath, hubPath } from '../src/copy/studies.js';
+import { demandSitemapFiles } from '../functions/sitemaps/_waves.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -145,16 +146,16 @@ ${sitemapUrls}
 </urlset>
 `;
 
+// One entry per demand wave: each promotion batch is its own sitemap FILE, the
+// one condition that has produced a Googlebot discovery burst (see
+// functions/sitemaps/_waves.js). The wave list is imported, not retyped, so
+// the index and the routes cannot drift.
 const demandSitemapEntry = DEMAND_SITEMAP_PUBLISHED
-  ? `  <sitemap>
-    <loc>${siteUrl}/sitemap-demand.xml</loc>
+  ? [...demandSitemapFiles(), 'sitemap-directorio.xml'].map((file) => `  <sitemap>
+    <loc>${siteUrl}/${file}</loc>
     <lastmod>${buildDate}</lastmod>
   </sitemap>
-  <sitemap>
-    <loc>${siteUrl}/sitemap-directorio.xml</loc>
-    <lastmod>${buildDate}</lastmod>
-  </sitemap>
-`
+`).join('')
   : '';
 
 const sitemapIndexXml = `<?xml version="1.0" encoding="UTF-8"?>

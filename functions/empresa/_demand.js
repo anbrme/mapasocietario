@@ -103,15 +103,25 @@ export async function countPromotedCompanies(db) {
   return Number(row?.total || 0);
 }
 
-export async function listPromotedCompanies(db, { limit, offset }) {
+/**
+ * Promoted rows in promotion order. `from` / `before` bound promoted_at as a
+ * half-open [from, before) range of 'YYYY-MM-DD' strings — the demand-sitemap
+ * waves (sitemaps/_waves.js); both optional.
+ */
+export async function listPromotedCompanies(db, { limit, offset, from = null, before = null }) {
   if (!db) return [];
+  const bounds = [
+    ...(from ? [{ clause: 'promoted_at >= ?', value: from }] : []),
+    ...(before ? [{ clause: 'promoted_at < ?', value: before }] : []),
+  ];
+  const where = ['status = ?', ...bounds.map((b) => b.clause)].join(' AND ');
   const result = await db.prepare(
     `SELECT slug, promoted_at
      FROM company_index_candidates
-     WHERE status = ?
+     WHERE ${where}
      ORDER BY promoted_at ASC, slug ASC
      LIMIT ? OFFSET ?`,
-  ).bind(PROMOTED_STATUS, limit, offset).all();
+  ).bind(PROMOTED_STATUS, ...bounds.map((b) => b.value), limit, offset).all();
   return result?.results || [];
 }
 
