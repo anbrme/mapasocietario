@@ -39,9 +39,12 @@ function StepNoteField({ stepKey, initialText, label, disabled, onCommit }) {
 
 export default function RelationshipReportModal({
   open, onClose, doc, graphData, networkNote, onNetworkNoteChange,
-  lang = 'es', reportLang = 'es', onReportLangChange = () => {}, onRemoveCompany, onDownload,
+  lang = 'es', reportLang = 'es', onReportLangChange = () => {}, onRemoveCompany,
   walkthrough = null, author = { name: '', organisation: '' }, onAuthorChange = () => {},
-  edits = null, onPreview = () => {}, onPlay = null,
+  edits = null, onPlay = null,
+  // Every export path reports through one GA4 seam so the caller can stamp
+  // the report's language and size on each action.
+  onTrack = () => {},
 }) {
   const [copied, setCopied] = useState(false);
   const [previewBlocked, setPreviewBlocked] = useState(false);
@@ -79,6 +82,7 @@ export default function RelationshipReportModal({
       await navigator.clipboard.writeText(html);
       setCopied(true);
     }
+    onTrack('situation_report_copy');
   };
 
   const openPreview = async () => {
@@ -86,14 +90,14 @@ export default function RelationshipReportModal({
     // pop-up blockers only allow window.open when it runs directly from the
     // user gesture, not after an intervening await (the dynamic import below).
     const w = window.open('', '_blank');
-    if (!w) { setPreviewBlocked(true); return; }
+    if (!w) { setPreviewBlocked(true); onTrack('walkthrough_preview_blocked'); return; }
     w.opener = null;
     const { buildExportHtml } = await import('../utils/investigationExport');
     const html = buildExportHtml(doc, graphData, { lang: es ? 'es' : 'en' });
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
     w.location = url;
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-    onPreview?.();
+    onTrack('walkthrough_preview');
   };
 
   const download = async () => {
@@ -108,7 +112,7 @@ export default function RelationshipReportModal({
     a.remove();
     // Revoking synchronously can cancel the download in Safari.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    onDownload?.();
+    onTrack('situation_report_download');
   };
 
   return (

@@ -116,6 +116,12 @@ const DIMENSIONS = [
   ['selection_method', 'Selection method', 'graph', 'Keyboard or pointer selection of a search result.'],
   ['activation_source', 'Monitor activation source', 'graph', 'Which surface activated BORME monitoring.'],
   ['kind', 'Evidence kind', 'graph', 'Which evidence type was opened from the findings block.'],
+  // Situation report (Informe de situación): open / copy / preview / download
+  // / language toggle ship as graph_toolbar_action{toolbar_action:
+  // 'situation_report*'} with `language` (report language, not UI), `mode`,
+  // `steps`, `companies` and the sitrep-tier definitions below.
+  ['has_author', 'Situation report signed', 'sitrep',
+    'true when the author line (name or organisation) was filled in — a professional-use signal.'],
 ];
 
 /**
@@ -143,6 +149,10 @@ const METRICS = [
   ['loaded', 'Return-link companies loaded', 'walkthrough', 'STANDARD', 'How many of them the app could draw.'],
   ['changed', 'Return-link companies changed', 'walkthrough', 'STANDARD', 'How many had a filing after the report date.'],
   ['watch', 'Return-link watch requested', 'walkthrough', 'STANDARD', '1 when the link asked to open the watchlist dialog.'],
+  ['notes', 'Situation report notes', 'sitrep', 'STANDARD',
+    'Summary + node notes + step narratives written into the report (count, never the text).'],
+  ['blocks_off', 'Situation report blocks off', 'sitrep', 'STANDARD',
+    'How many of the four content blocks the author switched off before exporting.'],
 ];
 
 /* ------------------------------------------------------------------ auth */

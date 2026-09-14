@@ -9,6 +9,7 @@ import {
   pairKey as walkthroughPairKey, buildTimeline,
 } from '../utils/walkthrough';
 import { loadSitrepAuthor, saveSitrepAuthor } from '../utils/sitrepAuthor';
+import { situationReportParams } from '../utils/sitrepAnalytics';
 import {
   Dialog,
   DialogTitle,
@@ -7466,6 +7467,18 @@ const SpanishCompanyNetworkGraph = ({
     sitrepAuthor.blocks, walkthrough.mode, walkthrough.opening, walkthrough.stepData,
   ]);
 
+  // Situation-report GA4 seam: each export action (copy / preview / download)
+  // and the ES↔EN toggle rides on graph_toolbar_action with the report's
+  // language and its authored size — counts only, never the text.
+  const trackSituationReport = useCallback((action, extra = {}) => {
+    trackGraphToolbarAction(action, { ...situationReportParams(relDoc, reportLang), ...extra });
+  }, [trackGraphToolbarAction, relDoc, reportLang]);
+  const changeReportLang = useCallback(next => {
+    if (next === reportLang) return;
+    trackSituationReport('situation_report_language', { language: next });
+    setReportLang(next);
+  }, [reportLang, trackSituationReport]);
+
   // Remove a company from the report: hide it AND any officers/subsidiaries that
   // were only attached to it, so no orphan nodes are left floating. Nodes still
   // reachable from another visible company (e.g. a shared director) are kept.
@@ -9523,7 +9536,10 @@ const SpanishCompanyNetworkGraph = ({
                   disabled={walkthrough.status === 'preparing'}
                   sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
                   onClick={() => {
-                    trackGraphToolbarAction('situation_report');
+                    trackGraphToolbarAction('situation_report', {
+                      language: uiLanguage, mode: walkthrough.mode,
+                      companies: walkthrough.selectedCount || visibleCompanyCount,
+                    });
                     openRelationshipReport();
                   }}>
                   {text.situationReport}
@@ -12199,15 +12215,14 @@ const SpanishCompanyNetworkGraph = ({
           onNetworkNoteChange={setNetworkNote}
           lang={uiLanguage}
           reportLang={reportLang}
-          onReportLangChange={setReportLang}
+          onReportLangChange={changeReportLang}
           onRemoveCompany={removeCompanyFromReport}
-          onDownload={() => trackGraphToolbarAction('situation_report_download')}
           walkthrough={walkthrough}
           author={sitrepAuthor}
           onAuthorChange={updateSitrepAuthor}
           edits={walkthroughEdits}
-          onPreview={() => trackGraphToolbarAction('walkthrough_preview')}
           onPlay={playWalkthroughFromReport}
+          onTrack={trackSituationReport}
         />
         <AIInvestigationGate
           open={aiPanelOpen}
@@ -12292,15 +12307,14 @@ const SpanishCompanyNetworkGraph = ({
         onNetworkNoteChange={setNetworkNote}
         lang={uiLanguage}
         reportLang={reportLang}
-        onReportLangChange={setReportLang}
+        onReportLangChange={changeReportLang}
         onRemoveCompany={removeCompanyFromReport}
-        onDownload={() => trackGraphToolbarAction('situation_report_download')}
         walkthrough={walkthrough}
         author={sitrepAuthor}
         onAuthorChange={updateSitrepAuthor}
         edits={walkthroughEdits}
-        onPreview={() => trackGraphToolbarAction('walkthrough_preview')}
         onPlay={playWalkthroughFromReport}
+        onTrack={trackSituationReport}
       />
       <AIInvestigationGate
         open={aiPanelOpen}
