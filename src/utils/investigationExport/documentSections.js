@@ -187,7 +187,7 @@ export const renderMapFigure = (doc, graphData, t, lang = 'es') => {
   </div>
   <figcaption>
     <span>${esc(t.mapCaption(c.companies || 0, c.officers || 0, c.sharedPeople || 0))}</span>
-    <span class="legend"><span><i class="co"></i>${esc(t.legendCompany)}</span><span><i class="of"></i>${esc(t.legendPerson)}</span><span><i class="own"></i>${esc(t.legendOwnership)}</span><span><i class="flag"></i>${esc(t.legendFlag)}</span></span>
+    <span class="legend"><span><i class="co"></i>${esc(t.legendCompany)}</span><span><i class="of"></i>${esc(t.legendPerson)}</span><span><i class="live"></i>${esc(t.legendActive)}</span><span><i class="ceased"></i>${esc(t.legendCeased)}</span><span><i class="own"></i>${esc(t.legendOwnership)}</span><span><i class="flag"></i>${esc(t.legendFlag)}</span></span>
   </figcaption>
 </figure>
 ${renderTimeControl(doc, t, lang)}
@@ -222,7 +222,7 @@ const companyEvidenceBlock = (s, t, wt, blocks) => {
   }
   if (blocks.board !== false && (ev.board || []).length) {
     parts.push(`<h4>${esc(wt.subheads.board)}</h4>${evidenceTable(wt.boardColumns, ev.board,
-      r => [r.name, r.role, r.since, wt.statusWords[r.status] || r.status])}`);
+      r => [r.name, r.role, r.since, r.until, wt.statusWords[r.status] || r.status])}`);
   }
   if (blocks.filings !== false && (ev.filings || []).length) {
     parts.push(`<h4>${esc(wt.subheads.filings)}</h4>${evidenceTable(wt.filingColumns, ev.filings, r => [r.date, r.type])}`);
@@ -258,7 +258,7 @@ const connectionEvidenceBlock = (s, wt) => {
   const hops = s.evidence?.hops || [];
   if (!hops.length) return '';
   return `<p>${esc(s.summary || s.text || '')}</p>${evidenceTable(wt.hopColumns, hops,
-    r => [r.who, r.at, r.role, wt.statusWords[r.status] || r.status, r.date])}`;
+    r => [r.who, r.at, r.role, wt.statusWords[r.status] || r.status, r.since, r.until])}`;
 };
 
 const evidenceBlockFor = (s, t, wt, blocks) => {

@@ -108,5 +108,23 @@ share sheet through Web Share where files are supported, and otherwise saves
 a copy for the reader to attach — a blob: or file: address is nothing to a
 recipient. *Presentar* as above.
 
+## Part 5 — the seat's life: dates, colours, slider (shipped)
+
+- **Both dates.** Seat tables and connection hop rows read the same
+  appointment/cessation pair the timeline derives from a link's events
+  (`linkDates`), so Desde and Hasta both fill when the registry has them. A
+  seat ceased only by the company's dissolution keeps Hasta empty rather than
+  borrowing the appointment date. The board table gains Hasta from the
+  profile's resignation date.
+- **The app's link language in the file.** Live seat green, ceased seat red
+  and dashed, sole shareholder amber and dashed, lost ownership muted amber
+  (`data-lost`); focus works by opacity and weight only. Legend: Empresa,
+  Persona, Cargo vigente, Cargo cesado, Socio único, Señalado. Print keeps
+  colour and dash and only undoes the fading.
+- **Slider stops on the story.** Stops are the dates of the step entities'
+  seats and of the companies one hop away, the chapter moments and the read
+  date. Every node is still re-rendered at each stop; other nodes' private
+  dates no longer become stops. With no steps every date is a stop.
+
 ## Deferred
 Nothing from this round.

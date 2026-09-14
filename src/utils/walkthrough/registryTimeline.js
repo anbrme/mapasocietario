@@ -95,10 +95,22 @@ export const buildTimeline = ({ graphData, stepData, steps, readOn }) => {
     linkTable[linkKey(l)] = { a: nid(refId(l.source)), b: nid(refId(l.target)), from: d.from, to: d.to };
   });
 
+  // The slider stops on the STORY's dates: the seats of the step entities and
+  // the companies one hop away (a seat's other end, an owned company), the
+  // chapter moments and the read date. Every node is still re-rendered at
+  // each stop; the other nodes' private dates just do not become stops.
+  // Without steps, every date is a stop.
+  const storyIds = new Set((steps || []).flatMap(s => (Array.isArray(s?.nodeIds) && s.nodeIds.length ? s.nodeIds : [s?.nodeId])).map(nid).filter(Boolean));
+  const storyLinks = storyIds.size
+    ? Object.values(linkTable).filter(d => storyIds.has(d.a) || storyIds.has(d.b))
+    : Object.values(linkTable);
+  const storyNodeIds = storyIds.size
+    ? new Set([...storyIds, ...storyLinks.flatMap(d => [d.a, d.b])])
+    : new Set(Object.keys(nodeTable));
   const moments = (steps || []).map(s => day(s?.moment)).filter(Boolean);
   const all = [
-    ...Object.values(nodeTable).flatMap(d => [d.from, d.to]),
-    ...Object.values(linkTable).flatMap(d => [d.from, d.to]),
+    ...[...storyNodeIds].map(id => nodeTable[id]).filter(Boolean).flatMap(d => [d.from, d.to]),
+    ...storyLinks.flatMap(d => [d.from, d.to]),
     ...moments,
     read,
   ].filter(Boolean);

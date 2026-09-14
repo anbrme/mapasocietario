@@ -84,8 +84,8 @@ describe('connectionStep', () => {
     expect(s.nodeIds).toEqual(['A', 'B', 'p1']);
     expect(s.linkKeys).toEqual([pairKey('A', 'p1'), pairKey('B', 'p1')]);
     expect(s.evidence.hops).toEqual([
-      { who: 'PEREZ ANA', whoId: 'p1', at: 'ALFA SL', atId: 'A', role: 'Administradora única', status: 'active', date: '2020-01-01' },
-      { who: 'PEREZ ANA', whoId: 'p1', at: 'BETA SL', atId: 'B', role: 'Consejera', status: 'ceased', date: '2021-06-01' },
+      { who: 'PEREZ ANA', whoId: 'p1', at: 'ALFA SL', atId: 'A', role: 'Administradora única', status: 'active', since: '2020-01-01', until: '' },
+      { who: 'PEREZ ANA', whoId: 'p1', at: 'BETA SL', atId: 'B', role: 'Consejera', status: 'ceased', since: '', until: '2021-06-01' },
     ]);
     expect(s.moment).toBe('2021-06-01');
     expect(s.summary).toBe('ALFA SL y BETA SL se conectan a través de PEREZ ANA · 2 pasos');

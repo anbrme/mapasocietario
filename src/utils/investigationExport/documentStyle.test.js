@@ -95,7 +95,12 @@ describe('DOCUMENT_STYLE', () => {
     const printBlock = DOCUMENT_STYLE.slice(DOCUMENT_STYLE.indexOf('@media print{'));
     expect(printBlock).toContain('.story #graph{position:static;max-height:none;overflow:visible;display:block}');
     expect(printBlock).toContain('#map g.n[data-state="ghost"] circle,#map g.n[data-state="ghost"] text{opacity:1!important}');
-    expect(printBlock).toContain('#map .l[data-state="ceased"]{stroke-dasharray:none!important;opacity:1!important}');
+    // A ceased seat stays red and dashed on paper; only the fading is undone.
+    expect(printBlock).toContain('#map .l[data-state="ceased"]{opacity:1!important}');
+    expect(printBlock).not.toContain('stroke-dasharray:none');
+    expect(DOCUMENT_STYLE).toContain('#map .l{stroke:var(--seat)');
+    expect(DOCUMENT_STYLE).toContain('#map .l[data-state="ceased"]{stroke:var(--ceased);stroke-dasharray:3 3');
+    expect(DOCUMENT_STYLE).toContain('.legend i.ceased{width:18px;height:0;border-top:2px dashed var(--ceased)');
   });
 
   it('carries no rule for chrome the document no longer renders', () => {

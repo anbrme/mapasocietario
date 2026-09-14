@@ -141,3 +141,24 @@ describe('defaultMoment', () => {
     expect(defaultMoment({ kind: 'person', evidence: { seats: [] } })).toBeNull();
   });
 });
+
+
+describe('buildTimeline — the slider stops on the story', () => {
+  it('leaves out the dates of nodes more than one hop from any step', () => {
+    const far = { ...graph, nodes: [...graph.nodes, co('L:9', 'LEJANA SL'), off('o9', 'NADIE')],
+      links: [...graph.links, link('o9', 'L:9', { id: 'o9-L9', category: 'nombramientos', date: '2011-11-11' })] };
+    const farData = new Map([...stepData, ['L:9', { profile: { first_seen: '2010-10-10', last_seen: '2026-01-01', is_dissolved: false } }]]);
+    const tl = buildTimeline({ graphData: far, stepData: farData, steps, readOn: '2026-09-13' });
+    expect(tl.dates).not.toContain('2011-11-11');
+    expect(tl.dates).not.toContain('2010-10-10');
+    // One hop away still counts: H:2 is owned by the step company H:1.
+    expect(tl.dates).toContain('2023-09-09');
+    // The far link is still in the state table, so scrubbing renders it.
+    expect(tl.links['o9-L9']).toBeTruthy();
+  });
+  it('with no steps every date is a stop', () => {
+    const far = { ...graph, nodes: [...graph.nodes, co('L:9', 'LEJANA SL'), off('o9', 'NADIE')],
+      links: [...graph.links, link('o9', 'L:9', { id: 'o9-L9', category: 'nombramientos', date: '2011-11-11' })] };
+    expect(buildTimeline({ graphData: far, stepData, steps: [], readOn: '2026-09-13' }).dates).toContain('2011-11-11');
+  });
+});

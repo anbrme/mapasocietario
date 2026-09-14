@@ -5,6 +5,7 @@ import { isActiveOfficerCategory } from '../relationshipScope';
 import { getLinkEffectiveCategory } from '../linkDirectionality';
 import { hasIncoherentCapital } from '../capitalCoherence';
 import { walkthroughCopy, identityLine } from './walkthroughCopy';
+import { linkDates } from './registryTimeline';
 
 export const BOARD_CAP = 12;
 const nid = id => (id == null ? '' : String(id));
@@ -25,11 +26,13 @@ export const formatEur = (value, lang) => new Intl.NumberFormat(lang === 'en' ? 
 
 export const boardRows = (profile) => {
   const active = (profile?.officers_active || []).map(o => ({
-    name: o.name || o.name_normalized || '', role: o.position_normalized || o.position || '', since: day(o.appointed_date), status: 'active',
+    name: o.name || o.name_normalized || '', role: o.position_normalized || o.position || '', since: day(o.appointed_date), until: '', status: 'active',
   }));
   const ceased = (profile?.officers_resigned || [])
     .filter(o => String(o.status || '').toLowerCase() !== 'superseded')
-    .map(o => ({ name: o.name || o.name_normalized || '', role: o.position_normalized || o.position || '', since: day(o.appointed_date), status: 'ceased' }));
+    .map(o => ({
+      name: o.name || o.name_normalized || '', role: o.position_normalized || o.position || '', since: day(o.appointed_date), until: day(o.resigned_date), status: 'ceased',
+    }));
   const byDate = (a, b) => b.since.localeCompare(a.since);
   return [...active.sort(byDate), ...ceased.sort(byDate)].filter(r => r.name).slice(0, BOARD_CAP);
 };
@@ -72,11 +75,17 @@ export const personSeats = (node, graphData, lang) => {
     // its own category says.
     const cat = getLinkEffectiveCategory(l) || l.category;
     const active = isActiveOfficerCategory(cat) && !company.isDissolved && !company.is_dissolved;
+    // Both dates when the link's events carry them (appointment and
+    // cessation); the same pair the timeline slider runs on.
+    // A seat ceased only by the company's dissolution has no cessation of
+    // its own: Hasta stays empty rather than borrowing the appointment date.
+    const { from, to } = linkDates(l);
+    const linkCeased = !isActiveOfficerCategory(cat);
     const d = day(l.categoryDate || l.date);
     return [{
       company: company.name || '', companyId: other,
       role: l.relationship || l.category || '',
-      since: active ? d : '', until: active ? '' : d,
+      since: from || (linkCeased ? '' : d), until: linkCeased ? (to || d) : '',
       status: active ? 'active' : 'ceased',
     }];
   }).sort((x, y) => x.company.localeCompare(y.company));

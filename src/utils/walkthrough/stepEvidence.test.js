@@ -93,7 +93,7 @@ describe('personSeats', () => {
       ],
     };
     expect(personSeats(graph.nodes[0], graphWithEvents, 'es')).toEqual([
-      { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Administradora única', since: '', until: '2023-05-10', status: 'ceased' },
+      { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Administradora única', since: '2021-03-01', until: '2023-05-10', status: 'ceased' },
     ]);
   });
 
@@ -108,7 +108,8 @@ describe('personSeats', () => {
       ],
     };
     expect(personSeats(graph.nodes[0], graphWithDissolvedCompany, 'es')).toEqual([
-      { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Administradora única', since: '', until: '2021-03-01', status: 'ceased' },
+      // Ceased by the dissolution, not by an inscribed cessation: Hasta is unknown.
+      { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Administradora única', since: '2021-03-01', until: '', status: 'ceased' },
     ]);
   });
 });
@@ -205,5 +206,26 @@ describe('personSeats — a company that holds seats (unified node)', () => {
 
   it('a plain company with no unified links holds no seats', () => {
     expect(personSeats(graph.nodes[1], graph, 'es')).toEqual([]);
+  });
+});
+
+
+describe('both dates from the link events', () => {
+  it('a ceased seat whose link carries appointment and cessation events fills Desde and Hasta', () => {
+    const g = {
+      nodes: [{ id: 'o1', type: 'officer', name: 'GARCIA LOPEZ MARIA' }, { id: 'H:1', type: 'spanish-company-group', name: 'ACME IBERIA, SL' }],
+      links: [{
+        source: 'H:1', target: 'o1', category: 'cese', relationship: 'Consejera', date: '2023-05-10', categoryDate: '2023-05-10',
+        events: [{ category: 'nombramiento', date: '2021-03-01' }, { category: 'cese', date: '2023-05-10' }],
+      }],
+    };
+    expect(personSeats(g.nodes[0], g, 'es')).toEqual([
+      { company: 'ACME IBERIA, SL', companyId: 'H:1', role: 'Consejera', since: '2021-03-01', until: '2023-05-10', status: 'ceased' },
+    ]);
+  });
+  it('board rows carry the resignation date as until', () => {
+    const rows = boardRows(profile);
+    expect(rows.find(r => r.name === 'RUIZ MARTIN LUIS')).toMatchObject({ since: '2018-01-01', until: '2020-06-30', status: 'ceased' });
+    expect(rows.find(r => r.name === 'GARCIA LOPEZ MARIA')).toMatchObject({ until: '' });
   });
 });

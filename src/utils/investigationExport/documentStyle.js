@@ -18,10 +18,12 @@ ${face(400, PLEX_SANS_REGULAR_WOFF2_B64)}
 ${face(700, PLEX_SANS_BOLD_WOFF2_B64)}
 :root{color-scheme:light dark;
 --bg:#FBFBFA;--fg:#0B1324;--muted:#58677D;--line:#CCD6E3;--card:#FFFFFF;--soft:#F3F6FA;
---accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1}
+--accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1;
+--seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e}
 @media (prefers-color-scheme: dark){:root{
 --bg:#14161A;--fg:#E8E8E4;--muted:#9A9A94;--line:#2A2D33;--card:#1C1F24;--soft:#181B20;
---accent:#2DD4BF;--accent-soft:#12302C;--company:#2DD4BF;--officer:#94A3B8;--link:#3A3F47}}
+--accent:#2DD4BF;--accent-soft:#12302C;--company:#2DD4BF;--officer:#94A3B8;--link:#3A3F47;
+--seat:#34d399;--ceased:#f87171;--own:#fbbf24;--own-lost:#c79a3a}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -54,8 +56,11 @@ h2 span.num{color:var(--accent);margin-right:8px}
 figure{margin:0}
 figure .frame{position:relative;background:var(--card);border:1px solid var(--line);border-radius:8px}
 #map{display:block;width:100%;height:520px;cursor:grab;touch-action:pan-y pinch-zoom;border-radius:8px}
-#map .l{stroke:var(--link);stroke-width:1;transition:opacity .2s}
-#map .l[data-kind="ownership"]{stroke-dasharray:4 3;stroke:var(--muted)}
+/* The app's link language: a live seat is green, a ceased one red and dashed,
+   ownership amber and dashed, a lost ownership muted amber. */
+#map .l{stroke:var(--seat);stroke-width:1.2;transition:opacity .2s}
+#map .l[data-kind="ownership"]{stroke-dasharray:4 3;stroke:var(--own)}
+#map .l[data-kind="ownership"][data-lost]{stroke:var(--own-lost);opacity:.7}
 #map g.n circle{fill:var(--officer)}
 #map g.n[data-kind="company"] circle{fill:var(--company)}
 #map g.n text{fill:var(--fg);font-size:9px;text-anchor:middle;pointer-events:none}
@@ -65,12 +70,14 @@ figure .frame{position:relative;background:var(--card);border:1px solid var(--li
 #map g.n[data-flag="amber"] circle{stroke:#f59e0b}
 #map.focused g.n{opacity:.16}#map.focused g.n.on{opacity:1}
 #map.focused g.n:not(.on) text{opacity:0}
-#map.focused .l{opacity:.12}#map.focused .l.on{opacity:1;stroke:var(--accent);stroke-width:2}
+#map.focused .l{opacity:.12}#map.focused .l.on{opacity:1;stroke-width:2.2}
 figcaption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:.82rem}
 .legend{display:flex;gap:14px;flex-wrap:wrap}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .legend i.co{background:var(--company)}.legend i.of{background:var(--officer)}
-.legend i.own{width:18px;height:0;border-top:2px dashed var(--muted);border-radius:0;vertical-align:3px}
+.legend i.own{width:18px;height:0;border-top:2px dashed var(--own);border-radius:0;vertical-align:3px}
+.legend i.live{width:18px;height:0;border-top:2px solid var(--seat);border-radius:0;vertical-align:3px}
+.legend i.ceased{width:18px;height:0;border-top:2px dashed var(--ceased);border-radius:0;vertical-align:3px}
 .legend i.flag{background:transparent;border:2px solid #ef4444}
 #wt-panel{margin-top:12px;background:var(--card);border:1px solid var(--line);
 border-radius:8px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.08);flex:1 1 auto;min-height:0;overflow:auto}
@@ -129,7 +136,7 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
 #map g.n[data-state="hidden"]{pointer-events:none}
 #map g.n[data-state="hidden"] circle{fill:var(--bg);stroke:var(--line);stroke-width:1.2}
 #map g.n[data-state="hidden"] text{opacity:.3}
-#map .l[data-state="ceased"]{stroke-dasharray:3 3;opacity:.45}
+#map .l[data-state="ceased"]{stroke:var(--ceased);stroke-dasharray:3 3;opacity:.75}
 #map g.n[data-state="ghost"] circle{opacity:.35}
 #map g.n[data-state="ghost"] text{opacity:.5}
 #wt-time{margin-top:8px}
@@ -201,7 +208,8 @@ body.presenting #walkthrough{height:auto;min-height:0;padding:16px;border-left:0
 @page{size:A4;margin:18mm}
 @media print{
 :root{--bg:#FFFFFF;--fg:#0B1324;--muted:#58677D;--line:#CCD6E3;--card:#FFFFFF;--soft:#F3F6FA;
---accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1}
+--accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1;
+--seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e}
 #wt-panel,.hide-print{display:none!important}
 body{background:#fff;color:#0B1324;font-size:11pt}
 /* Margins live on the wrapper too: a "Margins: none" print setting must not
@@ -217,10 +225,10 @@ body{background:#fff;color:#0B1324;font-size:11pt}
 #wt-time{display:none!important}
 .annex-tabs{display:none!important}
 .annex-panel[hidden]{display:block!important}
-#map [data-state]{opacity:1!important;stroke-dasharray:none}
+#map [data-state]{opacity:1!important}
 #map g.n[data-state="ghost"] circle,#map g.n[data-state="ghost"] text{opacity:1!important}
 #map g.n[data-state="hidden"] circle{fill:var(--officer);stroke:none}#map g.n[data-state="hidden"][data-kind="company"] circle{fill:var(--company)}#map g.n[data-state="hidden"] text{opacity:1!important}
-#map .l[data-state="ceased"]{stroke-dasharray:none!important;opacity:1!important}
+#map .l[data-state="ceased"]{opacity:1!important}
 #viewport{transform:none!important;transition:none}
 #walkthrough{page-break-before:always}
 #annexes{page-break-before:always}

@@ -6,6 +6,7 @@ import { pairKey } from './pairKey';
 import { walkthroughCopy } from './walkthroughCopy';
 import { isActiveOfficerCategory } from '../relationshipScope';
 import { getLinkEffectiveCategory } from '../linkDirectionality';
+import { linkDates } from './registryTimeline';
 
 const nid = id => (id == null ? '' : String(id));
 const refId = ref => (ref && typeof ref === 'object' ? ref.id : ref);
@@ -79,7 +80,7 @@ const hopRows = (graphData, byId, path) => {
     };
     if (!links.length) {
       const { who, at } = attribution({ source: a });
-      rows.push({ who: who?.name || '', whoId: nid(who?.id), at: at?.name || '', atId: nid(at?.id), role: '', status: '', date: '' });
+      rows.push({ who: who?.name || '', whoId: nid(who?.id), at: at?.name || '', atId: nid(at?.id), role: '', status: '', since: '', until: '' });
       continue;
     }
     links.forEach(l => {
@@ -87,9 +88,13 @@ const hopRows = (graphData, byId, path) => {
       const ownership = l.type === 'ownership';
       const cat = getLinkEffectiveCategory(l) || l.category;
       const active = ownership ? !l.lost : isActiveOfficerCategory(cat) && !at?.isDissolved && !at?.is_dissolved;
+      const { from, to } = linkDates(l);
+      const linkCeased = ownership ? !!l.lost : !isActiveOfficerCategory(cat);
+      const d = day(l.categoryDate || l.date);
       rows.push({
         who: who?.name || '', whoId: nid(who?.id), at: at?.name || '', atId: nid(at?.id),
-        role: l.relationship || l.category || '', status: active ? 'active' : 'ceased', date: day(l.categoryDate || l.date),
+        role: l.relationship || l.category || '', status: active ? 'active' : 'ceased',
+        since: from || (linkCeased ? '' : d), until: linkCeased ? (to || d) : '',
       });
     });
   }
@@ -170,7 +175,7 @@ export const connectionStep = ({ suggestion, graphData, order, lang = 'es' }) =>
   const viaNames = via.map(name);
   const endNames = ends.map(name);
   const summary = t.connectionLine(joinNames(endNames, t), joinNames(viaNames, t), suggestion.hops);
-  const dates = hops.map(h => h.date).filter(Boolean).sort();
+  const dates = hops.flatMap(h => [h.since, h.until]).filter(Boolean).sort();
   return {
     key: suggestion.key,
     nodeId: null,

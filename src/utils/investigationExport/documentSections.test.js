@@ -119,6 +119,8 @@ describe('documentSections', () => {
     const html = renderMapFigure(doc, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
     expect(html).toContain('id="map"');
     expect(html).toContain('class="legend"');
+    expect(html).toContain('<i class="live"></i>Cargo vigente');
+    expect(html).toContain('<i class="ceased"></i>Cargo cesado');
     expect(html).toContain('1 empresa · 3 personas · 0 conexiones compartidas');
     // The story starts on scroll: no start button, and the panel is present
     // from the first paint (the opening block fills it until a chapter enters).
@@ -621,8 +623,8 @@ describe('renderChapters — connection step', () => {
     summary: 'ALFA SL y OTRA SL se conectan a través de GARCIA LOPEZ ANA · 2 pasos', text: '',
     narrative: null, authorNote: null, moment: '2021-03-01', nodeIds: ['c1', 'other', 'o1'], linkKeys: [],
     evidence: { ends: ['c1', 'other'], via: ['o1'], hops: [
-      { who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'ALFA SL', atId: 'c1', role: 'Administradora única', status: 'active', date: '2021-03-01' },
-      { who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'OTRA SL', atId: 'other', role: 'Consejera', status: 'ceased', date: '2019-01-01' },
+      { who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'ALFA SL', atId: 'c1', role: 'Administradora única', status: 'active', since: '2021-03-01', until: '' },
+      { who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'OTRA SL', atId: 'other', role: 'Consejera', status: 'ceased', since: '2018-05-05', until: '2019-01-01' },
     ] },
   };
   it('renders the Conexión eyebrow, the sentence and one row per hop', () => {
@@ -630,8 +632,8 @@ describe('renderChapters — connection step', () => {
     expect(html).toContain('Conexión');
     expect(html).toContain('<h3>GARCIA LOPEZ ANA</h3>');
     expect(html).toContain('se conectan a través de GARCIA LOPEZ ANA');
-    expect(html).toContain('<th>Quién</th><th>En</th><th>Cargo</th><th>Estado</th><th>Fecha</th>');
-    expect(html).toContain('<td>OTRA SL</td><td>Consejera</td><td>Cesado</td><td class="date">2019-01-01</td>');
+    expect(html).toContain('<th>Quién</th><th>En</th><th>Cargo</th><th>Estado</th><th>Desde</th><th>Hasta</th>');
+    expect(html).toContain('<td>OTRA SL</td><td>Consejera</td><td>Cesado</td><td class="date">2018-05-05</td><td class="date">2019-01-01</td>');
   });
   it('the evidence line names the first hops', () => {
     expect(stepEvidenceLine(connection, wt)).toBe('GARCIA LOPEZ ANA · Administradora única · ALFA SL · GARCIA LOPEZ ANA · Consejera · OTRA SL');
@@ -682,5 +684,15 @@ describe('presenter markup', () => {
     const html = renderChapters(withOpening, t, wt);
     expect(html).toContain('<div id="wt-slide0" class="slide0"><strong>Recorrido por esta red · 2 pasos</strong><p>Tu selección, en el orden elegido</p></div>');
     expect(renderChapters(doc, t, wt)).not.toContain('wt-slide0');
+  });
+});
+
+
+describe('both dates of a seat', () => {
+  it('the board table has a Hasta column fed by the resignation date', () => {
+    const ev = companyEvidence({ board: [{ name: 'RUIZ MARTIN LUIS', role: 'Apoderado', since: '2018-01-01', until: '2020-06-30', status: 'ceased' }] });
+    const html = renderChapters({ ...doc, steps: [companyStep('c1', { evidence: ev })] }, t, wt);
+    expect(html).toContain('<th>Nombre</th><th>Cargo</th><th>Desde</th><th>Hasta</th><th>Estado</th>');
+    expect(html).toContain('<td>RUIZ MARTIN LUIS</td><td>Apoderado</td><td class="date">2018-01-01</td><td class="date">2020-06-30</td><td>Cesado</td>');
   });
 });
