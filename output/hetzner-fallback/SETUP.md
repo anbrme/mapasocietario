@@ -55,7 +55,8 @@ Stale copies are served while nginx refreshes in the background. The nightly
 `mapasocietario-cache-warm.timer` (14:30 UTC, after the 13:00 enricher)
 renders every sitemap URL so first fetches are hits too.
 
-Install on an already-running front (as root, from this directory):
+Install on an already-running front (the server copy of this directory is
+`~/hetzner-front`; scp the files there first, then as root from it):
 
     install -m 644 mapasocietario-cache.conf /etc/nginx/conf.d/
     install -d -o www-data -g www-data -m 750 /var/cache/nginx/mapa

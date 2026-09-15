@@ -7,5 +7,5 @@ After=network-online.target nginx.service
 Type=oneshot
 User=alex
 Group=alex
-ExecStart=/home/alex/bormes/output/hetzner-fallback/warm-cache.sh
+ExecStart=/home/alex/hetzner-front/warm-cache.sh
 Nice=10
