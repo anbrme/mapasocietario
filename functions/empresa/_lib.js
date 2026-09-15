@@ -278,7 +278,7 @@ const T = {
     factCapital: 'Capital social',
     factActivity: 'Objeto social',
     externalEstimate: '(estimación de fuente externa — verificar)',
-    borneIncoherent: '(cifra publicada por el BORME, incoherente con el importe inscrito — sin verificar)',
+    borneIncoherent: '(cifra publicada por el BORME, posible incongruencia con el importe inscrito — verificar en el Registro Mercantil)',
     factFirstSeen: 'Primera inscripción (desde el 1/1/2009)',
     factIncorporation: 'Constitución (primera inscripción)',
     factLastSeen: 'Última actualización',
