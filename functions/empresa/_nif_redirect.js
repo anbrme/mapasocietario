@@ -1,6 +1,9 @@
 import { nameToSlug } from './_slug.js';
 
-const API_BASE = 'https://api.ncdata.eu';
+// This resolver is deployed by the BORME service itself. Use its origin because
+// api.ncdata.eu is an allowlisted front-door proxy and does not expose this
+// integration-only route.
+const API_BASE = 'https://rag.ncdata.eu';
 const SITE = 'https://mapasocietario.es';
 
 // Spanish legal-entity NIFs are nine characters and begin with a letter.

@@ -32,7 +32,7 @@ test('redirects an exact API result without permanently pinning the slug', async
   globalThis.fetch = async (url) => {
     assert.equal(
       url,
-      'https://api.ncdata.eu/bormes/company-by-nif?nif=A81638108',
+      'https://rag.ncdata.eu/bormes/company-by-nif?nif=A81638108',
     );
     return Response.json({
       success: true,
