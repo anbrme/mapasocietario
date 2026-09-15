@@ -899,7 +899,7 @@ const SEARCH_COPY = {
     moreRegistryDetail: 'Más detalle registral',
     openFullProfile: 'Abrir la ficha completa',
     fullProfileHint: 'Cargos, socios, historial y análisis — se abre en una pestaña nueva',
-    capitalUnverified: '(según el BORME, incoherente con el importe inscrito - sin verificar)',
+    capitalUnverified: '(según el BORME, posible incongruencia con el importe inscrito - verificar en el Registro Mercantil)',
     reportNifTooltip: 'Reportar NIF incorrecto',
     reportNifTitle: 'Reportar NIF incorrecto',
     reportIntro: 'Este NIF procede de una búsqueda web y puede ser erróneo. Envía una corrección y un administrador la revisará.',
