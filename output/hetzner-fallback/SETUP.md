@@ -44,3 +44,28 @@ Files (copied to ncdata:~/hetzner-front/):
   configured; restore re-activates it.
 - Fallback if no token: MODE=webroot sudo ./install.sh AFTER the flip (HTTP-01);
   expect a few minutes of TLS errors between flip and issuance.
+
+## Page cache (added 2026-09-15)
+
+The front keeps rendered company/directory pages in an nginx cache
+(`mapasocietario-cache.conf`, store under `/var/cache/nginx/mapa`). Lifetime
+comes from the Pages Function's `X-Accel-Expires` header (3600 s indexable,
+600 s noindex, 0 = never for private badge previews and curated misses).
+Stale copies are served while nginx refreshes in the background. The nightly
+`mapasocietario-cache-warm.timer` (14:30 UTC, after the 13:00 enricher)
+renders every sitemap URL so first fetches are hits too.
+
+Install on an already-running front (as root, from this directory):
+
+    install -m 644 mapasocietario-cache.conf /etc/nginx/conf.d/
+    install -d -o www-data -g www-data -m 750 /var/cache/nginx/mapa
+    install -m 644 mapasocietario.conf /etc/nginx/sites-available/mapasocietario
+    nginx -t && systemctl reload nginx
+    install -m 644 mapasocietario-cache-warm.service mapasocietario-cache-warm.timer /etc/systemd/system/
+    systemctl daemon-reload && systemctl enable --now mapasocietario-cache-warm.timer
+
+Verify: fetch a company page twice and read `X-Cache-Status` (MISS, then HIT);
+a badge preview URL must always say BYPASS or MISS and never HIT. Warm by hand
+with `sudo -u alex ./warm-cache.sh`; results append to
+`/var/log/borme/cache-warm.log`. Purge everything with
+`rm -rf /var/cache/nginx/mapa/*` (nginx recreates the tree).

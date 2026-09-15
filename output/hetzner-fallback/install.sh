@@ -33,8 +33,15 @@ fi
 
 install -m 644 mapasocietario.conf /etc/nginx/sites-available/mapasocietario
 ln -sfn /etc/nginx/sites-available/mapasocietario /etc/nginx/sites-enabled/mapasocietario
+# Page cache: zone + cacheable-path map, and the on-disk store nginx writes to.
+install -m 644 mapasocietario-cache.conf /etc/nginx/conf.d/mapasocietario-cache.conf
+install -d -o www-data -g www-data -m 750 /var/cache/nginx/mapa
 nginx -t
 systemctl reload nginx
 certbot renew --dry-run --cert-name mapasocietario.es >/dev/null && echo "renewal dry-run OK"
+# Nightly cache warmer (runs as alex; the script lives in the deployed checkout).
+install -m 644 mapasocietario-cache-warm.service mapasocietario-cache-warm.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now mapasocietario-cache-warm.timer
 echo "front installed. Test before flipping DNS:"
 echo "  curl -sI --resolve mapasocietario.es:443:188.245.60.39 https://mapasocietario.es/ | head -5"

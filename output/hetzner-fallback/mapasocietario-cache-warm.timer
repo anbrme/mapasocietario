@@ -1,0 +1,12 @@
+[Unit]
+Description=Warm the mapasocietario.es front page cache daily after enrichment
+
+[Timer]
+# The v3 enricher cron runs at 13:00 UTC and re-folds the day's companies;
+# 14:30 leaves it room to finish so the cache holds today's boards.
+OnCalendar=*-*-* 14:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

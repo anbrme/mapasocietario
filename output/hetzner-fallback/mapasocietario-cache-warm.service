@@ -1,0 +1,11 @@
+[Unit]
+Description=Warm the mapasocietario.es front page cache (every sitemap URL)
+Wants=network-online.target
+After=network-online.target nginx.service
+
+[Service]
+Type=oneshot
+User=alex
+Group=alex
+ExecStart=/home/alex/bormes/output/hetzner-fallback/warm-cache.sh
+Nice=10

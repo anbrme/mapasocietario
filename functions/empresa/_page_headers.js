@@ -16,11 +16,21 @@
 const PUBLIC_CACHE = 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400';
 const NOINDEX_CACHE = 'public, max-age=0, s-maxage=600';
 
+// The Hetzner front (output/hetzner-fallback) keeps rendered pages in an nginx
+// cache. nginx reads X-Accel-Expires ahead of Cache-Control and strips it on
+// the way out, so the lifetime there is deterministic: the same seconds as
+// s-maxage, or 0 for a response that must never be stored. Cloudflare passes
+// the header through untouched and does not act on it.
+const PUBLIC_TTL = '3600';
+const NOINDEX_TTL = '600';
+const NEVER = '0';
+
 export function companyPageHeaders({ noindex = false, privateResponse = false } = {}) {
   if (privateResponse) {
     return {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'private, no-store',
+      'x-accel-expires': NEVER,
       'referrer-policy': 'no-referrer',
       'x-robots-tag': 'noindex, nofollow, noarchive',
     };
@@ -28,6 +38,7 @@ export function companyPageHeaders({ noindex = false, privateResponse = false } 
   return {
     'content-type': 'text/html; charset=utf-8',
     'cache-control': noindex ? NOINDEX_CACHE : PUBLIC_CACHE,
+    'x-accel-expires': noindex ? NOINDEX_TTL : PUBLIC_TTL,
   };
 }
 
@@ -46,5 +57,6 @@ export function notFoundPageHeaders({ isFallback = false, privateResponse = fals
     // missing company is most likely a TRANSIENT backend failure on an indexed
     // page - never cache that, or a blip would pin a 404 for 10 min.
     'cache-control': isFallback ? 'public, s-maxage=600' : 'no-store',
+    'x-accel-expires': isFallback ? NOINDEX_TTL : NEVER,
   };
 }
