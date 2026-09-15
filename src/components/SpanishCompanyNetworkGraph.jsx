@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import VoiceInputButton from './VoiceInputButton';
 import { graphInk } from '../theme/graphInk';
 import { debounce } from 'lodash';
 import { forceCollide } from 'd3-force';
@@ -1961,6 +1962,7 @@ const SpanishCompanyNetworkGraph = ({
 
   // Autocomplete state
   const [autocompleteOptions, setAutocompleteOptions] = useState([]);
+  const [autocompleteOpen, setAutocompleteOpen] = useState(false);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [selectedAutocomplete, setSelectedAutocomplete] = useState(null);
   const searchTypeRef = useRef(searchType);
@@ -9155,6 +9157,9 @@ const SpanishCompanyNetworkGraph = ({
         autoHighlight
         disabled={isCompactEmbed && isSearching}
         options={autocompleteOptions}
+        open={autocompleteOpen}
+        onOpen={() => setAutocompleteOpen(true)}
+        onClose={() => setAutocompleteOpen(false)}
         loading={autocompleteLoading}
         inputValue={searchQuery}
         value={selectedAutocomplete}
@@ -9392,6 +9397,26 @@ const SpanishCompanyNetworkGraph = ({
               endAdornment: (
                 <>
                   {autocompleteLoading || isSearching ? <CircularProgress size={20} /> : null}
+                  <VoiceInputButton
+                    language={uiLanguage}
+                    value={searchQuery}
+                    disabled={isSearching}
+                    onTranscript={value => {
+                      setSearchQuery(value);
+                      setAutocompleteOpen(true);
+                      if (!searchTypingTrackedRef.current) {
+                        searchTypingTrackedRef.current = true;
+                        trackEvent('graph_search_typing_started', {
+                          entry_source: entrySource,
+                          time_to_type_ms: Date.now() - graphEnteredAtRef.current,
+                          input_method: 'voice',
+                        });
+                      }
+                      setLastSearchContext(null);
+                      setSelectedAutocomplete(null);
+                      handleAutocomplete(value);
+                    }}
+                  />
                   {params.InputProps.endAdornment}
                 </>
               ),
@@ -9585,6 +9610,11 @@ const SpanishCompanyNetworkGraph = ({
           size="small"
           sx={{ flexGrow: 0.5, minWidth: 150 }}
           InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <VoiceInputButton language={uiLanguage} value={labelFilterText} onTranscript={setLabelFilterText} />
+              </InputAdornment>
+            ),
             startAdornment: (
               <InputAdornment position="start">
                 <SearchIcon fontSize="small" />
@@ -10622,6 +10652,11 @@ const SpanishCompanyNetworkGraph = ({
                   size="small"
                   fullWidth
                   InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <VoiceInputButton language={uiLanguage} value={labelFilterText} onTranscript={setLabelFilterText} />
+                      </InputAdornment>
+                    ),
                     startAdornment: (
                       <InputAdornment position="start">
                         <SearchIcon fontSize="small" />

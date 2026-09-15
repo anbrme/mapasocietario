@@ -13,6 +13,7 @@ import {
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
 import SearchIcon from '@mui/icons-material/Search';
+import VoiceInputButton from './VoiceInputButton';
 import { spanishCompaniesService } from '../services/spanishCompaniesService';
 import { mergeEntitySuggestions } from '../utils/entitySuggestions';
 import { classifyEntitySelection } from '../utils/entitySelection';
@@ -126,6 +127,7 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
   const tk = landingTokens(useTheme().palette.mode);
   const [inputValue, setInputValue] = React.useState('');
   const [options, setOptions] = React.useState([]);
+  const [suggestionsOpen, setSuggestionsOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   // 'noResults' | 'tooShort' | null — what a failed submit tells the visitor.
   const [feedback, setFeedback] = React.useState(null);
@@ -217,6 +219,9 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
         autoHighlight
         filterOptions={items => items}
         options={options}
+        open={suggestionsOpen}
+        onOpen={() => setSuggestionsOpen(true)}
+        onClose={() => setSuggestionsOpen(false)}
         loading={loading}
         inputValue={inputValue}
         onInputChange={(_, value, reason) => {
@@ -286,6 +291,18 @@ export default function LandingEntitySearch({ lang = 'en', navigate }) {
               endAdornment: (
                 <>
                   {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                  <VoiceInputButton
+                    language={lang}
+                    value={inputValue}
+                    onTranscript={value => {
+                      setInputValue(value);
+                      setSuggestionsOpen(true);
+                      setFeedback(null);
+                      arrowUsedRef.current = false;
+                      enterPressedRef.current = false;
+                      dispatch({ type: 'input', query: value });
+                    }}
+                  />
                   {params.InputProps.endAdornment}
                   <Button
                     variant="contained"
