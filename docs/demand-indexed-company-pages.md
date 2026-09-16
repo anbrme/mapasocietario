@@ -118,18 +118,28 @@ It needs `GSC_SA_KEY_FILE` (default `~/gsc-sa.json`) and the service account mus
 be a *user* on the property — a 403 means exactly that, not a broken key.
 
 The sample is chosen by `hash(seed, url)`, not at random, so a later run inspects
-the same pages and the two are comparable; each run writes a snapshot to
-`gsc-inspect-out/` and diffs against the most recent earlier one, over the URLs
-both runs share.
+the same pages and the two are comparable; each run writes a minute-stamped
+snapshot to `gsc-inspect-out/` and diffs against the most recent earlier one for
+the same sitemap and language, over the URLs both runs share. `--baseline <file>`
+pins a specific one — use it when you run the tool twice in a sitting, or the
+second run measures the gap since the first rather than the week you meant.
+
+Movement is reported between **bands**, not raw states. Measured 2026-09-16: the
+same 25 URLs inspected twice, two minutes apart, came back with six reclassified
+in both directions between "Unknown to Google" and "Discovered". The API does not
+hold that distinction still, so their split is noise and only their sum means
+anything; a within-band reclassification is counted and labelled as noise instead
+of being reported as change. The first real signal on a batch stuck in discovery
+is `newlyCrawled` — a page that now has a `lastCrawlTime` — not indexation.
 
 What the output is for — "not indexed" is three conditions with three different
 remedies, and the state distribution is what tells them apart:
 
-| Dominant state | What it means | What moves it |
+| Dominant band | What it means | What moves it |
 | --- | --- | --- |
-| Unknown / Discovered | Google has not crawled them yet | Discovery: a new wave file (`functions/sitemaps/_waves.js`), internal links. Two to three weeks, not days |
-| Crawled, not indexed | Google came and declined | Only pages worth indexing. More sitemap work changes nothing |
-| Duplicate / Alternate | Folded into another URL | Read `googleCanonical`: ours means ES and EN compete with each other; another domain means our content is being treated as the copy |
+| Not crawled yet | Google has not fetched them at all | Discovery: a new wave file (`functions/sitemaps/_waves.js`), internal links. Two to three weeks, not days |
+| Crawled and declined | Google came and declined | Only pages worth indexing. More sitemap work changes nothing |
+| Folded into another URL | Google picked a different canonical | Read `googleCanonical`: ours means ES and EN compete with each other; another domain means our content is being treated as the copy |
 
 Any `noindex`, robots, 404, redirect or 5xx state in the sample is a bug on our
 side and outranks every other reading — the report says so first.

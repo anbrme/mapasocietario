@@ -31,7 +31,13 @@
  *   node scripts/gsc-inspect-sample.mjs --lang en
  *   node scripts/gsc-inspect-sample.mjs --sitemap https://mapasocietario.es/sitemap-demand.xml
  *   node scripts/gsc-inspect-sample.mjs --since 2026-09-15   # crawls after the new sitemap
+ *   node scripts/gsc-inspect-sample.mjs --baseline gsc-inspect-out/<file>.json
  *   node scripts/gsc-inspect-sample.mjs --json
+ *
+ * Movement is reported between BANDS (not crawled / crawled and declined /
+ * folded into another URL / indexed), because the API's own split between
+ * "unknown" and "discovered" is not stable between two calls — see
+ * BAND_OF_STATE in gsc-inspect-lib.mjs for the measurement.
  *
  * Credentials:
  *   GSC_SA_KEY_FILE  service account for Search Console (default ~/gsc-sa.json)
@@ -188,12 +194,22 @@ async function mapPool(items, limit, worker) {
   return results;
 }
 
-/** The most recent earlier snapshot for this sitemap, or null. */
-function previousSnapshot(sitemap) {
+const snapshotStem = (sitemap) => sitemap.split('/').pop().replace(/\.xml$/, '');
+
+/**
+ * The most recent earlier snapshot for this sitemap AND language, or null.
+ *
+ * Language belongs in the filter, not only in compare()'s shape check: the ES
+ * and EN runs write into the same directory, so without it an `--lang en` run
+ * picks up yesterday's ES file as its baseline and reports "not comparable"
+ * while the EN baseline sits right there.
+ */
+function previousSnapshot(sitemap, language) {
   if (!existsSync(OUT_DIR)) return null;
-  const prefix = `${sitemap.split('/').pop().replace(/\.xml$/, '')}-`;
+  const prefix = `${snapshotStem(sitemap)}-`;
+  const suffix = `-${language}.json`;
   const files = readdirSync(OUT_DIR)
-    .filter((name) => name.startsWith(prefix) && name.endsWith('.json'))
+    .filter((name) => name.startsWith(prefix) && name.endsWith(suffix))
     .sort();
   for (const name of files.reverse()) {
     try {
@@ -256,12 +272,26 @@ const snapshot = {
   rows,
 };
 
-const comparison = compare(snapshot, previousSnapshot(options.sitemap));
+/**
+ * --baseline pins what this run is measured against. Without it the comparison
+ * is against the most recent earlier run, which is right for "what changed
+ * since last time" and wrong the moment you run the tool twice in one sitting:
+ * the second run then reports two minutes of API noise instead of the week you
+ * meant to measure.
+ */
+const baselineArg = flag('baseline', null);
+const baseline = baselineArg
+  ? JSON.parse(readFileSync(baselineArg, 'utf8'))
+  : previousSnapshot(options.sitemap, options.language);
+const comparison = compare(snapshot, baseline);
 
 if (options.save) {
   mkdirSync(OUT_DIR, { recursive: true });
-  const stem = options.sitemap.split('/').pop().replace(/\.xml$/, '');
-  const file = join(OUT_DIR, `${stem}-${snapshot.meta.ranAt.slice(0, 10)}-${options.language}.json`);
+  // Minute-stamped, not day-stamped: a second run on the same day used to
+  // overwrite the morning's snapshot, destroying the very baseline it had just
+  // been compared against.
+  const stamp = snapshot.meta.ranAt.slice(0, 16).replace(/[:-]/g, '').replace('T', '-');
+  const file = join(OUT_DIR, `${snapshotStem(options.sitemap)}-${stamp}-${options.language}.json`);
   writeFileSync(file, JSON.stringify(snapshot, null, 2));
   console.error(`snapshot: ${file}`);
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bandOf,
   classifyState,
   compare,
   diagnose,
@@ -216,7 +217,7 @@ describe('compare', () => {
     expect(result.comparable).toBe(true);
     expect(result.shared).toBe(2);
     expect(result.drift).toBe(0);
-    expect(result.deltas).toEqual({ indexed: 1, discovered_not_indexed: -1 });
+    expect(result.deltas).toEqual({ indexed: 1, not_crawled: -1 });
     expect(result.newlyIndexed).toEqual([ES('a')]);
     expect(result.lostIndexing).toEqual([]);
   });
@@ -235,7 +236,7 @@ describe('compare', () => {
     const result = compare(current, previous);
     expect(result.shared).toBe(1);
     expect(result.drift).toBe(1);
-    expect(result.deltas).toEqual({ indexed: 1, discovered_not_indexed: -1 });
+    expect(result.deltas).toEqual({ indexed: 1, not_crawled: -1 });
     expect(result.lostIndexing).toEqual([]);
   });
 
@@ -249,7 +250,55 @@ describe('compare', () => {
     expect(compare(current, previous)).toMatchObject({ comparable: false, differsBy: ['sample'] });
   });
 
+  it('does not report an unknown/discovered flip as movement', () => {
+    // Measured 2026-09-16: the same 25 URLs, inspected twice two minutes apart,
+    // came back with six reclassified in both directions. Nothing had changed.
+    const previous = snapshot({ ...META, ranAt: '2026-09-16T14:09:00Z' }, [
+      inspectionRow(ES('a'), indexStatus({ coverageState: 'Discovered - currently not indexed' })),
+      inspectionRow(ES('b'), indexStatus({ coverageState: 'URL is unknown to Google' })),
+    ]);
+    const current = snapshot({ ...META, ranAt: '2026-09-16T14:11:00Z' }, [
+      inspectionRow(ES('a'), indexStatus({ coverageState: 'URL is unknown to Google' })),
+      inspectionRow(ES('b'), indexStatus({ coverageState: 'Discovered - currently not indexed' })),
+    ]);
+    const result = compare(current, previous);
+    expect(result.deltas).toEqual({});
+    expect(result.churn).toBe(2);
+  });
+
+  it('reports a first crawl, which is the signal that matters', () => {
+    const previous = snapshot({ ...META, ranAt: '2026-09-16T14:09:00Z' }, [
+      inspectionRow(ES('a'), indexStatus({ coverageState: 'Discovered - currently not indexed' })),
+    ]);
+    const current = snapshot({ ...META, ranAt: '2026-09-19T09:00:00Z' }, [
+      inspectionRow(ES('a'), indexStatus({
+        coverageState: 'Crawled - currently not indexed',
+        lastCrawlTime: '2026-09-18T22:14:00Z',
+      })),
+    ]);
+    const result = compare(current, previous);
+    expect(result.newlyCrawled).toEqual([ES('a')]);
+    expect(result.deltas).toEqual({ crawled_declined: 1, not_crawled: -1 });
+    expect(result.churn).toBe(0);
+  });
+
   it('is a no-op without a previous run', () => {
     expect(compare(snapshot(META, []), null)).toBeNull();
+  });
+});
+
+describe('bandOf', () => {
+  it('folds the two unstable pre-crawl states into one band', () => {
+    expect(bandOf('unknown_to_google')).toBe('not_crawled');
+    expect(bandOf('discovered_not_indexed')).toBe('not_crawled');
+  });
+
+  it('keeps the states that mean something different apart', () => {
+    expect(bandOf('crawled_not_indexed')).toBe('crawled_declined');
+    expect(bandOf('duplicate')).toBe('folded');
+    expect(bandOf('alternate_canonical')).toBe('folded');
+    expect(bandOf('indexed')).toBe('indexed');
+    expect(bandOf('blocked_by_robots')).toBe('fault');
+    expect(bandOf('something-new')).toBe('unclassified');
   });
 });
