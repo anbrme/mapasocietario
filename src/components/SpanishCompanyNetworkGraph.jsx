@@ -1734,6 +1734,10 @@ const SpanishCompanyNetworkGraph = ({
   // it lives here and rides the snapshot's existing `context` slot — which means
   // it survives export/import with NO snapshot version bump.
   const [networkNote, setNetworkNote] = useState('');
+  // The analyst's title for the situation report; blank falls back to the
+  // first subject. Describes the investigation, so it rides the snapshot's
+  // `context` slot like networkNote, not the author's localStorage.
+  const [reportTitle, setReportTitle] = useState('');
   const [walkthroughEdits, setWalkthroughEdits] = useState(EMPTY_WALKTHROUGH_EDITS);
   // The report has ONE language, chosen at open time from the app's own
   // language — the toggle inside the modal then owns it independently of
@@ -7483,6 +7487,7 @@ const SpanishCompanyNetworkGraph = ({
       networkNote,
       corrections: relCorrections,
       primarySubject: subjectCompanyName || relationshipDetailedScope.officerNodes[0]?.name || '',
+      title: reportTitle,
       generatedAt: relGeneratedAt || new Date().toISOString(),
       steps: walkthrough.steps,
       author: sitrepAuthor,
@@ -7496,7 +7501,7 @@ const SpanishCompanyNetworkGraph = ({
       }),
     });
   }, [
-    relReportOpen, filteredGraphData, relationshipDetailedScope, networkNote,
+    relReportOpen, filteredGraphData, relationshipDetailedScope, networkNote, reportTitle,
     relCorrections, subjectCompanyName, relGeneratedAt,
     walkthrough.steps, sitrepAuthor, walkthrough.coverage,
     sitrepAuthor.blocks, walkthrough.mode, walkthrough.opening, walkthrough.stepData,
@@ -8727,7 +8732,7 @@ const SpanishCompanyNetworkGraph = ({
         detailsExpanded: pathDetailsExpanded,
       },
     },
-    context: { primarySubject, networkNote, walkthroughEdits },
+    context: { primarySubject, networkNote, reportTitle, walkthroughEdits },
     enrichments: { officerDeputyMatches },
   }), [
     graphData,
@@ -8760,6 +8765,7 @@ const SpanishCompanyNetworkGraph = ({
     pathDetailsExpanded,
     primarySubject,
     networkNote,
+    reportTitle,
     walkthroughEdits,
     officerDeputyMatches,
   ]);
@@ -8873,6 +8879,7 @@ const SpanishCompanyNetworkGraph = ({
     setShortestPathArray([]);
     setPrimarySubject(snapshot.context?.primarySubject || null);
     setNetworkNote(typeof snapshot.context?.networkNote === 'string' ? snapshot.context.networkNote : '');
+    setReportTitle(typeof snapshot.context?.reportTitle === 'string' ? snapshot.context.reportTitle : '');
     setWalkthroughEdits(normalizeWalkthroughEdits(snapshot.context?.walkthroughEdits));
     setLastSearchContext(null);
     lastSuccessfulSearchAtRef.current = null;
@@ -12342,6 +12349,8 @@ const SpanishCompanyNetworkGraph = ({
           graphData={filteredGraphData}
           networkNote={networkNote}
           onNetworkNoteChange={setNetworkNote}
+          reportTitle={reportTitle}
+          onReportTitleChange={setReportTitle}
           lang={uiLanguage}
           reportLang={reportLang}
           onReportLangChange={changeReportLang}
@@ -12434,6 +12443,8 @@ const SpanishCompanyNetworkGraph = ({
         graphData={filteredGraphData}
         networkNote={networkNote}
         onNetworkNoteChange={setNetworkNote}
+        reportTitle={reportTitle}
+        onReportTitleChange={setReportTitle}
         lang={uiLanguage}
         reportLang={reportLang}
         onReportLangChange={changeReportLang}

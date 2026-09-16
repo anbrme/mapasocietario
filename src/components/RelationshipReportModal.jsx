@@ -21,6 +21,7 @@ import { DEFAULT_BLOCKS } from '../utils/sitrepAuthor';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
 import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
 import { NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
+import { REPORT_TITLE_MAX_LENGTH } from '../utils/investigationDoc';
 import { walkthroughCopy, editsCounts, platformModifier } from '../utils/walkthrough';
 
 function StepNoteField({ stepKey, initialText, label, disabled, onCommit }) {
@@ -39,6 +40,7 @@ function StepNoteField({ stepKey, initialText, label, disabled, onCommit }) {
 
 export default function RelationshipReportModal({
   open, onClose, doc, graphData, networkNote, onNetworkNoteChange,
+  reportTitle = '', onReportTitleChange = () => {},
   lang = 'es', reportLang = 'es', onReportLangChange = () => {}, onRemoveCompany,
   walkthrough = null, author = { name: '', organisation: '' }, onAuthorChange = () => {},
   edits = null, onPlay = null,
@@ -137,6 +139,19 @@ export default function RelationshipReportModal({
       </DialogTitle>
 
       <DialogContent dividers>
+        {/* The title is the analyst's: an investigation that starts on one
+            company can end up describing a web of interests, and the export's
+            H1 and file name should say so. Blank keeps the first subject. */}
+        <TextField
+          fullWidth
+          size="small"
+          value={reportTitle}
+          onChange={(e) => onReportTitleChange(e.target.value.slice(0, REPORT_TITLE_MAX_LENGTH))}
+          placeholder={doc?.defaultSubject || (es ? 'Nombre del primer sujeto' : 'First subject name')}
+          label={es ? 'Título del informe' : 'Report title'}
+          inputProps={{ maxLength: REPORT_TITLE_MAX_LENGTH }}
+          sx={{ mb: 2 }}
+        />
         <TextField
           fullWidth
           multiline

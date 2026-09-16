@@ -19,6 +19,11 @@ import { DEFAULT_BLOCKS } from './sitrepAuthor';
 // other flag ('blue', 'green', 'none') is a note, not a finding.
 const FLAGGED_ORDER = ['red', 'amber'];
 
+// An analyst-set title replaces the subject name in the H1, the <title> and
+// the file name. Blank means "use the first subject", as before.
+export const REPORT_TITLE_MAX_LENGTH = 120;
+const cleanTitle = value => String(value ?? '').trim().slice(0, REPORT_TITLE_MAX_LENGTH);
+
 const normalizeNodeId = id => (id == null ? '' : String(id));
 
 const noteEntry = node => ({
@@ -35,6 +40,7 @@ export function buildInvestigationDoc({
   networkNote = '',
   corrections = [],
   primarySubject = '',
+  title = '',
   generatedAt = new Date().toISOString(),
   steps = [],
   author = null,
@@ -90,7 +96,9 @@ export function buildInvestigationDoc({
     Object.entries(scope?.officersByCompany || {}).map(([name, officers]) => [name, [...(officers || [])]]));
 
   return {
-    subject: primarySubject || '',
+    subject: cleanTitle(title) || primarySubject || '',
+    // What the title falls back to; the dialog shows it as the placeholder.
+    defaultSubject: primarySubject || '',
     generatedAt,
     networkNote: String(networkNote || '').trim(),
     flagged,

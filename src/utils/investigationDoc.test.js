@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildInvestigationDoc } from './investigationDoc';
+import { buildInvestigationDoc, REPORT_TITLE_MAX_LENGTH } from './investigationDoc';
 
 const AT = '2026-09-10T09:00:00.000Z';
 
@@ -246,5 +246,33 @@ describe('buildInvestigationDoc v3 fields', () => {
     const doc = buildInvestigationDoc({ graphData: { nodes: [], links: [] }, scope: v3Scope });
     expect(doc.timeline).toBeNull();
     expect(doc.companies[0].groupKey).toBeNull();
+  });
+});
+
+describe('report title', () => {
+  it('an analyst-set title replaces the first subject as the document subject', () => {
+    const doc = build({ title: 'Cartel of interests around ALFA' });
+    expect(doc.subject).toBe('Cartel of interests around ALFA');
+  });
+
+  it('keeps the first subject reachable as defaultSubject for the placeholder', () => {
+    const doc = build({ title: 'Cartel of interests around ALFA' });
+    expect(doc.defaultSubject).toBe('ALFA SL');
+  });
+
+  it('a blank or whitespace title falls back to the first subject', () => {
+    expect(build({ title: '' }).subject).toBe('ALFA SL');
+    expect(build({ title: '   ' }).subject).toBe('ALFA SL');
+    expect(build().subject).toBe('ALFA SL');
+  });
+
+  it('trims and caps the title', () => {
+    const doc = build({ title: `  ${'x'.repeat(REPORT_TITLE_MAX_LENGTH + 20)}  ` });
+    expect(doc.subject).toBe('x'.repeat(REPORT_TITLE_MAX_LENGTH));
+  });
+
+  it('a non-string title is tolerated', () => {
+    expect(build({ title: null }).subject).toBe('ALFA SL');
+    expect(build({ title: 42 }).subject).toBe('42');
   });
 });
