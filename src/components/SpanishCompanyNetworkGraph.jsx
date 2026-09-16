@@ -2767,7 +2767,7 @@ const SpanishCompanyNetworkGraph = ({
     prevDimRef.current = canvasDimensions;
     const inspectorReserveChanged = prevInspectorReserveRef.current !== reservedInspectorWidth;
     prevInspectorReserveRef.current = reservedInspectorWidth;
-    if (snapshotMode || graphData.nodes.length === 0 || !fgRef.current) return undefined;
+    if (graphData.nodes.length === 0 || !fgRef.current) return undefined;
 
     // Docking or undocking the inspector is NOT a reason to re-frame the map.
     // A single click opens the panel, so re-fitting here moved the graph
@@ -2801,6 +2801,10 @@ const SpanishCompanyNetworkGraph = ({
       const frame = requestAnimationFrame(apply);
       return () => cancelAnimationFrame(frame);
     }
+
+    // An imported snapshot carries its own camera; re-fitting would throw away
+    // the frame it was captured in. (Holding a node still above does not.)
+    if (snapshotMode) return undefined;
 
     const dw = Math.abs(prev.width - canvasDimensions.width);
     const dh = Math.abs(prev.height - canvasDimensions.height);

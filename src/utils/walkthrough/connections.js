@@ -196,5 +196,6 @@ export const connectionStep = ({ suggestion, graphData, order, lang = 'es' }) =>
     nodeIds: [...ends, ...via],
     linkKeys,
     moment: dates.length ? dates[dates.length - 1] : null,
+    momentSource: 'draft',
   };
 };

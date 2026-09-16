@@ -4,6 +4,7 @@
 import { escapeHtml as esc } from '../escapeHtml';
 import { stepKindLabel } from '../walkthrough/walkthroughCopy';
 import { isProxyRole } from '../walkthrough/stepEvidence';
+import { publishableAnnotations } from '../walkthrough/applyWalkthroughEdits';
 import { correctionVerb } from './exportCopy';
 import { renderGraphSvg } from './renderGraphSvg';
 import { flagVar } from './documentStyle';
@@ -73,15 +74,30 @@ const hasAnnexes = doc => {
   return !!(rows.companies.length || rows.connectors.length || rows.ownership.length || rows.corrections.length);
 };
 
+// A chapter's own moment, plus every dated note hung off it: one date per
+// entry, because an argument about a position in a group runs across several
+// registry days and each of them is its own line of the story.
+const chronologyEntries = doc => {
+  const entries = [];
+  (doc.steps || []).forEach((step, index) => {
+    if (isDay(step.moment)) {
+      entries.push({ date: step.moment, index, title: step.title, kind: step, note: '' });
+    }
+    (step.annotations || []).forEach(a => {
+      if (isDay(a?.date) && String(a?.text || '').trim()) {
+        entries.push({
+          date: a.date, index, title: step.title, kind: null, note: String(a.text).trim(),
+        });
+      }
+    });
+  });
+  return entries.sort((a, b) => a.date.localeCompare(b.date) || a.index - b.index);
+};
+// Two entries make a sequence; one is just a date.
+const hasChronology = doc => chronologyEntries(doc).length >= 2;
+
 // Section numbers, computed once from the same rules that decide whether a
 // section renders at all, so the contents nav and every <h2> agree.
-// The chronology needs two dated steps to be a sequence at all.
-const datedSteps = doc => (doc.steps || [])
-  .map((s, i) => ({ step: s, index: i }))
-  .filter(x => /^\d{4}-\d{2}-\d{2}$/.test(String(x.step.moment || '')))
-  .sort((a, b) => a.step.moment.localeCompare(b.step.moment) || a.index - b.index);
-const hasChronology = doc => datedSteps(doc).length >= 2;
-
 const sectionNumbers = doc => {
   let n = 0;
   const summary = doc.networkNote ? (n += 1) : null;
@@ -99,7 +115,13 @@ const sectionNumbers = doc => {
 export const renderChronology = (doc, t, wt, lang = 'es') => {
   if (!hasChronology(doc)) return '';
   const num = sectionNumbers(doc).chronology;
-  const items = datedSteps(doc).map(({ step, index }) => `<li><time datetime="${esc(step.moment)}">${esc(fmtDay(step.moment, lang))}</time><a href="#ch-${index}">${esc(step.title)}</a><span class="kind">${esc(stepKindLabel(step, wt))}</span></li>`).join('');
+  const items = chronologyEntries(doc).map(e => {
+    const middle = e.note
+      ? `<span class="entry"><a href="#ch-${e.index}">${esc(e.title)}</a><em>${esc(e.note)}</em></span>`
+      : `<a href="#ch-${e.index}">${esc(e.title)}</a>`;
+    const label = e.kind ? stepKindLabel(e.kind, wt) : t.authorNote;
+    return `<li><time datetime="${esc(e.date)}">${esc(fmtDay(e.date, lang))}</time>${middle}<span class="kind">${esc(label)}</span></li>`;
+  }).join('');
   return `<section id="chronology"><h2><span class="num">${num}</span>${esc(t.chronology)}</h2><ol class="chrono">${items}</ol></section>`;
 };
 
@@ -141,7 +163,8 @@ const renderTimeControl = (doc, t, lang) => {
   const tl = doc.timeline;
   if (!tl || !Array.isArray(tl.dates) || tl.dates.length < 2) return '';
   const idx = new Map(tl.dates.map((d, i) => [d, i]));
-  const ticks = [...new Set((doc.steps || []).filter(s => idx.has(s.moment)).map(s => idx.get(s.moment)))]
+  const pinned = (doc.steps || []).flatMap(s => [s.moment, ...(s.annotations || []).map(a => a?.date)]);
+  const ticks = [...new Set(pinned.filter(d => idx.has(d)).map(d => idx.get(d)))]
     .sort((a, b) => a - b).map(i => `<option value="${i}"></option>`).join('');
   // The empty span stays even with nothing to count: the script looks it up
   // unconditionally. The separator does not — a trailing ' · ' reads as a
@@ -199,6 +222,15 @@ ${panel}
 const noteBlock = (note, t, flag) => (note?.text
   ? `<div class="note" style="${flagVar(flag || note.flag || 'none')}"><span class="who">${esc(t.authorNote)}</span>${esc(note.text)}</div>`
   : '');
+
+// The author's dated notes for a chapter, oldest first — the chapter's own
+// moment pins the map to one day, these say what happened on the others.
+const datedNotesBlock = (step, wt, lang) => {
+  const rows = publishableAnnotations(step);
+  if (!rows.length) return '';
+  const items = rows.map(a => `<li><time datetime="${esc(a.date)}">${esc(fmtDay(a.date, lang))}</time><span>${esc(String(a.text).trim())}</span></li>`).join('');
+  return `<div class="dated"><h4>${esc(wt.datedNotes)}</h4><ul>${items}</ul></div>`;
+};
 
 const kv = (label, value) => (value ? `<p class="kv">${label ? `${esc(label)}: ` : ''}${esc(value)}</p>` : '');
 
@@ -302,8 +334,9 @@ export const renderChapters = (doc, t, wt, lang = 'es') => {
   const rows = steps.map((s, i) => {
     const head = `<span class="src">${esc(wt.sources[s.source] || s.source || '')}</span>${esc(stepKindLabel(s, wt))}${s.moment ? ` · ${esc(fmtDay(s.moment, lang))}` : ''}`;
     const narrative = noteBlock(s.narrative || s.authorNote, t);
+    const dated = datedNotesBlock(s, wt, lang);
     const evidence = evidenceBlockFor(s, t, wt, blocks);
-    return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${evidence}</div></div>`;
+    return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${dated}${evidence}</div></div>`;
   }).join('');
   // Slide zero of the presentation: the opening, shown where a chapter would
   // be while the map stands whole. Inert outside presenting.

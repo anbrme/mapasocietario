@@ -9,6 +9,7 @@ import { Box, Button, Chip, IconButton, Paper, Tooltip, Typography } from '@mui/
 import CloseIcon from '@mui/icons-material/Close';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { walkthroughCopy, stepKindLabel } from '../utils/walkthrough/walkthroughCopy';
+import { momentReason } from '../utils/walkthrough/stepMoments';
 import { NODE_NOTE_FLAGS } from '../utils/nodeNotes';
 
 // Height reserved at the bottom of the canvas while the controller is open.
@@ -82,7 +83,11 @@ export default function WalkthroughPlayer({
         {step.title}
       </Typography>
       {step.moment && (
-        <Chip size="small" label={fmtMoment(step.moment, lang)} sx={{ height: 20, fontSize: '0.7rem' }} />
+        // What the date refers to, on hover: a chapter's moment is preselected
+        // from the registry, and a bare day tells the reader nothing.
+        <Tooltip title={momentReason(step, lang)}>
+          <Chip size="small" label={fmtMoment(step.moment, lang)} sx={{ height: 20, fontSize: '0.7rem' }} />
+        </Tooltip>
       )}
       {onEvidence && step.nodeId && (
         <Button size="small" onClick={() => onEvidence(step)} sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>

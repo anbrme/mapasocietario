@@ -5,6 +5,7 @@
 import { escapeHtml as esc } from '../escapeHtml';
 import { exportCopy } from './exportCopy';
 import { walkthroughCopy, stepKindLabel } from '../walkthrough/walkthroughCopy';
+import { publishableAnnotations } from '../walkthrough/applyWalkthroughEdits';
 import { DOCUMENT_STYLE } from './documentStyle';
 import { WALKTHROUGH_SCRIPT } from './walkthroughScript';
 import {
@@ -29,6 +30,9 @@ export function buildExportHtml(doc, graphData, { lang = 'es' } = {}) {
     linkKeys: s.linkKeys || [],
     flag: s.flag,
     moment: s.moment || null,
+    // Dated notes ride with the step so the map can stop on each of their days,
+    // not just on the chapter's single moment.
+    annotations: publishableAnnotations(s),
   }));
   // JSON is embedded as text, so "</script>" inside a note would close the tag.
   // `registryAsOf('{d}')` hands the script the sentence, not the date: it
