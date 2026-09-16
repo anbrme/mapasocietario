@@ -21,6 +21,9 @@ confirmation-evidence.local.*
 batch-promotion-out/
 batch2-out/
 resync-out/
+# URL Inspection snapshots (scripts/gsc-inspect-sample.mjs): per-run samples,
+# regenerable, and only useful on the machine that holds the GSC credentials.
+gsc-inspect-out/
 
 # Local wrangler state (pages dev / d1 simulation)
 .wrangler

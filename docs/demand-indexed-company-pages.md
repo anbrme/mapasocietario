@@ -99,3 +99,37 @@ Check it first:
 ```sh
 curl -sI https://mapasocietario.es/sitemap-demand.xml | head -1
 ```
+
+## Checking whether a batch is actually being indexed
+
+Submitted is not indexed, and Search Console's own coverage report answers the
+question at property level, over a URL set dominated by earlier waves. To ask it
+of one batch, sample that wave's sitemap and inspect the URLs directly:
+
+```sh
+set -a && . ./.env.analytics.local && set +a
+node scripts/gsc-inspect-sample.mjs                                   # 25 ES URLs of wave 2
+node scripts/gsc-inspect-sample.mjs --lang en                         # the EN twins
+node scripts/gsc-inspect-sample.mjs --sitemap https://mapasocietario.es/sitemap-demand.xml
+node scripts/gsc-inspect-sample.mjs --since 2026-09-15                # crawls after a new wave file
+```
+
+It needs `GSC_SA_KEY_FILE` (default `~/gsc-sa.json`) and the service account must
+be a *user* on the property — a 403 means exactly that, not a broken key.
+
+The sample is chosen by `hash(seed, url)`, not at random, so a later run inspects
+the same pages and the two are comparable; each run writes a snapshot to
+`gsc-inspect-out/` and diffs against the most recent earlier one, over the URLs
+both runs share.
+
+What the output is for — "not indexed" is three conditions with three different
+remedies, and the state distribution is what tells them apart:
+
+| Dominant state | What it means | What moves it |
+| --- | --- | --- |
+| Unknown / Discovered | Google has not crawled them yet | Discovery: a new wave file (`functions/sitemaps/_waves.js`), internal links. Two to three weeks, not days |
+| Crawled, not indexed | Google came and declined | Only pages worth indexing. More sitemap work changes nothing |
+| Duplicate / Alternate | Folded into another URL | Read `googleCanonical`: ours means ES and EN compete with each other; another domain means our content is being treated as the copy |
+
+Any `noindex`, robots, 404, redirect or 5xx state in the sample is a bug on our
+side and outranks every other reading — the report says so first.
