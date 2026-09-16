@@ -28,6 +28,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import GroupsIcon from '@mui/icons-material/Groups';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import OfficerInspectorBody from './OfficerInspectorBody.jsx';
@@ -82,6 +83,10 @@ const CompanyInspectorPanel = ({
   officerChartLoading = false,
   onOpenTimeline,
   onFocusCompany,
+  // Growing the map out of the node on screen. Provided only when the panel is
+  // describing a node the canvas actually holds; null hides the control.
+  onExpandNode = null,
+  expandNodeLabel = '',
 }) => {
   // The registry-detail disclosure. Closed for every node: carrying the
   // previous company's open state over is how a card stops being predictable.
@@ -219,9 +224,18 @@ const CompanyInspectorPanel = ({
             {statusChips}
           </Box>
         </Box>
-        <IconButton onClick={onClose} size="small" aria-label={text.close} sx={{ flexShrink: 0 }}>
-          <CloseIcon />
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+          {onExpandNode && (
+            <Tooltip title={expandNodeLabel}>
+              <IconButton onClick={onExpandNode} size="small" color="primary" aria-label={expandNodeLabel}>
+                <AccountTreeIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          <IconButton onClick={onClose} size="small" aria-label={text.close}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
       </Box>
       {fullHref && (
         <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
