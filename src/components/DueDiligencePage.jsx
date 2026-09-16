@@ -298,8 +298,10 @@ export default function DueDiligencePage() {
             &larr; Mapa Societario
           </Link>
         </Box>
-        {/* Free-first-report callout — discreet, gated on the program switch. */}
-        {FREE_FIRST_REPORT_CODE && (
+        {/* Free-first-report callout — discreet, gated on the program switch.
+            Hidden when the visitor arrived through the company page's free
+            deep link: the company banner below already carries the offer. */}
+        {FREE_FIRST_REPORT_CODE && !freeRequested && (
           <Paper
             elevation={0}
             sx={{
