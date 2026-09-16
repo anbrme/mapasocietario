@@ -24,15 +24,11 @@ import { buildReportHtml } from '../utils/relationshipReportHtml';
 import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
 import { NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
 import { REPORT_TITLE_MAX_LENGTH } from '../utils/investigationDoc';
-import { formatDate } from '../utils/formatDate';
+import { isoDayShort } from '../utils/isoDay';
 import {
   walkthroughCopy, editsCounts, platformModifier, momentOptions, momentReason,
   ANNOTATION_TEXT_MAX_LENGTH, ANNOTATIONS_PER_STEP_CAP,
 } from '../utils/walkthrough';
-
-// The report renders ISO days in its own language, which is not necessarily
-// the app's — same rule as the exported document.
-const fmtDay = (iso, lang) => (iso ? formatDate(`${iso}T12:00:00`, lang) : '');
 
 function StepNoteField({ stepKey, initialText, label, disabled, onCommit }) {
   const [value, setValue] = useState(initialText);
@@ -73,7 +69,7 @@ function StepMomentField({ step, options, reason, wt, lang, onChange }) {
           >
             <option value="">{wt.momentNone}</option>
             {options.map(o => (
-              <option key={o.date} value={o.date}>{`${fmtDay(o.date, lang)} · ${o.label}`}</option>
+              <option key={o.date} value={o.date}>{`${isoDayShort(o.date, lang)} · ${o.label}`}</option>
             ))}
           </TextField>
         )}
