@@ -75,6 +75,8 @@ import {
   TableChart as TableIcon,
   VisibilityOff as VisibilityOffIcon,
   Visibility as VisibilityIcon,
+  UnfoldLess as UnfoldLessIcon,
+  Deselect as DeselectIcon,
   Edit as EditIcon,
   DeleteOutline as DeleteOutlineIcon,
   CallMerge as CallMergeIcon,
@@ -113,6 +115,8 @@ import {
   isSameUnifiableEntity,
 } from '../utils/companyName';
 import { filterByQueryTerms } from '../utils/queryTermMatch';
+import { graphKeys, diffExpansion, collapseExpansion } from '../utils/expansionCollapse';
+import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
 import { resolveCompanyGroupName } from '../utils/companyGroupName';
 import { buildCompanyAliasMap } from '../utils/companyAliasLookup';
@@ -455,6 +459,12 @@ const SEARCH_COPY = {
     cargoToggleTooltip: 'This entity also holds officer seats in other companies. Toggle to unify them onto this node (or undo).',
     unifyCargosError: msg => `Could not unify positions: ${msg}`,
     expandNode: 'Expand node',
+    collapseNode: 'Collapse node',
+    collapsedNotice: count => (count === 0
+      ? 'Nothing to collapse: everything this expansion added is pinned, noted, selected or used elsewhere'
+      : `Collapsed: ${count} node${count === 1 ? '' : 's'} removed`),
+    hideSelected: count => `Hide selected (${count})`,
+    clearSelection: 'Clear selection',
     editNode: 'Edit node',
     addPrivateNote: 'Add private note',
     editPrivateNote: 'Edit private note',
@@ -596,7 +606,7 @@ const SEARCH_COPY = {
     // canvas, which for an unexpanded node is whatever brought it here. EY
     // read 'Connections 1' while holding 199 seats in the registry.
     hoverConnections: 'Connections shown',
-    hoverHint: 'Click: profile · Double click: expand · Hold: keep connections · Shift + hold: add/remove · Right click: options',
+    hoverHint: 'Click: profile · Double click: expand · Hold: keep connections · Shift + hold: add/remove · Shift + drag on empty canvas: select area · Right click: options',
     connectionFocusLocked: n => `Connections locked: ${n} · Shift + hold to add/remove`,
     clearConnectionFocus: 'Clear connection highlight (Esc)',
     structureSection: 'Structure',
@@ -828,6 +838,12 @@ const SEARCH_COPY = {
     cargoToggleTooltip: 'Esta entidad también ocupa cargos en otras sociedades. Actívalo para unificarlos en este nodo (o deshacer).',
     unifyCargosError: msg => `No se pudieron unificar los cargos: ${msg}`,
     expandNode: 'Expandir nodo',
+    collapseNode: 'Contraer nodo',
+    collapsedNotice: count => (count === 0
+      ? 'Nada que contraer: todo lo que añadió esta expansión está fijado, anotado, seleccionado o en uso'
+      : `Contraído: ${count} nodo${count === 1 ? '' : 's'} retirado${count === 1 ? '' : 's'}`),
+    hideSelected: count => `Ocultar selección (${count})`,
+    clearSelection: 'Quitar selección',
     editNode: 'Modificar nodo',
     addPrivateNote: 'Añadir nota privada',
     editPrivateNote: 'Editar nota privada',
@@ -964,7 +980,7 @@ const SEARCH_COPY = {
     corporateOfficerNotice: 'Este cargo lo ejerce una sociedad, que tiene su propia ficha registral.',
     // Ver la nota en la copia EN: cuenta enlaces dibujados, no cargos reales.
     hoverConnections: 'Conexiones en el grafo',
-    hoverHint: 'Clic: ficha · Doble clic: expandir · Mantener pulsado: fijar conexiones · Mayús + mantener: añadir/quitar · Clic derecho: opciones',
+    hoverHint: 'Clic: ficha · Doble clic: expandir · Mantener pulsado: fijar conexiones · Mayús + mantener: añadir/quitar · Mayús + arrastrar en el lienzo vacío: seleccionar área · Clic derecho: opciones',
     connectionFocusLocked: n => `Conexiones fijadas: ${n} · Mayús + mantener para añadir/quitar`,
     clearConnectionFocus: 'Quitar resaltado de conexiones (Esc)',
     structureSection: 'Estructura',
@@ -1738,6 +1754,12 @@ const SpanishCompanyNetworkGraph = ({
   // first subject. Describes the investigation, so it rides the snapshot's
   // `context` slot like networkNote, not the author's localStorage.
   const [reportTitle, setReportTitle] = useState('');
+  // What each expansion added (node id → { addedNodeIds, addedLinkKeys }), so
+  // "Collapse node" can take exactly that back. A ref, not state: it is written
+  // inside the setGraphData updater that sees the post-expansion graph, and the
+  // graph change itself re-renders everything that reads it. Rides the
+  // snapshot's `view` slot beside hiddenNodeIds.
+  const expansionRecordsRef = useRef({});
   const [walkthroughEdits, setWalkthroughEdits] = useState(EMPTY_WALKTHROUGH_EDITS);
   // The report has ONE language, chosen at open time from the app's own
   // language — the toggle inside the modal then owns it independently of
@@ -5037,6 +5059,9 @@ const SpanishCompanyNetworkGraph = ({
       }
 
       setIsLoading(true);
+      // The graph as it stands BEFORE this expansion; the diff against the
+      // post-expansion graph is what "Collapse node" removes again.
+      const beforeKeys = graphKeys(graphDataRef.current);
       try {
         node.expanded = true;
         let found = false;
@@ -5053,6 +5078,14 @@ const SpanishCompanyNetworkGraph = ({
         if (!found) {
           setError(text.noAdditionalResults(node.name));
         }
+        // Record the diff from inside an updater: the expand helpers queue
+        // their setGraphData calls, and only the updater is guaranteed to see
+        // the graph with all of them applied. Returns prev — no graph change.
+        setGraphData(prev => {
+          const record = diffExpansion(node.id, beforeKeys, prev);
+          expansionRecordsRef.current = { ...expansionRecordsRef.current, [record.nodeId]: record };
+          return prev;
+        });
         trackEvent('graph_node_expand', {
           ...graphInteractionParams(node),
           expand_origin: expandOrigin,
@@ -5240,6 +5273,45 @@ const SpanishCompanyNetworkGraph = ({
     },
     [graphData.links]
   );
+
+  // Hide every node in the selection at once (Shift-click or Shift-drag built
+  // it), then release the selection so the chip does not keep counting ghosts.
+  const hideSelectedNodes = useCallback(() => {
+    const ids = Array.from(investigationSet).map(normalizeNodeId);
+    if (ids.length === 0) return;
+    setHiddenNodeIds(prev => new Set([...prev, ...ids]));
+    setInvestigationSet(new Set());
+    trackGraphToolbarAction('hide_selected', { node_count: ids.length });
+  }, [investigationSet, trackGraphToolbarAction]);
+
+  // Take back what expanding this node added. Anything the user claimed since
+  // (pinned, noted, selected, expanded in turn) or that a later expansion
+  // attached to stays; the rule lives in collapseExpansion.
+  const collapseNode = useCallback(nodeId => {
+    const id = normalizeNodeId(nodeId);
+    const record = expansionRecordsRef.current[id];
+    if (!record) return;
+    const current = graphDataRef.current;
+    const protectedIds = new Set([
+      ...pinnedNodeIds,
+      ...investigationSet,
+      ...current.nodes.filter(n => hasNodeNote(n) || n.expanded).map(n => normalizeNodeId(n.id)),
+    ]);
+    const { graphData: next, removedNodeIds } = collapseExpansion(current, record, { protectedIds });
+    const removed = new Set(removedNodeIds);
+    const { [id]: dropped, ...remainingRecords } = expansionRecordsRef.current;
+    expansionRecordsRef.current = remainingRecords;
+    // Same direct flag mutation expandNode uses: re-creating the node object
+    // would detach it from the canvas simulation.
+    const node = current.nodes.find(n => isSameNodeId(n.id, id));
+    if (node) node.expanded = false;
+    if (removed.size > 0) {
+      setGraphData(next);
+      setHiddenNodeIds(prev => new Set([...prev].filter(x => !removed.has(x))));
+    }
+    setSnapshotNotice(text.collapsedNotice(removed.size));
+    trackEvent('graph_node_collapse', { node_count: removed.size });
+  }, [pinnedNodeIds, investigationSet, text]);
 
   const deleteNode = useCallback(
     nodeId => {
@@ -8677,6 +8749,17 @@ const SpanishCompanyNetworkGraph = ({
     if (hoverNodeRef.current) setHoverPosition(next);
   }, [containerEl]);
 
+  // Area selection: Shift-drag on EMPTY canvas. Reads the visible nodes
+  // through a ref so the window listeners never go stale.
+  const lassoNodesRef = useRef(filteredGraphData.nodes);
+  useEffect(() => { lassoNodesRef.current = filteredGraphData.nodes; }, [filteredGraphData.nodes]);
+  const getLassoNodes = useCallback(() => lassoNodesRef.current, []);
+  const addLassoSelection = useCallback(ids => {
+    setInvestigationSet(prev => new Set([...prev, ...ids.map(normalizeNodeId)]));
+    trackEvent('graph_lasso_select', { node_count: ids.length });
+  }, []);
+  const lasso = useLassoSelect({ containerEl, fgRef, getNodes: getLassoNodes, onSelect: addLassoSelection });
+
   const handleConnectionPointerDown = useCallback(event => {
     // Only the canvas participates; controls and inspector overlays keep their
     // own gestures. Resolve touch hits without relying on a preceding hover.
@@ -8688,8 +8771,10 @@ const SpanishCompanyNetworkGraph = ({
     const node = [...filteredGraphData.nodes].reverse().find(n =>
       Number.isFinite(n.x) && Number.isFinite(n.y)
       && Math.hypot(n.x - point.x, n.y - point.y) <= nodeSize);
+    // Shift on a node is the connection gesture; Shift on nothing is a lasso.
+    if (!node && lasso.begin(event)) return;
     connectionGesture.begin(node ? normalizeNodeId(node.id) : null, event);
-  }, [filteredGraphData.nodes, nodeSize, connectionGesture]);
+  }, [filteredGraphData.nodes, nodeSize, connectionGesture, lasso]);
 
   const handleConnectionPointerLeave = useCallback(() => {
     connectionGesture.cancel();
@@ -8711,6 +8796,7 @@ const SpanishCompanyNetworkGraph = ({
       companiesPerSearch,
       pinnedNodeIds: Array.from(pinnedNodeIds),
       hiddenNodeIds: Array.from(hiddenNodeIds),
+      expansions: expansionRecordsRef.current,
       activeNodeId,
       investigationSet: Array.from(investigationSet),
       showShareholders,
@@ -8855,6 +8941,8 @@ const SpanishCompanyNetworkGraph = ({
     setCompaniesPerSearch(Math.max(1, Math.round(finiteOr(view.companiesPerSearch, 25))));
     setPinnedNodeIds(new Set(Array.isArray(view.pinnedNodeIds) ? view.pinnedNodeIds.map(normalizeNodeId) : []));
     setHiddenNodeIds(new Set(Array.isArray(view.hiddenNodeIds) ? view.hiddenNodeIds.map(normalizeNodeId) : []));
+    expansionRecordsRef.current = view.expansions && typeof view.expansions === 'object' && !Array.isArray(view.expansions)
+      ? view.expansions : {};
     setActiveNodeId(view.activeNodeId ?? null);
     setInvestigationSet(new Set(Array.isArray(view.investigationSet) ? view.investigationSet : []));
     setShowShareholders(view.showShareholders !== false);
@@ -10562,7 +10650,26 @@ const SpanishCompanyNetworkGraph = ({
         onMouseMove={handleContainerPointerMove}
         onPointerDownCapture={handleConnectionPointerDown}
         onPointerLeave={handleConnectionPointerLeave}
+        onMouseDownCapture={lasso.onMouseDownCapture}
+        onClickCapture={lasso.onClickCapture}
       >
+        {lasso.rect && (
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              left: lasso.rect.left,
+              top: lasso.rect.top,
+              width: lasso.rect.width,
+              height: lasso.rect.height,
+              border: '1px dashed',
+              borderColor: 'primary.main',
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+              pointerEvents: 'none',
+              zIndex: 15,
+            }}
+          />
+        )}
         {shouldShowGraphEmptyState({
           nodeCount: graphData.nodes.length,
           isSearching,
@@ -11068,6 +11175,20 @@ const SpanishCompanyNetworkGraph = ({
               >
                 {launch.mode === 'over_cap' ? text.investigationOverCap : label}
               </Button>
+              {count > 0 && (
+                <>
+                  <Tooltip title={text.hideSelected(count)}>
+                    <IconButton size="small" onClick={hideSelectedNodes} aria-label={text.hideSelected(count)}>
+                      <VisibilityOffIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={text.clearSelection}>
+                    <IconButton size="small" onClick={() => setInvestigationSet(new Set())} aria-label={text.clearSelection}>
+                      <DeselectIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
             </Paper>
           );
         })()}
@@ -11504,6 +11625,22 @@ const SpanishCompanyNetworkGraph = ({
             </ListItemIcon>
             <ListItemText>{text.expandNode}</ListItemText>
           </MenuItem>
+          {contextNode?.expanded && expansionRecordsRef.current[normalizeNodeId(contextNode.id)] && (
+            <MenuItem
+              onClick={() =>
+                runContextAction('collapse', () => {
+                  const target = contextNode;
+                  closeNodeContextMenu();
+                  collapseNode(target.id);
+                })
+              }
+            >
+              <ListItemIcon>
+                <UnfoldLessIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>{text.collapseNode}</ListItemText>
+            </MenuItem>
+          )}
           {contextNode && contextNode.type !== 'officer' && contextNode.cargoCount > 0 && !contextNode.unified && (
             <MenuItem
               onClick={() => {
