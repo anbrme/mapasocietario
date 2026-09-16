@@ -1,327 +1,347 @@
-# DD interactive edition converges on the situation report; one AI story credit per report
+# One AI reading credit per paid DD; the paid HTML edition converges on the situation report
 
-**Date:** 2026-09-16
-**Repos:** `ncdata-bormes-impl` (generator, JSON handoff), `local-rag` workers
-`stripe-handler` (storage) and `ai-investigation` (credits + narration),
-`mapasocietario` (app, order page, export).
+**Date:** 2026-09-16 (rewritten the same day after review; the first draft's
+"chapter levels" and DD-layer attachment are dropped)
+**Repos:** `local-rag` workers `ai-investigation` (credits + narration) and
+`stripe-handler` (order page data, storage), `mapasocietario` (modal, order
+page, export), `ncdata-bormes-impl` (phase 2 only).
 **Status:** design agreed in chat 2026-09-16; spec for review before any plan.
 **Builds on:** report consolidation (2026-09-10), walkthrough v2–v4 and the
-sitrep polish round (2026-09-12..14), AI Investigation phases 1–2 (2026-06),
-DD story model (2026-08-23).
+sitrep polish round (2026-09-12..14), AI Investigation phases 1–2 (2026-06).
 
-## 1. The problem
+## 1. What this is
 
-There are two document builders for two documents:
+A due diligence purchase mints **one AI reading credit**. The credit is spent
+on **one situation report**: the author's own selection, notes and order, as
+today. The model reads that report and writes an ordered account of it:
+sequencing, joins between things the author noted and things they did not,
+and inconsistencies in the registry data across the selection (an appointment
+with no cessation, a same-day resignation and reappointment, one person on
+three of the selected boards). The author can edit, delete or adopt every
+paragraph. The file marks what was generated and what the author changed.
 
-| | Free situation report | Paid "edición interactiva" |
-|---|---|---|
-| Built by | `src/utils/investigationExport` in the browser, from the visible graph | `dd_html.py` on the server, from the DD story object |
-| Has | sticky map, chapters, registry-state slider, connection chapters, presenter mode, print, IBM Plex embedded | six questions, provenance chips, findings, timeline, screening, subsidies, contracts, system fonts, no map |
-| Received the storytelling work | yes | no |
+Two things this is **not**:
 
-Rendered today (FTI order of 2026-09-16), the paid edition shows a one-sentence
-claim above half a panel of empty space, repeats the same six sentences in the
-rail below, hides the executive synthesis behind "Leer completa", has no picture
-of the company, and ends in a flat contract list. The free file is the
-better-looking one. That inversion is the defect.
+- Not a second report type. There is one situation report; narration is an
+  action inside it. No "free" and "enhanced" editions.
+- Not a way of loading DD evidence into the author's report. The DD stays a
+  document about one company. Sanctions, media, subsidies, contracts and
+  financials live in the DD (PDF and its interactive edition), never in the
+  situation report. The model reads **only what the author sees in the
+  modal**; nothing is pulled server-side at narration time.
 
-A second, unrelated gap: the AI storytelling idea (deferred 2026-09-10) has no
-delivery mechanism. The DD purchase mints a two-day AI code; a narrated story
-needs longer than two days and a different unit of use.
+Phase 2, kept from the first draft in reduced form: the paid "edición
+interactiva" is rebuilt on the situation-report export engine from a JSON
+handoff, and the Python renderer retires. It shares no data path with phase 1.
 
 ## 2. Decisions
 
-1. **One document engine.** The server stops rendering HTML. It hands over the
-   story object it already builds, as JSON, stored beside the PDF. The app
-   builds the paid edition with the same export engine the free report uses.
-   `dd_html*.py` retires once the new door is live.
-2. **The purchase stays per company; the entitlement travels.** A DD purchase
-   buys evidence about one subject. Its chapter carries the paid layers
-   wherever that company appears in a buyer's report. Other chapters stay at
-   the free level. Every chapter is labelled with its level.
-3. **Three chapter levels**: `graph` (node with no profile), `registry` (the
-   free chapter), `diligence` (registry plus the purchased layers).
-4. **Two doors into the same builder.** The order page opens the app on the
-   subject with the order attached and the report modal open: the one-company
-   case, no authoring needed, download one click away. The app's own report
-   modal is the authoring door for a selection of several companies.
-5. **One AI story credit per paid DD, no expiry.** A credit attaches to one
-   situation report on first use; that report can be regenerated under a
-   per-credit spend cap. A new report needs a new credit. The two-day AI panel
-   window is unchanged.
-6. **The narrative covers the whole selection**, bought or not. It works from
-   author notes and registry data the app already holds. The author owns the
-   story; we own the data. Every generated paragraph is marked as generated.
-7. **The free boundary is stated in two places only**: one line in each
-   registry-level chapter's gaps block in the file, one caption line in the
-   modal footer. No locked rows.
+1. **Unit of use = one report.** The credit attaches to a report id on first
+   narration; that report may be regenerated under a per-credit spend cap.
+   A new report needs a new credit. No expiry.
+2. **The two-day AI panel is unchanged.** The credit is a second, independent
+   thing the same code carries.
+3. **The code is the credential.** Email alone is not: it is not a secret.
+   Email + code + Turnstile, as `/redeem` does today; the code binds the email
+   on first use.
+4. **Availability is shown automatically; spending is deliberate.** The modal
+   answers "do I have a credit?" on open, from the code stored in this browser.
+   Narration runs only on the author's click.
+5. **Prompt = the shown report.** Hidden blocks, hidden steps and unselected
+   nodes are not in the input. Structured rows (dates, roles, statuses) go to
+   the model as rows, and every number, date and proper name in the output is
+   validated against them.
+6. **Presets choose what to explain, never what to compute.** Shared people,
+   shortest path, appointment chronology and control changes are computed by
+   the app as they are today; a preset tells the model which of those facts to
+   read. Default is one press with the presets the selection supports.
+7. **Everything generated is a suggestion.** Editable in place, deletable,
+   restorable, adoptable as the author's own note. Provenance stays visible
+   after editing.
 
-Out of scope, recorded so they are not forgotten: a public-money block on free
-chapters (separate decision), lobbies data (no clean Spanish source), the
-Python renderer's deletion commit (follows live verification of door 1), and
-any change to the PDF.
+## 3. The credit (worker `ai-investigation`)
 
-## 3. Server: the report model handoff (`ncdata-bormes-impl`)
-
-`generate_company_artifacts` returns `{'pdf', 'json', 'resolved_name'}` instead
-of `{'pdf', 'html', ...}`. The JSON is built from the same run's data, never a
-second generation (the reason `dd_html.render` was called in-run holds).
-
-```json
-{
-  "schema": "dd-report-model/1",
-  "generated_at": "...",
-  "lang": "es",
-  "company": { "name", "identifier", "group_key", "province", "cnae", "last_seen",
-               "is_dissolved", "is_in_concurso", "name_changes", "sole_shareholder_declarations" },
-  "headline": { ... },
-  "layers": [ { "key", "question", "answer", "weight", "cites", "source" } ],
-  "readings": [ { "text", "materiality", "cites", "date" } ],
-  "gaps": [ { "what_is_missing", "document_that_closes_it", "why_it_matters" } ],
-  "opening": "...",
-  "external": { "lists": [...], "media": {...}, "footprint": {...}, "status": "..." },
-  "subsidies": { ... as data['_subsidies'] ... },
-  "contracts": { ... as data['_contracts'] ... },
-  "financials": { "text", "signals" } | null,
-  "registry": { ... claims registry, Annex E ... }
-}
-```
-
-- Serialisation: `json.dumps(model, default=str, ensure_ascii=False)`; a test
-  round-trips a real fixture story and asserts the top-level keys and that no
-  value is a Python object repr.
-- `borme_dd_async.py` stores the JSON with `kind=json` through the existing
-  `store-dd-report` call, alongside the PDF. During the transition it also
-  keeps storing `html` (one flag, `DD_HTML_EDITION`, default on until door 1
-  is verified live, then off, then the code goes).
-- `dd_story.py`, `dd_readings`, external, subsidies and contracts modules are
-  untouched. `dd_html*.py` and `tests_html_*.py` are deleted in the retirement
-  commit, not before.
-
-## 4. Storage (`stripe-handler`)
-
-- `SPEC` in the store handler gains `json: { suffix: '.json', contentType:
-  'application/json; charset=utf-8', maxBytes: 5 MiB }`. Key
-  `dd_reports/<sessionId>.json`.
-- `handleGetDDReport` accepts `type=json`. **No 7-day expiry for `json`**: the
-  credit has no expiry and a late narration must still find the purchased
-  company's layers. The PDF and HTML keep their expiry. The response carries
-  the same CORS treatment the HTML path has (the app fetches it in-browser).
-- Session id remains the download credential, as it is for the PDF today.
-
-## 5. App: attaching an order to a report (`mapasocietario`)
-
-### 5.1 Deep link
-
-`/app?c=<group_key>|<name>&order=<sessionId>&sitrep=1`, parsed next to the
-existing `parseReturnParams`. `order` is validated with the same session-id
-regex the worker uses. On load the app:
-
-1. seeds the company as the return path already does (`adoptSeededCompany`);
-2. fetches `get-dd-report?sessionId=&type=json`; on 404/410/network the report
-   opens without layers and shows nothing about it (the free report is
-   complete on its own);
-3. keeps the model in graph state `ddModels: Map<group_key, model>` and in the
-   snapshot `context.ddModels` so a restored session keeps its layers;
-4. with `sitrep=1`, opens the report modal once step data has loaded.
-
-The order page's second button becomes *Abrir edición interactiva* / *Open
-interactive edition* and links to that URL. The HTML download stays as a
-fallback button only while the transition flag is on.
-
-### 5.2 Chapter level and the diligence layer
-
-- `draftWalkthrough` receives `ddModels`. A company step whose `group_key`
-  matches gets `source: 'diligence'` and `evidence.diligence`:
-
-```js
-{
-  answers: [{ key, question, answer, weight, source }],   // six, ordered by LAYER_KEYS
-  findings: [{ text, materiality, date }],                 // readings
-  gaps: [{ missing, closesWith, why }],
-  screening: { lists: [{ name, version, result }], media: { status, events: [...] }, footprint },
-  publicMoney: { subsidies: { count, amountShown, amountCovers } | null,
-                 contracts: { awards, buyers, singleBidShare, rows: top 8 } | null },
-  financials: { signals } | null,
-  generatedAt, reference
-}
-```
-
-  The mapping is a pure function `diligenceLayer(model, lang)` with its own
-  tests. `walkthroughCopy.sources` gains `diligence` ("Due diligence" in both
-  languages). Match key is `group_key`; a name fold via the existing
-  normaliser is the fallback when the model has no group key.
-- The free `companyEvidence` result is unchanged. Where both exist, the
-  diligence answers take the chapter's headline slot and the registry board and
-  filings follow, so a bought chapter reads as one account, not two.
-
-### 5.3 Rendering
-
-- `documentSections.evidenceBlockFor` gains `diligenceBlock(s, t, wt)`:
-  six Q/A rows (answer text, weight as room, not as a badge), then findings
-  with materiality, then screening rows, then public money as a short grid,
-  then financial signals. Full contract rows and the claims registry go to the
-  annexes, not the chapter.
-- The cover facts strip and the summary read from the model when the report
-  has exactly one company and it is at the diligence level, so door 1 opens
-  on a complete first screen.
-- The in-app modal's evidence accordion shows the same block through the
-  shared renderers.
-- Print, presenter, slider and the no-script fallback are unchanged; the
-  diligence block is static content inside a chapter.
-
-### 5.4 Free boundary lines
-
-- `stepEvidence.companyEvidence` appends to `unseen`, for registry-level
-  chapters only: *"Sin verificaciones externas ni análisis de IA para esta
-  sociedad; el informe de due diligence las incluye."* / EN equivalent. Copy in
-  `walkthroughCopy`.
-- Modal footer caption gains one sentence with a link that opens the DD
-  checkout for the primary subject (`onBuy` prop, same seam the AI gate uses).
-
-## 6. Credits and narration (`ai-investigation` worker)
-
-### 6.1 Schema
+### 3.1 Schema
 
 Migration `0002_story_credits.sql`:
 
 ```sql
 ALTER TABLE entitlements ADD COLUMN story_credits INTEGER NOT NULL DEFAULT 1;
 CREATE TABLE IF NOT EXISTS story_grants (
-  code        TEXT NOT NULL,
-  report_id   TEXT NOT NULL,
-  granted_at  INTEGER NOT NULL,
+  code         TEXT NOT NULL,
+  report_id    TEXT NOT NULL,
+  granted_at   INTEGER NOT NULL,
   spend_micros INTEGER NOT NULL DEFAULT 0,
+  runs         INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (code, report_id)
 );
 ```
 
-The schema-drift guard (`npm run check:schema`) and its two test mirrors are
-updated in the same commit. Existing rows get one credit by the default, which
-is the intended grandfathering.
+Existing codes get one credit through the default; that is the intended
+grandfathering. `npm run check:schema` and its two test mirrors are updated in
+the same commit. The mint in `stripe-handler` is unchanged (the default does
+the work).
 
-### 6.2 `POST /narrate`
+### 3.2 `POST /credits`
 
-Body: `{ email, code, turnstileToken, reportId, lang, subject, opening,
-chapters: [{ key, kind, title, level, authorNote, evidence }], connections,
-timeline }`. Chapters are capped at `SELECTION_CAP` (12) plus connections.
+Body `{ code }`. Returns `{ credits, grants: [{ report_id, runs,
+spend_left }] }` for an active code; `404` otherwise. No Turnstile: it reveals
+only counts for a code the caller already holds, and it is rate-limited by
+the existing per-code minute window. This is what the modal calls on open.
 
-Checks, in order: Turnstile; code canonical and `status = 'active'` (the
-window `expires_at` is **not** checked); email equals `bound_email`, or binds
-it when unbound (same rule as `/redeem`); rate limit 5/min per code (reuse);
-then the grant rule:
+### 3.3 `POST /narrate`
 
-- grant exists for `(code, reportId)` → allowed while `spend_micros <
-  STORY_SPEND_CAP_MICROS`;
-- no grant and `story_credits > 0` → decrement and insert the grant in one
-  D1 batch, then allowed;
+Body: `{ email, code, turnstileToken, reportId, lang, presets: [..],
+report: { subject, opening, chapters: [...], connections: [...], timeline,
+counts } }`. Chapters capped at `SELECTION_CAP` (12) plus connection steps.
+
+Checks, in order: Turnstile; code canonical and `status = 'active'`
+(`expires_at` is **not** checked); email equals `bound_email`, or binds it
+when unbound; rate limit 5/min per code (reuse); grant rule:
+
+- a grant exists for `(code, reportId)` → allowed while
+  `spend_micros < STORY_SPEND_CAP_MICROS`;
+- no grant and `story_credits > 0` → decrement + insert in one D1 batch;
 - otherwise `402 { reason: 'no_credit' | 'spend_cap' }`.
 
-The call: one OpenRouter request (`usage: { include: true }`), model
-`STORY_MODEL` env with a default, prompt built by a pure `buildStoryPrompt`
-that names the framing (the author's notes are the argument; registry facts
-are the evidence; write nothing that is not in the input). Output JSON:
+One OpenRouter call (`usage: { include: true }`), model `STORY_MODEL` with a
+default, `max_tokens` sized from the chapter count (the ACCIONA lesson: an
+uncapped response truncates mid-JSON). Cost is written to the grant and to
+`usage`. `STORY_SPEND_CAP_MICROS` starts at 300000 (EUR 0.30): roughly ten
+regenerations of a 12-chapter report on a sonnet-class model. Measure on the
+first live run and adjust.
+
+Turnstile on every narration is deliberate: a bearer code with no expiry and
+a spend cap is a small but real target.
+
+## 4. The narration engine
+
+### 4.1 Input
+
+The client builds the payload from the report as displayed, through one pure
+function `buildNarrationInput(doc, walkthrough, edits, graphData)` with its own
+tests. It carries, per visible chapter: key, kind, title, the author's note
+and flag, the shown evidence blocks as **rows** (board rows with name, role,
+since, until, status; filings with date and type; findings with text, class,
+date; ownership rows; seats), the step's moment; plus the visible connections
+(hops as rows), the chronology stops, the opening, and `counts`. Hidden steps,
+hidden blocks and nodes outside the selection are absent. The payload is
+what the file would export, minus styling.
+
+### 4.2 Presets
+
+Each preset is a named instruction plus a deterministic **support test** run
+client-side on the payload. Unsupported presets are not sent and are shown
+disabled with the reason.
+
+| key | Reading it produces | Supported when |
+|---|---|---|
+| `sequence` | the opening and one paragraph per chapter, in the author's order | always |
+| `shared_people` | who sits in more than one selected company, with dates and whether the seats overlap in time | ≥1 person step or connector with ≥2 company seats |
+| `path` | the chain between the first and last selected companies, hop by hop | a connection chapter of kind chain exists |
+| `chronology` | the order of appointments, cessations and structural events across the selection, naming gaps (seat with no cessation, same-day cease and appoint) | ≥2 dated steps |
+| `control` | sole-shareholder declarations and ownership rows read together: who controls what, and when that changed | ≥1 ownership row or declaration |
+
+Five is the ceiling. `sequence` is always on and cannot be unticked; it is
+the credit's core. Presets are stored in `edits.narration.presets` so a
+regeneration reuses them.
+
+### 4.3 Output
 
 ```json
-{ "opening": "...", "chapters": [{ "key": "...", "text": "..." }],
-  "joins": [{ "text": "...", "nodeIds": [] }], "gaps": ["..."] }
+{ "opening": "...",
+  "chapters": [{ "key": "...", "text": "..." }],
+  "readings": [{ "preset": "shared_people", "title": "...", "text": "...",
+                 "anchors": ["step:<nodeId>", "conn:<key>"] }],
+  "gaps": ["..."] }
 ```
 
-Validation before returning: every number and date in a paragraph must appear
-in that chapter's input; every proper name must match a node name or an
-evidence row. A paragraph that fails is dropped and counted in
-`dropped_paragraphs`; the response is never rewritten server-side. Cost is
-recorded on the grant and in `usage` (existing table).
+Validation before returning: every date and number in a paragraph must
+appear in that paragraph's input rows; every proper name must match a node
+name, an evidence row or the author's note. A failing paragraph is dropped
+and counted; the server never rewrites. The prompt states the framing: the
+author's notes are the argument, the rows are the evidence, write nothing
+that is not in the input, and name an inconsistency only when two rows show
+it.
 
-`STORY_SPEND_CAP_MICROS` starts at 300000 (EUR 0.30). A 12-chapter narration
-should land near a few cents on a sonnet-class model, so the cap allows
-roughly ten regenerations of one report; measure on the first live run and
-adjust.
+Readings are placed by their anchors: `path` after the connection chapter,
+`shared_people` after the last person chapter it names, `chronology` under
+the chronology section, `control` after the chapter it concerns. A reading
+with no resolvable anchor goes to a "Lecturas" section before the annexes.
 
-### 6.3 Client
+### 4.4 Storage on the client
 
-- `reportId`: a UUID minted in `walkthroughEdits.reportId` the first time the
-  modal is opened for a snapshot, persisted with the snapshot. It survives
-  restore and export/import of a session.
-- `walkthroughEdits.narration = { reportId, generatedAt, model, opening,
-  chapters: { [stepKey]: text }, joins, gaps, dropped }`. `applyWalkthroughEdits`
-  overlays `step.aiText` from it. Author notes stay the author's; `aiText` is
-  a separate field.
-- Modal footer button *Redactar con IA* / *Write with AI*. States: no
-  credentials known → popover with email, code, Turnstile and the sentence
-  "Cada informe de due diligence incluye una redacción con IA"; code known
-  (from `/code-for-session` when the app was opened with `order=`, or from
-  the stored AI token's code) → prefilled; after a narration → *Volver a
-  redactar* and *Quitar redacción*. Errors are shown as text in the popover
-  (`no_credit` names the DD checkout; `spend_cap` says regeneration for this
-  report is exhausted).
-- Generated text is editable per chapter in the modal (edits are stored in
-  `narration.chapters`), and deletable per chapter.
+```js
+edits.narration = {
+  reportId, generatedAt, model, presets, runs,
+  opening: { text, state },                 // state: 'ai' | 'edited' | 'deleted' | 'adopted'
+  chapters: { [stepKey]: { text, original, state } },
+  readings: [{ preset, title, text, original, state, anchors }],
+  gaps: [...], dropped: n
+}
+```
 
-### 6.4 In the file
+`reportId` is a UUID minted in `edits.reportId` the first time the modal
+opens for a snapshot and persisted with it (autosave, export/import of a
+session). `applyWalkthroughEdits` overlays `step.reading` from
+`narration.chapters`. Author notes stay the author's field.
 
-Each `aiText` paragraph renders in a distinct style with an eyebrow
-*Redacción asistida* / *AI-assisted text*. The cover carries one line when any
-narration is present: the text was generated from the author's notes and the
-report's data at `generatedAt`; the author is responsible for the account.
-This is the settled framing, stated as what the document is, not as a caveat.
+## 5. UX
+
+### 5.1 Where the buyer learns they have a credit: the order page
+
+Beside the code block, one line and one button:
+
+> *Este informe incluye una lectura con IA de tu informe de situación:
+> selecciona empresas y personas en el mapa, escribe tus notas y la IA las
+> ordena y explica.* **Abrir el mapa de <empresa>**
+
+The button opens `/app?c=<gk>|<name>&sitrep=1`. The code is already stored
+locally by the existing redeem flow on that page; the app needs no session
+id. The confirmation email mentions the credit in one sentence (MailerSend
+template text, no new variable).
+
+### 5.2 The modal status line
+
+Directly under the modal title, always present, one of three states:
+
+- **Credit known in this browser** (a stored code, `/credits` says ≥1 or a
+  grant for this `reportId`): *"Lectura con IA: 1 disponible"* — or *"esta
+  lectura puede regenerarse"* when a grant exists — and the **Redactar**
+  button beside it.
+- **No code known**: *"¿Tienes un código de un informe de due diligence?"*
+  as a link. It opens the same email + code + Turnstile form the AI panel
+  uses, prefilled with the stored email if any. Success stores the code the
+  way `/redeem` does today and re-renders the line.
+- **Code known, no credit and no grant**: *"Cada informe de due diligence
+  incluye una lectura con IA."* with a link to the DD checkout for the
+  primary subject (`onBuy` prop, the seam the AI gate already uses).
+
+One line, no card, no badge. `/credits` failing or timing out shows the
+second state; it never blocks the modal.
+
+### 5.3 Redactar
+
+Click → a small dialog, not a form: one sentence saying what will happen
+("la IA leerá los N capítulos y M conexiones visibles y propondrá una
+lectura; podrás editarla o descartarla"), the **Redactar** button, and an
+**Ajustar** disclosure. Ajustar reveals the five presets as checkboxes, one
+line each, unsupported ones disabled with the reason, `sequence` ticked and
+locked. First narration on a report spends the credit; the dialog says so in
+the same sentence when it will.
+
+While running: the button shows progress; the modal stays usable. On
+success the chapters gain their reading paragraphs and the status line reads
+*"Lectura generada · N párrafos · X descartados por no coincidir con los
+datos"* when `dropped > 0`. On `402 no_credit` the line becomes state 3; on
+`spend_cap` it says regeneration for this report is exhausted.
+
+### 5.4 Editing the reading
+
+Each generated paragraph in the modal has an eyebrow **Lectura asistida**
+and three actions: edit in place (textarea, saves on blur), delete, and
+**Adoptar como nota** (moves the text into the author's note for that step
+and removes the reading). An edited paragraph's eyebrow becomes **Lectura
+asistida · editada**; **Restaurar** returns the original. Deleted paragraphs
+leave no trace in the file. The author's own note is never touched by a
+regeneration; only `state: 'ai'` paragraphs are replaced, edited and adopted
+ones are kept.
+
+### 5.5 In the file
+
+Reading paragraphs render in a distinct style with the same eyebrow, and
+edited ones keep "· editada". The cover carries one line when any reading is
+present: generated from the author's notes and the report's data on
+`generatedAt`, revised by the author; the author is responsible for the
+account. That sentence is what the document is, not a caveat. The no-script
+fallback, print, presenter and slider are unchanged; readings are static
+paragraphs inside chapters.
+
+### 5.6 What is deliberately absent
+
+No locked rows on chapters, no second toolbar button, no badge on the report
+button for credits, no automatic narration on open, no chat inside the
+report (the AI panel is the chat).
+
+## 6. Phase 2: the paid HTML edition converges
+
+Unchanged in intent from the first draft, reduced in scope:
+
+- `generate_company_artifacts` returns `json` (schema `dd-report-model/1`:
+  company, headline, layers, readings, gaps, opening, external, subsidies,
+  contracts, financials, registry) instead of `html`; `json.dumps(default=str)`
+  with a round-trip test. `borme_dd_async` stores it as `kind=json`.
+- `stripe-handler`: `SPEC.json`, `type=json` download, same 7-day expiry as
+  the PDF (the no-expiry rule of the first draft went with the attachment
+  idea).
+- The order page's second button opens `/app?c=<gk>|<name>&order=<sessionId>&sitrep=1`.
+  With `order=`, the app fetches the model, renders **that one company's**
+  report with a `diligence` evidence block (six answers, findings, screening,
+  public money, financial signals; full contract rows and the claims registry
+  in the annexes), cover facts from the headline, the map from the loaded
+  network. The model lives in that session's snapshot only; it is not matched
+  into other reports.
+- The situation report opened from a DD order is still the author's: they
+  may add nodes and notes and spend a credit on it. The diligence block is
+  hideable like any block, and hidden blocks do not reach the model (§2.5).
+- Flag `DD_HTML_EDITION` keeps both editions stored until door 1 is verified
+  live on a real order; then off; then the commit that deletes `dd_html*.py`
+  and `tests_html_*.py`.
 
 ## 7. Copy and measurement
 
-- Six landing surfaces, DD page, pricing, checkout: the AI line becomes
-  "2-day AI investigation and one AI-written situation report". No claim of
-  PEP screening anywhere (unchanged rule).
-- GA4: `narrate_requested`, `narrate_done` (chapters, dropped), `narrate_failed`
-  (reason), `dd_layers_attached`, and the order-page `open_interactive_edition`
-  click. Register `reason` and `level` as custom dimensions the day the
-  events ship (registration is not retroactive).
-- The number to watch after door 1: share of orders that open the interactive
-  edition, against today's HTML download share (readable from CF logs on
-  `type=html`).
+- Landing surfaces, DD page, pricing, checkout: the AI line becomes "2-day
+  AI investigation and one AI reading of your situation report". No PEP
+  screening claim anywhere (unchanged rule).
+- GA4: `reading_status` (state on modal open), `reading_requested` (presets,
+  chapters), `reading_done` (paragraphs, dropped, runs), `reading_failed`
+  (reason), `reading_edited`, `reading_adopted`, `order_open_map`. Register
+  `reason`, `state` and `presets` as custom dimensions the day the events
+  ship.
+- The number to watch: share of DD orders whose credit is spent within 7
+  days, and the edited-or-adopted share of generated paragraphs (a high
+  delete rate means the prompt is wrong, a high adopt rate means it is
+  right).
 
 ## 8. Testing
 
-- `ncdata-bormes-impl`: `tests_report_model.py` round-trips a real story
-  fixture; the async test asserts `kind=json` is stored and that a JSON
-  failure never blocks the PDF.
-- `stripe-handler`: store and get for `type=json`, including the no-expiry
-  rule and an unknown `kind` still refused.
-- `ai-investigation`: grant rule table (first use, reuse under cap, cap hit,
-  no credit, revoked code, unbound then bound email), validator drops, D1
-  batch atomicity with the existing mock.
-- `mapasocietario`: `diligenceLayer` mapping, chapter level assignment,
-  edits overlay of `aiText`, `reportId` persistence, deep-link parsing,
-  export rendering of the diligence block and the marked paragraphs, the
-  free-boundary line present only on registry-level chapters. Live check with
-  `wrangler pages dev` on a stored fixture JSON before the order page button
-  moves.
+- Worker: grant rule table (first use, reuse under cap, cap hit, no credit,
+  revoked, unbound then bound email, wrong email), `/credits` shapes,
+  validator drops (date not in rows, name not in nodes, number not in rows),
+  `max_tokens` sizing, D1 batch atomicity with the existing mock.
+- App: `buildNarrationInput` (hidden step and hidden block excluded, rows
+  shaped, cap), preset support tests, `applyWalkthroughEdits` overlay with
+  each `state`, `reportId` persistence across autosave restore and session
+  import, status-line state machine, export rendering of readings and the
+  cover line, no-script fallback unchanged.
+- Live: one real narration on a 3-company selection in `wrangler pages dev`
+  against the deployed worker before the order page line ships; a
+  hand-labelled fixture of 20 payload/paragraph pairs for the validator (the
+  triage lesson: a small labelled set finds what live runs cannot).
 
-## 9. Rollout, each phase shippable on its own
+## 9. Rollout
 
-- **A. Plumbing.** JSON handoff + `kind=json` storage + `type=json` download.
-  No UI change. Both editions stored.
-- **B. Door 1.** Deep link, `ddModels`, chapter level, diligence block, free
-  boundary lines, order page button. Live-verify on a real order, then flip
-  `DD_HTML_EDITION` off, then the retirement commit deletes `dd_html*.py`.
-- **C. Credits.** Migration, `/narrate`, modal button, edits overlay, marked
-  paragraphs, copy and GA4. Gate is the same as AI Investigation phase 2:
-  dedicated OpenRouter key with a dashboard ceiling, `wrangler secret put`,
-  worker deploy. Phase C is the moment that activation finally happens.
+- **Phase 1a — activation.** Dedicated OpenRouter key with a dashboard
+  ceiling, `wrangler secret put OPENROUTER_API_KEY`, worker deploy. This has
+  been pending since June and gates everything below.
+- **Phase 1b — credits and reading.** Migration, `/credits`, `/narrate`,
+  `buildNarrationInput`, presets, modal status line + redeem + Redactar
+  dialog + editing, export rendering, order page line, copy, GA4.
+- **Phase 2 — convergence.** JSON handoff, storage, door 1, flag flip,
+  renderer retirement.
 
 ## 10. Risks and open points
 
-- The story object may carry values that only serialise via `default=str`
-  (dates, Decimals); the round-trip test is there to catch a repr leaking
-  into the UI.
-- Door 1 depends on the app loading the subject by `group_key|name`; a DD
-  ordered on a name the loader cannot resolve opens an empty graph. The order
-  page keeps the PDF as the primary deliverable, so this degrades, it does
-  not block.
-- Session id as the JSON credential has the same exposure as the PDF link
-  today; the no-expiry rule widens the window in time only. Acceptable,
-  recorded.
+- The validator will drop paragraphs on the first live runs. Tune the
+  prompt and the row shapes, not the validator.
 - `reportId` lives in the browser snapshot; a buyer who clears storage and
-  rebuilds the same report spends a second credit. Import/export of the
-  session carries it, which is the documented remedy.
-- The narration validator is deliberately strict; expect dropped paragraphs
-  on the first live runs and tune the prompt, not the validator.
+  rebuilds the same report spends a second credit. Session export/import
+  carries it; that is the documented remedy.
+- A buyer on a second device has to fetch the code from the order page
+  linked in their email. Acceptable; no accounts remains the rule.
+- Turnstile on each narration adds a widget to the modal; if it proves to
+  repel, the fallback is Turnstile on redeem only plus a per-code daily
+  narration cap.
+- Phase 2's door 1 depends on the loader resolving `group_key|name`; an
+  unresolvable subject opens an empty graph. The PDF stays the primary
+  deliverable, so this degrades, it does not block.
