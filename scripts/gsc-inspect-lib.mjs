@@ -110,6 +110,49 @@ export const TECHNICAL_FAULT_STATES = new Set([
   'noindex', 'blocked_by_robots', 'not_found', 'redirect', 'server_error',
 ]);
 
+/**
+ * States grouped into the bands that actually hold still between two calls.
+ *
+ * Measured 2026-09-16: the same 25 URLs inspected twice, two minutes apart,
+ * came back with SIX of them reclassified — and in both directions ("Discovered"
+ * to "Unknown to Google" and back). Nothing about those pages changed in two
+ * minutes; the API simply does not distinguish the two pre-crawl states
+ * reliably, presumably answering from whichever shard serves the call.
+ *
+ * Reporting that churn as movement is worse than useless: it manufactures a
+ * trend out of noise, which is exactly what this tool exists to prevent. So
+ * every comparison and diagnosis below runs on BANDS, which change only when
+ * something real happens (Google fetched the page; Google indexed it; Google
+ * folded it into another URL). The granular state stays in the detail table,
+ * where it is data rather than a claim about change.
+ */
+export const BAND_OF_STATE = {
+  indexed: 'indexed',
+  unknown_to_google: 'not_crawled',
+  discovered_not_indexed: 'not_crawled',
+  crawled_not_indexed: 'crawled_declined',
+  duplicate: 'folded',
+  alternate_canonical: 'folded',
+  noindex: 'fault',
+  blocked_by_robots: 'fault',
+  not_found: 'fault',
+  redirect: 'fault',
+  server_error: 'fault',
+  unclassified: 'unclassified',
+  no_result: 'unclassified',
+};
+
+export const BAND_LABELS = {
+  indexed: 'Indexed',
+  not_crawled: 'Not crawled yet (unknown or discovered)',
+  crawled_declined: 'Crawled and declined',
+  folded: 'Folded into another URL',
+  fault: 'Technically excluded',
+  unclassified: 'Unclassified',
+};
+
+export const bandOf = (state) => BAND_OF_STATE[state] || 'unclassified';
+
 export const STATE_LABELS = {
   indexed: 'Indexed',
   unknown_to_google: 'Unknown to Google (never discovered)',
@@ -194,7 +237,12 @@ export function inspectionRow(url, payload) {
  */
 export function summarize(rows, { since = null } = {}) {
   const byState = {};
-  for (const row of rows) byState[row.state] = (byState[row.state] || 0) + 1;
+  const byBand = {};
+  for (const row of rows) {
+    byState[row.state] = (byState[row.state] || 0) + 1;
+    const band = bandOf(row.state);
+    byBand[band] = (byBand[band] || 0) + 1;
+  }
 
   const crawled = rows.filter((row) => row.lastCrawlTime);
   const crawledSince = since
@@ -204,6 +252,7 @@ export function summarize(rows, { since = null } = {}) {
   return {
     total: rows.length,
     byState,
+    byBand,
     indexed: byState.indexed || 0,
     neverCrawled: rows.length - crawled.length,
     crawled: crawled.length,
@@ -264,9 +313,9 @@ export function diagnose(summary) {
   }
 
   const indexedShare = share(summary.indexed);
-  const unseen = (summary.byState.unknown_to_google || 0) + (summary.byState.discovered_not_indexed || 0);
-  const declined = summary.byState.crawled_not_indexed || 0;
-  const duplicated = (summary.byState.duplicate || 0) + (summary.byState.alternate_canonical || 0);
+  const unseen = summary.byBand?.not_crawled || 0;
+  const declined = summary.byBand?.crawled_declined || 0;
+  const duplicated = summary.byBand?.folded || 0;
 
   if (indexedShare >= 0.5) {
     out.push({ level: 'info', text: `${pct(summary.indexed)} of the sample is indexed — this batch is landing.` });
@@ -338,12 +387,19 @@ export function compare(current, previous) {
     };
   }
 
+  // Movement is counted between BANDS. A URL that merely flipped between
+  // "unknown" and "discovered" has not moved — see BAND_OF_STATE for the
+  // measurement that forced this.
   const deltas = {};
+  let churn = 0;
   for (const row of shared) {
-    const previousState = before.get(row.url).state;
-    if (previousState === row.state) continue;
-    deltas[row.state] = (deltas[row.state] || 0) + 1;
-    deltas[previousState] = (deltas[previousState] || 0) - 1;
+    const previousRow = before.get(row.url);
+    if (previousRow.state === row.state) continue;
+    const from = bandOf(previousRow.state);
+    const to = bandOf(row.state);
+    if (from === to) { churn += 1; continue; }
+    deltas[to] = (deltas[to] || 0) + 1;
+    deltas[from] = (deltas[from] || 0) - 1;
   }
   for (const [key, value] of Object.entries(deltas)) if (value === 0) delete deltas[key];
 
@@ -353,6 +409,14 @@ export function compare(current, previous) {
     shared: shared.length,
     drift: (current.rows || []).length - shared.length,
     deltas,
+    // URLs reclassified WITHIN a band: reported so the number is visible, never
+    // as movement.
+    churn,
+    // The first thing that will move on a batch stuck in discovery, and the one
+    // to watch before indexing: Google actually fetched the page.
+    newlyCrawled: shared
+      .filter((row) => row.lastCrawlTime && !before.get(row.url).lastCrawlTime)
+      .map((row) => row.url),
     newlyIndexed: shared
       .filter((row) => row.state === 'indexed' && before.get(row.url).state !== 'indexed')
       .map((row) => row.url),
@@ -373,14 +437,25 @@ export function toMarkdown({ meta, summary, rows, comparison = null }) {
   lines.push(`${summary.total} URL(s), language \`${meta.language}\`, seed \`${meta.seed}\`, run ${meta.ranAt}.`);
   lines.push('');
 
-  lines.push('| State | Pages | Share |');
+  const pct = (count) => (summary.total ? `${Math.round((count / summary.total) * 100)}%` : '—');
+
+  lines.push('| Band | Pages | Share |');
   lines.push('| --- | ---: | ---: |');
+  Object.entries(summary.byBand || {})
+    .sort((a, b) => b[1] - a[1])
+    .forEach(([key, count]) => lines.push(`| ${BAND_LABELS[key] || key} | ${count} | ${pct(count)} |`));
+  lines.push('');
+  lines.push('<details><summary>Raw coverage states</summary>');
+  lines.push('');
+  lines.push('| State | Pages |');
+  lines.push('| --- | ---: |');
   Object.entries(summary.byState)
     .sort((a, b) => b[1] - a[1])
-    .forEach(([key, count]) => {
-      const share = summary.total ? `${Math.round((count / summary.total) * 100)}%` : '—';
-      lines.push(`| ${STATE_LABELS[key] || key} | ${count} | ${share} |`);
-    });
+    .forEach(([key, count]) => lines.push(`| ${STATE_LABELS[key] || key} | ${count} |`));
+  lines.push('');
+  lines.push('Unknown and Discovered are not stable between two calls to the API — '
+    + 'the split between them is noise, their sum is not.');
+  lines.push('</details>');
   lines.push('');
   lines.push(`Crawled at least once: ${summary.crawled}/${summary.total}`
     + (summary.since ? ` · since ${summary.since}: ${summary.crawledSince}` : '')
@@ -421,10 +496,18 @@ export function toMarkdown({ meta, summary, rows, comparison = null }) {
     lines.push(`Over the ${comparison.shared} URL(s) both runs share`
       + (comparison.drift ? ` (${comparison.drift} drifted out of the sample).` : '.'));
     const deltas = Object.entries(comparison.deltas);
-    if (!deltas.length) lines.push('- No state changed.');
+    if (!deltas.length) lines.push('- Nothing moved between bands.');
     deltas.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).forEach(([key, delta]) => {
-      lines.push(`- ${STATE_LABELS[key] || key}: ${delta > 0 ? '+' : ''}${delta}`);
+      lines.push(`- ${BAND_LABELS[key] || key}: ${delta > 0 ? '+' : ''}${delta}`);
     });
+    if (comparison.churn) {
+      lines.push(`- (${comparison.churn} URL(s) were reclassified within the same band — `
+        + 'API noise, not movement.)');
+    }
+    if (comparison.newlyCrawled.length) {
+      lines.push(`- **Newly crawled: ${comparison.newlyCrawled.length}** — the first real sign of life.`);
+      comparison.newlyCrawled.slice(0, 10).forEach((url) => lines.push(`  - ${url}`));
+    }
     if (comparison.newlyIndexed.length) {
       lines.push(`- Newly indexed: ${comparison.newlyIndexed.length}`);
       comparison.newlyIndexed.slice(0, 10).forEach((url) => lines.push(`  - ${url}`));

@@ -33,6 +33,7 @@ export const LANDING_COPY = {
     },
     quickLinks: {
       listed: 'Browse IBEX 35 companies',
+      directory: 'Company directory by province',
       dashboard: 'Stats dashboard',
       study: 'Data studies',
     },
@@ -294,6 +295,7 @@ export const LANDING_COPY = {
     },
     quickLinks: {
       listed: 'Ver empresas del IBEX 35',
+      directory: 'Directorio de empresas por provincia',
       dashboard: 'Panel estadístico',
       study: 'Estudios de datos',
     },
