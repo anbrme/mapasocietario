@@ -18,7 +18,8 @@ import { renderConfirmationBlock } from './_confirmation.js';
 import { liveAttestationFor } from './_attestation.js';
 import { buildTrademarksBlock } from './_trademarks.js';
 import { buildAwardsBlock } from './_awards.js';
-import { findPromotedCompanyBySlug, repointStaleSlug } from './_demand.js';
+import { findPromotedCompanyBySlug, listPromotedSiblings, repointStaleSlug } from './_demand.js';
+import { renderSiblingsBlock } from './_siblings.js';
 import { companyPageHeaders, notFoundPageHeaders } from './_page_headers.js';
 // The canonical position classifier shared with the graph + officer-capping
 // service (backed by src/data/terms.json, swept by test/position-categories.test.mjs).
@@ -410,6 +411,12 @@ const T = {
     monitorOk: 'Revisa tu correo: te hemos enviado un enlace para confirmar el aviso.',
     monitorBadEmail: 'Introduce una dirección de correo válida.',
     monitorFail: 'No hemos podido registrar el aviso. Vuelve a intentarlo en un momento.',
+    siblingsTitle: (province) => `Otras empresas en ${province}`,
+    siblingsAll: (province) => `Ver todas las empresas en ${province} →`,
+    // Every company page carries this link, which is what lifts /directorio out
+    // of the orphan state the 2026-09-16 crawl sample diagnosed: the hubs that
+    // list the promoted set were reachable only from a sitemap.
+    footerDirectory: '<a href="/directorio">Directorio de empresas por provincia</a>',
     footer: (d) =>
       `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial.`,
     // Held apart from the provenance sentence above so a page carrying a live
@@ -707,6 +714,11 @@ const T = {
     footer: (d) =>
       `Data sourced from the Spanish Official Commercial Registry Gazette (BORME). Registry last updated: ${d}. Mapa Societario is not an official registry.`,
     footerVerifyInvite: '<a href="/verificacion?lang=en">Is this your company? Verify its data.</a>',
+    siblingsTitle: (province) => `Other companies in ${province}`,
+    siblingsAll: (province) => `See every company in ${province} →`,
+    // The hub itself is Spanish-only (the query it targets is), but the link
+    // belongs on both language variants: it is a crawl edge first.
+    footerDirectory: '<a href="/directorio">Company directory by province</a>',
     renamedTo: (href, name) =>
       `This company was renamed to <a href="${href}">${name}</a>. See the updated profile.`,
     priorNames: (names) => `Former names: ${names}.`,
@@ -1438,6 +1450,9 @@ const STYLE = `<style>
   .history-batch{margin:8px 0 0 14px}
   .history-batch>summary{font-weight:600;margin-bottom:10px}
   .more{font-size:13px;color:var(--mut);margin:8px 2px 0}
+  .siblings{columns:2;column-gap:28px;list-style:none;padding:0;margin:10px 0 0;font-size:14px}
+  .siblings li{break-inside:avoid;margin:0 0 6px}
+  @media (max-width:640px){.siblings{columns:1}}
   .boe-list{list-style:none;padding:0;margin:0}
   .boe-list li{padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
   .boe-list li:last-child{border-bottom:0}
@@ -1657,7 +1672,7 @@ const graphHref = (name, groupKey) => {
   return `/app/?${params.toString().replace(/&/g, '&amp;')}`;
 };
 
-export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false, attestation = null, privateResponse = false, isFallback = false) {
+export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', cnmv = null, chartSvg = null, boe = null, gleif = null, noindex = false, attestation = null, privateResponse = false, isFallback = false, options = {}) {
   // For the hours between a filing reaching the event log and the aggregation
   // absorbing it, "Administradores y cargos vigentes" — and the JSON-LD employee
   // list Google reads — described the last AGGREGATION rather than the last
@@ -1807,6 +1822,18 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
     .filter(([, v]) => v !== '')
     .map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`)
     .join('');
+
+  // Sibling links: the crawl edge between company pages. Absent when D1 gave us
+  // no neighbours (no binding, a province with too few promoted companies, or a
+  // company whose province the record does not carry).
+  const siblingsBlock = renderSiblingsBlock({
+    neighbours: options.siblings,
+    province: company.province,
+    lang,
+    t,
+    companyPath,
+    esc,
+  });
 
   const currentKey = nameKey(name);
   const priorNames = [
@@ -2331,9 +2358,11 @@ ${privateResponse ? '' : GA_SNIPPET}
   }
 
   ${eventsBlock(events, t, lang, company.total_publications)}
+
+  ${siblingsBlock}
   </div>
 
-  <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}${hasCurrentConfirmation ? '' : ` ${t.footerVerifyInvite}`}</footer>
+  <footer>${t.footer(esc(fmtDate(company.last_seen, lang)))}${hasCurrentConfirmation ? '' : ` ${t.footerVerifyInvite}`} ${t.footerDirectory}</footer>
 </div>
 ${graphOverlay}
 <nav class="mobile-dock" aria-label="${esc(t.relationshipOverview)}">
@@ -2661,7 +2690,18 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es', opt
     // relaxed here. The public gate keeps exactly one meaning.
     const attestation = options.attestationOverride
       || await liveAttestationFor(env, graphGroupKey(company, seed));
-    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex, attestation, Boolean(options.privateResponse), isFallback);
+    // Sibling links need the province, which only exists once the company has
+    // resolved, so this cannot join the Promise.all above. One D1 read against a
+    // 4k-row table, behind an hour of edge cache; a failure costs the block, not
+    // the page.
+    const siblings = company.province
+      ? await listPromotedSiblings(env?.SEO_DB, {
+        province: company.province,
+        slug,
+        name: company.company_name || name,
+      }).catch(() => null)
+      : null;
+    const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex, attestation, Boolean(options.privateResponse), isFallback, { siblings });
     return new Response(html, {
       status: 200,
       headers: companyPageHeaders({ noindex, privateResponse: options.privateResponse }),

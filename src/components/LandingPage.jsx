@@ -416,6 +416,19 @@ export default function LandingPage({ lang = 'en' }) {
               >
                 <ApartmentIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.listed}
               </Link>
+              {/* The province directory. Until now NOTHING on the site linked to
+                  /directorio: the hubs that list every promoted company page
+                  were reachable only from a sitemap, which is why a crawl
+                  sample on 2026-09-16 found batch 2 entirely unvisited. A plain
+                  <a> on purpose — /directorio is a server-rendered page, not a
+                  SPA route, so client-routing to it would 404. */}
+              <Link
+                component="a"
+                href="/directorio"
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'accent.primary', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+              >
+                <ApartmentIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.directory}
+              </Link>
               <Link
                 component="button"
                 type="button"
