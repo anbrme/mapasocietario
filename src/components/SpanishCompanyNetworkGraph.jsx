@@ -112,6 +112,7 @@ import {
   displayCompanyName,
   isSameUnifiableEntity,
 } from '../utils/companyName';
+import { filterByQueryTerms } from '../utils/queryTermMatch';
 import { findCompanyNode } from '../utils/companyNodeLookup';
 import { resolveCompanyGroupName } from '../utils/companyGroupName';
 import { buildCompanyAliasMap } from '../utils/companyAliasLookup';
@@ -3004,14 +3005,8 @@ const SpanishCompanyNetworkGraph = ({
 
   // Search for companies or officers and automatically add to graph
   // queryOverride allows passing the exact name from autocomplete selection
-  const filterCompanyMatches = useCallback((results, query) => {
-    const lowerQuery = query.toLowerCase();
-    const queryTerms = lowerQuery.split(/\s+/).filter(t => t.length > 0);
-    return (results || []).filter(company => {
-      const name = (company.name || company.company_name || '').toLowerCase();
-      return queryTerms.every(term => name.includes(term));
-    });
-  }, []);
+  // Accent-insensitive on both sides: "Fábregas" must keep "BODEGAS FABREGAS SL".
+  const filterCompanyMatches = useCallback((results, query) => filterByQueryTerms(results, query), []);
 
   const handleSearch = async (
     queryOverride = null,
