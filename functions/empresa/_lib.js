@@ -396,7 +396,8 @@ const T = {
     ddCtaTitle: 'Informe due diligence completo',
     ddCtaText: (name) =>
       `Descarga un PDF con análisis por IA, comprobación de sanciones, señales de alerta e historial mercantil completo de ${name}.`,
-    ddCtaBtn: 'Descargar informe · 22,50 €',
+    ddCtaBtn: 'Informe de due diligence · el primero gratis',
+    ddCtaNote: 'Sin cuenta ni tarjeta. Todo excepto las cuentas anuales.',
     verifyCtaBtn: '¿Es esta su empresa?',
     verifyCtaSub: 'Puede dejar constancia, con fecha y con nombre, de que estos datos registrales son correctos.',
     verifyCtaLink: 'Solicitar la verificación de datos registrales →',
@@ -685,7 +686,8 @@ const T = {
     ddCtaTitle: 'Full due diligence report',
     ddCtaText: (name) =>
       `Download a PDF with AI analysis, sanctions screening, red flags and the full commercial-registry history of ${name}.`,
-    ddCtaBtn: 'Download report · €22.50',
+    ddCtaBtn: 'Due diligence report · your first is free',
+    ddCtaNote: 'No account, no card. Everything except financial statements.',
     verifyCtaBtn: 'Is this your company?',
     verifyCtaSub: 'You can put a dated, named statement on record that this registry data is correct.',
     verifyCtaLink: 'Request registry data verification →',
@@ -1471,6 +1473,7 @@ const STYLE = `<style>
   .cta h2{border:0;color:#fff;margin:0 0 8px;padding:0}
   .cta p{margin:0 0 18px;opacity:.9}
   .cta-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .cta-note{margin:8px 0 0;font-size:12px;line-height:1.4;opacity:.8}
   .cta a{display:inline-block;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:10px}
   .cta-primary{background:#fff;color:#1e3a8a}
   .cta-secondary{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.55)}
@@ -2288,9 +2291,10 @@ ${privateResponse ? '' : GA_SNIPPET}
     <h2>${t.ddCtaTitle}</h2>
     <p>${esc(t.ddCtaText(name))}</p>
     <div class="cta-actions">
-      <a class="cta-primary" data-track="profile_due_diligence" href="/due-diligence/?company=${encodeURIComponent(name)}">${t.ddCtaBtn}</a>
+      <a class="cta-primary" data-track="profile_due_diligence" href="/due-diligence/?company=${encodeURIComponent(name)}&free=1">${t.ddCtaBtn}</a>
       <a class="cta-secondary" data-track="profile_open_graph" href="${graphHref(name, groupKey)}">${t.ctaBtn}</a>
     </div>
+    <p class="cta-note">${esc(t.ddCtaNote)}</p>
   </div>
 
   <div class="mon">
@@ -2334,7 +2338,7 @@ ${privateResponse ? '' : GA_SNIPPET}
 ${graphOverlay}
 <nav class="mobile-dock" aria-label="${esc(t.relationshipOverview)}">
   <button type="button" class="mobile-dock-graph" data-open-graph data-track="profile_graph_open"><span class="mobile-dock-icon" aria-hidden="true">⤢</span>${esc(t.mobileMapBtn)}</button>
-  <a data-track="profile_due_diligence" href="/due-diligence/?company=${encodeURIComponent(name)}"><span class="mobile-dock-icon" aria-hidden="true">▤</span>${esc(t.mobileReportBtn)}</a>
+  <a data-track="profile_due_diligence" href="/due-diligence/?company=${encodeURIComponent(name)}&free=1"><span class="mobile-dock-icon" aria-hidden="true">▤</span>${esc(t.mobileReportBtn)}</a>
   <button type="button" id="mon-fab" class="mon-fab" data-track="profile_monitor_open" aria-label="${esc(t.monitorFab)}"><span class="mobile-dock-icon" aria-hidden="true">✉</span>${esc(t.mobileAlertsBtn)}</button>
 </nav>
 <dialog id="monitor-dialog" aria-label="${esc(t.monitorFab)}">

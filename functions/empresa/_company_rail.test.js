@@ -35,6 +35,26 @@ describe('the desktop rail on a company page', () => {
     expect(rail).toContain('data-track="profile_graph_open"');
   });
 
+  // 2026-09-16: the free-first programme is what arrivals actually take (23
+  // external free orders vs 2 paid since June), yet the page sold the priced
+  // PDF and the free option hid behind a checkbox two screens later. The
+  // primary button now says the first report is free and deep-links the
+  // option pre-selected on the due diligence page.
+  it('offers the first report free and deep-links the free option', () => {
+    const html = render();
+    const railStart = html.indexOf('class="rail"');
+    const rail = html.slice(railStart, html.indexOf('</aside>', railStart));
+
+    expect(rail).toContain('href="/due-diligence/?company=ACME%20TEST%20SL&free=1"');
+    expect(rail).toContain('el primero gratis');
+    expect(rail).toContain('Sin cuenta ni tarjeta');
+    expect(rail).not.toContain('22,50');
+
+    const en = render('en');
+    expect(en).toContain('your first is free');
+    expect(en).toContain('No account, no card');
+  });
+
   it('gives the graph trigger the counts that justify pressing it', () => {
     const html = render();
     const railStart = html.indexOf('class="rail"');
@@ -63,6 +83,7 @@ describe('the mobile profile arrangement', () => {
 
     expect(dock).toContain('data-open-graph');
     expect(dock).toContain('profile_due_diligence');
+    expect(dock).toContain('&free=1');
     expect(dock).toContain('id="mon-fab"');
   });
 

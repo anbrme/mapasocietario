@@ -28,6 +28,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
 import DDCheckoutDialog, { FREE_FIRST_REPORT_CODE } from './DDCheckoutDialog';
+import { FREE_FIRST_REPORT_COPY } from '../copy/freeFirstReport';
+import { parseFreeReportParam } from './freeReportDeepLink';
 import { normalizeLanguage, getStoredSearchLanguage, getBrowserLanguage } from '../utils/language';
 import { siteNav } from '../utils/siteNav';
 
@@ -249,6 +251,11 @@ export default function DueDiligencePage() {
   // company is passed as ?company=. We show a company-scoped buy banner and let
   // the visitor open checkout on click (never auto-open — that reads as a trap).
   const company = (searchParams.get('company') || '').trim();
+  // `free=1` comes from the company page's "your first is free" button. The
+  // banner then speaks about the free report and the dialog opens with the
+  // option pre-selected; without the programme the flag is inert.
+  const freeRequested = !!FREE_FIRST_REPORT_CODE && parseFreeReportParam(searchParams.get('free'));
+  const freeCopy = FREE_FIRST_REPORT_COPY[lang === 'es' ? 'es' : 'en'];
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const ladderLinks = [
@@ -326,13 +333,13 @@ export default function DueDiligencePage() {
             }}
           >
             <Typography variant="overline" sx={{ display: 'block', color: 'warning.light', fontWeight: 700, letterSpacing: '0.12em', fontSize: '0.65rem' }}>
-              {t.banner.eyebrow}
+              {freeRequested ? freeCopy.headline : t.banner.eyebrow}
             </Typography>
             <Typography variant="h5" component="p" sx={{ fontWeight: 700, mb: 1 }}>
               {company}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, maxWidth: 520, mx: 'auto', lineHeight: 1.6 }}>
-              {t.banner.desc}
+              {freeRequested ? freeCopy.body : t.banner.desc}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Button
@@ -341,7 +348,7 @@ export default function DueDiligencePage() {
                 onClick={() => setCheckoutOpen(true)}
                 sx={{ textTransform: 'none', fontWeight: 700, px: 3, borderRadius: 2, bgcolor: 'warning.main', color: '#000', '&:hover': { bgcolor: 'warning.dark' } }}
               >
-                {t.banner.getReport}
+                {freeRequested ? freeCopy.cta : t.banner.getReport}
               </Button>
               <Button
                 variant="outlined"
@@ -599,6 +606,7 @@ export default function DueDiligencePage() {
           companyName={company}
           country="es"
           language={lang}
+          initialFreeReport={freeRequested}
         />
       </Box>
     </>

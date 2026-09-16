@@ -57,6 +57,7 @@ import { furthestCheckoutStage } from '../utils/checkoutAbandon';
 // here so surfaces that only announce the offer (landing page, prerenderer)
 // don't pull this dialog into their bundle; re-exported for existing importers.
 import { FREE_FIRST_REPORT_CODE } from '../copy/freeFirstReport';
+import { initialFreeReportState } from './freeReportDeepLink';
 export { FREE_FIRST_REPORT_CODE };
 const ANDROID_PLAY_BILLING_ENABLED = true;
 const FS_FALLBACK_KEEP_DD = 'keep_dd_refund_fs';
@@ -279,7 +280,13 @@ export default function DDCheckoutDialog(props) {
   );
 }
 
-function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', language = 'en' }) {
+function DDCheckoutDialogInner({
+  open, onClose, companyName, country = 'es', language = 'en',
+  // From the company page's "your first is free" deep link: open with the
+  // free option already selected so the visitor lands on a form that says
+  // free and asks two questions, not on a price with a checkbox beneath it.
+  initialFreeReport = false,
+}) {
   const [includeFS, setIncludeFS] = useState(false);
   const [financialStatementsYear, setFinancialStatementsYear] = useState('latest');
   const [financialStatementsFallback, setFinancialStatementsFallback] = useState(FS_FALLBACK_KEEP_DD);
@@ -291,7 +298,18 @@ function DDCheckoutDialogInner({ open, onClose, companyName, country = 'es', lan
   const [androidProductsLoading, setAndroidProductsLoading] = useState(false);
   const [correctionsCount, setCorrectionsCount] = useState(0);
   // Free-first-report insight intake (active only when FREE_FIRST_REPORT_CODE is set).
-  const [useFreeReport, setUseFreeReport] = useState(false);
+  const [useFreeReport, setUseFreeReport] = useState(() => initialFreeReportState({
+    requested: initialFreeReport, programActive: !!FREE_FIRST_REPORT_CODE, isAndroidApp: isAndroidNativeApp(),
+  }));
+  // The deep link counts as a selection too, once per open, so the funnel can
+  // tell arrivals who came for the free report from those who found the box.
+  const deepLinkTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!open) { deepLinkTrackedRef.current = false; return; }
+    if (deepLinkTrackedRef.current || !initialFreeReport || !useFreeReport) return;
+    deepLinkTrackedRef.current = true;
+    trackEvent('free_report_selected', { company: companyName || '', source: 'deeplink' });
+  }, [open, initialFreeReport, useFreeReport, companyName]);
   const [buyerRole, setBuyerRole] = useState('');
   const [needContext, setNeedContext] = useState('');
   const [followUpOptIn, setFollowUpOptIn] = useState(false);
