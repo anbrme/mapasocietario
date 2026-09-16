@@ -4250,13 +4250,19 @@ const SpanishCompanyNetworkGraph = ({
           uniqueCompanyNames.add(normalizeCompanyName(raw));
         });
 
-        // Fire-and-forget shareholder fetches per unique company (both directions).
+        // Stream ownership into the canvas, but an expansion must wait for both
+        // directions before expandNode records its diff for Collapse node.
         if (showShareholders) {
-          uniqueCompanyNames.forEach(n => {
+          const ownershipLoads = Array.from(uniqueCompanyNames).flatMap(n => {
             const cId = companyNameToId(n);
-            addShareholdersForCompany(n, cId);        // who owns it
-            addOwnedCompaniesForEntity(n, cId, 'company'); // what it owns
+            return [
+              addShareholdersForCompany(n, cId),
+              addOwnedCompaniesForEntity(n, cId, 'company'),
+            ];
           });
+          // Initial searches still stream in the background. Expansion callers
+          // supply an anchor, including corporate-officer promotion.
+          if (anchorNode) await Promise.allSettled(ownershipLoads);
         }
 
         // Fire-and-forget: enrich links with real appointment/cessation event dates
@@ -4859,12 +4865,14 @@ const SpanishCompanyNetworkGraph = ({
         });
 
         if (showShareholders) {
-          companyEntries.forEach(group => {
+          await Promise.allSettled(companyEntries.flatMap(group => {
             const cn = normalizeCompanyName(group.name || 'Unknown Company');
             const cId = companyNameToId(cn);
-            addShareholdersForCompany(cn, cId);
-            addOwnedCompaniesForEntity(cn, cId, 'company');
-          });
+            return [
+              addShareholdersForCompany(cn, cId),
+              addOwnedCompaniesForEntity(cn, cId, 'company'),
+            ];
+          }));
         }
         // Fire-and-forget: enrich links with real appointment/cessation dates
         // from borme_events_v3 so tooltips/side panel show per-role history.
