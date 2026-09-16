@@ -9,6 +9,8 @@ import { Box, Button, Chip, IconButton, Paper, Tooltip, Typography } from '@mui/
 import CloseIcon from '@mui/icons-material/Close';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { walkthroughCopy, stepKindLabel } from '../utils/walkthrough/walkthroughCopy';
+import { momentReason } from '../utils/walkthrough/stepMoments';
+import { isoDayLong } from '../utils/isoDay';
 import { NODE_NOTE_FLAGS } from '../utils/nodeNotes';
 
 // Height reserved at the bottom of the canvas while the controller is open.
@@ -21,12 +23,6 @@ const CONTROLLER_MARGIN = 12;
 export const walkthroughControllerInset = compact => (compact
   ? WALKTHROUGH_CONTROLLER_HEIGHT_COMPACT
   : WALKTHROUGH_CONTROLLER_HEIGHT + CONTROLLER_MARGIN);
-
-// The moment is an ISO day in the model and a sentence to the reader. A bare
-// 'YYYY-MM-DD' read as UTC midnight renders as the previous day west of
-// Greenwich, so it is read at noon.
-const fmtMoment = (iso, lang) => new Date(`${iso}T12:00:00`).toLocaleDateString(
-  lang === 'en' ? 'en-GB' : 'es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 
 export default function WalkthroughPlayer({
   open, step, index, total, lang = 'es', compact = false, opening = null, bottomOffset = 0, rightOffset = 0,
@@ -82,7 +78,11 @@ export default function WalkthroughPlayer({
         {step.title}
       </Typography>
       {step.moment && (
-        <Chip size="small" label={fmtMoment(step.moment, lang)} sx={{ height: 20, fontSize: '0.7rem' }} />
+        // What the date refers to, on hover: a chapter's moment is preselected
+        // from the registry, and a bare day tells the reader nothing.
+        <Tooltip title={momentReason(step, lang)}>
+          <Chip size="small" label={isoDayLong(step.moment, lang)} sx={{ height: 20, fontSize: '0.7rem' }} />
+        </Tooltip>
       )}
       {onEvidence && step.nodeId && (
         <Button size="small" onClick={() => onEvidence(step)} sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>

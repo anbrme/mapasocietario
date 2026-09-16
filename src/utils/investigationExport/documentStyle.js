@@ -110,6 +110,14 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .chapter h4{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 4px}
 .chapter table{font-size:.82rem}
 .chapter ul{margin:0;padding-left:18px}
+.chapter .dated ul{list-style:none;padding:0;margin:0}
+.chapter .dated li{display:grid;grid-template-columns:120px 1fr;gap:0 12px;align-items:baseline;padding:3px 0;border-top:1px solid var(--line)}
+.chapter .dated li:first-child{border-top:0}
+.chapter .dated time{color:var(--muted);font-size:.82rem;font-variant-numeric:tabular-nums}
+.chapter .dated span{white-space:pre-line}
+@media (max-width:600px){.chapter .dated li{grid-template-columns:1fr;gap:0}}
+.chrono .entry a{display:block}
+.chrono .entry em{display:block;font-style:normal;color:var(--muted);font-size:.9rem;font-weight:400}
 .kv{color:var(--muted);font-size:.9rem;margin:2px 0}
 details.fold{margin:6px 0 0}
 details.fold>summary{cursor:pointer;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:4px 0;list-style:none}

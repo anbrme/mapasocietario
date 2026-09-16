@@ -107,7 +107,12 @@ export const buildTimeline = ({ graphData, stepData, steps, readOn }) => {
   const storyNodeIds = storyIds.size
     ? new Set([...storyIds, ...storyLinks.flatMap(d => [d.a, d.b])])
     : new Set(Object.keys(nodeTable));
-  const moments = (steps || []).map(s => day(s?.moment)).filter(Boolean);
+  // A chapter stops the slider on its own moment AND on every dated note hung
+  // off it: each of those days is a day the author wrote about.
+  const moments = (steps || []).flatMap(s => [
+    day(s?.moment),
+    ...(s?.annotations || []).map(a => day(a?.date)),
+  ]).filter(Boolean);
   const all = [
     ...[...storyNodeIds].map(id => nodeTable[id]).filter(Boolean).flatMap(d => [d.from, d.to]),
     ...storyLinks.flatMap(d => [d.from, d.to]),

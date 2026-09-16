@@ -4,20 +4,27 @@
 import { escapeHtml as esc } from '../escapeHtml';
 import { stepKindLabel } from '../walkthrough/walkthroughCopy';
 import { isProxyRole } from '../walkthrough/stepEvidence';
+import { publishableAnnotations } from '../walkthrough/applyWalkthroughEdits';
+import {
+  annexRows, chronologyEntries, hasAnnexes, hasChronology, isDay, stepEvidenceLine,
+} from '../sitrepModel';
+import { isoDayLong } from '../isoDay';
 import { correctionVerb } from './exportCopy';
 import { renderGraphSvg } from './renderGraphSvg';
 import { flagVar } from './documentStyle';
 import { looksLikeGroupKey } from '../companyName';
 import { RETURN_COMPANY_CAP } from '../returnParams';
 
+// Re-exported: both belong to the document model now, and callers (including
+// this file's tests) reach them through the renderer they already import.
+export { annexRows, stepEvidenceLine };
+
 const SITE = 'https://mapasocietario.es';
 
 const fmtDate = (iso, lang) => new Date(iso).toLocaleDateString(
   lang === 'en' ? 'en-GB' : 'es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 
-// A bare 'YYYY-MM-DD' parses as UTC midnight, which renders as the previous
-// day west of Greenwich. Reading it at noon keeps the day the registry meant.
-const fmtDay = (iso, lang) => (iso ? fmtDate(`${iso}T12:00:00`, lang) : '');
+const fmtDay = isoDayLong;
 
 const authorLine = (doc, t) => {
   const parts = [doc.author?.name, doc.author?.organisation].map(v => String(v || '').trim()).filter(Boolean);
@@ -49,39 +56,8 @@ export const renderCover = (doc, t, lang) => `
   <div class="status">${esc(t.nonAuthoritative)}<br>${esc(t.sourceLine)}</div>
 </header>`;
 
-// Rows a chapter already narrates must not repeat in the annexes. A company
-// or a connector is covered only when it got its OWN chapter (its id is some
-// step's PRIMARY nodeId) — being merely pictured inside another chapter's
-// board/seats table (e.g. a company that is only a seat of a selected
-// person) does not retire it here; it keeps its annex row, and any note on
-// it. Ownership rows are covered only when either side is a COMPANY
-// chapter's own title — a person chapter's title never retires one.
-export const annexRows = doc => {
-  const steps = doc.steps || [];
-  const stepIds = new Set(steps.map(s => s.nodeId || s.nodeIds?.[0]));
-  const companyChapterTitles = new Set(steps.filter(s => s.kind === 'company').map(s => s.title));
-  return {
-    companies: (doc.companies || []).filter(c => !stepIds.has(c.nodeId)),
-    connectors: (doc.connectors || []).filter(c => !stepIds.has(c.nodeId)),
-    ownership: (doc.ownership || []).filter(o => !companyChapterTitles.has(o.owner) && !companyChapterTitles.has(o.owned)),
-    corrections: doc.corrections || [],
-  };
-};
-
-const hasAnnexes = doc => {
-  const rows = annexRows(doc);
-  return !!(rows.companies.length || rows.connectors.length || rows.ownership.length || rows.corrections.length);
-};
-
 // Section numbers, computed once from the same rules that decide whether a
 // section renders at all, so the contents nav and every <h2> agree.
-// The chronology needs two dated steps to be a sequence at all.
-const datedSteps = doc => (doc.steps || [])
-  .map((s, i) => ({ step: s, index: i }))
-  .filter(x => /^\d{4}-\d{2}-\d{2}$/.test(String(x.step.moment || '')))
-  .sort((a, b) => a.step.moment.localeCompare(b.step.moment) || a.index - b.index);
-const hasChronology = doc => datedSteps(doc).length >= 2;
-
 const sectionNumbers = doc => {
   let n = 0;
   const summary = doc.networkNote ? (n += 1) : null;
@@ -99,7 +75,13 @@ const sectionNumbers = doc => {
 export const renderChronology = (doc, t, wt, lang = 'es') => {
   if (!hasChronology(doc)) return '';
   const num = sectionNumbers(doc).chronology;
-  const items = datedSteps(doc).map(({ step, index }) => `<li><time datetime="${esc(step.moment)}">${esc(fmtDay(step.moment, lang))}</time><a href="#ch-${index}">${esc(step.title)}</a><span class="kind">${esc(stepKindLabel(step, wt))}</span></li>`).join('');
+  const items = chronologyEntries(doc).map(e => {
+    const middle = e.note
+      ? `<span class="entry"><a href="#ch-${e.index}">${esc(e.title)}</a><em>${esc(e.note)}</em></span>`
+      : `<a href="#ch-${e.index}">${esc(e.title)}</a>`;
+    const label = e.step ? stepKindLabel(e.step, wt) : t.authorNote;
+    return `<li><time datetime="${esc(e.date)}">${esc(fmtDay(e.date, lang))}</time>${middle}<span class="kind">${esc(label)}</span></li>`;
+  }).join('');
   return `<section id="chronology"><h2><span class="num">${num}</span>${esc(t.chronology)}</h2><ol class="chrono">${items}</ol></section>`;
 };
 
@@ -141,7 +123,8 @@ const renderTimeControl = (doc, t, lang) => {
   const tl = doc.timeline;
   if (!tl || !Array.isArray(tl.dates) || tl.dates.length < 2) return '';
   const idx = new Map(tl.dates.map((d, i) => [d, i]));
-  const ticks = [...new Set((doc.steps || []).filter(s => idx.has(s.moment)).map(s => idx.get(s.moment)))]
+  const pinned = (doc.steps || []).flatMap(s => [s.moment, ...(s.annotations || []).map(a => a?.date)]);
+  const ticks = [...new Set(pinned.filter(d => idx.has(d)).map(d => idx.get(d)))]
     .sort((a, b) => a - b).map(i => `<option value="${i}"></option>`).join('');
   // The empty span stays even with nothing to count: the script looks it up
   // unconditionally. The separator does not — a trailing ' · ' reads as a
@@ -200,11 +183,19 @@ const noteBlock = (note, t, flag) => (note?.text
   ? `<div class="note" style="${flagVar(flag || note.flag || 'none')}"><span class="who">${esc(t.authorNote)}</span>${esc(note.text)}</div>`
   : '');
 
+// The author's dated notes for a chapter, oldest first — the chapter's own
+// moment pins the map to one day, these say what happened on the others.
+const datedNotesBlock = (step, wt, lang) => {
+  const rows = publishableAnnotations(step);
+  if (!rows.length) return '';
+  const items = rows.map(a => `<li><time datetime="${esc(a.date)}">${esc(fmtDay(a.date, lang))}</time><span>${esc(String(a.text).trim())}</span></li>`).join('');
+  return `<div class="dated"><h4>${esc(wt.datedNotes)}</h4><ul>${items}</ul></div>`;
+};
+
 const kv = (label, value) => (value ? `<p class="kv">${label ? `${esc(label)}: ` : ''}${esc(value)}</p>` : '');
 
 // A registry day never wraps into "2011-12-" / "23": date-shaped cells get
-// the nowrap class the annex tables already use.
-const isDay = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
+// the nowrap class the annex tables already use (isDay, from the model).
 const evidenceTable = (columns, rows, cells) => (rows.length
   ? `<div class="scroll"><table><thead><tr>${Object.values(columns).map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${
     rows.map(r => `<tr>${cells(r).map(v => `<td${isDay(v) ? ' class="date"' : ''}>${esc(v || '')}</td>`).join('')}</tr>`).join('')
@@ -302,8 +293,9 @@ export const renderChapters = (doc, t, wt, lang = 'es') => {
   const rows = steps.map((s, i) => {
     const head = `<span class="src">${esc(wt.sources[s.source] || s.source || '')}</span>${esc(stepKindLabel(s, wt))}${s.moment ? ` · ${esc(fmtDay(s.moment, lang))}` : ''}`;
     const narrative = noteBlock(s.narrative || s.authorNote, t);
+    const dated = datedNotesBlock(s, wt, lang);
     const evidence = evidenceBlockFor(s, t, wt, blocks);
-    return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${evidence}</div></div>`;
+    return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${dated}${evidence}</div></div>`;
   }).join('');
   // Slide zero of the presentation: the opening, shown where a chapter would
   // be while the map stands whole. Inert outside presenting.
@@ -323,23 +315,6 @@ export const renderStory = (doc, graphData, t, wt, lang = 'es') => {
 
 // The step's short evidence line, shared by the export's inline JSON and the
 // in-app player card — the same one-liner either way.
-export const stepEvidenceLine = (s, wt) => {
-  const ev = s.evidence || {};
-  if (s.kind === 'person') {
-    return (ev.seats || []).slice(0, 2).map(seat => `${seat.role} · ${seat.company}`).join(' · ');
-  }
-  if (s.kind === 'connection') {
-    return (ev.hops || []).slice(0, 2).map(h => `${h.who} · ${h.role} · ${h.at}`).join(' · ');
-  }
-  const finding = (ev.findings || [])[0];
-  if (finding?.text) return finding.text;
-  const lastFiling = ev.status?.lastFiling;
-  if (lastFiling?.date) {
-    return lastFiling.type ? `${wt.subheads.filings}: ${lastFiling.date} · ${lastFiling.type}` : `${wt.subheads.filings}: ${lastFiling.date}`;
-  }
-  return '';
-};
-
 // One annex block. `id` is carried by the block itself only when it stands
 // alone; inside the tabbed explorer the panel owns the id, so the block goes
 // id-free and the document keeps one element per id.

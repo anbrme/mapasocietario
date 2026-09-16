@@ -6,6 +6,7 @@ import {
   draftWalkthrough, openingCard, subjectCompanyIds, applyWalkthroughEdits, hideStep, setStepNote, setStepMoment,
   moveStep, swapInSelection, removeFromSelection, loadStepData, mergeCoverage,
   suggestConnections, addConnection, removeConnection,
+  setStepAnnotation, removeStepAnnotation, newAnnotationId,
 } from '../utils/walkthrough';
 import { initialWalkthroughState, walkthroughReducer, focusSets, stepTransition } from './walkthroughState';
 
@@ -136,6 +137,22 @@ export function useWalkthrough({
     setEdits(e => setStepMoment(e, key, iso));
     onTrack?.('walkthrough_moment_set');
   }, [setEdits, onTrack]);
+
+  // Dated notes: a chapter's own `moment` is one day, and an argument about a
+  // person's position rarely is. Each note carries its own date, so the author
+  // can say what happened on each of them instead of picking one and hoping.
+  const addAnnotation = useCallback(key => {
+    setEdits(e => setStepAnnotation(e, key, { id: newAnnotationId(), date: '', text: '' }));
+    onTrack?.('walkthrough_annotation_added');
+  }, [setEdits, onTrack]);
+  const setAnnotation = useCallback((key, annotation) => {
+    setEdits(e => setStepAnnotation(e, key, annotation));
+    onTrack?.('walkthrough_annotation_saved');
+  }, [setEdits, onTrack]);
+  const removeAnnotation = useCallback((key, id) => {
+    setEdits(e => removeStepAnnotation(e, key, id));
+    onTrack?.('walkthrough_annotation_removed');
+  }, [setEdits, onTrack]);
   // A step's note has exactly one owner. In selection mode every step is the
   // author's own pick, so its note always writes straight to the node note.
   // In draft mode, a step whose primary node already carries a node-origin
@@ -182,11 +199,12 @@ export function useWalkthrough({
     onTrack?.('walkthrough_connection_added');
   }, [setEdits, onTrack]);
 
-  const reset = useCallback(() => { setEdits(() => ({ hidden: [], order: [], notes: {}, moments: {}, connections: [] })); onTrack?.('walkthrough_reset'); }, [setEdits, onTrack]);
+  const reset = useCallback(() => { setEdits(() => ({ hidden: [], order: [], notes: {}, moments: {}, connections: [], annotations: {} })); onTrack?.('walkthrough_reset'); }, [setEdits, onTrack]);
 
   return {
     status: state.status, steps, draft, index: state.index, current, stepData: state.stepData,
     mode, opening, selectedCount, suggestions,
-    prepare, start, next, prev, goTo, exit, hide, setNote, setMoment, move, reset, acceptConnection, coverage, ...focus,
+    prepare, start, next, prev, goTo, exit, hide, setNote, setMoment, move, reset, acceptConnection, coverage,
+    addAnnotation, setAnnotation, removeAnnotation, ...focus,
   };
 }

@@ -663,6 +663,46 @@ describe('cover facts and chronology', () => {
     expect(renderChronology({ ...doc, steps: [companyStep('c1'), personStep('o1')] }, t, wt)).toBe('');
   });
 
+  it('a dated note earns its own chronology line, under its chapter', () => {
+    const annotated = {
+      ...doc,
+      steps: [companyStep('c1', {
+        moment: '2024-03-11',
+        annotations: [
+          { id: 'n1', date: '2019-06-30', text: 'Sale del consejo' },
+          { id: 'n2', date: '', text: 'sin fecha' },
+          { id: 'n3', date: '2015-01-01', text: '   ' },
+        ],
+      })],
+    };
+    const html = renderChronology(annotated, t, wt, 'es');
+    // One chapter and one dated note are two entries: enough for a chronology.
+    expect(html).toContain('id="chronology"');
+    expect(html).toContain('<time datetime="2019-06-30">30 de junio de 2019</time>');
+    expect(html).toContain('<em>Sale del consejo</em>');
+    expect(html).toContain('<span class="kind">Nota del autor</span>');
+    // An undated note, or one with nothing written in it, is not a date.
+    expect(html).not.toContain('sin fecha');
+    expect(html.indexOf('2019')).toBeLessThan(html.indexOf('2024'));
+  });
+
+  it('the chapter prints its dated notes, oldest first, and skips the unfinished ones', () => {
+    const annotated = [companyStep('c1', {
+      annotations: [
+        { id: 'n1', date: '2024-03-11', text: 'Reduce capital' },
+        { id: 'n2', date: '2019-06-30', text: 'Sale del consejo' },
+        { id: 'n3', date: '', text: 'todavia escribiendo' },
+      ],
+    })];
+    const html = renderChapters({ ...doc, steps: annotated }, t, wt, 'es');
+    expect(html).toContain('<div class="dated"><h4>Notas fechadas</h4>');
+    expect(html).toContain('<time datetime="2019-06-30">30 de junio de 2019</time><span>Sale del consejo</span>');
+    expect(html.indexOf('Sale del consejo')).toBeLessThan(html.indexOf('Reduce capital'));
+    expect(html).not.toContain('todavia escribiendo');
+    // No dated notes, no block.
+    expect(renderChapters(doc, t, wt, 'es')).not.toContain('class="dated"');
+  });
+
   it('the chronology takes a section number before the map and appears in the contents', () => {
     const dated = { ...doc, steps: [companyStep('c1', { moment: '2024-03-11' }), personStep('o1', { moment: '2021-03-01' })] };
     const contents = renderContents(dated, t);

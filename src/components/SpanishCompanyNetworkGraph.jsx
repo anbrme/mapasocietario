@@ -115,6 +115,7 @@ import {
   isSameUnifiableEntity,
 } from '../utils/companyName';
 import { filterByQueryTerms } from '../utils/queryTermMatch';
+import { anchoredCentre } from '../utils/graphDockViewport';
 import { graphKeys, diffExpansion, collapseExpansion } from '../utils/expansionCollapse';
 import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
@@ -1636,6 +1637,29 @@ const SpanishCompanyNetworkGraph = ({
       /* ref detached mid-transition */
     }
   }, []);
+
+  const readGraphZoom = useCallback(() => {
+    try {
+      return fgRef.current?.zoom();
+    } catch {
+      return null; // ref not attached yet
+    }
+  }, []);
+
+  // Where a node sits on the canvas right now, in canvas pixels. Read before
+  // the inspector reserves its width so the dock effect can put it back there.
+  const rememberInspectorAnchor = useCallback(node => {
+    const fg = fgRef.current;
+    const nodeId = normalizeNodeId(node?.id);
+    if (!fg || !nodeId || !Number.isFinite(node?.x) || !Number.isFinite(node?.y)) return null;
+    try {
+      const screen = fg.graph2ScreenCoords(node.x, node.y);
+      return Number.isFinite(screen?.x) && Number.isFinite(screen?.y)
+        ? { nodeId, screen } : null;
+    } catch {
+      return null; // ref not attached yet
+    }
+  }, []);
   const snapshotInputRef = useRef(null);
   const pendingSnapshotCameraRef = useRef(null);
   const [snapshotMode, setSnapshotMode] = useState(false);
@@ -1817,6 +1841,15 @@ const SpanishCompanyNetworkGraph = ({
   // handleNodeClick is defined above openDataPreview, so it calls through this
   // ref rather than closing over a binding that is not initialised yet.
   const openDataPreviewRef = useRef(null);
+  // The node the inspector is about to describe, and where it sat on the canvas
+  // at that moment. Docking the panel narrows the canvas, and force-graph
+  // re-centres itself when that happens; this is what the camera is pulled back
+  // to afterwards so the node does not walk out from under the pointer.
+  const inspectorAnchorRef = useRef(null);
+  // The graph node the inspector is describing, when it has one. Drives the
+  // panel's own Expand action, so growing the map out of a node never depends
+  // on landing a double-click.
+  const [previewNodeId, setPreviewNodeId] = useState(null);
 
   // The inspector describes a node in the graph. Whenever the graph goes away,
   // so must the panel and its data dock — otherwise a cleared canvas is left
@@ -1827,6 +1860,7 @@ const SpanishCompanyNetworkGraph = ({
     setPreviewData(null);
     setPreviewError(null);
     setPreviewLoading(false);
+    setPreviewNodeId(null);
   }, []);
   // Hovered node + its position in canvas coordinates, for the instant HUD.
   const [hoverNode, setHoverNode] = useState(null);
@@ -2727,18 +2761,68 @@ const SpanishCompanyNetworkGraph = ({
 
   // Re-fit graph when container dimensions change significantly (e.g. after table renders)
   const prevDimRef = useRef(canvasDimensions);
+  const prevInspectorReserveRef = useRef(reservedInspectorWidth);
   useEffect(() => {
     const prev = prevDimRef.current;
     prevDimRef.current = canvasDimensions;
+    const inspectorReserveChanged = prevInspectorReserveRef.current !== reservedInspectorWidth;
+    prevInspectorReserveRef.current = reservedInspectorWidth;
+    if (graphData.nodes.length === 0 || !fgRef.current) return undefined;
+
+    // Docking or undocking the inspector is NOT a reason to re-frame the map.
+    // A single click opens the panel, so re-fitting here moved the graph
+    // between the two clicks of a double-click and the expansion never fired.
+    // Hold the clicked node still instead — that is what the second click, and
+    // the reader's sense of place, depend on.
+    if (inspectorReserveChanged) {
+      const anchor = inspectorAnchorRef.current;
+      const node = anchor
+        ? graphDataRef.current.nodes.find(n => isSameNodeId(n.id, anchor.nodeId))
+        : null;
+      const centre = anchoredCentre({
+        node,
+        zoom: readGraphZoom(),
+        canvas: canvasDimensions,
+        screen: anchor?.screen,
+      });
+      if (!centre) return undefined;
+      // Applied twice on purpose: force-graph re-centres its own transform when
+      // the canvas resizes, and whether that has happened by the time this
+      // effect runs is not ours to know. The centre is absolute, so the second
+      // pass is either a no-op or the correction.
+      const apply = () => {
+        try {
+          fgRef.current?.centerAt(centre.x, centre.y, 0);
+        } catch {
+          /* ref detached */
+        }
+      };
+      apply();
+      const frame = requestAnimationFrame(apply);
+      return () => cancelAnimationFrame(frame);
+    }
+
+    // An imported snapshot carries its own camera; re-fitting would throw away
+    // the frame it was captured in. (Holding a node still above does not.)
+    if (snapshotMode) return undefined;
+
     const dw = Math.abs(prev.width - canvasDimensions.width);
     const dh = Math.abs(prev.height - canvasDimensions.height);
-    if (!snapshotMode && (dw > 50 || dh > 50) && graphData.nodes.length > 0 && fgRef.current) {
+    if (dw > 50 || dh > 50) {
       const timer = setTimeout(() => {
         fitGraphToView(400, 50);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [canvasDimensions, graphData.nodes.length, snapshotMode, fitGraphToView]);
+    return undefined;
+  }, [
+    canvasDimensions,
+    reservedInspectorWidth,
+    graphData.nodes.length,
+    snapshotMode,
+    fitGraphToView,
+    readGraphZoom,
+  ]);
 
   // Imported snapshots carry their own camera. Apply it after ForceGraph has
   // attached to the canvas and consumed the restored graph data.
@@ -5133,6 +5217,17 @@ const SpanishCompanyNetworkGraph = ({
     ]
   );
 
+  // Expanding from the inspector is the gesture-free route into a node's
+  // network. Double-click still expands, but it is a timed gesture aimed at a
+  // target the FIRST click has already acted on (it opens this very panel), so
+  // it cannot be the only way in. Null when the panel is describing something
+  // the canvas has no node for — a name from the search box, a listed entity.
+  const expandFromInspector = React.useMemo(() => {
+    if (!previewNodeId) return null;
+    const node = graphData.nodes.find(n => isSameNodeId(n.id, previewNodeId));
+    return node ? () => expandNode(node, 'inspector') : null;
+  }, [previewNodeId, graphData.nodes, expandNode]);
+
   // handleNodeClick is defined after handleNodeRightClick (below) for mobile touch support
   const DOUBLE_CLICK_MS = 450;
   const EMBEDDED_DOUBLE_CLICK_MS = 750;
@@ -6335,6 +6430,11 @@ const SpanishCompanyNetworkGraph = ({
 
     const previewTarget = nodeOverride || contextNode;
     if (!previewTarget) return;
+    // Read the node's place on the canvas BEFORE the panel reserves its width:
+    // the dock effect puts it back there. A synthetic target (a name from the
+    // search box, a listed entity) has no simulated position and no anchor.
+    inspectorAnchorRef.current = rememberInspectorAnchor(previewTarget);
+    setPreviewNodeId(normalizeNodeId(previewTarget.id) || null);
     const name = previewTarget.name;
     const isOfficer = previewTarget.type === 'officer';
     closeNodeContextMenu();
@@ -6736,6 +6836,7 @@ const SpanishCompanyNetworkGraph = ({
     previewNodeType,
     snapshotSource,
     loadOfficerTimeline,
+    rememberInspectorAnchor,
   ]);
 
   /**
@@ -11286,6 +11387,8 @@ const SpanishCompanyNetworkGraph = ({
             nameVariants: previewData?.nameVariants || [],
           })}
           onFocusCompany={focusCompanyByName}
+          onExpandNode={expandFromInspector}
+          expandNodeLabel={text.expandNode}
           onOpenReport={openReport}
           onBuyDueDiligence={() => {
             setPreviewOpen(false);
