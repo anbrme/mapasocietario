@@ -3,6 +3,8 @@ import {
   EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, applyWalkthroughEdits,
   hideStep, setStepNote, moveStep, editsCounts, swapInSelection, setStepMoment, removeFromSelection,
   addConnection, removeConnection,
+  setStepAnnotation, removeStepAnnotation, newAnnotationId, publishableAnnotations,
+  ANNOTATIONS_PER_STEP_CAP, ANNOTATION_TEXT_MAX_LENGTH,
 } from './applyWalkthroughEdits';
 
 const s = (key, extra = {}) => ({ key, section: 'connects', nodeIds: ['n'], linkKeys: [], title: key, text: '', source: 'graph', date: null, evidence: null, flag: null, deepLink: '', authorNote: null, ...extra });
@@ -60,9 +62,9 @@ describe('reducers', () => {
 
   it('editsCounts counts hidden, notes and re-dated moments', () => {
     expect(editsCounts({ hidden: ['a', 'b'], order: [], notes: { c: 'x' } }))
-      .toEqual({ hidden: 2, notes: 1, moments: 0, connections: 0 });
+      .toEqual({ hidden: 2, notes: 1, moments: 0, connections: 0, annotations: 0 });
     expect(editsCounts({ hidden: [], order: [], notes: {}, moments: { a: '2024-03-11', b: 'not a day' } }))
-      .toEqual({ hidden: 0, notes: 0, moments: 1, connections: 0 });
+      .toEqual({ hidden: 0, notes: 0, moments: 1, connections: 0, annotations: 0 });
   });
 });
 
@@ -87,7 +89,7 @@ describe('normalizeWalkthroughEdits', () => {
   it('keeps only string keys and string notes', () => {
     expect(normalizeWalkthroughEdits({ hidden: ['a', 1], order: ['b', null], notes: { c: 'ok', d: 2 } }))
       .toEqual({
-        hidden: ['a'], order: ['b'], notes: { c: 'ok' }, moments: {}, connections: [],
+        hidden: ['a'], order: ['b'], notes: { c: 'ok' }, moments: {}, connections: [], annotations: {},
       });
   });
 });
@@ -155,5 +157,94 @@ describe('connection placement under a stale order', () => {
     const draft = [node('a', 'A'), node('b', 'B'), conn('conn:x', ['A', 'B'])];
     const edits = { ...EMPTY_WALKTHROUGH_EDITS, order: ['conn:x', 'a', 'b'] };
     expect(applyWalkthroughEdits(draft, edits).map(x => x.key)).toEqual(['conn:x', 'a', 'b']);
+  });
+});
+
+
+// A chapter's single `moment` cannot carry an argument that runs across several
+// registry dates, so the author can hang a dated note on each of them.
+describe('dated notes', () => {
+  const note = (id, date, text) => ({ id, date, text });
+
+  it('EMPTY carries an empty annotations map', () => {
+    expect(EMPTY_WALKTHROUGH_EDITS.annotations).toEqual({});
+  });
+
+  it('adds a note, then replaces it by id', () => {
+    const added = setStepAnnotation(EMPTY_WALKTHROUGH_EDITS, 'a', note('n1', '2019-06-30', 'left the board'));
+    expect(added.annotations.a).toEqual([note('n1', '2019-06-30', 'left the board')]);
+
+    const edited = setStepAnnotation(added, 'a', note('n1', '2019-07-01', 'left the board, per the filing'));
+    expect(edited.annotations.a).toEqual([note('n1', '2019-07-01', 'left the board, per the filing')]);
+  });
+
+  it('keeps a note the author has not dated or written yet', () => {
+    const blank = setStepAnnotation(EMPTY_WALKTHROUGH_EDITS, 'a', { id: 'n1' });
+    expect(blank.annotations.a).toEqual([note('n1', '', '')]);
+  });
+
+  it('refuses an id-less note and drops a note-less key', () => {
+    expect(setStepAnnotation(EMPTY_WALKTHROUGH_EDITS, 'a', { date: '2019-06-30' }).annotations).toEqual({});
+    expect(setStepAnnotation(EMPTY_WALKTHROUGH_EDITS, '', note('n1', '', 'x')).annotations).toEqual({});
+  });
+
+  it('clamps an over-long note and refuses a day that is not one', () => {
+    const out = setStepAnnotation(EMPTY_WALKTHROUGH_EDITS, 'a', note('n1', '30/06/2019', 'x'.repeat(900)));
+    expect(out.annotations.a[0].date).toBe('');
+    expect(out.annotations.a[0].text).toHaveLength(ANNOTATION_TEXT_MAX_LENGTH);
+  });
+
+  it('caps the notes one chapter can hold', () => {
+    let edits = EMPTY_WALKTHROUGH_EDITS;
+    for (let i = 0; i < ANNOTATIONS_PER_STEP_CAP + 5; i += 1) {
+      edits = setStepAnnotation(edits, 'a', note(`n${i}`, '2019-06-30', `note ${i}`));
+    }
+    expect(edits.annotations.a).toHaveLength(ANNOTATIONS_PER_STEP_CAP);
+  });
+
+  it('removes a note, and the key with the last of them', () => {
+    const two = setStepAnnotation(
+      setStepAnnotation(EMPTY_WALKTHROUGH_EDITS, 'a', note('n1', '2019-06-30', 'one')),
+      'a', note('n2', '2020-01-01', 'two'),
+    );
+    expect(removeStepAnnotation(two, 'a', 'n1').annotations.a).toEqual([note('n2', '2020-01-01', 'two')]);
+    const emptied = removeStepAnnotation(removeStepAnnotation(two, 'a', 'n1'), 'a', 'n2');
+    expect(emptied.annotations).toEqual({});
+    expect(removeStepAnnotation(two, 'a', 'nope').annotations).toEqual(two.annotations);
+    expect(removeStepAnnotation(two, 'zzz', 'n1').annotations).toEqual(two.annotations);
+  });
+
+  it('hangs the notes on their step, oldest first, undated last', () => {
+    const edits = {
+      ...EMPTY_WALKTHROUGH_EDITS,
+      annotations: { a: [note('n1', '2020-01-01', 'later'), note('n2', '', 'still writing'), note('n3', '2011-04-02', 'first')] },
+    };
+    const out = applyWalkthroughEdits(draft, edits);
+    expect(out.find(x => x.key === 'a').annotations.map(n => n.id)).toEqual(['n3', 'n1', 'n2']);
+    // A step nobody annotated is the draft's own object, untouched.
+    expect(out.find(x => x.key === 'b').annotations).toBeUndefined();
+  });
+
+  it('publishes only the notes that carry both a date and something to say', () => {
+    const step = { annotations: [note('n1', '2020-01-01', 'said'), note('n2', '', 'undated'), note('n3', '2019-01-01', '   ')] };
+    expect(publishableAnnotations(step).map(n => n.id)).toEqual(['n1']);
+    expect(publishableAnnotations({})).toEqual([]);
+  });
+
+  it('counts dated notes among the author’s edits', () => {
+    const edits = { ...EMPTY_WALKTHROUGH_EDITS, annotations: { a: [note('n1', '', 'x'), note('n2', '', 'y')], b: [note('n3', '', 'z')] } };
+    expect(editsCounts(edits).annotations).toBe(3);
+  });
+
+  it('mints ids that do not collide', () => {
+    const ids = new Set(Array.from({ length: 50 }, () => newAnnotationId()));
+    expect(ids.size).toBe(50);
+  });
+
+  it('survives a stored shape it did not write', () => {
+    expect(normalizeWalkthroughEdits({ annotations: [] }).annotations).toEqual({});
+    expect(normalizeWalkthroughEdits({ annotations: { a: 'nope' } }).annotations).toEqual({});
+    expect(normalizeWalkthroughEdits({ annotations: { a: [null, 3, { id: 'n1', text: 'ok' }, { id: 'n1', text: 'dupe' }] } }).annotations)
+      .toEqual({ a: [{ id: 'n1', date: '', text: 'ok' }] });
   });
 });

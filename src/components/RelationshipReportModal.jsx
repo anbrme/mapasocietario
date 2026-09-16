@@ -17,12 +17,18 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EventNoteIcon from '@mui/icons-material/EventNote';
 import { DEFAULT_BLOCKS } from '../utils/sitrepAuthor';
 import { buildReportHtml } from '../utils/relationshipReportHtml';
 import { correctionVerb, exportCopy } from '../utils/investigationExport/exportCopy';
 import { NODE_NOTE_MAX_LENGTH } from '../utils/nodeNotes';
 import { REPORT_TITLE_MAX_LENGTH } from '../utils/investigationDoc';
-import { walkthroughCopy, editsCounts, platformModifier } from '../utils/walkthrough';
+import { isoDayShort } from '../utils/isoDay';
+import {
+  walkthroughCopy, editsCounts, platformModifier, momentOptions, momentReason,
+  ANNOTATION_TEXT_MAX_LENGTH, ANNOTATIONS_PER_STEP_CAP,
+} from '../utils/walkthrough';
 
 function StepNoteField({ stepKey, initialText, label, disabled, onCommit }) {
   const [value, setValue] = useState(initialText);
@@ -35,6 +41,76 @@ function StepNoteField({ stepKey, initialText, label, disabled, onCommit }) {
       onBlur={() => { if (!disabled && value !== initialText) onCommit(value); }}
       sx={{ mt: 0.5 }}
     />
+  );
+}
+
+/**
+ * A chapter's date, with the registry's reason for it on screen.
+ *
+ * It used to be a bare date input carrying a preselected day — the company's
+ * last filing, or the most recent of a person's seat dates — with nothing
+ * saying which. The picker now lists the dates this chapter actually has,
+ * each labelled with the act it comes from, and the line underneath says
+ * whether the current one was preselected or chosen.
+ */
+function StepMomentField({ step, options, reason, wt, lang, onChange }) {
+  const known = options.some(o => o.date === step.moment);
+  return (
+    <Box sx={{ mt: 1 }}>
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        {options.length > 0 && (
+          <TextField
+            select size="small" label={wt.momentPick}
+            value={known ? step.moment : ''}
+            onChange={e => onChange(e.target.value)}
+            SelectProps={{ native: true }}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 240, flex: 1 }}
+          >
+            <option value="">{wt.momentNone}</option>
+            {options.map(o => (
+              <option key={o.date} value={o.date}>{`${isoDayShort(o.date, lang)} · ${o.label}`}</option>
+            ))}
+          </TextField>
+        )}
+        <TextField
+          size="small" type="date" label={options.length ? wt.momentCustom : wt.momentLabel}
+          value={step.moment || ''}
+          onChange={e => onChange(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          sx={{ width: 190 }}
+        />
+      </Box>
+      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
+        {reason}
+      </Typography>
+    </Box>
+  );
+}
+
+/** One dated note: its own date, its own text, removable on its own. */
+function DatedNoteRow({ annotation, wt, onChange, onRemove }) {
+  const [text, setText] = useState(annotation.text);
+  useEffect(() => { setText(annotation.text); }, [annotation.id, annotation.text]);
+  return (
+    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mt: 0.75 }}>
+      <TextField
+        size="small" type="date" label={wt.datedNoteDate}
+        value={annotation.date || ''}
+        onChange={e => onChange({ ...annotation, date: e.target.value })}
+        InputLabelProps={{ shrink: true }}
+        sx={{ width: 170, flexShrink: 0 }}
+      />
+      <TextField
+        size="small" fullWidth multiline maxRows={3} label={wt.datedNoteText}
+        value={text}
+        onChange={e => setText(e.target.value.slice(0, ANNOTATION_TEXT_MAX_LENGTH))}
+        onBlur={() => { if (text !== annotation.text) onChange({ ...annotation, text }); }}
+      />
+      <IconButton size="small" onClick={onRemove} title={wt.removeDatedNote} sx={{ mt: 0.5 }}>
+        <DeleteOutlineIcon fontSize="inherit" />
+      </IconButton>
+    </Box>
   );
 }
 
@@ -204,18 +280,22 @@ export default function RelationshipReportModal({
               <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>{t.walkthroughSection}</Typography>
               <Button size="small" onClick={() => {
                 const c = editsCounts(edits);
-                if (window.confirm(wt.resetConfirm(c.hidden, c.notes))) walkthrough.reset();
+                // Dated notes are notes: the confirmation counts what would be lost.
+                if (window.confirm(wt.resetConfirm(c.hidden, c.notes + c.annotations))) walkthrough.reset();
               }} sx={{ textTransform: 'none' }}>{wt.reset}</Button>
             </Box>
-            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
               {walkthrough?.mode === 'selection'
                 ? wt.selectionHelp(platformModifier(typeof navigator !== 'undefined' ? navigator : undefined))
                 : wt.draftHelp}
             </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+              {wt.momentHelp}
+            </Typography>
             {steps.map((s, i) => (
               <Box key={s.key} sx={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 1, py: 0.75, borderTop: '1px solid', borderColor: 'divider', alignItems: 'start' }}>
                 <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 700, pt: 0.5 }}>{String(i + 1).padStart(2, '0')}</Typography>
-                <Box>
+                <Box sx={{ minWidth: 0 }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {wt.kinds?.[s.kind] || wt.sections?.[s.section]} · {wt.sources[s.source]}{s.date ? ` · ${s.date}` : ''}
                   </Typography>
@@ -227,13 +307,47 @@ export default function RelationshipReportModal({
                     label={wt.noteField}
                     onCommit={v => walkthrough.setNote(s.key, v)}
                   />
-                  <TextField
-                    size="small" type="date" label={wt.momentLabel}
-                    value={s.moment || ''}
-                    onChange={e => walkthrough.setMoment(s.key, e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{ mt: 1, width: 190 }}
+                  <StepMomentField
+                    step={s}
+                    options={momentOptions(s, reportLang)}
+                    reason={momentReason(s, reportLang)}
+                    wt={wt}
+                    lang={es ? 'es' : 'en'}
+                    onChange={v => walkthrough.setMoment(s.key, v)}
                   />
+                  {/* One date per note. A chapter's own Momento pins the map to a
+                      single day; an argument about someone's position in a group
+                      usually runs across several, and each of those needs its own
+                      sentence rather than a date nobody can account for. */}
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                      {wt.datedNotes}
+                    </Typography>
+                    {(s.annotations || []).map(a => (
+                      <DatedNoteRow
+                        key={a.id}
+                        annotation={a}
+                        wt={wt}
+                        onChange={next => walkthrough.setAnnotation(s.key, next)}
+                        onRemove={() => walkthrough.removeAnnotation(s.key, a.id)}
+                      />
+                    ))}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
+                      <Button
+                        size="small" startIcon={<EventNoteIcon />}
+                        disabled={(s.annotations || []).length >= ANNOTATIONS_PER_STEP_CAP}
+                        onClick={() => walkthrough.addAnnotation(s.key)}
+                        sx={{ textTransform: 'none' }}
+                      >
+                        {wt.addDatedNote}
+                      </Button>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        {(s.annotations || []).length >= ANNOTATIONS_PER_STEP_CAP
+                          ? wt.datedNotesFull(ANNOTATIONS_PER_STEP_CAP)
+                          : wt.datedNotesHelp}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Box>
                 <Box sx={{ display: 'flex' }}>
                   <IconButton size="small" disabled={i === 0} onClick={() => walkthrough.move(s.key, -1)} title={wt.moveUp}><ArrowUpwardIcon fontSize="inherit" /></IconButton>

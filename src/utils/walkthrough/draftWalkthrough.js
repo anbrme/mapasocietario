@@ -70,7 +70,9 @@ const base = (node, kind, order, lang) => {
   };
 };
 
-const withMoment = step => ({ ...step, moment: defaultMoment(step) });
+// `momentSource: 'draft'` marks a date nobody chose: the report's date field
+// says so, and offers the registry's other dates for this chapter beside it.
+const withMoment = step => ({ ...step, moment: defaultMoment(step), momentSource: 'draft' });
 
 const officersOfCompany = (companyId, graphData, byId) => (graphData?.links || []).flatMap(l => {
   const a = nid(refId(l.source));
