@@ -63,7 +63,7 @@ export default function RelationshipReportModal({
   const otherNotes = doc?.otherNotes || [];
   const corrections = doc?.corrections || [];
   const officersByCompany = doc?.officersByCompany || {};
-  const noCompanies = companies.length < 1;
+  const noDocument = !doc || !(graphData?.nodes?.length);
 
   const statusLabel = (s) => es
     ? ({ active: 'Vigente', ceased: 'Cesado', mixed: 'Mixto' }[s] || s)
@@ -413,7 +413,7 @@ export default function RelationshipReportModal({
             : 'Your summary and node notes are included when you copy or download this situation report. Review them before sharing it.'}
         </Typography>
         <Button onClick={onClose}>{es ? 'Cerrar' : 'Close'}</Button>
-        <Button startIcon={<ContentCopyIcon />} onClick={copyForWord} disabled={noCompanies}>
+        <Button startIcon={<ContentCopyIcon />} onClick={copyForWord} disabled={noDocument}>
           {es ? 'Copiar para Word' : 'Copy for Word'}
         </Button>
         {/* The walkthrough plays from here, beside the other ways out of the
@@ -426,10 +426,10 @@ export default function RelationshipReportModal({
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           {es ? 'se abre en tu navegador' : 'opens in your browser'}
         </Typography>
-        <Button variant="outlined" startIcon={<OpenInNewIcon />} onClick={openPreview} disabled={noCompanies}>
+        <Button variant="outlined" startIcon={<OpenInNewIcon />} onClick={openPreview} disabled={noDocument}>
           {wt.openPreview}
         </Button>
-        <Button variant="contained" startIcon={<DownloadIcon />} onClick={download} disabled={noCompanies}>
+        <Button variant="contained" startIcon={<DownloadIcon />} onClick={download} disabled={noDocument}>
           {es ? 'Descargar' : 'Download'}
         </Button>
       </DialogActions>

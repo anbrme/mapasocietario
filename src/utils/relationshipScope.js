@@ -13,6 +13,29 @@ export function isActiveOfficerCategory(category) {
 }
 const isOwnership = l => !!l && l.type === 'ownership';
 
+// A working document can start from a director as well as a company. Include
+// the visible companies attached to explicitly added directors, keeping the
+// existing company-only rule for automatically pulled ownership subsidiaries.
+export function extractSituationScope(graphData, normalizeId = x => x, pinnedIds = new Set()) {
+  const nodes = graphData?.nodes || [];
+  const subjects = new Set([...pinnedIds].map(normalizeId));
+  const officerRoots = nodes.filter(n => isOfficer(n) && subjects.has(normalizeId(n.id)));
+  const officerIds = new Set(officerRoots.map(n => normalizeId(n.id)));
+  for (const link of graphData?.links || []) {
+    const a = normalizeId(refId(link.source)), b = normalizeId(refId(link.target));
+    if (officerIds.has(a)) subjects.add(b);
+    if (officerIds.has(b)) subjects.add(a);
+  }
+  const hasCompanySubject = nodes.some(n => isCompany(n) && subjects.has(normalizeId(n.id)));
+  const scope = extractVisibleScope(graphData, normalizeId, hasCompanySubject ? subjects : null);
+  const officers = officerRoots.length ? officerRoots : (scope.companies.length ? [] : nodes.filter(isOfficer));
+  scope.officerNodes = officers.map(n => ({ name: n.name, nodeId: normalizeId(n.id) }));
+  scope.counts.officers = new Set([
+    ...Object.values(scope.officersByCompany).flat(), ...officers.map(n => n.name),
+  ]).size;
+  return scope;
+}
+
 /**
  * @param graphData {nodes, links} — the visible graph
  * @param normalizeId optional id normalizer (the graph component passes its

@@ -4,6 +4,8 @@ import { graphInk } from '../theme/graphInk';
 import { debounce } from 'lodash';
 import { forceCollide } from 'd3-force';
 import { useWalkthrough } from '../hooks/useWalkthrough';
+import { useConnectionFocus } from '../hooks/useConnectionFocus';
+import { connectionIndex, connectionFocus } from '../utils/connectionFocus';
 import WalkthroughPlayer, { walkthroughControllerInset } from './WalkthroughPlayer';
 import {
   EMPTY_WALKTHROUGH_EDITS, normalizeWalkthroughEdits, walkthroughCopy, platformModifier, stepViewport,
@@ -100,7 +102,7 @@ import { isMonitorableNode, fetchWatchlistView, watchlistSeeds } from '../servic
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import BookmarksIcon from '@mui/icons-material/Bookmarks';
 import RelationshipReportModal from './RelationshipReportModal';
-import { extractVisibleScope } from '../utils/relationshipScope';
+import { extractSituationScope } from '../utils/relationshipScope';
 import { buildInvestigationDoc } from '../utils/investigationDoc';
 import { hasIncoherentCapital } from '../utils/capitalCoherence';
 import { latestEventType } from '../utils/latestEventType';
@@ -305,7 +307,7 @@ const SEARCH_COPY = {
     emptyExamplesLabel: 'Or start with one of these:',
     dueDiligence: 'Due Diligence',
     monitorCompany: 'Monitor this company (free)',
-    situationReportTooltip: 'Situation report for the visible companies — your map, corrections and notes (free)',
+    situationReportTooltip: 'Working document for your visible graph — companies, directors and your notes (free)',
     situationReport: 'Situation report',
     hideShared: 'Hide shared connections',
     showShared: 'Highlight officers/entities across several companies and dim the rest',
@@ -593,7 +595,9 @@ const SEARCH_COPY = {
     // canvas, which for an unexpanded node is whatever brought it here. EY
     // read 'Connections 1' while holding 199 seats in the registry.
     hoverConnections: 'Connections shown',
-    hoverHint: 'Click: profile · Double click: expand · Right click: options',
+    hoverHint: 'Click: profile · Double click: expand · Hold: keep connections · Shift + hold: add/remove · Right click: options',
+    connectionFocusLocked: n => `Connections locked: ${n} · Shift + hold to add/remove`,
+    clearConnectionFocus: 'Clear connection highlight (Esc)',
     structureSection: 'Structure',
     structureHint: 'Opens the full table in the panel below.',
     trackRecord: 'Track record',
@@ -678,7 +682,7 @@ const SEARCH_COPY = {
     emptyExamplesLabel: 'O empieza con una de estas:',
     dueDiligence: 'Due Diligence',
     monitorCompany: 'Monitorizar esta empresa (gratis)',
-    situationReportTooltip: 'Informe de situación sobre las empresas visibles — tu mapa, tus correcciones y tus notas (gratis)',
+    situationReportTooltip: 'Documento de trabajo sobre el grafo visible — empresas, administradores y tus notas (gratis)',
     situationReport: 'Informe de situación',
     hideShared: 'Ocultar conexiones compartidas',
     showShared: 'Resaltar administradores/entidades en varias empresas y atenuar el resto',
@@ -959,7 +963,9 @@ const SEARCH_COPY = {
     corporateOfficerNotice: 'Este cargo lo ejerce una sociedad, que tiene su propia ficha registral.',
     // Ver la nota en la copia EN: cuenta enlaces dibujados, no cargos reales.
     hoverConnections: 'Conexiones en el grafo',
-    hoverHint: 'Clic: ficha · Doble clic: expandir · Clic derecho: opciones',
+    hoverHint: 'Clic: ficha · Doble clic: expandir · Mantener pulsado: fijar conexiones · Mayús + mantener: añadir/quitar · Clic derecho: opciones',
+    connectionFocusLocked: n => `Conexiones fijadas: ${n} · Mayús + mantener para añadir/quitar`,
+    clearConnectionFocus: 'Quitar resaltado de conexiones (Esc)',
     structureSection: 'Estructura',
     structureHint: 'Abre la tabla completa en el panel inferior.',
     trackRecord: 'Trayectoria',
@@ -1804,6 +1810,14 @@ const SpanishCompanyNetworkGraph = ({
   // pixel space the card is positioned in. The cursor is already in that space.
   const pointerRef = useRef({ x: 0, y: 0 });
   const hoverNodeRef = useRef(null);
+  const { locked: connectionRoots, setLocked: setConnectionRoots, press: connectionGesture } = useConnectionFocus();
+  const clearConnectionFocus = useCallback(() => {
+    connectionGesture.cancel();
+    setConnectionRoots(new Set());
+    hoverNodeRef.current = null;
+    setHoverNode(null);
+    setHoverPosition(null);
+  }, [connectionGesture, setConnectionRoots]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(null);
   const [previewData, setPreviewData] = useState(null);
@@ -5684,6 +5698,10 @@ const SpanishCompanyNetworkGraph = ({
   // Click/tap handler — desktop: double-click expands; mobile: single tap opens context menu, double tap expands
   const handleNodeClick = useCallback(
     (node, event) => {
+      if (connectionGesture.suppresses(event)) {
+        lastClickRef.current = { nodeId: null, time: 0 };
+        return;
+      }
       const now = Date.now();
       const last = lastClickRef.current;
       const nodeId = normalizeNodeId(node.id);
@@ -5783,6 +5801,7 @@ const SpanishCompanyNetworkGraph = ({
       isNodeNoteMarkerClick,
       isTouchDevice,
       toggleInvestigationNode,
+      connectionGesture,
     ]
   );
 
@@ -5792,7 +5811,8 @@ const SpanishCompanyNetworkGraph = ({
   // siblings, and the "+N anteriores" badge on that edge is only honest if the
   // roles behind it are one click away.
   const handleLinkClick = useCallback(
-    link => {
+    (link, event) => {
+      if (connectionGesture.suppresses(event)) return;
       if (!link || link.type !== 'officer-company') return;
       const { source, target } = link;
       if (typeof source !== 'object' || typeof target !== 'object') return;
@@ -5806,7 +5826,7 @@ const SpanishCompanyNetworkGraph = ({
       setActiveNodeId(normalizeNodeId(officerNode.id));
       openDataPreviewRef.current?.(officerNode);
     },
-    [graphInteractionParams, isTouchDevice]
+    [graphInteractionParams, isTouchDevice, connectionGesture]
   );
 
   const entityDatasets = React.useMemo(
@@ -5818,13 +5838,15 @@ const SpanishCompanyNetworkGraph = ({
     [entityDatasets]
   );
 
-  const handleBackgroundClick = useCallback(() => {
+  const handleBackgroundClick = useCallback(event => {
+    if (connectionGesture.suppresses(event)) return;
+    clearConnectionFocus();
     trackEvent('graph_background_click', {
       ...graphInteractionParams(),
       interaction_source: isTouchDevice ? 'touch' : 'mouse',
     });
     setActiveNodeId(null);
-  }, [graphInteractionParams, isTouchDevice]);
+  }, [graphInteractionParams, isTouchDevice, clearConnectionFocus, connectionGesture]);
 
   const openEditNodeDialog = useCallback(() => {
     if (!contextNode) return;
@@ -6798,6 +6820,8 @@ const SpanishCompanyNetworkGraph = ({
 
   // Handle zoom changes
   const handleZoom = useCallback(transform => {
+    connectionGesture.cancel();
+    hoverNodeRef.current = null;
     setHoverNode(null);
     setHoverPosition(null);
     const k = typeof transform === 'number' ? transform : transform?.k;
@@ -6809,11 +6833,12 @@ const SpanishCompanyNetworkGraph = ({
     ) {
       setCameraState({ x: transform.x, y: transform.y, k });
     }
-  }, []);
+  }, [connectionGesture]);
 
   // Freeze all other nodes during drag to avoid graph drift and restore after drag.
   const handleNodeDrag = useCallback(
     node => {
+      hoverNodeRef.current = null;
       setHoverNode(null);
       setHoverPosition(null);
       const freezeSession = dragFreezeRef.current;
@@ -7265,6 +7290,18 @@ const SpanishCompanyNetworkGraph = ({
     return degrees;
   }, [filteredGraphData.links]);
 
+  const neighborIndex = React.useMemo(() => connectionIndex(filteredGraphData), [filteredGraphData]);
+  useEffect(() => {
+    connectionGesture.cancel();
+    setConnectionRoots(previous => {
+      const next = new Set([...previous].filter(id => neighborIndex.has(id)));
+      return next.size === previous.size ? previous : next;
+    });
+  }, [neighborIndex, connectionGesture, setConnectionRoots]);
+  const neighborhood = React.useMemo(() => connectionFocus(
+    neighborIndex, connectionRoots, nodeContextMenu ? null : hoverNode?.id,
+  ), [neighborIndex, connectionRoots, hoverNode, nodeContextMenu]);
+
   // Nodes that are DEAD ENDS: their only tie in the current view is a ceased
   // one, so there is nothing current here and expanding them reveals nothing.
   //
@@ -7302,24 +7339,13 @@ const SpanishCompanyNetworkGraph = ({
   const contextOfficerCanMarkActive =
     contextOfficerStatus === 'ceased' || contextOfficerStatus === 'mixed';
 
-  // Relationship-report subjects = the companies the user explicitly added
-  // (searched/expanded → pinned), NOT auto-pulled socio-único subsidiaries.
-  // Restrict to those that are still visible (in filteredGraphData).
-  const relationshipSubjectIds = React.useMemo(
-    () => new Set([...pinnedNodeIds].map(normalizeNodeId)),
-    [pinnedNodeIds]);
-
-  const visibleCompanyCount = React.useMemo(
-    () => filteredGraphData.nodes.filter(
-      n => (n.type === 'company' || n.type === 'spanish-company-group')
-        && relationshipSubjectIds.has(normalizeNodeId(n.id))).length,
-    [filteredGraphData.nodes, relationshipSubjectIds]);
-
   // Live, detailed relationship scope from the visible graph — single source of
   // truth for both the report modal and the shared-connections highlight.
   const relationshipDetailedScope = React.useMemo(
-    () => extractVisibleScope(filteredGraphData, normalizeNodeId, relationshipSubjectIds),
-    [filteredGraphData, relationshipSubjectIds]);
+    () => extractSituationScope(filteredGraphData, normalizeNodeId, pinnedNodeIds),
+    [filteredGraphData, pinnedNodeIds]);
+  const visibleCompanyCount = relationshipDetailedScope.companies.length;
+  const reportSubjectCount = visibleCompanyCount + relationshipDetailedScope.officerNodes.length;
 
   const sharedHighlightIds = showSharedConnections
     ? relationshipDetailedScope.sharedNodeIds
@@ -7361,6 +7387,18 @@ const SpanishCompanyNetworkGraph = ({
   });
   const tourActive = walkthrough.status === 'playing';
   const { tourNodeIds, tourLinkKeys } = walkthrough;
+  // Tour/path focus takes precedence, but the locked neighborhood survives it.
+  const connectionFocusActive = neighborhood.active && !tourActive
+    && !(pathfinderActive && shortestPathNodes.size > 0);
+  useEffect(() => {
+    const onKeyDown = event => {
+      if (event.key !== 'Escape' || tourActive || relReportOpen || nodeContextMenu) return;
+      if (event.target?.closest?.('input, textarea, [contenteditable="true"], [role="dialog"]')) return;
+      clearConnectionFocus();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [clearConnectionFocus, tourActive, relReportOpen, nodeContextMenu]);
 
   // Re-fetch findings in the new language when the toggle changes while the
   // report is open; steps otherwise keep displaying whatever language they
@@ -7401,7 +7439,7 @@ const SpanishCompanyNetworkGraph = ({
   // (relDoc, below) is derived from live state so it always reflects what the
   // user is currently looking at and typing — see relDoc's comment.
   const openRelationshipReport = useCallback(async () => {
-    if (relationshipDetailedScope.companies.length < 1) return;
+    if (filteredGraphData.nodes.length < 1) return;
     // Exit the walkthrough BEFORE the modal opens: the player's own Escape
     // handler must never coexist with the MUI Dialog's.
     walkthrough.exit();
@@ -7424,7 +7462,7 @@ const SpanishCompanyNetworkGraph = ({
     // timestamp on every keystroke in the summary field.
     setRelGeneratedAt(new Date().toISOString());
     setRelReportOpen(true);
-  }, [relationshipDetailedScope, subjectCompanyName, resolveSubjectGroupKey, walkthrough]);
+  }, [filteredGraphData.nodes.length, subjectCompanyName, resolveSubjectGroupKey, walkthrough]);
 
   // The walkthrough plays from the report and comes back to it: the modal is
   // the authoring surface, the controller on the canvas is read-only.
@@ -7449,7 +7487,7 @@ const SpanishCompanyNetworkGraph = ({
       scope: relationshipDetailedScope,
       networkNote,
       corrections: relCorrections,
-      primarySubject: subjectCompanyName || '',
+      primarySubject: subjectCompanyName || relationshipDetailedScope.officerNodes[0]?.name || '',
       generatedAt: relGeneratedAt || new Date().toISOString(),
       steps: walkthrough.steps,
       author: sitrepAuthor,
@@ -7691,6 +7729,8 @@ const SpanishCompanyNetworkGraph = ({
         ctx.globalAlpha = tourNodeIds.has(normalizeNodeId(node.id)) ? 1.0 : PATH_DIM_ALPHA;
       } else if (pathfinderActive && shortestPathNodes.size > 0) {
         ctx.globalAlpha = inPath ? 1.0 : PATH_DIM_ALPHA;
+      } else if (connectionFocusActive) {
+        ctx.globalAlpha = neighborhood.nodes.has(normalizeNodeId(node.id)) ? 1 : 0.12;
       } else if (sharedHighlightIds) {
         ctx.globalAlpha = isSharedConnector ? 1.0 : PATH_DIM_ALPHA;
       } else {
@@ -7777,7 +7817,7 @@ const SpanishCompanyNetworkGraph = ({
       }
       ctx.fill();
       ctx.save();
-      ctx.globalAlpha = isDeadEnd ? ink.deadEndTintAlpha : ink.nodeTintAlpha;
+      ctx.globalAlpha *= isDeadEnd ? ink.deadEndTintAlpha : ink.nodeTintAlpha;
       ctx.fillStyle = color;
       ctx.fill();
       ctx.restore();
@@ -7889,6 +7929,8 @@ const SpanishCompanyNetworkGraph = ({
           shouldRenderLabel = false;
         }
 
+        if (connectionFocusActive) shouldRenderLabel = neighborhood.nodes.has(normalizeNodeId(node.id));
+
         if (shouldRenderLabel) {
           ctx.font = `${fontSize}px "IBM Plex Mono", monospace`;
           ctx.textAlign = 'center';
@@ -7927,6 +7969,17 @@ const SpanishCompanyNetworkGraph = ({
             ctx.fillText(truncatedSubtitle, node.x, subtitleY);
           }
         }
+      }
+
+      if (connectionFocusActive && neighborhood.roots.has(normalizeNodeId(node.id))) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius * 2 + 3 / globalScale, 0, 2 * Math.PI);
+        ctx.strokeStyle = PATH_HIGHLIGHT_COLOR;
+        ctx.lineWidth = 2 / globalScale;
+        ctx.setLineDash([]);
+        ctx.stroke();
+        ctx.restore();
       }
 
       if (investigationSet.has(normalizeNodeId(node.id))) {
@@ -7996,7 +8049,7 @@ const SpanishCompanyNetworkGraph = ({
         const noteColor = graphPalette.noteFlag[node.userNote.flag] || graphPalette.noteFlag.none;
         const marker = getNodeNoteMarkerGeometry(node, nodeRadius);
         ctx.save();
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = connectionFocusActive && !neighborhood.nodes.has(normalizeNodeId(node.id)) ? 0.12 : 1;
         ctx.beginPath();
         ctx.arc(marker.x, marker.y, marker.radius, 0, 2 * Math.PI);
         ctx.fillStyle = noteColor;
@@ -8014,7 +8067,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [watchlistChanges, nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, ink, nodeDegrees, deadEndNodeIds, tourActive, tourNodeIds]
+    [watchlistChanges, nodeSize, labelSize, showNodeLabels, nodeColors, filteredGraphData.nodes, pinnedNodeIds, officerDeputyMatches, pathfinderActive, shortestPathNodes, colorByCluster, getClusterColor, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, investigationSet, graphPalette, ink, nodeDegrees, deadEndNodeIds, tourActive, tourNodeIds, connectionFocusActive, neighborhood]
   );
 
   const linkCanvasObject = useCallback(
@@ -8039,6 +8092,7 @@ const SpanishCompanyNetworkGraph = ({
       // shared-connector check and by the walkthrough's tour-focus check.
       const sId = normalizeNodeId(getNodeIdFromRef(link.source));
       const tId = normalizeNodeId(getNodeIdFromRef(link.target));
+      const inNeighborhood = neighborhood.roots.has(sId) || neighborhood.roots.has(tId);
       // Walkthrough focus: the tour dims every link outside the current step's
       // pair, same as the pathfinder does for its own path.
       const inTour = tourActive && tourLinkKeys.has(walkthroughPairKey(sId, tId));
@@ -8051,7 +8105,7 @@ const SpanishCompanyNetworkGraph = ({
 
       if (pathfinderActive && isLinkInPath) {
         linkColor = PATH_HIGHLIGHT_COLOR;
-      } else if (sharedHighlightIds && touchesShared) {
+      } else if (!connectionFocusActive && sharedHighlightIds && touchesShared) {
         linkColor = PATH_HIGHLIGHT_COLOR;
       } else if (link.type === 'ownership') {
         linkColor =
@@ -8079,6 +8133,8 @@ const SpanishCompanyNetworkGraph = ({
         if (inTour) linkColor = PATH_HIGHLIGHT_COLOR;
       } else if (pathfinderActive && shortestPathNodes.size > 0) {
         ctx.globalAlpha = isLinkInPath ? 0.95 : PATH_DIM_ALPHA;
+      } else if (connectionFocusActive) {
+        ctx.globalAlpha = inNeighborhood ? 1 : 0.08;
       } else if (sharedHighlightIds) {
         ctx.globalAlpha = touchesShared ? 1.0 : PATH_DIM_ALPHA;
       } else {
@@ -8099,6 +8155,8 @@ const SpanishCompanyNetworkGraph = ({
       let strokeWidth = Math.max(0.3, 1 / globalScale);
       if (pathfinderActive && isLinkInPath) {
         strokeWidth = Math.max(1.3, 3 / globalScale);
+      } else if (connectionFocusActive && inNeighborhood) {
+        strokeWidth = Math.max(0.8, 2 / globalScale);
       } else if (link.type === 'ownership') {
         strokeWidth = Math.max(0.6, 1.6 / globalScale);
       }
@@ -8229,7 +8287,7 @@ const SpanishCompanyNetworkGraph = ({
 
       ctx.globalAlpha = 1.0;
     },
-    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, graphPalette, ink, text, tourActive, tourLinkKeys]
+    [filteredGraphData.links, parallelLinkMeta, labelSize, nodeSize, pathfinderActive, shortestPathNodes, shortestPathLinks, PATH_DIM_ALPHA, PATH_HIGHLIGHT_COLOR, sharedHighlightIds, graphPalette, ink, text, tourActive, tourLinkKeys, connectionFocusActive, neighborhood]
   );
 
   // Graph controls
@@ -8264,6 +8322,7 @@ const SpanishCompanyNetworkGraph = ({
   }, [initialCompanyName, initialGroupKey, initialSearchType, uiLanguage]);
 
   const clearGraph = () => {
+    clearConnectionFocus();
     if (embedded) {
       autosaveWriteIdRef.current += 1;
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
@@ -8618,6 +8677,27 @@ const SpanishCompanyNetworkGraph = ({
     if (hoverNodeRef.current) setHoverPosition(next);
   }, [containerEl]);
 
+  const handleConnectionPointerDown = useCallback(event => {
+    // Only the canvas participates; controls and inspector overlays keep their
+    // own gestures. Resolve touch hits without relying on a preceding hover.
+    if (event.target.tagName !== 'CANVAS') return;
+    if (event.isPrimary === false) { connectionGesture.cancel(); return; }
+    const rect = event.target.getBoundingClientRect();
+    const point = fgRef.current?.screen2GraphCoords(event.clientX - rect.left, event.clientY - rect.top);
+    if (!point) return;
+    const node = [...filteredGraphData.nodes].reverse().find(n =>
+      Number.isFinite(n.x) && Number.isFinite(n.y)
+      && Math.hypot(n.x - point.x, n.y - point.y) <= nodeSize);
+    connectionGesture.begin(node ? normalizeNodeId(node.id) : null, event);
+  }, [filteredGraphData.nodes, nodeSize, connectionGesture]);
+
+  const handleConnectionPointerLeave = useCallback(() => {
+    connectionGesture.cancel();
+    hoverNodeRef.current = null;
+    setHoverNode(null);
+    setHoverPosition(null);
+  }, [connectionGesture]);
+
 
   const buildCurrentGraphSnapshot = useCallback(() => createGraphSnapshot({
     graphData,
@@ -8744,6 +8824,7 @@ const SpanishCompanyNetworkGraph = ({
   }, [buildCurrentGraphSnapshot, graphData.nodes, primarySubject, text]);
 
   const applyGraphSnapshot = useCallback((snapshot, notice, source = 'imported') => {
+    clearConnectionFocus();
     const view = snapshot.view || {};
     const nodeById = new Map(
       snapshot.graph.nodes.map(node => [normalizeNodeId(node.id), node])
@@ -8819,7 +8900,7 @@ const SpanishCompanyNetworkGraph = ({
     setNodeContextMenu(null);
     setError(null);
     setSnapshotNotice(notice || '');
-  }, []);
+  }, [clearConnectionFocus]);
 
   const importGraphSnapshot = useCallback(async event => {
     const file = event.target.files?.[0];
@@ -9543,17 +9624,17 @@ const SpanishCompanyNetworkGraph = ({
           </Button>
           </Tooltip>
         )}
-        {visibleCompanyCount >= 1 && (() => {
+        {filteredGraphData.nodes.length > 0 && (() => {
           // The walkthrough is a mode of the report: one button, whose badge
           // counts the Cmd/Ctrl+click selection when there is one (the steps)
-          // and the visible companies otherwise, and whose tooltip carries the
+          // and the report subjects otherwise, and whose tooltip carries the
           // selection hint.
           const wt = walkthroughCopy(uiLanguage);
           const hint = wt.hint(platformModifier(typeof navigator !== 'undefined' ? navigator : undefined));
           return (
           <Tooltip title={`${text.situationReportTooltip} — ${hint}`}>
             <span>
-              <Badge badgeContent={walkthrough.selectedCount || visibleCompanyCount} color="primary"
+              <Badge badgeContent={walkthrough.selectedCount || reportSubjectCount} color="primary"
                 sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
                 <Button
                   variant="outlined" color="primary" size="small"
@@ -9563,7 +9644,7 @@ const SpanishCompanyNetworkGraph = ({
                   onClick={() => {
                     trackGraphToolbarAction('situation_report', {
                       language: uiLanguage, mode: walkthrough.mode,
-                      companies: walkthrough.selectedCount || visibleCompanyCount,
+                      companies: visibleCompanyCount,
                     });
                     openRelationshipReport();
                   }}>
@@ -10477,6 +10558,8 @@ const SpanishCompanyNetworkGraph = ({
         ref={containerCallbackRef}
         sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: 'graph.surface.canvas' }}
         onMouseMove={handleContainerPointerMove}
+        onPointerDownCapture={handleConnectionPointerDown}
+        onPointerLeave={handleConnectionPointerLeave}
       >
         {shouldShowGraphEmptyState({
           nodeCount: graphData.nodes.length,
@@ -10529,8 +10612,9 @@ const SpanishCompanyNetworkGraph = ({
             nodeLabel={() => ''}
             onNodeClick={handleNodeClick}
             onNodeHover={handleNodeHover}
-            onNodeRightClick={(node, event) =>
-              handleNodeRightClick(node, event, { interactionSource: 'right_click' })}
+            onNodeRightClick={(node, event) => {
+              if (!connectionGesture.suppresses(event)) handleNodeRightClick(node, event, { interactionSource: 'right_click' });
+            }}
             onBackgroundClick={handleBackgroundClick}
             onNodeDrag={handleNodeDrag}
             onNodeDragEnd={handleNodeDragEnd}
@@ -10540,7 +10624,11 @@ const SpanishCompanyNetworkGraph = ({
             // Arrowheads are drawn manually in linkCanvasObject (built-in
             // linkDirectionalArrow* props are ignored under a custom 'replace'-mode
             // renderer). Kept light: one slow particle so a ~50-edge graph stays smooth.
-            linkDirectionalParticles={link => (isDirectionalLink(link) ? 2 : 0)}
+            linkDirectionalParticles={link => {
+              if (connectionFocusActive && !neighborhood.roots.has(normalizeNodeId(getNodeIdFromRef(link.source)))
+                && !neighborhood.roots.has(normalizeNodeId(getNodeIdFromRef(link.target)))) return 0;
+              return isDirectionalLink(link) ? 2 : 0;
+            }}
             linkDirectionalParticleSpeed={0.006}
             linkDirectionalParticleWidth={3}
             // Bright, edge-matched particle color so the flow is visible against the
@@ -10569,6 +10657,17 @@ const SpanishCompanyNetworkGraph = ({
             width={canvasDimensions.width}
             height={canvasDimensions.height}
           />
+        )}
+
+        {connectionRoots.size > 0 && (
+          <Tooltip title={text.clearConnectionFocus}>
+            <Chip
+              label={text.connectionFocusLocked(connectionRoots.size)}
+              onDelete={clearConnectionFocus}
+              onClick={clearConnectionFocus}
+              sx={{ position: 'absolute', top: isCompactEmbed ? 8 : 56, left: 12, maxWidth: 'calc(100% - 24px)', bgcolor: 'background.paper', zIndex: 21 }}
+            />
+          </Tooltip>
         )}
 
         <WalkthroughPlayer

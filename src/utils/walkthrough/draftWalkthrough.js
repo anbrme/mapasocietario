@@ -165,6 +165,9 @@ export function draftWalkthrough({
     out.push(build(node, out.length));
   };
 
+  // Explicit director subjects get a graph-backed chapter even when they
+  // have just one visible seat (or none), without fetching a person profile.
+  (scope?.officerNodes || []).forEach(n => push(byId.get(nid(n.nodeId))));
   subjectCompanyIds(scope, primarySubjectId).forEach(id => push(byId.get(id)));
   [...(scope?.connectors || [])]
     .sort((x, y) => (y.companies?.length || 0) - (x.companies?.length || 0)
