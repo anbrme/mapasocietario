@@ -10,9 +10,13 @@ import { BrowserRouter, Routes, Route, Link as RouterLink } from 'react-router-d
 import { HelmetProvider } from 'react-helmet-async';
 import { TermsProvider } from './contexts/TermsProvider';
 import { ThemeModeProvider } from './theme/ThemeModeProvider';
-import App from './App';
 import LandingPage from './components/LandingPage';
-import Dashboard from './components/Dashboard';
+// The workspace (force-graph, d3) and the dashboard (recharts) are the two
+// heaviest routes. Loading them eagerly put ~400 KB of unused script in front
+// of the homepage's first paint on mobile; LandingPage prefetches the graph
+// chunk on idle so the hand-off to /app stays quick.
+const App = lazy(() => import('./App'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
 const DueDiligencePage = lazy(() => import('./components/DueDiligencePage'));
 const SpanishCompanyDueDiligencePage = lazy(() => import('./components/SpanishCompanyDueDiligencePage'));
 const PricingPage = lazy(() => import('./components/PricingPage'));
@@ -106,7 +110,7 @@ function AppRoutes() {
       <Route path="/es/conectar-claude" element={<Suspense fallback={null}><ConnectClaudePage lang="es" /></Suspense>} />
       <Route path="/es/busqueda-registro-mercantil" element={<Suspense fallback={null}><EnglishRegisterSearchPage language="es" /></Suspense>} />
       <Route path="/es/:slug" element={<Suspense fallback={null}><SpanishSeoPage /></Suspense>} />
-      <Route path="/app" element={<App />} />
+      <Route path="/app" element={<Suspense fallback={null}><App /></Suspense>} />
       <Route path="/due-diligence" element={<Suspense fallback={null}><DueDiligencePage /></Suspense>} />
       <Route path="/spanish-company-due-diligence" element={<Suspense fallback={null}><SpanishCompanyDueDiligencePage /></Suspense>} />
       <Route path="/spanish-company-register-search" element={<Suspense fallback={null}><EnglishRegisterSearchPage /></Suspense>} />
@@ -131,7 +135,7 @@ function AppRoutes() {
           monitors, without one it offers to email a fresh link. */}
       <Route path="/alerts/view" element={<Suspense fallback={null}><AlertsManagePage /></Suspense>} />
       <Route path="/es/alerts/view" element={<Suspense fallback={null}><AlertsManagePage lang="es" /></Suspense>} />
-      <Route path="/dashboard" element={<FilterProvider><Dashboard /></FilterProvider>} />
+      <Route path="/dashboard" element={<Suspense fallback={null}><FilterProvider><Dashboard /></FilterProvider></Suspense>} />
       </Routes>
     </>
   );

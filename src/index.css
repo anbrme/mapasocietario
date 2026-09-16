@@ -13,6 +13,20 @@
   --ms-app-fg: #e0e0e0;
   --ms-scrollbar-thumb: rgba(255, 255, 255, 0.12);
   --ms-scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+  /* Pre-hydration hero (.ms-hero below). Mirrors palette.js accent/primary
+     and landingTokens.js dark surfaces; the React hero draws over it. */
+  --ms-hero-accent: #2dd4bf;
+  --ms-hero-primary: #14b8a6;
+  --ms-hero-on-primary: #0a0e1a;
+  --ms-hero-warning: #ffb74d;
+  --ms-hero-text-secondary: rgba(255, 255, 255, 0.7);
+  --ms-hero-muted: rgba(255, 255, 255, 0.5);
+  --ms-hero-field-bg: rgba(255, 255, 255, 0.12);
+  --ms-hero-field-border: rgba(255, 255, 255, 0.72);
+  --ms-hero-demo-bg: #0d1220;
+  --ms-hero-demo-border: rgba(20, 184, 166, 0.18);
+  --ms-hero-demo-glow: rgba(20, 184, 166, 0.1);
+  --ms-hero-demo-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
 }
 
 :root[data-theme='light'] {
@@ -20,6 +34,103 @@
   --ms-app-fg: #1e293b;
   --ms-scrollbar-thumb: rgba(15, 23, 42, 0.18);
   --ms-scrollbar-thumb-hover: rgba(15, 23, 42, 0.3);
+  --ms-hero-accent: #0f766e;
+  --ms-hero-primary: #0d9488;
+  --ms-hero-on-primary: #ffffff;
+  --ms-hero-warning: #b45309;
+  --ms-hero-text-secondary: rgba(0, 0, 0, 0.6);
+  --ms-hero-muted: #475569;
+  --ms-hero-field-bg: #ffffff;
+  --ms-hero-field-border: rgba(15, 23, 42, 0.42);
+  --ms-hero-demo-bg: #ffffff;
+  --ms-hero-demo-border: rgba(13, 148, 136, 0.22);
+  --ms-hero-demo-glow: rgba(13, 148, 136, 0.1);
+  --ms-hero-demo-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+}
+
+/* Self-hosted IBM Plex (public/fonts, Google Fonts builds, OFL). Sans is the
+   variable face so one file covers 300-700; Mono ships per weight. unicode-range
+   keeps latin-ext off the wire until a glyph needs it. swap: text paints in
+   the fallback immediately and re-renders when the face lands. */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-latin-v23.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-latin-ext-v23.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-400-latin-v20.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-400-latin-ext-v20.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-500-latin-v20.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-500-latin-ext-v20.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-600-latin-v20.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-600-latin-ext-v20.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-700-latin-v20.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-700-latin-ext-v20.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 html, body, #root {
@@ -41,11 +152,235 @@ html, body, #root {
   letter-spacing: 0.01em;
 }
 
-/* Hide prerendered static content once JS is available.
-   The static HTML inside #root is for non-JS crawlers only;
-   React replaces it on mount. This prevents the brief flash. */
+/* Hide the crawler-only prerendered block. The <main> inside #root is for
+   non-JS crawlers; React replaces it on mount. The .ms-hero sibling that
+   precedes it on the homepage is the opposite case and MUST paint. */
 #root > main {
   display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Pre-hydration homepage hero (scripts/lib/staticHero.mjs).
+   Geometry and type mirror the React hero in LandingPage.jsx (MUI spacing
+   unit 8px; breakpoints sm 600 / md 900) so the swap on mount is a repaint,
+   not a jump. React unmounts this subtree entirely; nothing here needs JS.
+   --------------------------------------------------------------------------- */
+.ms-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  background: var(--ms-app-bg);
+  color: var(--ms-app-fg);
+  font-family: 'IBM Plex Sans', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+}
+
+.ms-hero__nav {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 20px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+}
+
+.ms-hero__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.ms-hero__link {
+  color: var(--ms-hero-text-secondary);
+  font-weight: 600;
+  font-size: 0.88rem;
+  line-height: 1.5; /* MUI Link inherits body1's 1.5; keeps the bar the same height */
+  text-decoration: none;
+}
+
+.ms-hero__link--highlight {
+  color: var(--ms-hero-warning);
+}
+
+.ms-hero__lang {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.ms-hero__section {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.ms-hero__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: center;
+}
+
+.ms-hero__text {
+  text-align: center;
+}
+
+.ms-hero__eyebrow {
+  color: var(--ms-hero-accent);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 2.66;
+  margin-bottom: 8px;
+}
+
+.ms-hero__h1 {
+  font-weight: 700;
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+  /* React draws its h1 at 1.12. This one is deliberately a hair taller (~4px
+     over three lines, invisible at the swap) so its painted text area stays
+     the largest on the page: Chrome only re-assigns LCP to the React h1 if
+     that paints LARGER, and with equal metrics it did (font-swap timing
+     tipped it by 1%), pushing mobile LCP from ~1s to ~4s. Do not "align" this
+     back to 1.12 without re-checking the LCP candidate sequence in a trace. */
+  line-height: 1.16;
+  margin-bottom: 16px;
+}
+
+.ms-hero__subtitle {
+  color: var(--ms-hero-text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  max-width: 600px;
+  margin: 0 auto 12px;
+}
+
+.ms-hero__intro {
+  color: var(--ms-hero-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 600px;
+  margin: 0 auto 28px;
+}
+
+.ms-hero__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 62px;
+  padding: 0 8px 0 14px;
+  border: 1.5px solid var(--ms-hero-field-border);
+  border-radius: 8px;
+  background: var(--ms-hero-field-bg);
+}
+
+.ms-hero__search:focus-within {
+  border-color: var(--ms-hero-primary);
+  border-width: 2px;
+}
+
+.ms-hero__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1.02rem;
+}
+
+.ms-hero__input::placeholder {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.ms-hero__button {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 4px;
+  padding: 6px 14px;
+  background: var(--ms-hero-primary);
+  color: var(--ms-hero-on-primary);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ms-hero__hint {
+  color: var(--ms-hero-muted);
+  font-size: 0.875rem;
+  line-height: 1.66;
+  margin: 3px 4px 0;
+}
+
+.ms-hero__demo {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--ms-hero-demo-border);
+  border-radius: 8px;
+  background:
+    radial-gradient(ellipse 70% 70% at 50% 45%, var(--ms-hero-demo-glow) 0%, transparent 70%),
+    var(--ms-hero-demo-bg);
+  box-shadow: var(--ms-hero-demo-shadow);
+}
+
+@media (min-width: 600px) {
+  .ms-hero__nav {
+    padding: 24px 32px 0;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .ms-hero__links {
+    justify-content: flex-start;
+    gap: 20px;
+  }
+  .ms-hero__link {
+    font-size: 1rem;
+  }
+  .ms-hero__section {
+    padding: 56px 32px;
+  }
+  .ms-hero__h1 {
+    font-size: 2.7rem;
+  }
+  .ms-hero__subtitle {
+    font-size: 1.2rem;
+  }
+  .ms-hero__intro {
+    font-size: 1rem;
+  }
+  .ms-hero__input {
+    font-size: 1.1rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .ms-hero__grid {
+    grid-template-columns: 1fr 1.15fr;
+    gap: 40px;
+  }
+  .ms-hero__text {
+    text-align: left;
+  }
+  .ms-hero__h1 {
+    font-size: 3rem;
+  }
+  .ms-hero__subtitle,
+  .ms-hero__intro {
+    max-width: 520px;
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 
 /* Scrollbar, themed via the variables above */

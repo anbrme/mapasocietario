@@ -20,6 +20,7 @@ import {
 } from '../src/copy/freeFirstReport.js';
 import { CARGO_FAMILIES, UNNAMED_COMMITTEE_EXAMPLES } from '../src/copy/cargoFamilies.js';
 import { positionLabelFor } from '../src/utils/positionLabels.js';
+import { staticHeroHtml } from './lib/staticHero.mjs';
 
 // Scale figures come from one build-time source; never retype them here.
 const en = registryScale('en');
@@ -260,12 +261,16 @@ const routes = [
     // homepage crawl — see GSC crawl stats) get no link into the company SEO
     // content. Prerender real content + crawlable links into #root; React
     // replaces it on hydration. Writes dist/index.html (path.join collapses '/').
+    //
+    // The visible hero (staticHeroHtml) comes first so the first screen paints
+    // from HTML before the bundle arrives; the <main> that follows is the
+    // crawler-only block, hidden by #root > main in src/index.css.
     path: '/',
     title: 'Spanish Company Search | Mapa Societario',
     description:
       'Search Spanish company and officer histories compiled from daily BORME publications, explore relationships in an interactive graph, and order reports when needed.',
     ogType: 'website',
-    staticContent: `
+    staticContent: `${staticHeroHtml('en')}
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa Societario &mdash; Spanish Company Search</h1>
         <p>Search Spanish company and officer histories compiled from daily BORME (Boletín Oficial del Registro Mercantil) publications and see who is connected to whom. Rebuilt every business day, with continuous coverage since 2009.</p>
@@ -578,7 +583,7 @@ const routes = [
       'Entiende quién está conectado con quién en empresas españolas. Grafo interactivo de relaciones societarias basado en BORME e informes due diligence desde 22,50 EUR.',
     ogType: 'website',
     lang: 'es',
-    staticContent: `
+    staticContent: `${staticHeroHtml('es')}
       <main style="font-family:Arial,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6">
         <h1>Mapa Societario &mdash; Mapa de Relaciones Societarias en España</h1>
         <p>Busca una empresa o administrador y entiende quién está conectado con quién mediante un grafo interactivo basado en publicaciones oficiales del BORME (Boletín Oficial del Registro Mercantil). Genera informes due diligence cuando necesites documentación.</p>

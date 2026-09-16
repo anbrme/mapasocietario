@@ -62,10 +62,12 @@
     <meta name="twitter:image" id="twitter-image" content="https://mapasocietario.es/og-image.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://api.ncdata.eu" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- IBM Plex is self-hosted (public/fonts, declared in src/index.css). The
+         Google Fonts stylesheet was render-blocking and cost two extra origins
+         before first paint. Only the face the hero paints with is preloaded;
+         Mono and latin-ext load on demand via unicode-range. -->
+    <link rel="preload" href="/fonts/ibm-plex-sans-latin-v23.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="google-site-verification" content="6_BhgI47FMmrhC9cHmV36zcgNBGDjwroOiJZoRuqDQw" />
     <script>
       (() => {

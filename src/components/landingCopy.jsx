@@ -3,6 +3,7 @@
 // bookmark the real workspace at /app. Detailed reference material still lives
 // on the dedicated pages (about.html, /due-diligence, /pricing, /es).
 import { registryScale } from '../copy/registryScale';
+import { LANDING_HERO_COPY, LANDING_TOP_LINKS } from '../copy/landingHero';
 
 // Coverage figures come from one build-time source; never retype them here.
 const en = registryScale('en');
@@ -20,21 +21,12 @@ export const LANDING_COPY = {
         'Relationship intelligence for Spain: search companies, explore the BORME graph, order reports when needed.',
       ogLocale: 'en_US',
     },
-    topLinks: [
-      { label: 'Spanish company due diligence', href: '/spanish-company-due-diligence', highlight: true },
-      { label: 'Pricing', href: '/pricing' },
-      { label: 'About', href: '/about.html' },
-      { label: 'Terms', href: '/terms.html' },
-      { label: 'Privacy', href: '/privacy.html' },
-      { label: 'Español', href: '/es', alignRight: true },
-    ],
+    // Header links and the hero strings live in src/copy/landingHero.js so the
+    // pre-hydration static hero (scripts/lib/staticHero.mjs) paints the same
+    // text React draws over it.
+    topLinks: LANDING_TOP_LINKS.en,
     hero: {
-      eyebrow: 'Corporate relationships, not just records',
-      h1: 'Spanish company search and relationship intelligence',
-      subtitle:
-        'Search a company or officer and see who is connected to whom in an interactive BORME graph. Turn findings into due diligence reports when you need documentation.',
-      intro:
-        'Free to search, no account. Built from the BORME — the official gazette of Spain’s Commercial Registries — and rebuilt every business day, with continuous coverage since 2009.',
+      ...LANDING_HERO_COPY.en,
       openCta: 'Open the relationship graph',
       userGuidePdfCta: 'Download the 2-page guide (PDF)',
       bookmarkTip: 'Tip: bookmark the graph so you can jump straight into relationship analysis next time.',
@@ -293,21 +285,9 @@ export const LANDING_COPY = {
         'Mapa de relaciones societarias en España: busca empresas, explora el grafo BORME y pide informes cuando los necesites.',
       ogLocale: 'es_ES',
     },
-    topLinks: [
-      { label: 'Due diligence de empresas españolas', href: '/es/informes-due-diligence-empresas', highlight: true },
-      { label: 'Precios', href: '/pricing?lang=es' },
-      { label: 'Acerca de', href: '/about-es.html' },
-      { label: 'Términos', href: '/terms.html' },
-      { label: 'Privacidad', href: '/privacy.html' },
-      { label: 'English', href: '/', alignRight: true },
-    ],
+    topLinks: LANDING_TOP_LINKS.es,
     hero: {
-      eyebrow: 'Relaciones societarias, más que una ficha registral',
-      h1: 'Mapa de relaciones societarias en España',
-      subtitle:
-        'Busca una empresa o administrador y entiende quién está conectado con quién en un grafo BORME interactivo. Convierte los hallazgos en informes due diligence cuando necesites documentación.',
-      intro:
-        'Búsqueda gratuita, sin cuenta. Construido a partir del BORME —el boletín oficial de los Registros Mercantiles— y reconstruido cada día hábil, con cobertura continua desde 2009.',
+      ...LANDING_HERO_COPY.es,
       openCta: 'Abrir el gráfico de relaciones',
       userGuidePdfCta: 'Descargar la guía de 2 páginas (PDF)',
       bookmarkTip: 'Consejo: guarda el gráfico en marcadores para entrar directamente al análisis de relaciones la próxima vez.',

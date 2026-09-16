@@ -21,12 +21,15 @@ import { trackEvent } from '../utils/track';
 import { initialFunnelState, stepFunnel } from '../utils/landingSearchFunnel';
 import { LANDING_EXAMPLES, exampleSearchOption } from '../copy/landingExamples';
 import { landingTokens } from '../theme/landingTokens';
+import { LANDING_HERO_COPY } from '../copy/landingHero';
 
+// Placeholder, hint and button label are shared with the pre-hydration static
+// form (scripts/lib/staticHero.mjs) so the field React swaps in reads the same.
 const COPY = {
   en: {
-    placeholder: 'Search a Spanish company or officer',
-    hint: 'Start typing, then choose a result or press Enter.',
-    search: 'Search',
+    placeholder: LANDING_HERO_COPY.en.searchPlaceholder,
+    hint: LANDING_HERO_COPY.en.searchHint,
+    search: LANDING_HERO_COPY.en.searchButton,
     tryLabel: 'Try:',
     noResults: 'No matches. Try the full legal name, or a shorter part of it.',
     tooShort: 'Type at least two characters.',
@@ -35,9 +38,9 @@ const COPY = {
     companyCount: count => `${count} compan${count === 1 ? 'y' : 'ies'}`,
   },
   es: {
-    placeholder: 'Busca una empresa o administrador',
-    hint: 'Empieza a escribir y elige un resultado o pulsa Intro.',
-    search: 'Buscar',
+    placeholder: LANDING_HERO_COPY.es.searchPlaceholder,
+    hint: LANDING_HERO_COPY.es.searchHint,
+    search: LANDING_HERO_COPY.es.searchButton,
     tryLabel: 'Prueba:',
     noResults: 'Sin coincidencias. Prueba con la denominación completa o una parte más corta.',
     tooShort: 'Escribe al menos dos caracteres.',

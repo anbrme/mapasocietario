@@ -25,7 +25,6 @@ import LegalDisclaimer from './LegalDisclaimer';
 import FeedbackWidget from './FeedbackWidget';
 import HeroNetwork from './HeroNetwork';
 import LandingEntitySearch, { landingGraphRequestFromHref } from './LandingEntitySearch';
-import SpanishCompanyNetworkGraph from './SpanishCompanyNetworkGraph';
 import { isNativeApp } from '../services/listedCompaniesNav';
 import { NATIVE_BACK_EVENT } from '../hooks/useAndroidBackButton';
 import { LANDING_COPY } from './landingCopy';
@@ -38,6 +37,13 @@ import { hubPath } from '../copy/studies';
 import { openListedCompanies } from '../services/listedCompaniesNav';
 import { trackEvent, trackUserManualDownload } from '../utils/track';
 import { isReturningGuideVisit, markGuideSeen } from '../utils/firstRunGuide';
+
+// The graph (force-graph + d3) only mounts after a search on small screens,
+// so it must not sit in the homepage's entry bundle. It is prefetched on idle
+// (see the effect in LandingPage) so the overlay still opens without a wait.
+const loadNetworkGraph = () => import('./SpanishCompanyNetworkGraph');
+const SpanishCompanyNetworkGraph = React.lazy(loadNetworkGraph);
+const GRAPH_PREFETCH_FALLBACK_MS = 2000;
 
 const SITE_URL = 'https://mapasocietario.es';
 
@@ -171,6 +177,18 @@ export default function LandingPage({ lang = 'en' }) {
     }
     markGuideSeen(typeof window === 'undefined' ? null : window.localStorage);
   }, [redirecting, navigate, lang]);
+
+  // Warm the graph chunk once the page is idle: every landing action (search,
+  // demo, "open the graph") ends in it, either as the mobile overlay here or
+  // as the /app route, so paying for it after first paint instead of before
+  // is the whole point of splitting it out.
+  React.useEffect(() => {
+    if (redirecting || typeof window === 'undefined') return undefined;
+    const schedule = window.requestIdleCallback || ((cb) => window.setTimeout(cb, GRAPH_PREFETCH_FALLBACK_MS));
+    const cancel = window.cancelIdleCallback || window.clearTimeout;
+    const handle = schedule(() => { loadNetworkGraph().catch(() => { /* retried on demand by React.lazy */ }); });
+    return () => cancel(handle);
+  }, [redirecting]);
 
   // Live coverage figures — start from the static fallback (instant render, no
   // layout shift) and refine from the overview endpoint when it resolves.
@@ -878,16 +896,18 @@ export default function LandingPage({ lang = 'en' }) {
             </Button>
           </Box>
           {mobileGraphRequest && (
-            <SpanishCompanyNetworkGraph
-              visible
-              embedded
-              initialCompanyName={mobileGraphRequest.name}
-              initialSearchType={mobileGraphRequest.searchType}
-              initialGroupKey={mobileGraphRequest.groupKey}
-              language={lang}
-              entrySource={`${mobileGraphRequest.source}_mobile_overlay`}
-              forceCompactMode={nativeApp}
-            />
+            <React.Suspense fallback={null}>
+              <SpanishCompanyNetworkGraph
+                visible
+                embedded
+                initialCompanyName={mobileGraphRequest.name}
+                initialSearchType={mobileGraphRequest.searchType}
+                initialGroupKey={mobileGraphRequest.groupKey}
+                language={lang}
+                entrySource={`${mobileGraphRequest.source}_mobile_overlay`}
+                forceCompactMode={nativeApp}
+              />
+            </React.Suspense>
           )}
         </Dialog>
       </ThemeProvider>

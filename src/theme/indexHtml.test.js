@@ -37,6 +37,27 @@ describe('index.html pre-paint theme script', () => {
   });
 });
 
+// IBM Plex is self-hosted from public/fonts. The Google Fonts stylesheet was
+// render-blocking (about 0.8 s on Lighthouse's mobile profile) and cost two
+// extra origins before the first paint; the hero weight is preloaded instead.
+describe('index.html fonts', () => {
+  it('does not load a render-blocking Google Fonts stylesheet', () => {
+    expect(html).not.toContain('fonts.googleapis.com/css');
+    expect(html).not.toMatch(/<link[^>]*preconnect[^>]*fonts\.g(oogleapis|static)\.com/);
+  });
+
+  it('preloads the self-hosted IBM Plex Sans face the hero paints with', () => {
+    expect(html).toMatch(/<link[^>]*rel="preload"[^>]*href="\/fonts\/ibm-plex-sans-latin-v23\.woff2"[^>]*as="font"[^>]*crossorigin/);
+  });
+
+  it('declares the self-hosted faces in src/index.css with swap so text never waits', () => {
+    expect(css).toContain("font-family: 'IBM Plex Sans';");
+    expect(css).toContain("font-family: 'IBM Plex Mono';");
+    expect(css).toContain("url('/fonts/ibm-plex-sans-latin-v23.woff2')");
+    expect(css).toMatch(/font-display:\s*swap/);
+  });
+});
+
 // src/index.css hardcodes the pre-paint document-chrome colours (scrollbar,
 // html/body background+text) rather than importing palette.js — the inline
 // script above runs before any module graph exists, so this duplication is
