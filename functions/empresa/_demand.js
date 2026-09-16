@@ -7,6 +7,9 @@
  * daily budget all resolve to "leave it as a candidate".
  */
 
+import { nameToSlug } from './_slug.js';
+import { SIBLINGS_LIMIT } from './_siblings.js';
+
 const PROMOTED_STATUS = 'promoted';
 
 // A promoted profile is re-checked against the BORME API at most this often;
@@ -215,25 +218,51 @@ export async function repointStaleSlug(db, { groupKey, slug, canonicalName }) {
  * so each one receives links and a crawler that follows them walks the entire
  * province.
  *
- * Province is matched case-insensitively because the same province arrives from
- * upstream under several spellings ("Madrid" / "MADRID"), exactly as
- * groupProvinces has to handle for the hubs.
+ * The same province is stored under several spellings ("Madrid" / "MADRID" /
+ * "A Coruña" / "A CORUÑA"): no write path normalises it. The hubs fold those
+ * onto one page by URL slug (groupProvinces), and this does the same — it
+ * resolves every stored spelling whose slug equals this province's slug and
+ * matches `province IN (...)`. NOT `UPPER(province) = UPPER(?)`: SQLite's
+ * UPPER is ASCII-only, so "Almería" and "ALMERÍA" never matched, and an
+ * accented province could chain per spelling or lose its block entirely.
+ *
+ * Two D1 round-trips (distinct spellings, then both sides in one batch).
+ * Never throws: a D1 failure is logged and costs the block, not the page.
  */
-export async function listPromotedSiblings(db, { province, slug, name, limit = 10 } = {}) {
+export async function listPromotedSiblings(db, { province, slug, name, limit = SIBLINGS_LIMIT } = {}) {
   // Always the {before, after} shape, so the caller never has to tell an empty
   // answer apart from a missing one.
-  if (!db || !province || !name) return { before: [], after: [] };
-  const side = (comparison, order) => db.prepare(
-    `SELECT slug, canonical_name
-     FROM company_index_candidates
-     WHERE status = ?
-       AND UPPER(province) = UPPER(?)
-       AND slug <> ?
-       AND canonical_name ${comparison} ?
-     ORDER BY canonical_name ${order}
-     LIMIT ?`,
-  ).bind(PROMOTED_STATUS, province, slug || '', name, limit).all();
+  const none = { before: [], after: [] };
+  if (!db || !province || !name) return none;
+  try {
+    const variants = await promotedProvinceVariants(db, province);
+    if (!variants.length) return none;
+    const placeholders = variants.map(() => '?').join(', ');
+    const side = (comparison, order) => db.prepare(
+      `SELECT slug, canonical_name
+       FROM company_index_candidates
+       WHERE status = ?
+         AND province IN (${placeholders})
+         AND slug <> ?
+         AND canonical_name ${comparison} ?
+       ORDER BY canonical_name ${order}
+       LIMIT ?`,
+    ).bind(PROMOTED_STATUS, ...variants, slug || '', name, limit);
 
-  const [before, after] = await Promise.all([side('<', 'DESC'), side('>', 'ASC')]);
-  return { before: before?.results || [], after: after?.results || [] };
+    const [before, after] = await db.batch([side('<', 'DESC'), side('>', 'ASC')]);
+    return { before: before?.results || [], after: after?.results || [] };
+  } catch (error) {
+    console.error('[company-index] siblings lookup failed:', error?.message || error);
+    return none;
+  }
+}
+
+/** Every stored spelling of `province` among promoted rows, by URL slug. */
+async function promotedProvinceVariants(db, province) {
+  const wanted = nameToSlug(province);
+  if (!wanted) return [];
+  const counts = await listPromotedProvinceCounts(db);
+  return counts
+    .map((row) => row.province)
+    .filter((stored) => stored && nameToSlug(stored) === wanted);
 }

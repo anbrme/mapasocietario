@@ -2554,6 +2554,18 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es', opt
   // hoja never changes, so these indexed pages survive both.
   const groupKey = promoted?.group_key || (seed && seed.hoja ? hojaGroupKey(seed.hoja) : null);
 
+  // Sibling links are a crawl edge, so they exist only where a crawler weighs
+  // them: not on the noindex fallback namespace (unbounded, bot-swept), not on
+  // private badge previews (no-store, nofollow). Seed/IBEX pages have no D1
+  // row but are the best-linked pages on the site, so they are NOT gated out.
+  const wantSiblings = Boolean(env?.SEO_DB) && !isFallback && !options.privateResponse;
+  // A promoted row already carries province + canonical name, so its sibling
+  // read can overlap the upstream API calls instead of trailing them. Never
+  // rejects (listPromotedSiblings catches), so starting it un-awaited is safe.
+  const earlySiblings = wantSiblings && promoted?.province
+    ? listPromotedSiblings(env.SEO_DB, { province: promoted.province, slug, name: promoted.canonical_name })
+    : null;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
 
@@ -2690,17 +2702,18 @@ export async function handleCompany({ params, env, waitUntil }, lang = 'es', opt
     // relaxed here. The public gate keeps exactly one meaning.
     const attestation = options.attestationOverride
       || await liveAttestationFor(env, graphGroupKey(company, seed));
-    // Sibling links need the province, which only exists once the company has
-    // resolved, so this cannot join the Promise.all above. One D1 read against a
-    // 4k-row table, behind an hour of edge cache; a failure costs the block, not
-    // the page.
-    const siblings = company.province
-      ? await listPromotedSiblings(env?.SEO_DB, {
+    // Seed pages learn their province only once the company resolves, so their
+    // sibling read runs here; promoted pages already started theirs above.
+    let siblings = null;
+    if (earlySiblings) {
+      siblings = await earlySiblings;
+    } else if (wantSiblings && company.province) {
+      siblings = await listPromotedSiblings(env.SEO_DB, {
         province: company.province,
         slug,
         name: company.company_name || name,
-      }).catch(() => null)
-      : null;
+      });
+    }
     const html = renderCompanyPage(company, events, slug, seed, lang, cnmvResp, sanitizeSvg(chartSvg), boeResp, gleif, noindex, attestation, Boolean(options.privateResponse), isFallback, { siblings });
     return new Response(html, {
       status: 200,
