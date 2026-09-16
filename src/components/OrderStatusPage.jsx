@@ -21,6 +21,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { Helmet } from 'react-helmet-async';
+import { orderConversionEvent } from './orderConversionEvent';
 import { isAndroidNativeApp } from '../services/playBillingService';
 import { API_URL, PAYMENTS_API, AI_INVESTIGATION_API } from '../config';
 import { buildCodeForSessionBody } from '../utils/aiInvestigationClient';
@@ -325,16 +326,14 @@ export default function OrderStatusPage() {
         body: blob,
       });
 
-      // Track purchase in GA4. transaction_id lets GA4 deduplicate the event
-      // when the buyer refreshes or revisits this page (a remount resets the
-      // in-memory fired-guards, so without it every reload double-counts).
+      // Track the conversion in GA4: `purchase` for a paid order,
+      // `free_report_delivered` (value 0) for a free one. transaction_id lets
+      // GA4 deduplicate the event when the buyer refreshes or revisits this
+      // page (a remount resets the in-memory fired-guards, so without it every
+      // reload double-counts).
       if (typeof window.gtag === 'function') {
-        window.gtag('event', 'purchase', {
-          transaction_id: sessionId,
-          currency: 'EUR',
-          value: DD_PRICE_EUR,
-          items: [{ item_name: `DD Report — ${data.country?.toUpperCase()}`, item_category: 'Due Diligence', price: DD_PRICE_EUR, quantity: 1 }],
-        });
+        const ev = orderConversionEvent({ sessionId, country: data.country, priceEur: DD_PRICE_EUR });
+        window.gtag('event', ev.name, ev.params);
       }
 
       setDdReportReady(true);
@@ -531,12 +530,8 @@ export default function OrderStatusPage() {
     ) {
       ga4FiredRef.current = true;
       if (typeof window.gtag === 'function') {
-        window.gtag('event', 'purchase', {
-          transaction_id: sessionId,
-          currency: 'EUR',
-          value: DD_PRICE_EUR,
-          items: [{ item_name: `DD Report — ${orderDataRef.current?.country?.toUpperCase()}`, item_category: 'Due Diligence', price: DD_PRICE_EUR, quantity: 1 }],
-        });
+        const ev = orderConversionEvent({ sessionId, country: orderDataRef.current?.country, priceEur: DD_PRICE_EUR });
+        window.gtag('event', ev.name, ev.params);
       }
     }
   }, [status]);
