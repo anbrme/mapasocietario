@@ -24,6 +24,12 @@ import { nameToSlug } from './_slug.js';
 // Below this the block is noise rather than a mesh — a heading and one link.
 export const MIN_SIBLINGS = 2;
 
+// Links per block. ONE constant on purpose: the SQL in listPromotedSiblings
+// fetches this many per side, and balanceNeighbours fills from the far side
+// when one side runs short — so the query limit must be >= the render limit
+// or a company at the edge of the alphabet gets a short block.
+export const SIBLINGS_LIMIT = 10;
+
 /**
  * Interleave the two neighbour lists into one alphabetical run of at most
  * `limit`, taking from the far side when one side runs short (a company whose
@@ -31,22 +37,13 @@ export const MIN_SIBLINGS = 2;
  * otherwise get half a block).
  *
  * `before` arrives DESC (nearest first) and is reversed back into reading order.
+ * The two sides are disjoint by construction (strict < and > against one
+ * anchor, both excluding the page's own slug), so no dedup is needed here.
  */
-export function balanceNeighbours({ before = [], after = [], limit = 10 } = {}) {
+export function balanceNeighbours({ before = [], after = [], limit = SIBLINGS_LIMIT } = {}) {
   const half = Math.floor(limit / 2);
   const takeBefore = Math.min(before.length, Math.max(half, limit - after.length));
-  const chosenBefore = before.slice(0, takeBefore);
-  const chosenAfter = after.slice(0, limit - chosenBefore.length);
-
-  const seen = new Set();
-  return [...chosenBefore.reverse(), ...chosenAfter]
-    .filter((row) => {
-      const slug = row?.slug;
-      if (!slug || seen.has(slug)) return false;
-      seen.add(slug);
-      return true;
-    })
-    .slice(0, limit);
+  return [...before.slice(0, takeBefore).reverse(), ...after.slice(0, limit - takeBefore)];
 }
 
 /**
@@ -59,7 +56,7 @@ export function balanceNeighbours({ before = [], after = [], limit = 10 } = {}) 
  * @returns {string} HTML, or '' when there is nothing worth rendering
  */
 export function renderSiblingsBlock({
-  neighbours, province, lang = 'es', t, companyPath, esc, limit = 10,
+  neighbours, province, lang = 'es', t, companyPath, esc, limit = SIBLINGS_LIMIT,
 }) {
   if (!province || !t) return '';
   const siblings = balanceNeighbours({ ...(neighbours || {}), limit });

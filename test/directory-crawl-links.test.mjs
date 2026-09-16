@@ -22,11 +22,26 @@ const read = (rel) => readFileSync(path.resolve(__dirname, '..', rel), 'utf8');
 // to Googlebot — which is exactly what happened on the first attempt at this
 // change, and what this test exists to stop happening again.
 
+/**
+ * The source text of ONE route object in scripts/prerender.mjs, by its path.
+ * Scoped on purpose: a /directorio link in any other route must not satisfy
+ * the homepage assertion.
+ */
+function routeBlock(prerender, routePath) {
+  // Route objects open with "\n  {\n"; `path` is not necessarily their first key.
+  const blocks = prerender.split(/\n  \{\n/);
+  const block = blocks.find((b) => b.includes(`\n    path: '${routePath}',\n`) || b.startsWith(`    path: '${routePath}',`));
+  assert.ok(block, `route ${routePath} must exist in scripts/prerender.mjs`);
+  return block;
+}
+
 test('the crawler-visible homepage links the province directory, in both languages', () => {
   const prerender = read('scripts/prerender.mjs');
-  const [, enBlock = '', esBlock = ''] = prerender.split(/staticHeroHtml\('(?:en|es)'\)/);
-  assert.match(enBlock, /href="\/directorio"/, 'EN homepage static block must link /directorio');
-  assert.match(esBlock, /href="\/directorio"/, 'ES homepage static block must link /directorio');
+  for (const [routePath, label] of [['/', 'Company directory by province'], ['/es', 'Directorio de empresas por provincia']]) {
+    const block = routeBlock(prerender, routePath);
+    assert.match(block, /staticContent:/, `${routePath} must carry a static block`);
+    assert.ok(block.includes(`<a href="/directorio">${label}</a>`), `${routePath} static block must link /directorio`);
+  }
 });
 
 test('the hydrated homepage links it too, so readers get the same door', () => {

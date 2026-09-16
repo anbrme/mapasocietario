@@ -29,9 +29,9 @@ describe('balanceNeighbours', () => {
     expect(balanceNeighbours({ before: after, after: [], limit: 10 })).toHaveLength(10);
   });
 
-  it('never repeats a slug', () => {
-    const out = balanceNeighbours({ before: [row('A SL')], after: [row('A SL')], limit: 10 });
-    expect(out).toHaveLength(1);
+  it('never exceeds the limit when both sides overflow', () => {
+    const many = Array.from({ length: 12 }, (_, i) => row(`N${i} SL`));
+    expect(balanceNeighbours({ before: many, after: many, limit: 10 })).toHaveLength(10);
   });
 
   it('survives an empty or missing province', () => {
