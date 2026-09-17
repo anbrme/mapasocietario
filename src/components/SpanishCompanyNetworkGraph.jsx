@@ -5371,7 +5371,10 @@ const SpanishCompanyNetworkGraph = ({
   const expandFromInspector = React.useMemo(() => {
     if (!previewNodeId) return null;
     const node = graphData.nodes.find(n => isSameNodeId(n.id, previewNodeId));
-    return node ? () => expandNode(node, 'inspector') : null;
+    // Author layer: null here means CompanyInspectorPanel renders no expand
+    // button at all — belt-and-suspenders alongside the fact that the panel's
+    // author-node branch never receives onExpandNode in the first place.
+    return node && !isAuthorNode(node) ? () => expandNode(node, 'inspector') : null;
   }, [previewNodeId, graphData.nodes, expandNode]);
 
   // Author layer: the node the inspector is currently showing, when it is one
@@ -8011,6 +8014,11 @@ const SpanishCompanyNetworkGraph = ({
   const walkthroughEvidence = useCallback(step => {
     const node = (filteredGraphData.nodes || []).find(n => normalizeNodeId(n.id) === step.nodeIds[0]);
     if (!node) return;
+    // Author layer: a scripted walkthrough step should never reference an
+    // author node in practice (its id is generated client-side, not
+    // authored into the tour script), but openOfficerTimeline bypasses
+    // openDataPreview's own guard, so this is guarded explicitly too.
+    if (isAuthorNode(node)) { openDataPreview(node); return; }
     if (node.type === 'officer') openOfficerTimeline(node); else openDataPreview(node);
   }, [filteredGraphData.nodes, openOfficerTimeline, openDataPreview]);
 
@@ -11600,8 +11608,12 @@ const SpanishCompanyNetworkGraph = ({
         )}
 
         {(isTouchDevice || isCompactEmbed) && contextNode && (() => {
+          // Author layer: an author node never has a registry profile — the
+          // full-profile deep link would resolve to nothing, or worse, to an
+          // unrelated registry entity that happens to share the name.
           const canOpenCompanyProfile =
-            contextNode.type !== 'officer' || isCompanyOfficer(contextNode.name || '');
+            !isAuthorNode(contextNode)
+            && (contextNode.type !== 'officer' || isCompanyOfficer(contextNode.name || ''));
           const profileHref = canOpenCompanyProfile
             ? fullCompanyPageHref(contextNode.name, uiLanguage)
             : null;
@@ -11647,6 +11659,11 @@ const SpanishCompanyNetworkGraph = ({
                 </IconButton>
               </Box>
               <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                {/* Author layer: an author node never reached the registry,
+                    so there is nothing to expand — see also the desktop
+                    context menu's `expand` guard and handleNodeClick's
+                    double-click branch. */}
+                {!isAuthorNode(contextNode) && (
                 <Button
                   size="small"
                   variant="contained"
@@ -11664,6 +11681,7 @@ const SpanishCompanyNetworkGraph = ({
                 >
                   {isLoading ? text.expanding : text.expandRelationships}
                 </Button>
+                )}
                 <Button
                   size="small"
                   variant="outlined"
