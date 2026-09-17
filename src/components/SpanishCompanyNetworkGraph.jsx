@@ -5467,28 +5467,36 @@ const SpanishCompanyNetworkGraph = ({
   // link id, so it has to be matched back to the actual registry edge before
   // it can be dismissed. The officer/company pair alone is not unique — the
   // same two nodes can carry several live links (different roles, or the
-  // same role across separate periods), so the role text is matched too.
-  // Zero or more than one surviving candidate means "don't guess": no action
-  // is offered on that row.
+  // same role across separate periods) — so the role is matched too, the
+  // same way an incoming BORME act is matched to a seat elsewhere in this
+  // file (~line 4060): matchesRole's exact-then-unambiguous-category rule
+  // (see utils/roleKey.js), not a bare string compare, since registry role
+  // abbreviations drift across filings. The company name is folded the same
+  // way the merge-candidate search folds names (normalizeNameForMerge), so
+  // an accent difference cannot hide a legitimate match either. Zero or more
+  // than one surviving candidate means "don't guess": no action on that row.
   const resolveSeatLink = useCallback(seat => {
     if (!previewedRegistryNode || previewedRegistryNode.type !== 'officer') return null;
     const officerId = normalizeNodeId(previewedRegistryNode.id);
-    const targetCompany = String(seat?.company || '').trim().toLowerCase();
+    const targetCompany = normalizeNameForMerge(seat?.company || '');
     if (!targetCompany) return null;
-    // Same normalisation the seats table itself uses for the role text —
-    // trimmed, case-insensitive — applied to the link's relationship/category
-    // on the other side of the comparison.
-    const targetRole = String(seat?.role || '').trim().toLowerCase();
-    const candidates = (graphData.links || []).filter(l => {
+    const pairLinks = (graphData.links || []).filter(l => {
       if (isAuthorLink(l) || isDismissedLink(l)) return false;
       const sId = normalizeNodeId(getNodeIdFromRef(l.source));
       const tId = normalizeNodeId(getNodeIdFromRef(l.target));
       if (sId !== officerId && tId !== officerId) return false;
       const otherNode = nodesById.get(sId === officerId ? tId : sId);
-      if (!otherNode || String(otherNode.name || '').trim().toLowerCase() !== targetCompany) return false;
-      const linkRole = String(l.relationship || l.category || '').trim().toLowerCase();
-      return linkRole === targetRole;
+      return !!otherNode && normalizeNameForMerge(otherNode.name || '') === targetCompany;
     });
+    if (pairLinks.length === 0) return null;
+    // The pool matchesRole needs to tell an unambiguous category match from a
+    // guess is every role held on this specific officer-company pair — not
+    // the officer's roles everywhere, which would let an unrelated company's
+    // seat make a same-category role here look falsely unambiguous.
+    const pairRoles = pairLinks.map(l => l.relationship || l.category || '');
+    const candidates = pairLinks.filter(l => (
+      matchesRole(seat?.role || '', l.relationship || l.category || '', pairRoles)
+    ));
     return candidates.length === 1 ? candidates[0] : null;
   }, [previewedRegistryNode, graphData.links, nodesById]);
 
