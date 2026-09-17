@@ -5,6 +5,7 @@ import { debounce } from 'lodash';
 import { forceCollide } from 'd3-force';
 import { useWalkthrough } from '../hooks/useWalkthrough';
 import { useConnectionFocus } from '../hooks/useConnectionFocus';
+import { rememberFirstClick, shiftedDoubleClickTarget } from '../utils/inspectorDockDoubleClick';
 import { connectionIndex, connectionFocus } from '../utils/connectionFocus';
 import WalkthroughPlayer, { walkthroughControllerInset } from './WalkthroughPlayer';
 import {
@@ -5944,14 +5945,30 @@ const SpanishCompanyNetworkGraph = ({
         return;
       }
 
-      if (
+      // The first click docked the inspector and the graph re-framed under the
+      // pointer, so this second click found a neighbour where the first node
+      // had been. The double-click was meant for the first node.
+      const shiftedTargetId = shiftedDoubleClickTarget(last, {
+        now,
+        threshold,
+        reservedInspectorWidth,
+      });
+      const shiftedTarget =
+        shiftedTargetId && !isSameNodeId(shiftedTargetId, nodeId)
+          ? graphDataRef.current.nodes.find(n => isSameNodeId(n.id, shiftedTargetId))
+          : null;
+
+      if (shiftedTarget) {
+        lastClickRef.current = { nodeId: null, time: 0 };
+        expandNode(shiftedTarget, 'double_click_after_dock');
+      } else if (
         browserDoubleClick ||
         (isSameNodeId(last.nodeId, nodeId) && now - last.time < threshold)
       ) {
         lastClickRef.current = { nodeId: null, time: 0 };
         expandNode(node, 'double_click');
       } else {
-        lastClickRef.current = { nodeId, time: now };
+        lastClickRef.current = rememberFirstClick({ nodeId, time: now, reservedInspectorWidth });
         trackEvent('graph_node_click', {
           ...graphInteractionParams(node),
           interaction_source: 'mouse',
@@ -5976,6 +5993,7 @@ const SpanishCompanyNetworkGraph = ({
       isTouchDevice,
       toggleInvestigationNode,
       connectionGesture,
+      reservedInspectorWidth,
     ]
   );
 
@@ -6014,13 +6032,38 @@ const SpanishCompanyNetworkGraph = ({
 
   const handleBackgroundClick = useCallback(event => {
     if (connectionGesture.suppresses(event)) return;
+    // The first click of a double-click docked the inspector and the graph
+    // re-framed, so the second click landed on empty canvas where the node
+    // had been. Expand the node the reader meant instead of deselecting it.
+    const shiftedTargetId = shiftedDoubleClickTarget(lastClickRef.current, {
+      now: Date.now(),
+      threshold: embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS,
+      reservedInspectorWidth,
+    });
+    const shiftedTarget = shiftedTargetId
+      ? graphDataRef.current.nodes.find(n => isSameNodeId(n.id, shiftedTargetId))
+      : null;
+    if (shiftedTarget) {
+      lastClickRef.current = { nodeId: null, time: 0 };
+      expandNode(shiftedTarget, 'double_click_after_dock');
+      return;
+    }
     clearConnectionFocus();
     trackEvent('graph_background_click', {
       ...graphInteractionParams(),
       interaction_source: isTouchDevice ? 'touch' : 'mouse',
     });
     setActiveNodeId(null);
-  }, [graphInteractionParams, isTouchDevice, clearConnectionFocus, connectionGesture]);
+  }, [
+    graphInteractionParams,
+    isTouchDevice,
+    clearConnectionFocus,
+    connectionGesture,
+    embedded,
+    isFullscreen,
+    reservedInspectorWidth,
+    expandNode,
+  ]);
 
   const openEditNodeDialog = useCallback(() => {
     if (!contextNode) return;
