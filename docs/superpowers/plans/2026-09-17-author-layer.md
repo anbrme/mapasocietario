@@ -668,6 +668,21 @@ Editing (`initial` set): replace the link by id with a new `makeAuthorLink({ ...
 
 ---
 
+### Task 6b: The "Edit map" gate
+
+**Files:**
+- Modify: `src/components/SpanishCompanyNetworkGraph.jsx` — state `isEditMode` (default `false`), toolbar toggle, banner, gating of the author group, snapshot open hook.
+- Copy (both languages): `editMap` = `Edit map` / `Editar mapa`; `editBanner` = `Editing: what you add or change appears in your situation report, never in the registry.` / `Edición: lo que añadas o cambies aparece en tu informe de situación, nunca en el registro.`; `editExplainerTitle` = `Your map, your report` / `Tu mapa, tu informe`; `editExplainerBody` = `In edit mode you can add entities and relationships, dismiss registry relationships, merge, rename, annotate and mark seats. Everything you do is drawn dotted, listed under "Added by the author" in the situation report, and never sent anywhere.` / `En modo edición puedes añadir entidades y relaciones, descartar relaciones del registro, fusionar, renombrar, anotar y marcar cargos. Todo lo que hagas se dibuja con puntos, se lista bajo "Añadido por el autor" en el informe de situación y nunca se envía a ningún sitio.`; `gotIt` = `Got it` / `Entendido`.
+
+- [ ] **Step 1: State and toggle.** `const [isEditMode, setIsEditMode] = useState(false);` A `ToggleButton` (edit icon) with tooltip `text.editMap` in the graph toolbar next to "Add entity…". When `isEditMode` is false the "Add entity…" button and the "Link selected" toolbar button are not rendered.
+- [ ] **Step 2: Banner.** When on, a one-line `Alert severity="info"` above the legend bar with `text.editBanner` and a close action that turns the mode off.
+- [ ] **Step 3: One-time explainer.** On the first activation per browser (`localStorage` key `author_layer_explainer_seen`, wrapped in try/catch) open a small `Dialog` with `editExplainerTitle` / `editExplainerBody` and a `gotIt` button.
+- [ ] **Step 4: Gate the author group.** In the node menu, group 3 (link to node, notes, edit node/entity, merge/unmerge, mark resigned/active) renders only when `isEditMode`. Link menu: `dismissLink`, `editLink` and `delete` only when `isEditMode`; `showFilings` always. Canvas menu: `addEntity` only when `isEditMode`. Hide / collapse / expand / delete node stay ungated. Author nodes remain drawn and inspectable when the mode is off; their card shows no Edit button then.
+- [ ] **Step 5: Snapshot.** In the snapshot-open path, after `setGraphData`, `if (collectAuthorLayer(snapshot.graph).nodes.length || …links.length || …dismissed.length || …renamed.length) setIsEditMode(true);`.
+- [ ] **Step 6: Verify** — build; hand-check: default menu has no author group; toggle on → banner, explainer once, group appears; toggle off → author elements still drawn, card read-only. Commit: `feat(author-layer): an Edit map gate reveals the author's tools and states the contract`
+
+---
+
 ### Task 7: Document model — `authorLayer` in the investigation doc
 
 **Files:**
