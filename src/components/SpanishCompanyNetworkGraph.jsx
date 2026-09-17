@@ -6,6 +6,7 @@ import { forceCollide } from 'd3-force';
 import { useWalkthrough } from '../hooks/useWalkthrough';
 import { useConnectionFocus } from '../hooks/useConnectionFocus';
 import { shouldDeferInspectorOpen } from '../utils/inspectorDockTiming';
+import { autoFitDecision } from '../utils/graphAutoFit';
 import { connectionIndex, connectionFocus } from '../utils/connectionFocus';
 import WalkthroughPlayer, { walkthroughControllerInset } from './WalkthroughPlayer';
 import {
@@ -2757,19 +2758,25 @@ const SpanishCompanyNetworkGraph = ({
     return () => ro.disconnect();
   }, [containerEl]);
 
-  // Auto-fit graph when node count changes (after data loads)
-  const prevNodeCountRef = useRef(0);
+  // Auto-fit the graph when data arrives, when the canvas becomes ready with
+  // data already present, and when a cleared graph is refilled — see
+  // graphAutoFit for why the node count alone was not enough.
+  const autoFitStateRef = useRef({ count: 0, ready: false });
   useEffect(() => {
-    const count = graphData.nodes.length;
-    if (!snapshotMode && count > 0 && count !== prevNodeCountRef.current) {
-      prevNodeCountRef.current = count;
-      // Delay to let ForceGraph2D process new data and simulation settle
-      const timer = setTimeout(() => {
-        fitGraphToView(400, 50);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [graphData.nodes.length, snapshotMode, fitGraphToView]);
+    const { fit, next } = autoFitDecision({
+      count: graphData.nodes.length,
+      containerReady,
+      snapshotMode,
+      previous: autoFitStateRef.current,
+    });
+    autoFitStateRef.current = next;
+    if (!fit) return undefined;
+    // Delay to let ForceGraph2D process new data and simulation settle
+    const timer = setTimeout(() => {
+      fitGraphToView(400, 50);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [graphData.nodes.length, containerReady, snapshotMode, fitGraphToView]);
 
   // Re-fit graph when container dimensions change significantly (e.g. after table renders)
   const prevDimRef = useRef(canvasDimensions);
@@ -9076,7 +9083,8 @@ const SpanishCompanyNetworkGraph = ({
     pendingSnapshotCameraRef.current = camera;
     prevSpacingRef.current = importedSpacing;
     officersCapRef.current = importedOfficerCap;
-    prevNodeCountRef.current = snapshot.graph.nodes.length;
+    // The snapshot's own camera frames it; the auto-fit must not re-frame.
+    autoFitStateRef.current = { count: snapshot.graph.nodes.length, ready: true };
     setSnapshotMode(true);
     setSnapshotSource(source);
     setGraphData(snapshot.graph);
@@ -9666,8 +9674,13 @@ const SpanishCompanyNetworkGraph = ({
           );
         }}
         sx={{
-          flexGrow: 1,
-          minWidth: 200,
+          // The search box is the graph's primary intent. Toolbar actions that
+          // appear once a graph is loaded (report, shared connections, DD) had
+          // squeezed it to a quarter of its empty-state width: take the free
+          // space ahead of the secondary node filter, and never go narrow.
+          flexGrow: 3,
+          flexBasis: { xs: 200, md: 320 },
+          minWidth: { xs: 200, md: 300 },
           '& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {
             borderColor: 'primary.main',
           },
@@ -9927,7 +9940,7 @@ const SpanishCompanyNetworkGraph = ({
           value={labelFilterText}
           onChange={e => setLabelFilterText(e.target.value)}
           size="small"
-          sx={{ flexGrow: 0.5, minWidth: 150 }}
+          sx={{ flexGrow: 0.5, minWidth: 150, maxWidth: 260 }}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
