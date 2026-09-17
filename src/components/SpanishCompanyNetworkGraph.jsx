@@ -5,7 +5,7 @@ import { debounce } from 'lodash';
 import { forceCollide } from 'd3-force';
 import { useWalkthrough } from '../hooks/useWalkthrough';
 import { useConnectionFocus } from '../hooks/useConnectionFocus';
-import { rememberFirstClick, shiftedDoubleClickTarget } from '../utils/inspectorDockDoubleClick';
+import { shouldDeferInspectorOpen } from '../utils/inspectorDockTiming';
 import { connectionIndex, connectionFocus } from '../utils/connectionFocus';
 import WalkthroughPlayer, { walkthroughControllerInset } from './WalkthroughPlayer';
 import {
@@ -2023,6 +2023,13 @@ const SpanishCompanyNetworkGraph = ({
 
   // Double-click detection via single click timer
   const lastClickRef = useRef({ nodeId: null, time: 0 });
+  // A dock waiting for the double-click window to pass (see inspectorDockTiming).
+  const pendingInspectorOpenRef = useRef(null);
+  const cancelPendingInspectorOpen = useCallback(() => {
+    if (pendingInspectorOpenRef.current) clearTimeout(pendingInspectorOpenRef.current);
+    pendingInspectorOpenRef.current = null;
+  }, []);
+  useEffect(() => cancelPendingInspectorOpen, [cancelPendingInspectorOpen]);
 
   // Fullscreen support
   const fullscreenContainerRef = useRef(null);
@@ -5945,30 +5952,16 @@ const SpanishCompanyNetworkGraph = ({
         return;
       }
 
-      // The first click docked the inspector and the graph re-framed under the
-      // pointer, so this second click found a neighbour where the first node
-      // had been. The double-click was meant for the first node.
-      const shiftedTargetId = shiftedDoubleClickTarget(last, {
-        now,
-        threshold,
-        reservedInspectorWidth,
-      });
-      const shiftedTarget =
-        shiftedTargetId && !isSameNodeId(shiftedTargetId, nodeId)
-          ? graphDataRef.current.nodes.find(n => isSameNodeId(n.id, shiftedTargetId))
-          : null;
-
-      if (shiftedTarget) {
-        lastClickRef.current = { nodeId: null, time: 0 };
-        expandNode(shiftedTarget, 'double_click_after_dock');
-      } else if (
+      if (
         browserDoubleClick ||
         (isSameNodeId(last.nodeId, nodeId) && now - last.time < threshold)
       ) {
         lastClickRef.current = { nodeId: null, time: 0 };
+        // The first click's dock is still waiting; a double-click expands instead.
+        cancelPendingInspectorOpen();
         expandNode(node, 'double_click');
       } else {
-        lastClickRef.current = rememberFirstClick({ nodeId, time: now, reservedInspectorWidth });
+        lastClickRef.current = { nodeId, time: now };
         trackEvent('graph_node_click', {
           ...graphInteractionParams(node),
           interaction_source: 'mouse',
@@ -5979,7 +5972,19 @@ const SpanishCompanyNetworkGraph = ({
         // Now it is true. Safe to do on every click because the inspector is a
         // fixed-height fact sheet — the long tables only load into the dock when
         // the user asks for them.
-        openDataPreviewRef.current?.(node);
+        //
+        // Docking a CLOSED inspector narrows the canvas and moves the node out
+        // from under a second click, so that dock waits out the double-click
+        // window. An open inspector changes nothing in the layout: immediate.
+        cancelPendingInspectorOpen();
+        if (shouldDeferInspectorOpen({ previewOpen, isInspectorDockable })) {
+          pendingInspectorOpenRef.current = setTimeout(() => {
+            pendingInspectorOpenRef.current = null;
+            openDataPreviewRef.current?.(node);
+          }, threshold);
+        } else {
+          openDataPreviewRef.current?.(node);
+        }
       }
     },
     [
@@ -5993,7 +5998,9 @@ const SpanishCompanyNetworkGraph = ({
       isTouchDevice,
       toggleInvestigationNode,
       connectionGesture,
-      reservedInspectorWidth,
+      cancelPendingInspectorOpen,
+      previewOpen,
+      isInspectorDockable,
     ]
   );
 
@@ -6032,38 +6039,16 @@ const SpanishCompanyNetworkGraph = ({
 
   const handleBackgroundClick = useCallback(event => {
     if (connectionGesture.suppresses(event)) return;
-    // The first click of a double-click docked the inspector and the graph
-    // re-framed, so the second click landed on empty canvas where the node
-    // had been. Expand the node the reader meant instead of deselecting it.
-    const shiftedTargetId = shiftedDoubleClickTarget(lastClickRef.current, {
-      now: Date.now(),
-      threshold: embedded && !isFullscreen ? EMBEDDED_DOUBLE_CLICK_MS : DOUBLE_CLICK_MS,
-      reservedInspectorWidth,
-    });
-    const shiftedTarget = shiftedTargetId
-      ? graphDataRef.current.nodes.find(n => isSameNodeId(n.id, shiftedTargetId))
-      : null;
-    if (shiftedTarget) {
-      lastClickRef.current = { nodeId: null, time: 0 };
-      expandNode(shiftedTarget, 'double_click_after_dock');
-      return;
-    }
+    // A node clicked moments ago is being deselected: its inspector must not
+    // dock after the fact.
+    cancelPendingInspectorOpen();
     clearConnectionFocus();
     trackEvent('graph_background_click', {
       ...graphInteractionParams(),
       interaction_source: isTouchDevice ? 'touch' : 'mouse',
     });
     setActiveNodeId(null);
-  }, [
-    graphInteractionParams,
-    isTouchDevice,
-    clearConnectionFocus,
-    connectionGesture,
-    embedded,
-    isFullscreen,
-    reservedInspectorWidth,
-    expandNode,
-  ]);
+  }, [graphInteractionParams, isTouchDevice, clearConnectionFocus, connectionGesture, cancelPendingInspectorOpen]);
 
   const openEditNodeDialog = useCallback(() => {
     if (!contextNode) return;
@@ -10619,7 +10604,7 @@ const SpanishCompanyNetworkGraph = ({
           py: 0.25,
         }}
       >
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.25, minWidth: 0, maxWidth: '100%' }}>
           {!isCompactEmbed && <Tooltip title={text.zoomIn}>
             <IconButton onClick={() => { trackGraphToolbarAction('zoom_in'); zoomIn(); }} size="small">
               <ZoomInIcon />
@@ -10707,6 +10692,60 @@ const SpanishCompanyNetworkGraph = ({
           </Tooltip>
           </>
           )}
+          {/* AI Investigation Launcher */}
+          {!isCompactEmbed && (() => {
+            const count = investigationSet.size;
+            const launch = investigationLaunchState(count);
+            const stored = loadToken();
+            const nowSec = Math.floor(Date.now() / 1000);
+            const label = count > 0
+              ? `${text.investigateSelection} (${count})`
+              : entitlementChipLabel(stored, nowSec, uiLanguage);
+            return (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center', ml: 0.75, maxWidth: '100%' }}>
+                <Button
+                  size="small"
+                  variant={count > 0 ? 'contained' : 'outlined'}
+                  startIcon={<PsychologyIcon />}
+                  disabled={!launch.canLaunch}
+                  // Keep the empty-state launcher legible in both themes.
+                  sx={count > 0 ? undefined : {
+                    color: 'accent.primary',
+                    borderColor: (t) => alpha(t.palette.accent.primary, 0.7),
+                    '&:hover': {
+                      borderColor: 'accent.primary',
+                      backgroundColor: (t) => alpha(t.palette.primary.light, 0.12),
+                    },
+                  }}
+                  onClick={() => {
+                    const primary = graphData.nodes.find((n) => isSameNodeId(n.id, activeNodeId))
+                      || graphData.nodes.find((n) => typeof primarySubject === 'string' && n.name && n.name.toUpperCase() === primarySubject.toUpperCase())
+                      || null;
+                    setAiPanelContext(
+                      buildInvestigationContext(Array.from(investigationSet), graphData.nodes, graphData.links, primary)
+                    );
+                    setAiPanelOpen(true);
+                  }}
+                >
+                  {launch.mode === 'over_cap' ? text.investigationOverCap : label}
+                </Button>
+                {count > 0 && (
+                  <>
+                    <Tooltip title={text.hideSelected(count)}>
+                      <IconButton size="small" onClick={hideSelectedNodes} aria-label={text.hideSelected(count)}>
+                        <VisibilityOffIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={text.clearSelection}>
+                      <IconButton size="small" onClick={() => setInvestigationSet(new Set())} aria-label={text.clearSelection}>
+                        <DeselectIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                )}
+              </Box>
+            );
+          })()}
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
@@ -11287,63 +11326,7 @@ const SpanishCompanyNetworkGraph = ({
           </Box>
         )}
 
-        {/* Floating AI Investigation Launcher */}
-        {!isCompactEmbed && (() => {
-          const count = investigationSet.size;
-          const launch = investigationLaunchState(count);
-          const stored = loadToken();
-          const nowSec = Math.floor(Date.now() / 1000);
-          const label = count > 0
-            ? `${text.investigateSelection} (${count})`
-            : entitlementChipLabel(stored, nowSec, uiLanguage);
-          return (
-            <Paper sx={{ position: 'absolute', top: 12, left: 12, zIndex: 20, p: 0.5, display: 'flex', gap: 1, alignItems: 'center', bgcolor: (t) => alpha(t.palette.background.paper, 0.9) }}>
-              <Button
-                size="small"
-                variant={count > 0 ? 'contained' : 'outlined'}
-                startIcon={<PsychologyIcon />}
-                disabled={!launch.canLaunch}
-                // Empty-state launcher is an enabled CTA (focuses the primary
-                // company) sitting on the translucent Paper above — brighten it
-                // to accent.primary with a visible border so it reads on both
-                // themes (accent.* swap for light-mode legibility, final review).
-                sx={count > 0 ? undefined : {
-                  color: 'accent.primary',
-                  borderColor: (t) => alpha(t.palette.accent.primary, 0.7),
-                  '&:hover': {
-                    borderColor: 'accent.primary',
-                    backgroundColor: (t) => alpha(t.palette.primary.light, 0.12),
-                  },
-                }}
-                onClick={() => {
-                  const primary = graphData.nodes.find((n) => isSameNodeId(n.id, activeNodeId))
-                    || graphData.nodes.find((n) => typeof primarySubject === 'string' && n.name && n.name.toUpperCase() === primarySubject.toUpperCase())
-                    || null;
-                  setAiPanelContext(
-                    buildInvestigationContext(Array.from(investigationSet), graphData.nodes, graphData.links, primary)
-                  );
-                  setAiPanelOpen(true);
-                }}
-              >
-                {launch.mode === 'over_cap' ? text.investigationOverCap : label}
-              </Button>
-              {count > 0 && (
-                <>
-                  <Tooltip title={text.hideSelected(count)}>
-                    <IconButton size="small" onClick={hideSelectedNodes} aria-label={text.hideSelected(count)}>
-                      <VisibilityOffIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={text.clearSelection}>
-                    <IconButton size="small" onClick={() => setInvestigationSet(new Set())} aria-label={text.clearSelection}>
-                      <DeselectIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </>
-              )}
-            </Paper>
-          );
-        })()}
+
 
         {/* The whole-graph table used to float here as a draggable card over the
             middle of the canvas. It now opens in the bottom dock alongside the
