@@ -136,6 +136,9 @@ const CompanyInspectorPanel = ({
   // registry-fetched `data`.
   authorNode = null,
   onEditAuthorNode,
+  // Edit map gate: the author's card offers no Edit button while the map is
+  // read-only. The node itself always stays drawn and inspectable.
+  canEditAuthorNode = false,
 }) => {
   // The registry-detail disclosure. Closed for every node: carrying the
   // previous company's open state over is how a card stops being predictable.
@@ -186,7 +189,12 @@ const CompanyInspectorPanel = ({
         }
       >
         <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 2 }}>
-          <AuthorElementCard node={authorNode} text={text} onEdit={onEditAuthorNode} />
+          <AuthorElementCard
+            node={authorNode}
+            text={text}
+            onEdit={onEditAuthorNode}
+            canEdit={canEditAuthorNode}
+          />
         </Box>
         <Box sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', textAlign: 'right' }}>
           <Button onClick={onClose}>{text.close}</Button>

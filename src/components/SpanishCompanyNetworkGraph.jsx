@@ -52,6 +52,7 @@ import {
   Snackbar,
   Badge,
   Checkbox,
+  ToggleButton,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -126,7 +127,7 @@ import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
 import {
   visibleWithoutDismissed, isAuthorLink, isAuthorNode, makeAuthorLink, makeAuthorNode, removeAuthorNode,
-  dismissLink, restoreLink,
+  collectAuthorLayer, dismissLink, restoreLink,
 } from '../utils/authorLayer';
 import AuthorLinkDialog from './AuthorLinkDialog';
 import AuthorNodeDialog from './AuthorNodeDialog';
@@ -725,6 +726,12 @@ const SEARCH_COPY = {
     nameRequired: 'A name is required.',
     urlInvalid: 'The URL must start with http:// or https://.',
     save: 'Save',
+    // Edit map gate: the toggle, its banner and the one-time explainer.
+    editMap: 'Edit map',
+    editBanner: 'Editing: what you add or change appears in your situation report, never in the registry.',
+    editExplainerTitle: 'Your map, your report',
+    editExplainerBody: 'In edit mode you can add entities and relationships, dismiss registry relationships, merge, rename, annotate and mark seats. Everything you do is drawn dotted, listed under "Added by the author" in the situation report, and never sent anywhere.',
+    gotIt: 'Got it',
   },
   es: {
     type: 'Tipo',
@@ -1139,6 +1146,12 @@ const SEARCH_COPY = {
     nameRequired: 'El nombre es obligatorio.',
     urlInvalid: 'La URL debe empezar por http:// o https://.',
     save: 'Guardar',
+    // Edit map gate: the toggle, its banner and the one-time explainer.
+    editMap: 'Editar mapa',
+    editBanner: 'Edición: lo que añadas o cambies aparece en tu informe de situación, nunca en el registro.',
+    editExplainerTitle: 'Tu mapa, tu informe',
+    editExplainerBody: 'En modo edición puedes añadir entidades y relaciones, descartar relaciones del registro, fusionar, renombrar, anotar y marcar cargos. Todo lo que hagas se dibuja con puntos, se lista bajo "Añadido por el autor" en el informe de situación y nunca se envía a ningún sitio.',
+    gotIt: 'Entendido',
   },
 };
 
@@ -1867,13 +1880,20 @@ const SpanishCompanyNetworkGraph = ({
   // `graphPoint` places a fresh add; ignored (null) when editing, since an
   // edit keeps the node where it already sits.
   const [authorNodeDialog, setAuthorNodeDialog] = useState(null); // { initial, graphPoint } | null
-  // Author layer: right-click on a link — showFilings, dismiss (registry) or
-  // edit (author), delete (author).
+  // Author layer: right-click on a link — showFilings always, dismiss/edit/
+  // delete only while the map is in edit mode (see isEditMode below).
   const [linkMenu, setLinkMenu] = useState(null); // { link, x, y } | null
   // Author layer: the small "why are you dismissing this" dialog for a
   // registry link. `reason` is optional and never required to proceed.
   const [dismissLinkDialog, setDismissLinkDialog] = useState(null); // { link } | null
   const [dismissLinkReason, setDismissLinkReason] = useState('');
+  // Edit map gate: off by default — the author's tools (add entity, link,
+  // notes, merge, mark seats, dismiss/edit/delete a link) only render while
+  // this is true. Registry-only actions (expand/collapse/hide/delete node,
+  // showFilings) stay available either way. See collectAuthorLayer below for
+  // the snapshot-open rule that turns this on automatically.
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showEditExplainer, setShowEditExplainer] = useState(false);
   const [isNodeNoteDialogOpen, setIsNodeNoteDialogOpen] = useState(false);
   const [nodeNotePreviewId, setNodeNotePreviewId] = useState(null);
   const [nodeNoteTargetId, setNodeNoteTargetId] = useState(null);
@@ -6318,7 +6338,9 @@ const SpanishCompanyNetworkGraph = ({
   }, [linkDialog, sitrepAuthor, text]);
 
   // Author layer: right-click on a LINK opens this menu (see onLinkRightClick
-  // on ForceGraph2D, below).
+  // on ForceGraph2D, below). showFilings is always offered for a registry
+  // link with an officer endpoint; dismiss/edit/delete are gated to edit mode
+  // at render time, not here — these handlers stay callable either way.
   const closeLinkMenu = useCallback(() => setLinkMenu(null), []);
 
   // "Edit link…" opens the same AuthorLinkDialog the node menu's
@@ -9559,6 +9581,19 @@ const SpanishCompanyNetworkGraph = ({
     setSnapshotMode(true);
     setSnapshotSource(source);
     setGraphData(snapshot.graph);
+    // Edit map gate: a snapshot that already carries author work (added
+    // nodes/links, a dismissed registry link, a rename) opens straight into
+    // edit mode — the tools that made those elements should be one click
+    // away, not hidden behind a toggle the analyst has to remember exists.
+    const authorLayer = collectAuthorLayer(snapshot.graph);
+    if (
+      authorLayer.nodes.length
+      || authorLayer.links.length
+      || authorLayer.dismissed.length
+      || authorLayer.renamed.length
+    ) {
+      setIsEditMode(true);
+    }
     setSearchQuery(typeof view.searchQuery === 'string' ? view.searchQuery : '');
     setSearchType(view.searchType === 'officer' ? 'officer' : 'company');
     setLabelFilterText(typeof view.labelFilterText === 'string' ? view.labelFilterText : '');
@@ -11224,17 +11259,45 @@ const SpanishCompanyNetworkGraph = ({
                 >
                   {launch.mode === 'over_cap' ? text.investigationOverCap : label}
                 </Button>
-                {/* Author layer: add an entity that never reached the registry
-                    (a person or company sourced from outside BORME). */}
-                <Tooltip title={text.addEntity}>
-                  <IconButton
+                {/* Edit map gate: off by default. Turning it on reveals the
+                    author's tools everywhere in the graph (this toolbar, the
+                    node/link/canvas menus) — see isEditMode. */}
+                <Tooltip title={text.editMap}>
+                  <ToggleButton
                     size="small"
-                    aria-label={text.addEntity}
-                    onClick={() => setAuthorNodeDialog({ initial: null, graphPoint: null })}
+                    value="edit-map"
+                    selected={isEditMode}
+                    aria-label={text.editMap}
+                    onChange={() => {
+                      const next = !isEditMode;
+                      setIsEditMode(next);
+                      if (!next) return;
+                      let alreadySeen = false;
+                      try {
+                        alreadySeen = window.localStorage.getItem('author_layer_explainer_seen') === '1';
+                      } catch {
+                        /* localStorage unavailable (private mode, blocked storage) — show it every time */
+                      }
+                      if (!alreadySeen) setShowEditExplainer(true);
+                    }}
                   >
-                    <AddEntityIcon fontSize="small" />
-                  </IconButton>
+                    <EditIcon fontSize="small" />
+                  </ToggleButton>
                 </Tooltip>
+                {/* Author layer: add an entity that never reached the registry
+                    (a person or company sourced from outside BORME). Hidden
+                    outside edit mode, like every other author-only control. */}
+                {isEditMode && (
+                  <Tooltip title={text.addEntity}>
+                    <IconButton
+                      size="small"
+                      aria-label={text.addEntity}
+                      onClick={() => setAuthorNodeDialog({ initial: null, graphPoint: null })}
+                    >
+                      <AddEntityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
                 {count > 0 && (
                   <>
                     <Tooltip title={text.hideSelected(count)}>
@@ -11242,7 +11305,7 @@ const SpanishCompanyNetworkGraph = ({
                         <VisibilityOffIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    {count === 2 && (
+                    {isEditMode && count === 2 && (
                       <Tooltip title={text.linkSelected}>
                         <IconButton
                           size="small"
@@ -11933,6 +11996,7 @@ const SpanishCompanyNetworkGraph = ({
           width={isInspectorDockable ? inspectorWidth : null}
           authorNode={previewedAuthorNode}
           onEditAuthorNode={() => setAuthorNodeDialog({ initial: previewedAuthorNode, graphPoint: null })}
+          canEditAuthorNode={isEditMode}
           counts={inspectorCounts}
           isCorporateOfficer={
             previewNodeType === 'officer' && isCompanyOfficer(previewNodeName || '')
@@ -12028,6 +12092,19 @@ const SpanishCompanyNetworkGraph = ({
           }
         />
       </Box>
+
+      {/* Edit map gate: states the contract in-place, right above the legend
+          it sits beside. Closing it only turns the mode off — it never hides
+          the banner permanently, since it always reflects current state. */}
+      {isEditMode && (
+        <Alert
+          severity="info"
+          onClose={() => setIsEditMode(false)}
+          sx={{ mx: isCompactEmbed ? 1 : 2, py: 0, fontSize: '0.75rem', alignItems: 'center' }}
+        >
+          {text.editBanner}
+        </Alert>
+      )}
 
       {/* Legend - compact inline bar */}
       <Box sx={{ display: 'flex', gap: isCompactEmbed ? 1 : 1.5, alignItems: 'center', flexWrap: 'wrap', px: isCompactEmbed ? 1 : 2, py: 0.5, opacity: 0.7, fontSize: '0.65rem' }}>
@@ -12193,6 +12270,37 @@ const SpanishCompanyNetworkGraph = ({
           onSave={handleSaveAuthorNode}
         />
 
+        {/* Edit map gate: one-time explainer, shown the first time edit mode
+            is turned on in this browser. "Got it" is the only way out — it
+            both dismisses the dialog and remembers not to show it again. */}
+        <Dialog
+          open={showEditExplainer}
+          onClose={() => setShowEditExplainer(false)}
+          maxWidth="xs"
+          fullWidth
+          container={overlayContainer}
+        >
+          <DialogTitle>{text.editExplainerTitle}</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">{text.editExplainerBody}</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              variant="contained"
+              onClick={() => {
+                setShowEditExplainer(false);
+                try {
+                  window.localStorage.setItem('author_layer_explainer_seen', '1');
+                } catch {
+                  /* localStorage unavailable — the explainer just shows again next time */
+                }
+              }}
+            >
+              {text.gotIt}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* Author layer: right-click on empty canvas — add an entity, manage
             hidden nodes, or fit the view. */}
         <Menu
@@ -12202,15 +12310,18 @@ const SpanishCompanyNetworkGraph = ({
           container={overlayContainer}
           anchorPosition={canvasMenu ? { top: canvasMenu.y, left: canvasMenu.x } : undefined}
         >
-          <MenuItem
-            onClick={() => {
-              setAuthorNodeDialog({ initial: null, graphPoint: canvasMenu?.graphPoint || null });
-              setCanvasMenu(null);
-            }}
-          >
-            <ListItemIcon><AddEntityIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>{text.addEntity}</ListItemText>
-          </MenuItem>
+          {/* Edit map gate */}
+          {isEditMode && (
+            <MenuItem
+              onClick={() => {
+                setAuthorNodeDialog({ initial: null, graphPoint: canvasMenu?.graphPoint || null });
+                setCanvasMenu(null);
+              }}
+            >
+              <ListItemIcon><AddEntityIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>{text.addEntity}</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem
             disabled={hiddenNodeIds.size === 0}
             onClick={() => {
@@ -12563,7 +12674,8 @@ const SpanishCompanyNetworkGraph = ({
             // 3. The author's work — everything that never touches the
             // registry. Every row shares the dotted-violet circle glyph so
             // the group reads as one thing, regardless of what it does.
-            const groupAuthor = [
+            // Edit map gate: this whole group renders only in edit mode.
+            const groupAuthor = !isEditMode ? [] : [
               <MenuItem key="link_to_node" onClick={() => runContextAction('link_to_node', openLinkPickMode)}>
                 <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
                 <ListItemText>{text.linkToNode}</ListItemText>
@@ -12692,7 +12804,9 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.showFilings}</ListItemText>
             </MenuItem>
           )}
-          {linkMenu?.link && !isAuthorLink(linkMenu.link) && (
+          {/* Edit map gate: dismiss/edit/delete are author-only actions;
+              showFilings above stays available either way. */}
+          {isEditMode && linkMenu?.link && !isAuthorLink(linkMenu.link) && (
             <MenuItem
               key="dismiss_link"
               onClick={() => {
@@ -12704,13 +12818,13 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.dismissLink}</ListItemText>
             </MenuItem>
           )}
-          {linkMenu?.link && isAuthorLink(linkMenu.link) && (
+          {isEditMode && linkMenu?.link && isAuthorLink(linkMenu.link) && (
             <MenuItem key="edit_link" onClick={() => openEditAuthorLinkDialog(linkMenu.link)}>
               <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
               <ListItemText>{text.editLink}</ListItemText>
             </MenuItem>
           )}
-          {linkMenu?.link && isAuthorLink(linkMenu.link) && (
+          {isEditMode && linkMenu?.link && isAuthorLink(linkMenu.link) && (
             <MenuItem
               key="delete_link"
               onClick={() => handleDeleteAuthorLink(linkMenu.link)}

@@ -28,7 +28,7 @@ const Field = ({ label, children }) => {
 // still renders, but as inert text.
 const isSafeHttpUrl = url => /^https?:\/\//i.test(String(url || ''));
 
-export default function AuthorElementCard({ node, text, onEdit }) {
+export default function AuthorElementCard({ node, text, onEdit, canEdit = false }) {
   if (!node) return null;
   const provenance = node.provenance || {};
   const citation = provenance.citation || null;
@@ -61,11 +61,13 @@ export default function AuthorElementCard({ node, text, onEdit }) {
           {provenance.author}
         </Typography>
       )}
-      <Box>
-        <Button size="small" variant="outlined" startIcon={<EditIcon fontSize="small" />} onClick={onEdit}>
-          {text.editEntity}
-        </Button>
-      </Box>
+      {canEdit && (
+        <Box>
+          <Button size="small" variant="outlined" startIcon={<EditIcon fontSize="small" />} onClick={onEdit}>
+            {text.editEntity}
+          </Button>
+        </Box>
+      )}
     </Stack>
   );
 }
