@@ -40,6 +40,15 @@ export const diffExpansion = (nodeId, beforeKeys, afterGraph) => ({
 });
 
 /**
+ * True when the expansion brought nothing onto the canvas: no node and no
+ * link. On the canvas that outcome looks exactly like a failed fetch, so the
+ * caller says so in words. A new link to a node already present still counts
+ * as a finding.
+ */
+export const isEmptyExpansion = record =>
+  !record || ((record.addedNodeIds || []).length === 0 && (record.addedLinkKeys || []).length === 0);
+
+/**
  * Remove what `record` added. A node it added stays when it is protected or
  * when any of its current links is one this expansion did not add (something
  * else claimed it since). A link it added goes only when one of its endpoints

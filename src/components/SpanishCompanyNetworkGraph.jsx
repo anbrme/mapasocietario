@@ -117,7 +117,7 @@ import {
 } from '../utils/companyName';
 import { filterByQueryTerms } from '../utils/queryTermMatch';
 import { anchoredCentre } from '../utils/graphDockViewport';
-import { graphKeys, diffExpansion, collapseExpansion } from '../utils/expansionCollapse';
+import { graphKeys, diffExpansion, collapseExpansion, isEmptyExpansion } from '../utils/expansionCollapse';
 import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
 import { resolveCompanyGroupName } from '../utils/companyGroupName';
@@ -652,6 +652,8 @@ const SEARCH_COPY = {
     addOfficerError: message => `Error adding officer to graph: ${message}`,
     loadSubsidiariesError: message => `Error loading subsidiaries: ${message}`,
     noAdditionalResults: name => `No additional results found for "${name}"`,
+    expandNothingNew: name =>
+      `No new connections for “${name}”: everything BORME publishes is already on the graph.`,
     expandError: message => `Error expanding node: ${message}`,
     correctionSubjectError:
       'I could not link the correction to the main company; the change is visual only and will not affect the report.',
@@ -1026,6 +1028,8 @@ const SEARCH_COPY = {
     addOfficerError: message => `Error al añadir directivo al grafo: ${message}`,
     loadSubsidiariesError: message => `Error al cargar participadas: ${message}`,
     noAdditionalResults: name => `No se encontraron resultados adicionales para "${name}"`,
+    expandNothingNew: name =>
+      `Sin conexiones nuevas para «${name}»: todo lo que publica el BORME ya está en el grafo.`,
     expandError: message => `Error al expandir nodo: ${message}`,
     correctionSubjectError:
       'No pude vincular la corrección a la empresa principal; el cambio es solo visual y no afectará al informe.',
@@ -4976,8 +4980,10 @@ const SpanishCompanyNetworkGraph = ({
       }
       return false;
     } catch (err) {
+      // Let expandNode report it as the error it is; returning false here
+      // showed a failed fetch as "nothing found".
       console.error('Error expanding officer node:', err);
-      return false;
+      throw err;
     }
   }, [viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates]);
 
@@ -5063,7 +5069,7 @@ const SpanishCompanyNetworkGraph = ({
         return true;
       } catch (err) {
         console.error('Error expanding company node:', err);
-        return false;
+        throw err;
       }
     },
     [loadCompanyRecordIntoGraph]
@@ -5175,9 +5181,6 @@ const SpanishCompanyNetworkGraph = ({
           found = await expandCompanyNode(node);
         }
 
-        if (!found) {
-          setError(text.noAdditionalResults(node.name));
-        }
         // Record the diff from inside an updater: the expand helpers queue
         // their setGraphData calls, and only the updater is guaranteed to see
         // the graph with all of them applied. Returns prev — no graph change.
@@ -5186,12 +5189,20 @@ const SpanishCompanyNetworkGraph = ({
           expansionRecordsRef.current = { ...expansionRecordsRef.current, [record.nodeId]: record };
           return prev;
         });
+        // The updater above runs when React flushes; a macrotask later it has.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        // "Found" means the registry answered, not that anything new arrived:
+        // a director expanded from their only company brings back that same
+        // company. On the canvas that is indistinguishable from a failed
+        // fetch, so say what happened.
+        const nothingNew = !found || isEmptyExpansion(expansionRecordsRef.current[normalizeNodeId(node.id)]);
+        if (nothingNew) setSnapshotNotice(text.expandNothingNew(node.name));
         trackEvent('graph_node_expand', {
           ...graphInteractionParams(node),
           expand_origin: expandOrigin,
-          expand_result: found ? 'success' : 'empty',
+          expand_result: nothingNew ? 'empty' : 'success',
         });
-        if (isCompactEmbed && found) {
+        if (isCompactEmbed && !nothingNew) {
           trackEvent('mobile_graph_relationships_expanded', {
             ...graphInteractionParams(node),
             expand_origin: expandOrigin,

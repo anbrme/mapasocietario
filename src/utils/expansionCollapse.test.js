@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { linkKey, graphKeys, diffExpansion, collapseExpansion } from './expansionCollapse';
+import { linkKey, graphKeys, diffExpansion, collapseExpansion, isEmptyExpansion } from './expansionCollapse';
 
 // Expanding a node appends nodes and links; nothing recorded what it brought
 // in, so nothing could take it back. These utilities record the diff and
@@ -105,5 +105,25 @@ describe('collapseExpansion', () => {
     const { graphData, removedNodeIds } = collapseExpansion(before, record);
     expect(graphData.nodes.map(n => n.id)).toEqual(['C1', 'O1']);
     expect(removedNodeIds).toEqual([]);
+  });
+});
+
+// An expansion that adds nothing looks, on the canvas, exactly like a fetch
+// that failed. The record already knows the difference.
+describe('isEmptyExpansion', () => {
+  it('is empty when nothing was added', () => {
+    expect(isEmptyExpansion({ nodeId: 'o1', addedNodeIds: [], addedLinkKeys: [] })).toBe(true);
+  });
+
+  it('is not empty when a node arrived', () => {
+    expect(isEmptyExpansion({ nodeId: 'o1', addedNodeIds: ['c2'], addedLinkKeys: ['o1|c2|'] })).toBe(false);
+  });
+
+  it('is not empty when only a new link to an existing node arrived', () => {
+    expect(isEmptyExpansion({ nodeId: 'o1', addedNodeIds: [], addedLinkKeys: ['o1|c1|Secretario'] })).toBe(false);
+  });
+
+  it('treats a missing record as empty', () => {
+    expect(isEmptyExpansion(null)).toBe(true);
   });
 });
