@@ -1818,6 +1818,14 @@ const SpanishCompanyNetworkGraph = ({
 
   const graphInteractionParams = useCallback(
     node => {
+      // Author layer: an author node's own type/name never rides along in
+      // analytics — node_kind is the raw registry type (company/officer),
+      // never the author's chosen label, and origin marks it apart from
+      // getNodeGroupType's registry-only company/officer/none. Nothing else
+      // in this object is identifying, so the registry branch is untouched.
+      if (isAuthorNode(node)) {
+        return { node_kind: node.type, origin: 'author' };
+      }
       const lastSearchAt = lastSuccessfulSearchAtRef.current;
       return {
         entry_source: entrySource,
@@ -1921,6 +1929,14 @@ const SpanishCompanyNetworkGraph = ({
   const [ddCheckoutOpen, setDdCheckoutOpen] = useState(false);
   const [ddCheckoutCompany, setDdCheckoutCompany] = useState('');
 
+  // Author layer: total author work on the current graph (links + entities
+  // added, links dismissed, nodes renamed) — none of it reaches the paid
+  // report, so it feeds the checkout dialog's corrections notice the same
+  // way an API correction does. See DDCheckoutDialog's authorElementCount.
+  const authorElementCount = React.useMemo(() => {
+    const layer = collectAuthorLayer(graphData);
+    return layer.nodes.length + layer.links.length + layer.dismissed.length + layer.renamed.length;
+  }, [graphData]);
 
   // Situation report dialog state. `relDoc` is DERIVED (see the useMemo below,
   // declared after filteredGraphData) rather than captured once on open: a
@@ -5565,6 +5581,9 @@ const SpanishCompanyNetworkGraph = ({
   const runContextAction = useCallback(
     (contextAction, handler) => {
       if (contextNode) {
+        // graphInteractionParams already carries origin: 'author' (and only
+        // node_kind, never a name) for an author node — the spread below is
+        // what puts it on every context-menu event without a separate branch.
         trackEvent('graph_context_action', {
           ...graphInteractionParams(contextNode),
           context_action: contextAction,
@@ -13638,6 +13657,7 @@ const SpanishCompanyNetworkGraph = ({
           companyName={ddCheckoutCompany}
           country="es"
           language={uiLanguage}
+          authorElementCount={authorElementCount}
         />
         <RelationshipReportModal
           open={relReportOpen}
@@ -13732,6 +13752,7 @@ const SpanishCompanyNetworkGraph = ({
         companyName={ddCheckoutCompany}
         country="es"
         language={uiLanguage}
+        authorElementCount={authorElementCount}
       />
       <RelationshipReportModal
         open={relReportOpen}

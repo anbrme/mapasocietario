@@ -287,6 +287,12 @@ function DDCheckoutDialogInner({
   // free option already selected so the visitor lands on a form that says
   // free and asks two questions, not on a price with a checkbox beneath it.
   initialFreeReport = false,
+  // Author layer: the graph's own author-added links/entities, dismissals
+  // and renames — none of it reaches the paid report either, same as an API
+  // correction. The graph component memoises collectAuthorLayer(graphData)
+  // into a single total and passes it down; this dialog never touches
+  // graphData itself.
+  authorElementCount = 0,
 }) {
   const [includeFS, setIncludeFS] = useState(false);
   const [financialStatementsYear, setFinancialStatementsYear] = useState('latest');
@@ -441,7 +447,9 @@ function DDCheckoutDialogInner({
     return () => { cancelled = true; clearTimeout(t); };
   }, [email, isAndroidApp]);
 
-  // On open, count the user's corrections for this company — they drive the
+  // On open, count the user's corrections for this company plus their author
+  // layer work on the map (links/entities added, links dismissed, nodes
+  // renamed) — none of it reaches the paid report, so both drive the same
   // statement below, not a choice of report.
   useEffect(() => {
     if (!open || !companyName) {
@@ -454,22 +462,22 @@ function DDCheckoutDialogInner({
         const gk = await resolveGroupKey(companyName);
         if (cancelled) return;
         if (!gk) {
-          setCorrectionsCount(0);
+          setCorrectionsCount(authorElementCount);
           return;
         }
         const list = await listCorrections(gk);
         if (cancelled) return;
-        setCorrectionsCount(list.length);
+        setCorrectionsCount(list.length + authorElementCount);
       } catch {
         if (!cancelled) {
-          setCorrectionsCount(0);
+          setCorrectionsCount(authorElementCount);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, companyName]);
+  }, [open, companyName, authorElementCount]);
 
   // `begin_checkout` fires the moment the form is submitted, before the
   // company pre-check and before the worker answers — so a user who keeps
