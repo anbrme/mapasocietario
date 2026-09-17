@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildInvestigationDoc, REPORT_TITLE_MAX_LENGTH } from './investigationDoc';
+import { hasAnnexes } from './sitrepModel';
 
 const AT = '2026-09-10T09:00:00.000Z';
 
@@ -115,7 +116,9 @@ describe('buildInvestigationDoc', () => {
     expect(doc.corrections).toEqual([
       { action: 'merge', nameA: 'GARCIA LOPEZ, ANA', nameB: 'GARCIA LOPEZ ANA', resignedDate: '' },
     ]);
-    expect(doc.counts).toEqual({ companies: 2, officers: 2, sharedPeople: 1, notes: 3, flagged: 2 });
+    expect(doc.counts).toEqual({
+      companies: 2, officers: 2, sharedPeople: 1, notes: 3, flagged: 2, authorElements: 0,
+    });
   });
 
   it('does not mutate its inputs', () => {
@@ -274,5 +277,34 @@ describe('report title', () => {
   it('a non-string title is tolerated', () => {
     expect(build({ title: null }).subject).toBe('ALFA SL');
     expect(build({ title: 42 }).subject).toBe('42');
+  });
+});
+
+describe('author layer', () => {
+  const emptyScope = { companyNodes: [], connectors: [], ownership: [], counts: { companies: 0, officers: 0, sharedPeople: 0 } };
+
+  it('carries the author layer and counts it', () => {
+    const p = { id: 'author-node-p', name: 'P', type: 'officer', subtype: 'individual', provenance: { by: 'author', citation: null, asserted: null, note: '', at: 'T', author: '' } };
+    const c = { id: 'company-c', name: 'C', type: 'company' };
+    const l = {
+      id: 'author-link-1', source: 'author-node-p', target: 'company-c', type: 'author', category: 'author',
+      relationship: 'Director', directed: false,
+      provenance: { by: 'author', citation: null, asserted: null, note: '', at: 'T', author: '' },
+    };
+    const docWithAuthorLayer = buildInvestigationDoc({ graphData: { nodes: [p, c], links: [l] }, scope: emptyScope });
+
+    expect(docWithAuthorLayer.authorLayer.links).toHaveLength(1);
+    expect(docWithAuthorLayer.authorLayer.nodes[0].name).toBe('P');
+    expect(docWithAuthorLayer.counts.authorElements).toBe(2);
+    expect(hasAnnexes(docWithAuthorLayer)).toBe(true);
+  });
+
+  it('counts zero and stays annex-empty when the graph carries no author elements', () => {
+    const plainDoc = buildInvestigationDoc({ graphData: { nodes: [], links: [] }, scope: emptyScope });
+
+    expect(plainDoc.counts.authorElements).toBe(0);
+    expect(plainDoc.authorLayer).toEqual({
+      nodes: [], links: [], dismissed: [], renamed: [],
+    });
   });
 });

@@ -14,6 +14,7 @@
 
 import { hasNodeNote } from './nodeNotes';
 import { DEFAULT_BLOCKS } from './sitrepAuthor';
+import { collectAuthorLayer } from './authorLayer';
 
 // Flags a person reaches for when something is wrong, most urgent first. Any
 // other flag ('blue', 'green', 'none') is a note, not a finding.
@@ -95,6 +96,10 @@ export function buildInvestigationDoc({
   const officersByCompany = Object.fromEntries(
     Object.entries(scope?.officersByCompany || {}).map(([name, officers]) => [name, [...(officers || [])]]));
 
+  const authorLayer = collectAuthorLayer(graphData);
+  const authorElements = authorLayer.nodes.length + authorLayer.links.length
+    + authorLayer.dismissed.length + authorLayer.renamed.length;
+
   return {
     subject: cleanTitle(title) || primarySubject || '',
     // What the title falls back to; the dialog shows it as the placeholder.
@@ -113,10 +118,12 @@ export function buildInvestigationDoc({
       nameB: c.name_b || '',
       resignedDate: c.resigned_date || '',
     })),
+    authorLayer,
     counts: {
       ...(scope?.counts || { companies: 0, officers: 0, sharedPeople: 0 }),
       notes: notedNodes.length,
       flagged: flagged.length,
+      authorElements,
     },
     steps: (steps || []).map(s => ({ ...s })),
     author: author && (author.name || author.organisation)
