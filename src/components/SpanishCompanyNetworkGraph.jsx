@@ -6269,7 +6269,10 @@ const SpanishCompanyNetworkGraph = ({
       citationUrl: draft.citationUrl,
       asserted: draft.asserted,
       note: draft.note,
-      author: sitrepAuthor.name,
+      // An edit keeps the original attribution and timestamp — only the
+      // content fields above change. A fresh add is attributed to whoever is
+      // saving it now.
+      author: initial ? (initial.provenance?.author || sitrepAuthor.name) : sitrepAuthor.name,
       ...(initial ? { id: initial.id, now: initial.provenance?.at } : {}),
     });
     setGraphData(prev => (
@@ -6339,7 +6342,10 @@ const SpanishCompanyNetworkGraph = ({
       citationText: draft.citationText,
       citationUrl: draft.citationUrl,
       note: draft.note,
-      author: sitrepAuthor.name,
+      // An edit keeps the original attribution and timestamp — only the
+      // content fields above change. A fresh add is attributed to whoever is
+      // saving it now.
+      author: initial ? (initial.provenance?.author || sitrepAuthor.name) : sitrepAuthor.name,
       x: point.x,
       y: point.y,
       ...(initial ? { id: initial.id, now: initial.provenance?.at } : {}),
