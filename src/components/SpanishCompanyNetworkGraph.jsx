@@ -5453,26 +5453,44 @@ const SpanishCompanyNetworkGraph = ({
     return node && !isAuthorNode(node) ? node : null;
   }, [previewNodeId, graphData.nodes]);
 
+  // Shared id -> node lookup for the two author-layer features below that
+  // both need to resolve a link's endpoints back to node names: the seat
+  // dismiss action and the hidden-links list. Built once per graphData
+  // change rather than once per memo.
+  const nodesById = React.useMemo(
+    () => new Map(graphData.nodes.map(n => [normalizeNodeId(n.id), n])),
+    [graphData.nodes]
+  );
+
   // Inspector relationship rows (Task 10, officer seats): a seat is built
   // from the fetched officer payload (company name + role), not from a graph
   // link id, so it has to be matched back to the actual registry edge before
-  // it can be dismissed. No match (the company isn't plotted, or the link is
-  // already dismissed) means no action on that row.
-  const resolveSeatLink = useCallback(companyName => {
+  // it can be dismissed. The officer/company pair alone is not unique — the
+  // same two nodes can carry several live links (different roles, or the
+  // same role across separate periods), so the role text is matched too.
+  // Zero or more than one surviving candidate means "don't guess": no action
+  // is offered on that row.
+  const resolveSeatLink = useCallback(seat => {
     if (!previewedRegistryNode || previewedRegistryNode.type !== 'officer') return null;
     const officerId = normalizeNodeId(previewedRegistryNode.id);
-    const target = String(companyName || '').trim().toLowerCase();
-    if (!target) return null;
-    const nodesById = new Map(graphData.nodes.map(n => [normalizeNodeId(n.id), n]));
-    return (graphData.links || []).find(l => {
+    const targetCompany = String(seat?.company || '').trim().toLowerCase();
+    if (!targetCompany) return null;
+    // Same normalisation the seats table itself uses for the role text —
+    // trimmed, case-insensitive — applied to the link's relationship/category
+    // on the other side of the comparison.
+    const targetRole = String(seat?.role || '').trim().toLowerCase();
+    const candidates = (graphData.links || []).filter(l => {
       if (isAuthorLink(l) || isDismissedLink(l)) return false;
       const sId = normalizeNodeId(getNodeIdFromRef(l.source));
       const tId = normalizeNodeId(getNodeIdFromRef(l.target));
       if (sId !== officerId && tId !== officerId) return false;
       const otherNode = nodesById.get(sId === officerId ? tId : sId);
-      return !!otherNode && String(otherNode.name || '').trim().toLowerCase() === target;
-    }) || null;
-  }, [previewedRegistryNode, graphData.links, graphData.nodes]);
+      if (!otherNode || String(otherNode.name || '').trim().toLowerCase() !== targetCompany) return false;
+      const linkRole = String(l.relationship || l.category || '').trim().toLowerCase();
+      return linkRole === targetRole;
+    });
+    return candidates.length === 1 ? candidates[0] : null;
+  }, [previewedRegistryNode, graphData.links, nodesById]);
 
   // handleNodeClick is defined after handleNodeRightClick (below) for mobile touch support
   const DOUBLE_CLICK_MS = 450;
@@ -5564,7 +5582,6 @@ const SpanishCompanyNetworkGraph = ({
   const hiddenLinksList = React.useMemo(() => {
     const dismissed = (graphData.links || []).filter(isDismissedLink);
     if (dismissed.length === 0) return [];
-    const nodesById = new Map(graphData.nodes.map(n => [normalizeNodeId(n.id), n]));
     const nameOf = ref => nodesById.get(normalizeNodeId(getNodeIdFromRef(ref)))?.name || '';
     return dismissed.map(link => ({
       id: link.id,
@@ -5572,7 +5589,7 @@ const SpanishCompanyNetworkGraph = ({
       to: nameOf(link.target),
       relationship: link.relationship || link.category || '',
     }));
-  }, [graphData.links, graphData.nodes]);
+  }, [graphData.links, nodesById]);
 
   const closeNodeContextMenu = useCallback(() => {
     setNodeContextMenu(null);

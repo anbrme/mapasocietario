@@ -71,8 +71,10 @@ const OfficerInspectorBody = ({
   // Inspector relationship rows (Task 10): a seat is a registry relationship
   // row. isEditMode gates the action (read directly here, never from global
   // state — the parent decides and passes it down); onLinkAction(link,
-  // 'dismiss') runs it; resolveSeatLink maps the seat's company name back to
-  // the graph link it came from (null hides the action for that row).
+  // 'dismiss') runs it; resolveSeatLink(seat) maps the seat (company + role,
+  // not company alone — the same pair can hold several links) back to the
+  // one graph link it came from. Null hides the action for that row: no
+  // match, or more than one candidate link, both mean "don't guess".
   isEditMode = false,
   onLinkAction,
   resolveSeatLink,
@@ -168,7 +170,7 @@ const OfficerInspectorBody = ({
               // Inspector relationship rows (Task 10): only a registry link
               // that is actually plotted (and not already dismissed) gets an
               // action here — resolveSeatLink returns null otherwise.
-              const seatLink = isEditMode ? resolveSeatLink?.(seat.company) : null;
+              const seatLink = isEditMode ? resolveSeatLink?.(seat) : null;
               return (
                 <Box
                   key={`${seat.company}-${seat.role}-${idx}`}
