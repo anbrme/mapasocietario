@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import VoiceInputButton from './VoiceInputButton';
+import GraphReportMenu from './GraphReportMenu';
 import { graphInk } from '../theme/graphInk';
 import { debounce } from 'lodash';
 import { forceCollide } from 'd3-force';
@@ -28,6 +29,7 @@ import {
   CircularProgress,
   Alert,
   Paper,
+  Portal,
   InputAdornment,
   FormControl,
   InputLabel,
@@ -325,6 +327,7 @@ const SEARCH_COPY = {
     emptyBody:
       'Type a name in the search box above to draw its network of officers, subsidiaries and related companies.',
     emptyExamplesLabel: 'Or start with one of these:',
+    generateReport: 'Generate report',
     dueDiligence: 'Due Diligence',
     monitorCompany: 'Monitor this company (free)',
     situationReportTooltip: 'Working document for your visible graph — companies, directors and your notes (free)',
@@ -752,6 +755,7 @@ const SEARCH_COPY = {
     emptyBody:
       'Escribe un nombre en el buscador de arriba para dibujar su red de administradores, filiales y empresas relacionadas.',
     emptyExamplesLabel: 'O empieza con una de estas:',
+    generateReport: 'Generar informe',
     dueDiligence: 'Due Diligence',
     monitorCompany: 'Monitorizar esta empresa (gratis)',
     situationReportTooltip: 'Documento de trabajo sobre el grafo visible — empresas, administradores y tus notas (gratis)',
@@ -1678,6 +1682,7 @@ const SpanishCompanyNetworkGraph = ({
   entrySource = 'direct',
   forceCompactMode = false,
   forceFullMode = false,
+  reportActionsContainer = null,
 }) => {
   const uiLanguage = language === 'en' ? 'en' : 'es';
   const text = SEARCH_COPY[uiLanguage];
@@ -10350,10 +10355,7 @@ const SpanishCompanyNetworkGraph = ({
           );
         }}
         sx={{
-          // The search box is the graph's primary intent. Toolbar actions that
-          // appear once a graph is loaded (report, shared connections, DD) had
-          // squeezed it to a quarter of its empty-state width: take the free
-          // space ahead of the secondary node filter, and never go narrow.
+          // Give the primary search the free space ahead of the node filter.
           flexGrow: 3,
           flexBasis: { xs: 200, md: 320 },
           minWidth: { xs: 200, md: 300 },
@@ -10444,6 +10446,56 @@ const SpanishCompanyNetworkGraph = ({
     </>
   );
 
+  const canGenerateDueDiligence = graphData.nodes.some(n => n.type === 'company' || n.type === 'spanish-company-group');
+  const reportsInHeader = reportActionsContainer && !isFullscreen && !isCompactViewport && !isCompactEmbed;
+  const reportMenu = (canGenerateDueDiligence || filteredGraphData.nodes.length > 0) && (
+    <GraphReportMenu
+      label={text.generateReport}
+      dueDiligenceLabel={text.dueDiligence}
+      dueDiligenceTooltip={FREE_FIRST_REPORT_CODE
+        ? (FREE_FIRST_REPORT_COPY[uiLanguage] || FREE_FIRST_REPORT_COPY.en).body
+        : text.buyDdTooltip}
+      freeReportBadge={FREE_FIRST_REPORT_CODE && (FREE_FIRST_REPORT_COPY[uiLanguage] || FREE_FIRST_REPORT_COPY.en).badge}
+      situationReportLabel={text.situationReport}
+      situationReportTooltip={`${text.situationReportTooltip} — ${walkthroughCopy(uiLanguage).hint(platformModifier(typeof navigator !== 'undefined' ? navigator : undefined))}`}
+      subjectCount={walkthrough.selectedCount || reportSubjectCount}
+      preparing={walkthrough.status === 'preparing'}
+      canGenerateDueDiligence={canGenerateDueDiligence}
+      canGenerateSituationReport={filteredGraphData.nodes.length > 0}
+      onDueDiligence={() => {
+        trackGraphToolbarAction('due_diligence');
+        // DD stays per-company, preferring the sticky report subject over a query.
+        const lastCompanyQuery = lastSearchContext?.searchType === 'company' ? lastSearchContext.query : '';
+        const name = (primarySubject || lastCompanyQuery || '').trim();
+        if (!name) return;
+        setDdCheckoutCompany(name);
+        setDdCheckoutOpen(true);
+      }}
+      onSituationReport={() => {
+        trackGraphToolbarAction('situation_report', {
+          language: uiLanguage, mode: walkthrough.mode, companies: visibleCompanyCount,
+        });
+        openRelationshipReport();
+      }}
+    />
+  );
+  const sharedConnectionsChip = (visibleCompanyCount >= 2 || showSharedConnections) && (
+    <Tooltip title={showSharedConnections ? text.hideShared : text.showShared}>
+      <Chip
+        label={text.sharedConnections}
+        icon={<HubIcon />}
+        size="small"
+        variant={showSharedConnections ? 'filled' : 'outlined'}
+        color="info"
+        aria-pressed={showSharedConnections}
+        onClick={() => {
+          trackGraphToolbarAction('toggle_shared_connections');
+          setShowSharedConnections(v => !v);
+        }}
+      />
+    </Tooltip>
+  );
+
   // Shared search panel content
   const searchPanelContent = (
     <Paper sx={{ p: 1, px: 1.5, m: embedded ? 0 : 2, mb: 0 }}>
@@ -10508,95 +10560,6 @@ const SpanishCompanyNetworkGraph = ({
         </FormControl>
 
         {entitySearchContent}
-        {graphData.nodes.some(n => n.type === 'company' || n.type === 'spanish-company-group') && (
-          <Tooltip
-            title={FREE_FIRST_REPORT_CODE
-              ? (FREE_FIRST_REPORT_COPY[uiLanguage] || FREE_FIRST_REPORT_COPY.en).body
-              : text.buyDdTooltip}
-          >
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            startIcon={<DescriptionIcon />}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-              color: 'primary.contrastText',
-              boxShadow: (t) => `0 2px 10px ${alpha(t.palette.primary.main, 0.35)}`,
-            }}
-            onClick={() => {
-              trackGraphToolbarAction('due_diligence');
-              // DD is per-company. Prefer the sticky subject (always a company,
-              // and may carry corrections that surface in the situation report); fall back to the
-              // latest company search — never an officer query.
-              const lastCompanyQuery =
-                lastSearchContext?.searchType === 'company' ? lastSearchContext.query : '';
-              const name = (
-                (correctionsCount > 0 && primarySubject)
-                  ? primarySubject
-                  : (primarySubject || lastCompanyQuery || '')
-              ).trim();
-              if (!name) return;
-              setDdCheckoutCompany(name);
-              setDdCheckoutOpen(true);
-            }}
-          >
-            {/* The graph is where intent is highest — say the first one is free
-                here, not only in the checkout dialog the user has to open. */}
-            {FREE_FIRST_REPORT_CODE
-              ? `${text.dueDiligence} · ${(FREE_FIRST_REPORT_COPY[uiLanguage] || FREE_FIRST_REPORT_COPY.en).badge}`
-              : text.dueDiligence}
-          </Button>
-          </Tooltip>
-        )}
-        {filteredGraphData.nodes.length > 0 && (() => {
-          // The walkthrough is a mode of the report: one button, whose badge
-          // counts the Cmd/Ctrl+click selection when there is one (the steps)
-          // and the report subjects otherwise, and whose tooltip carries the
-          // selection hint.
-          const wt = walkthroughCopy(uiLanguage);
-          const hint = wt.hint(platformModifier(typeof navigator !== 'undefined' ? navigator : undefined));
-          return (
-          <Tooltip title={`${text.situationReportTooltip} — ${hint}`}>
-            <span>
-              <Badge badgeContent={walkthrough.selectedCount || reportSubjectCount} color="primary"
-                sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
-                <Button
-                  variant="outlined" color="primary" size="small"
-                  startIcon={walkthrough.status === 'preparing' ? <CircularProgress size={14} color="inherit" /> : <AccountTreeIcon />}
-                  disabled={walkthrough.status === 'preparing'}
-                  sx={{ textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
-                  onClick={() => {
-                    trackGraphToolbarAction('situation_report', {
-                      language: uiLanguage, mode: walkthrough.mode,
-                      companies: visibleCompanyCount,
-                    });
-                    openRelationshipReport();
-                  }}>
-                  {text.situationReport}
-                </Button>
-              </Badge>
-            </span>
-          </Tooltip>
-          );
-        })()}
-        {visibleCompanyCount >= 2 && (
-          <Tooltip title={showSharedConnections ? text.hideShared : text.showShared}>
-            <Button
-              variant={showSharedConnections ? 'contained' : 'outlined'}
-              color="info" size="small"
-              startIcon={<HubIcon />}
-              sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
-              onClick={() => {
-                trackGraphToolbarAction('toggle_shared_connections');
-                setShowSharedConnections(v => !v);
-              }}>
-              {showSharedConnections ? `${text.sharedConnections} ✓` : text.sharedConnections}
-            </Button>
-          </Tooltip>
-        )}
         {subjectCompanyName && correctionsCount > 0 && (
           <Tooltip title={text.myCorrectionsTooltip}>
             <Chip
@@ -10630,43 +10593,6 @@ const SpanishCompanyNetworkGraph = ({
             ),
           }}
         />
-        <Tooltip title={text.legalTooltip}>
-          <IconButton
-            onClick={() => {
-              trackGraphToolbarAction('legal_info');
-              setLegalDisclaimerOpen(true);
-            }}
-            size="small"
-            aria-label={text.legalLabel}
-          >
-            <InfoIcon />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={text.pathfinderTooltip}>
-          <IconButton
-            onClick={() => {
-              trackGraphToolbarAction('toggle_pathfinder');
-              setPathfinderActive(!pathfinderActive);
-            }}
-            color={pathfinderActive ? "primary" : "default"}
-            size="small"
-            aria-label={text.pathfinderTooltip}
-          >
-            <RouteIcon />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={text.graphSettingsTitle}>
-          <IconButton
-            onClick={() => {
-              trackGraphToolbarAction('toggle_settings');
-              setShowSettings(!showSettings);
-            }}
-            color={showSettings ? 'primary' : 'default'}
-            aria-label={text.graphSettingsTitle}
-          >
-            <TuneIcon />
-          </IconButton>
-        </Tooltip>
       </Box>
 
       {/* Pathfinder Panel */}
@@ -11019,7 +10945,7 @@ const SpanishCompanyNetworkGraph = ({
       )}
 
       {/* Status & position filter chips */}
-      {graphData.links.length > 0 && (
+      {(graphData.links.length > 0 || sharedConnectionsChip) && (
         <Box sx={{ mt: 1 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
             <Chip
@@ -11148,6 +11074,7 @@ const SpanishCompanyNetworkGraph = ({
                   : `${text.positions} (${availablePositionCount})`}
               </Button>
             )}
+            {sharedConnectionsChip}
             {hasChipFilters && (
               <Chip
                 label={text.clearFilters}
@@ -11305,6 +11232,9 @@ const SpanishCompanyNetworkGraph = ({
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.25, minWidth: 0, maxWidth: '100%' }}>
+          <Portal container={reportsInHeader ? reportActionsContainer : undefined} disablePortal={!reportsInHeader}>
+            {reportMenu}
+          </Portal>
           {!isCompactEmbed && <Tooltip title={text.zoomIn}>
             <IconButton onClick={() => { trackGraphToolbarAction('zoom_in'); zoomIn(); }} size="small">
               <ZoomInIcon />
@@ -11391,6 +11321,48 @@ const SpanishCompanyNetworkGraph = ({
             </IconButton>
           </Tooltip>
           </>
+          )}
+          {!isCompactEmbed && !isFullscreen && (
+            <>
+        <Tooltip title={text.legalTooltip}>
+          <IconButton
+            onClick={() => {
+              trackGraphToolbarAction('legal_info');
+              setLegalDisclaimerOpen(true);
+            }}
+            size="small"
+            aria-label={text.legalLabel}
+          >
+            <InfoIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title={text.pathfinderTooltip}>
+          <IconButton
+            onClick={() => {
+              trackGraphToolbarAction('toggle_pathfinder');
+              setPathfinderActive(!pathfinderActive);
+            }}
+            color={pathfinderActive ? "primary" : "default"}
+            size="small"
+            aria-label={text.pathfinderTooltip}
+          >
+            <RouteIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title={text.graphSettingsTitle}>
+          <IconButton
+            onClick={() => {
+              trackGraphToolbarAction('toggle_settings');
+              setShowSettings(!showSettings);
+            }}
+            size="small"
+            color={showSettings ? 'primary' : 'default'}
+            aria-label={text.graphSettingsTitle}
+          >
+            <TuneIcon />
+          </IconButton>
+        </Tooltip>
+            </>
           )}
           {/* AI Investigation Launcher */}
           {!isCompactEmbed && (() => {
@@ -11920,6 +11892,7 @@ const SpanishCompanyNetworkGraph = ({
                     ))}
                   </Box>
                 )}
+                {sharedConnectionsChip}
                 {(hasChipFilters || labelFilterText) && (
                   <Button
                     size="small"

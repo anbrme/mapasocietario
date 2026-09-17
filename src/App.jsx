@@ -107,6 +107,7 @@ export default function App() {
   const navigate = useNavigate();
   const [language, setLanguage] = React.useState(getInitialLanguage);
   const [menuAnchor, setMenuAnchor] = React.useState(null);
+  const [reportActionsContainer, setReportActionsContainer] = React.useState(null);
   const copy = APP_COPY[language] || APP_COPY.en;
 
   // Secondary navigation for the workspace, so /app is self-sufficient: a
@@ -313,6 +314,7 @@ export default function App() {
           <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1 }}>
             {copy.breadcrumb}
           </Typography>
+          <Box ref={setReportActionsContainer} sx={{ display: 'flex', flexShrink: 0, ml: 1 }} />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
           {!DATA_MAINTENANCE.enabled && (
@@ -409,6 +411,7 @@ export default function App() {
         entrySource={graphEntrySource}
         forceCompactMode={isNativeApp()}
         forceFullMode={forceFullMode}
+        reportActionsContainer={reportActionsContainer}
       />
     </Box>
   );
