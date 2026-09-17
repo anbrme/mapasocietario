@@ -96,6 +96,7 @@ import {
   DeleteSweep as RemoveNoteIcon,
   Link as LinkIcon,
   AddCircleOutline as AddEntityIcon,
+  Block as DismissLinkIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
@@ -125,6 +126,7 @@ import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
 import {
   visibleWithoutDismissed, isAuthorLink, isAuthorNode, makeAuthorLink, makeAuthorNode, removeAuthorNode,
+  dismissLink, restoreLink,
 } from '../utils/authorLayer';
 import AuthorLinkDialog from './AuthorLinkDialog';
 import AuthorNodeDialog from './AuthorNodeDialog';
@@ -312,7 +314,7 @@ const SEARCH_COPY = {
     officersPerCompany: 'Officers/company',
     fetchAllOfficers: 'Fetch all',
     showApoderados: 'Show apoderados',
-    marketData: 'Market data',
+    marketData: 'Show market data',
     searchCompanyPlaceholder: 'Search company...',
     searchOfficerPlaceholder: 'Search officer...',
     searchUnifiedPlaceholder: 'Search a company or person…',
@@ -506,7 +508,7 @@ const SEARCH_COPY = {
     companyProfile: 'Company profile',
     moreOptionsHint: 'Right-click a node for more options.',
     moreOptionsHintTouch: 'Double-tap a node for more options.',
-    timeline: 'Timeline',
+    timeline: 'Open timeline',
     markResigned: 'Mark as ceased',
     markActive: 'Mark as active',
     buyDueDiligence: 'Buy Due Diligence',
@@ -733,7 +735,7 @@ const SEARCH_COPY = {
     officersPerCompany: 'Cargos/empresa',
     fetchAllOfficers: 'Ver todos',
     showApoderados: 'Ver apoderados',
-    marketData: 'Datos de mercado',
+    marketData: 'Ver datos de mercado',
     searchCompanyPlaceholder: 'Buscar empresa...',
     searchOfficerPlaceholder: 'Buscar directivo...',
     searchUnifiedPlaceholder: 'Busca una empresa o persona…',
@@ -925,7 +927,7 @@ const SEARCH_COPY = {
     companyProfile: 'Ficha societaria',
     moreOptionsHint: 'Haz clic derecho en un nodo para ver más opciones.',
     moreOptionsHintTouch: 'Toca dos veces un nodo para ver más opciones.',
-    timeline: 'Línea temporal',
+    timeline: 'Abrir cronología',
     markResigned: 'Marcar como cesado',
     markActive: 'Marcar como activo',
     buyDueDiligence: 'Comprar Due Diligence',
@@ -1865,6 +1867,13 @@ const SpanishCompanyNetworkGraph = ({
   // `graphPoint` places a fresh add; ignored (null) when editing, since an
   // edit keeps the node where it already sits.
   const [authorNodeDialog, setAuthorNodeDialog] = useState(null); // { initial, graphPoint } | null
+  // Author layer: right-click on a link — showFilings, dismiss (registry) or
+  // edit (author), delete (author).
+  const [linkMenu, setLinkMenu] = useState(null); // { link, x, y } | null
+  // Author layer: the small "why are you dismissing this" dialog for a
+  // registry link. `reason` is optional and never required to proceed.
+  const [dismissLinkDialog, setDismissLinkDialog] = useState(null); // { link } | null
+  const [dismissLinkReason, setDismissLinkReason] = useState('');
   const [isNodeNoteDialogOpen, setIsNodeNoteDialogOpen] = useState(false);
   const [nodeNotePreviewId, setNodeNotePreviewId] = useState(null);
   const [nodeNoteTargetId, setNodeNoteTargetId] = useState(null);
@@ -6254,6 +6263,20 @@ const SpanishCompanyNetworkGraph = ({
     };
   }, [linkDialog, graphData.nodes]);
 
+  // Link context menu: the officer endpoint of the right-clicked link, when
+  // it has one — drives "Show filings" (registry links only; an author link
+  // never has filings to show). Both endpoints are checked, not just the
+  // unified-cargo convention handleLinkClick relies on, since a right-click
+  // can land on any registry edge, not only officer-company ones.
+  const linkMenuOfficerNode = React.useMemo(() => {
+    const link = linkMenu?.link;
+    if (!link || isAuthorLink(link)) return null;
+    const { source, target } = link;
+    if (target && typeof target === 'object' && target.type === 'officer') return target;
+    if (source && typeof source === 'object' && source.type === 'officer') return source;
+    return null;
+  }, [linkMenu]);
+
   // Author layer: save (add or edit) the link staged in linkDialog. The
   // author's name comes from sitrepAuthor, never from the dialog, and never
   // rides along in analytics params.
@@ -6293,6 +6316,62 @@ const SpanishCompanyNetworkGraph = ({
     });
     setLinkDialog(null);
   }, [linkDialog, sitrepAuthor, text]);
+
+  // Author layer: right-click on a LINK opens this menu (see onLinkRightClick
+  // on ForceGraph2D, below).
+  const closeLinkMenu = useCallback(() => setLinkMenu(null), []);
+
+  // "Edit link…" opens the same AuthorLinkDialog the node menu's
+  // link_to_node action uses, seeded from the pair exactly as stored on the
+  // link — never re-derived from selection state, which may not match it.
+  const openEditAuthorLinkDialog = useCallback(link => {
+    if (!link) return;
+    setLinkDialog({
+      sourceId: getNodeIdFromRef(link.source),
+      targetId: getNodeIdFromRef(link.target),
+      initial: link,
+    });
+    closeLinkMenu();
+  }, [closeLinkMenu]);
+
+  // "Delete" (author link only): an author link never reached the registry,
+  // so removing it is its whole story — no dismissal record, just gone,
+  // with the usual undo toast in case the click was a mistake.
+  const handleDeleteAuthorLink = useCallback(link => {
+    if (!link) return;
+    const removed = link;
+    setGraphData(prev => ({ ...prev, links: (prev.links || []).filter(l => l.id !== removed.id) }));
+    setCorrectionsSnackbar({
+      id: null,
+      message: text.linkDismissed,
+      undoGraph: () => setGraphData(prev => ({ ...prev, links: [...(prev.links || []), removed] })),
+    });
+    trackEvent('graph_author_link_delete', {});
+    closeLinkMenu();
+  }, [text, closeLinkMenu]);
+
+  // "Dismiss relationship…" (registry link only): filtered out of the visible
+  // graph (visibleWithoutDismissed) but never deleted, so the undo toast — or
+  // a future hidden-links manager — can always bring it back.
+  const dismissLinkWithReason = useCallback((link, reason) => {
+    if (!link) return;
+    const linkId = link.id;
+    setGraphData(prev => dismissLink(prev, linkId, reason));
+    setCorrectionsSnackbar({
+      id: null,
+      message: text.linkDismissed,
+      undoGraph: () => setGraphData(prev => restoreLink(prev, linkId)),
+    });
+    trackEvent('graph_link_dismiss', { has_reason: !!reason });
+  }, [text]);
+
+  const confirmDismissLink = useCallback(() => {
+    if (!dismissLinkDialog?.link) return;
+    dismissLinkWithReason(dismissLinkDialog.link, dismissLinkReason);
+    setDismissLinkDialog(null);
+    setDismissLinkReason('');
+    closeLinkMenu();
+  }, [dismissLinkDialog, dismissLinkReason, dismissLinkWithReason, closeLinkMenu]);
 
   // Author layer: right-click on empty canvas — "Add entity…", "Manage
   // hidden…", "Fit to view". The graph point is resolved from the click
@@ -11339,6 +11418,26 @@ const SpanishCompanyNetworkGraph = ({
             nodeCanvasObject={nodeCanvasObject}
             linkCanvasObject={linkCanvasObject}
             onLinkClick={handleLinkClick}
+            onLinkRightClick={(link, event) => {
+              event.preventDefault();
+              setLinkMenu({ link, x: event.clientX, y: event.clientY });
+            }}
+            // The custom linkCanvasObject above runs in 'replace' mode, which
+            // (per react-force-graph-2d 1.29.1 / force-graph, checked in
+            // node_modules) also replaces the library's own hit-test stroke —
+            // a bare 1px line is nearly impossible to right-click. Painting an
+            // 8px-wide invisible stroke here restores a comfortable hit area
+            // without changing what onLinkClick/onLinkRightClick fire on.
+            linkPointerAreaPaint={(link, color, ctx) => {
+              const { source, target } = link;
+              if (typeof source !== 'object' || typeof target !== 'object') return;
+              ctx.strokeStyle = color;
+              ctx.lineWidth = 8;
+              ctx.beginPath();
+              ctx.moveTo(source.x, source.y);
+              ctx.lineTo(target.x, target.y);
+              ctx.stroke();
+            }}
             nodePointerAreaPaint={(node, color, ctx) => {
               ctx.fillStyle = color;
               ctx.beginPath();
@@ -12202,345 +12301,456 @@ const SpanishCompanyNetworkGraph = ({
             </Box>
           )}
           <Divider />
-          {/* Redundant on pointer devices — a single click already opens the
-              inspector. On touch the first tap only selects, so this stays the
-              way in. */}
-          {isTouchDevice && !isAuthorNode(contextNode) && (
-          <MenuItem onClick={() => runContextAction('data_preview', () => openDataPreview(contextNode))}>
-            <ListItemIcon>
-              <PreviewIcon fontSize="small" color="info" />
-            </ListItemIcon>
-            <ListItemText>{text.dataPreview}</ListItemText>
-          </MenuItem>
-          )}
-          {/* Companies acting as officers have a registry record too — the old
-              `type !== 'officer'` test hid it from exactly those nodes. An
-              author node never has a registry profile to open. */}
-          {contextNode
-            && !isAuthorNode(contextNode)
-            && (contextNode.type !== 'officer' || isCompanyOfficer(contextNode.name || ''))
-            && (() => {
-            // A listed entity printed without its legal form ("REDEIA
-            // CORPORACION") slugs to a page that does not exist; its curated
-            // /empresa page is keyed on the registered name, so resolve through
-            // that when the node IS one of the curated listed entities.
-            const listedProfile = listedEntityForName(contextNode.name);
-            const profileHref = fullCompanyPageHref(
-              listedProfile ? listedProfile.v3Name : contextNode.name,
-              uiLanguage,
-            );
-            return profileHref ? (
-              <MenuItem
-                component="a"
-                href={profileHref}
-                target="_blank"
-                rel="noopener"
-                onClick={() => runContextAction('company_profile', () => {
-                  trackFullCompanyProfileClick({
-                    href: profileHref,
-                    language: uiLanguage,
-                    entrySource,
-                    placement: 'graph_context_menu',
-                  });
-                  recordCompanyDemand({
-                    eventType: 'full_profile_click',
-                    language: uiLanguage,
-                    company: contextNode,
-                  });
-                  closeNodeContextMenu();
-                })}
-              >
-                <ListItemIcon><OpenInNewIcon fontSize="small" color="primary" /></ListItemIcon>
-                <ListItemText>{text.companyProfile}</ListItemText>
-              </MenuItem>
-            ) : null;
-          })()}
-          <Divider />
-          {isMonitorableNode(contextNode) && (
-            <MenuItem
-              onClick={() => {
-                trackGraphToolbarAction('monitor_request');
-                setMonitorCompany({
-                  name: contextNode.name,
-                  groupKey: contextNode.groupKey || null,
-                });
-                closeNodeContextMenu();
-              }}
-            >
-              <ListItemIcon><NotificationsActiveIcon fontSize="small" color="warning" /></ListItemIcon>
-              <ListItemText>{text.monitorCompany}</ListItemText>
-            </MenuItem>
-          )}
-          <MenuItem
-            onClick={() =>
-              runContextAction(
-                investigationSet.has(normalizeNodeId(contextNode?.id))
-                  ? 'investigation_remove'
-                  : 'investigation_add',
-                () => {
-                  if (contextNode) toggleInvestigationNode(contextNode.id);
-                  closeNodeContextMenu();
-                }
-              )
-            }
-          >
-            <ListItemIcon><PsychologyIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>
-              {investigationSet.has(normalizeNodeId(contextNode?.id))
-                ? text.investigationRemove
-                : text.investigationAdd}
-            </ListItemText>
-          </MenuItem>
-          {/* Author layer: an author node never reached the registry, so
-              there is nothing to expand/collapse — see also handleNodeClick's
-              double-click branch, which opens the card directly instead. */}
-          {contextNode && !isAuthorNode(contextNode) && (
-          <MenuItem
-            onClick={() =>
-              runContextAction('expand', () => {
-                closeNodeContextMenu();
-                if (contextNode) expandNode(contextNode, 'context_menu');
-              })
-            }
-          >
-            <ListItemIcon>
-              <NetworkIcon fontSize="small" color="primary" />
-            </ListItemIcon>
-            <ListItemText>{text.expandNode}</ListItemText>
-          </MenuItem>
-          )}
-          {contextNode && !isAuthorNode(contextNode)
-            && contextNode.expanded && expansionRecordsRef.current[normalizeNodeId(contextNode.id)] && (
-            <MenuItem
-              onClick={() =>
-                runContextAction('collapse', () => {
-                  const target = contextNode;
-                  closeNodeContextMenu();
-                  collapseNode(target.id);
-                })
-              }
-            >
-              <ListItemIcon>
-                <UnfoldLessIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>{text.collapseNode}</ListItemText>
-            </MenuItem>
-          )}
-          {contextNode && !isAuthorNode(contextNode)
-            && contextNode.type !== 'officer' && contextNode.cargoCount > 0 && !contextNode.unified && (
-            <MenuItem
-              onClick={() => {
-                runContextAction('unify_cargos', () => {
-                  closeNodeContextMenu();
-                  unifyCargosForNode(contextNode.id, contextNode.name);
-                });
-              }}
-            >
-              <ListItemIcon>
-                {/* Matches the un-unified "+N cargos" badge drawn on the node */}
-                <HubIcon fontSize="small" sx={{ color: 'graph.badge.cargo' }} />
-              </ListItemIcon>
-              <ListItemText>{text.cargoBadge(contextNode.cargoCount)}</ListItemText>
-            </MenuItem>
-          )}
-          {contextNode && !isAuthorNode(contextNode) && contextNode.unified && !contextNode.promotedFromOfficer && (
-            <MenuItem
-              onClick={() => {
-                runContextAction('undo_unify_cargos', () => {
-                  closeNodeContextMenu();
-                  undoCargoUnifyForNode(contextNode.id);
-                });
-              }}
-            >
-              <ListItemIcon>
-                {/* Matches the unified "⚭ N" badge drawn on the node */}
-                <HubIcon fontSize="small" sx={{ color: 'graph.badge.unified' }} />
-              </ListItemIcon>
-              <ListItemText>{text.cargoUndo}</ListItemText>
-            </MenuItem>
-          )}
-          {isAuthorNode(contextNode) ? (
-            <MenuItem onClick={() => runContextAction('editEntity', openEditAuthorNodeDialog)}>
-              <ListItemIcon>
-                <EditIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>{text.editEntity}</ListItemText>
-            </MenuItem>
-          ) : (
-            <MenuItem onClick={() => runContextAction('edit_node', openEditNodeDialog)}>
-              <ListItemIcon>
-                <EditIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>{text.editNode}</ListItemText>
-            </MenuItem>
-          )}
-          <MenuItem onClick={() => runContextAction('link_to_node', openLinkPickMode)}>
-            <ListItemIcon>
-              <LinkIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{text.linkToNode}</ListItemText>
-          </MenuItem>
-          <MenuItem
-            onClick={() =>
-              runContextAction(
-                hasNodeNote(contextNode) ? 'edit_note' : 'add_note',
-                openNodeNoteDialog
-              )
-            }
-          >
-            <ListItemIcon>
-              <NoteIcon
-                fontSize="small"
-                sx={{
-                  color: hasNodeNote(contextNode)
-                    ? (graphPalette.noteFlag[contextNode.userNote.flag] || graphPalette.noteFlag.none)
-                    : 'text.secondary',
-                }}
-              />
-            </ListItemIcon>
-            <ListItemText>
-              {hasNodeNote(contextNode) ? text.editPrivateNote : text.addPrivateNote}
-            </ListItemText>
-          </MenuItem>
-          {hasNodeNote(contextNode) && (
-            <MenuItem onClick={() => runContextAction('remove_note', removeContextNodeNote)}>
-              <ListItemIcon>
-                <RemoveNoteIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>{text.removePrivateNote}</ListItemText>
-            </MenuItem>
-          )}
-          <MenuItem
-            onClick={() => runContextAction('merge', openMergeNodeDialog)}
-            disabled={!contextNode || mergeCandidateOptions.length === 0}
-          >
-            <ListItemIcon>
-              <CallMergeIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>
-              {mergeCandidateOptions.length > 0
-                ? text.mergeNode
-                : text.noMergeCandidates}
-            </ListItemText>
-          </MenuItem>
-          {contextNode && contextNode.mergeHistory?.length > 0 && (
-            <MenuItem onClick={() => runContextAction('unmerge', unmergeNode)}>
-              <ListItemIcon>
-                <CallSplitIcon fontSize="small" color="warning" />
-              </ListItemIcon>
-              <ListItemText>{text.unmergeNode}</ListItemText>
-            </MenuItem>
-          )}
-          {contextNode && !isAuthorNode(contextNode) && contextNode.type === 'officer' && (
-            <MenuItem
-              disabled={timelineLoading}
-              onClick={() => {
-                runContextAction('officer_timeline');
-                const node = contextNode;
-                closeNodeContextMenu();
-                openOfficerTimeline(node);
-              }}
-            >
-              <ListItemIcon>
-                <TimelineIcon fontSize="small" color="primary" />
-              </ListItemIcon>
-              <ListItemText>{text.timeline}</ListItemText>
-            </MenuItem>
-          )}
-          {contextNode && !isAuthorNode(contextNode)
-            && contextNode.type === 'officer' && contextOfficerCanMarkCeased && (
-            <MenuItem onClick={() => runContextAction('mark_resigned', openMarkResignedDialog)}>
-              <ListItemIcon>
-                <EventBusyIcon fontSize="small" color="warning" />
-              </ListItemIcon>
-              <ListItemText>{text.markResigned}</ListItemText>
-            </MenuItem>
-          )}
-          {contextNode && !isAuthorNode(contextNode)
-            && contextNode.type === 'officer' && contextOfficerCanMarkActive && (
-            <MenuItem onClick={() => runContextAction('mark_active', markContextOfficerActive)}>
-              <ListItemIcon>
-                <EventAvailableIcon fontSize="small" color="success" />
-              </ListItemIcon>
-              <ListItemText>{text.markActive}</ListItemText>
-            </MenuItem>
-          )}
-          {contextNode && !isAuthorNode(contextNode) && contextNode.type !== 'officer' && (
-            <MenuItem
-              onClick={() => {
-                runContextAction('buy_due_diligence', () => {
-                  closeNodeContextMenu();
-                  const name = contextNode.name;
-                  if (!name) return;
-                  setDdCheckoutCompany(name);
-                  setDdCheckoutOpen(true);
-                });
-              }}
-            >
-              <ListItemIcon>
-                <DescriptionIcon fontSize="small" color="primary" />
-              </ListItemIcon>
-              <ListItemText>{text.buyDueDiligence}</ListItemText>
-            </MenuItem>
-          )}
-          {contextNode && !isAuthorNode(contextNode) && contextNode.type === 'spanish-company-group' && (
-            <MenuItem
-              onClick={() => {
-                runContextAction('show_apoderados', () => {
-                  const n = contextNode;
-                  closeNodeContextMenu();
-                  setPreviewOpen(false);
-                  if (n) setApoderadosSidebar({ open: true, company: { name: n.name, groupKey: n.groupKey || null } });
-                });
-              }}
-            >
-              <ListItemIcon>
-                <PersonIcon fontSize="small" color="action" />
-              </ListItemIcon>
-              <ListItemText>{text.showApoderados}</ListItemText>
-            </MenuItem>
-          )}
-          {contextNode && !isAuthorNode(contextNode)
-            && contextNode.type === 'spanish-company-group' && isAndroidNativeApp() && (() => {
-            const ibexSeed = matchIbexSeed(contextNode.name);
-            const ibexData = ibexSeed ? androidIbexDataCache[ibexSeed.nif] : null;
-            if (!ibexSeed || !ibexData) return null;
-            return (
-              <MenuItem
-                onClick={() => {
-                  runContextAction('market_data', () => {
+          {/* Five groups by what the action DOES, not by when it was added:
+              read (never mutates), fetch from the registry, the author's own
+              work (dotted-circle icon, matches the author link/node glyph),
+              view (hide), and delete — a divider only between two groups that
+              both rendered at least one row. Built as arrays so an empty
+              group (e.g. groups 1-2 for an author node) contributes nothing,
+              not even a stray divider. */}
+          {(() => {
+            const authorIconSx = {
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              border: `2px dotted ${graphPalette.link.author}`,
+            };
+
+            // 1. Read — looking at what is already there, never a mutation.
+            // Monitor/investigation-selection are informational the same
+            // way, so they ride along here rather than earning a sixth group.
+            const groupRead = [
+              isTouchDevice && !isAuthorNode(contextNode) && (
+                <MenuItem key="data_preview" onClick={() => runContextAction('data_preview', () => openDataPreview(contextNode))}>
+                  <ListItemIcon>
+                    <PreviewIcon fontSize="small" color="info" />
+                  </ListItemIcon>
+                  <ListItemText>{text.dataPreview}</ListItemText>
+                </MenuItem>
+              ),
+              // Companies acting as officers have a registry record too — the
+              // old `type !== 'officer'` test hid it from exactly those
+              // nodes. An author node never has a registry profile to open.
+              contextNode
+                && !isAuthorNode(contextNode)
+                && (contextNode.type !== 'officer' || isCompanyOfficer(contextNode.name || ''))
+                && (() => {
+                // A listed entity printed without its legal form ("REDEIA
+                // CORPORACION") slugs to a page that does not exist; its
+                // curated /empresa page is keyed on the registered name, so
+                // resolve through that when the node IS one of the curated
+                // listed entities.
+                const listedProfile = listedEntityForName(contextNode.name);
+                const profileHref = fullCompanyPageHref(
+                  listedProfile ? listedProfile.v3Name : contextNode.name,
+                  uiLanguage,
+                );
+                return profileHref ? (
+                  <MenuItem
+                    key="company_profile"
+                    component="a"
+                    href={profileHref}
+                    target="_blank"
+                    rel="noopener"
+                    onClick={() => runContextAction('company_profile', () => {
+                      trackFullCompanyProfileClick({
+                        href: profileHref,
+                        language: uiLanguage,
+                        entrySource,
+                        placement: 'graph_context_menu',
+                      });
+                      recordCompanyDemand({
+                        eventType: 'full_profile_click',
+                        language: uiLanguage,
+                        company: contextNode,
+                      });
+                      closeNodeContextMenu();
+                    })}
+                  >
+                    <ListItemIcon><OpenInNewIcon fontSize="small" color="primary" /></ListItemIcon>
+                    <ListItemText>{text.companyProfile}</ListItemText>
+                  </MenuItem>
+                ) : null;
+              })(),
+              isMonitorableNode(contextNode) && (
+                <MenuItem
+                  key="monitor"
+                  onClick={() => {
+                    trackGraphToolbarAction('monitor_request');
+                    setMonitorCompany({
+                      name: contextNode.name,
+                      groupKey: contextNode.groupKey || null,
+                    });
                     closeNodeContextMenu();
-                    setIbexMarketDialog({ open: true, seedEntry: ibexSeed, apiRow: ibexData });
-                  });
-                }}
+                  }}
+                >
+                  <ListItemIcon><NotificationsActiveIcon fontSize="small" color="warning" /></ListItemIcon>
+                  <ListItemText>{text.monitorCompany}</ListItemText>
+                </MenuItem>
+              ),
+              contextNode && (
+                <MenuItem
+                  key="investigation"
+                  onClick={() =>
+                    runContextAction(
+                      investigationSet.has(normalizeNodeId(contextNode?.id))
+                        ? 'investigation_remove'
+                        : 'investigation_add',
+                      () => {
+                        if (contextNode) toggleInvestigationNode(contextNode.id);
+                        closeNodeContextMenu();
+                      }
+                    )
+                  }
+                >
+                  <ListItemIcon><PsychologyIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText>
+                    {investigationSet.has(normalizeNodeId(contextNode?.id))
+                      ? text.investigationRemove
+                      : text.investigationAdd}
+                  </ListItemText>
+                </MenuItem>
+              ),
+              contextNode && !isAuthorNode(contextNode) && contextNode.type === 'officer' && (
+                <MenuItem
+                  key="officer_timeline"
+                  disabled={timelineLoading}
+                  onClick={() => {
+                    runContextAction('officer_timeline');
+                    const node = contextNode;
+                    closeNodeContextMenu();
+                    openOfficerTimeline(node);
+                  }}
+                >
+                  <ListItemIcon>
+                    <TimelineIcon fontSize="small" color="primary" />
+                  </ListItemIcon>
+                  <ListItemText>{text.timeline}</ListItemText>
+                </MenuItem>
+              ),
+              contextNode && !isAuthorNode(contextNode) && contextNode.type === 'spanish-company-group' && (
+                <MenuItem
+                  key="show_apoderados"
+                  onClick={() => {
+                    runContextAction('show_apoderados', () => {
+                      const n = contextNode;
+                      closeNodeContextMenu();
+                      setPreviewOpen(false);
+                      if (n) setApoderadosSidebar({ open: true, company: { name: n.name, groupKey: n.groupKey || null } });
+                    });
+                  }}
+                >
+                  <ListItemIcon><PersonIcon fontSize="small" color="action" /></ListItemIcon>
+                  <ListItemText>{text.showApoderados}</ListItemText>
+                </MenuItem>
+              ),
+              contextNode && !isAuthorNode(contextNode)
+                && contextNode.type === 'spanish-company-group' && isAndroidNativeApp() && (() => {
+                const ibexSeed = matchIbexSeed(contextNode.name);
+                const ibexData = ibexSeed ? androidIbexDataCache[ibexSeed.nif] : null;
+                if (!ibexSeed || !ibexData) return null;
+                return (
+                  <MenuItem
+                    key="market_data"
+                    onClick={() => {
+                      runContextAction('market_data', () => {
+                        closeNodeContextMenu();
+                        setIbexMarketDialog({ open: true, seedEntry: ibexSeed, apiRow: ibexData });
+                      });
+                    }}
+                  >
+                    <ListItemIcon>
+                      <ShowChartIcon fontSize="small" color="action" />
+                    </ListItemIcon>
+                    <ListItemText>{text.marketData}</ListItemText>
+                  </MenuItem>
+                );
+              })(),
+              contextNode && !isAuthorNode(contextNode) && contextNode.type !== 'officer' && (
+                <MenuItem
+                  key="buy_due_diligence"
+                  onClick={() => {
+                    runContextAction('buy_due_diligence', () => {
+                      closeNodeContextMenu();
+                      const name = contextNode.name;
+                      if (!name) return;
+                      setDdCheckoutCompany(name);
+                      setDdCheckoutOpen(true);
+                    });
+                  }}
+                >
+                  <ListItemIcon>
+                    <DescriptionIcon fontSize="small" color="primary" />
+                  </ListItemIcon>
+                  <ListItemText>{text.buyDueDiligence}</ListItemText>
+                </MenuItem>
+              ),
+            ].filter(Boolean);
+
+            // 2. Fetch from the registry — expand/collapse the graph, unify cargos.
+            const groupFetch = [
+              contextNode && !isAuthorNode(contextNode) && (
+                <MenuItem
+                  key="expand"
+                  onClick={() =>
+                    runContextAction('expand', () => {
+                      closeNodeContextMenu();
+                      if (contextNode) expandNode(contextNode, 'context_menu');
+                    })
+                  }
+                >
+                  <ListItemIcon>
+                    <NetworkIcon fontSize="small" color="primary" />
+                  </ListItemIcon>
+                  <ListItemText>{text.expandNode}</ListItemText>
+                </MenuItem>
+              ),
+              contextNode && !isAuthorNode(contextNode)
+                && contextNode.expanded && expansionRecordsRef.current[normalizeNodeId(contextNode.id)] && (
+                <MenuItem
+                  key="collapse"
+                  onClick={() =>
+                    runContextAction('collapse', () => {
+                      const target = contextNode;
+                      closeNodeContextMenu();
+                      collapseNode(target.id);
+                    })
+                  }
+                >
+                  <ListItemIcon>
+                    <UnfoldLessIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>{text.collapseNode}</ListItemText>
+                </MenuItem>
+              ),
+              contextNode && !isAuthorNode(contextNode)
+                && contextNode.type !== 'officer' && contextNode.cargoCount > 0 && !contextNode.unified && (
+                <MenuItem
+                  key="unify_cargos"
+                  onClick={() => {
+                    runContextAction('unify_cargos', () => {
+                      closeNodeContextMenu();
+                      unifyCargosForNode(contextNode.id, contextNode.name);
+                    });
+                  }}
+                >
+                  <ListItemIcon>
+                    {/* Matches the un-unified "+N cargos" badge drawn on the node */}
+                    <HubIcon fontSize="small" sx={{ color: 'graph.badge.cargo' }} />
+                  </ListItemIcon>
+                  <ListItemText>{text.cargoBadge(contextNode.cargoCount)}</ListItemText>
+                </MenuItem>
+              ),
+              contextNode && !isAuthorNode(contextNode) && contextNode.unified && !contextNode.promotedFromOfficer && (
+                <MenuItem
+                  key="undo_unify_cargos"
+                  onClick={() => {
+                    runContextAction('undo_unify_cargos', () => {
+                      closeNodeContextMenu();
+                      undoCargoUnifyForNode(contextNode.id);
+                    });
+                  }}
+                >
+                  <ListItemIcon>
+                    {/* Matches the unified "⚭ N" badge drawn on the node */}
+                    <HubIcon fontSize="small" sx={{ color: 'graph.badge.unified' }} />
+                  </ListItemIcon>
+                  <ListItemText>{text.cargoUndo}</ListItemText>
+                </MenuItem>
+              ),
+            ].filter(Boolean);
+
+            // 3. The author's work — everything that never touches the
+            // registry. Every row shares the dotted-violet circle glyph so
+            // the group reads as one thing, regardless of what it does.
+            const groupAuthor = [
+              <MenuItem key="link_to_node" onClick={() => runContextAction('link_to_node', openLinkPickMode)}>
+                <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
+                <ListItemText>{text.linkToNode}</ListItemText>
+              </MenuItem>,
+              <MenuItem
+                key="note"
+                onClick={() =>
+                  runContextAction(
+                    hasNodeNote(contextNode) ? 'edit_note' : 'add_note',
+                    openNodeNoteDialog
+                  )
+                }
               >
+                <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
+                <ListItemText>
+                  {hasNodeNote(contextNode) ? text.editPrivateNote : text.addPrivateNote}
+                </ListItemText>
+              </MenuItem>,
+              hasNodeNote(contextNode) && (
+                <MenuItem key="remove_note" onClick={() => runContextAction('remove_note', removeContextNodeNote)}>
+                  <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
+                  <ListItemText>{text.removePrivateNote}</ListItemText>
+                </MenuItem>
+              ),
+              isAuthorNode(contextNode) ? (
+                <MenuItem key="edit_entity" onClick={() => runContextAction('editEntity', openEditAuthorNodeDialog)}>
+                  <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
+                  <ListItemText>{text.editEntity}</ListItemText>
+                </MenuItem>
+              ) : (
+                <MenuItem key="edit_node" onClick={() => runContextAction('edit_node', openEditNodeDialog)}>
+                  <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
+                  <ListItemText>{text.editNode}</ListItemText>
+                </MenuItem>
+              ),
+              <MenuItem
+                key="merge"
+                onClick={() => runContextAction('merge', openMergeNodeDialog)}
+                disabled={!contextNode || mergeCandidateOptions.length === 0}
+              >
+                <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
+                <ListItemText>
+                  {mergeCandidateOptions.length > 0
+                    ? text.mergeNode
+                    : text.noMergeCandidates}
+                </ListItemText>
+              </MenuItem>,
+              contextNode && contextNode.mergeHistory?.length > 0 && (
+                <MenuItem key="unmerge" onClick={() => runContextAction('unmerge', unmergeNode)}>
+                  <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
+                  <ListItemText>{text.unmergeNode}</ListItemText>
+                </MenuItem>
+              ),
+              contextNode && !isAuthorNode(contextNode)
+                && contextNode.type === 'officer' && contextOfficerCanMarkCeased && (
+                <MenuItem key="mark_resigned" onClick={() => runContextAction('mark_resigned', openMarkResignedDialog)}>
+                  <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
+                  <ListItemText>{text.markResigned}</ListItemText>
+                </MenuItem>
+              ),
+              contextNode && !isAuthorNode(contextNode)
+                && contextNode.type === 'officer' && contextOfficerCanMarkActive && (
+                <MenuItem key="mark_active" onClick={() => runContextAction('mark_active', markContextOfficerActive)}>
+                  <ListItemIcon><Box sx={authorIconSx} /></ListItemIcon>
+                  <ListItemText>{text.markActive}</ListItemText>
+                </MenuItem>
+              ),
+            ].filter(Boolean);
+
+            // 4. View — hide from the canvas (never deletes anything).
+            const groupView = [
+              <MenuItem key="hide_node" onClick={() => runContextAction('hide_node', hideNodeFromMenu)}>
                 <ListItemIcon>
-                  <ShowChartIcon fontSize="small" color="action" />
+                  <VisibilityOffIcon fontSize="small" />
                 </ListItemIcon>
-                <ListItemText>{text.marketData}</ListItemText>
-              </MenuItem>
-            );
+                <ListItemText>{text.hideNodeOnly}</ListItemText>
+              </MenuItem>,
+              <MenuItem key="hide_node_relations" onClick={() => runContextAction('hide_node_relations', hideNodeWithRelationsFromMenu)}>
+                <ListItemIcon>
+                  <VisibilityOffIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>{text.hideNodeRelations}</ListItemText>
+              </MenuItem>,
+            ];
+
+            // 5. Delete — its own group so it never sits one row above "Hide".
+            const groupDelete = [
+              <MenuItem key="delete_node" onClick={() => runContextAction('delete_node', openDeleteNodeDialog)} sx={{ color: 'error.main' }}>
+                <ListItemIcon>
+                  <DeleteOutlineIcon fontSize="small" color="error" />
+                </ListItemIcon>
+                <ListItemText>{text.deleteNode}</ListItemText>
+              </MenuItem>,
+            ];
+
+            return [groupRead, groupFetch, groupAuthor, groupView, groupDelete]
+              .filter(group => group.length > 0)
+              .map((group, index) => (
+                <React.Fragment key={`group-${index}`}>
+                  {index > 0 && <Divider />}
+                  {group}
+                </React.Fragment>
+              ));
           })()}
-          <MenuItem onClick={() => runContextAction('hide_node', hideNodeFromMenu)}>
-            <ListItemIcon>
-              <VisibilityOffIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{text.hideNodeOnly}</ListItemText>
-          </MenuItem>
-          <MenuItem onClick={() => runContextAction('hide_node_relations', hideNodeWithRelationsFromMenu)}>
-            <ListItemIcon>
-              <VisibilityOffIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{text.hideNodeRelations}</ListItemText>
-          </MenuItem>
-          <Divider />
-          <MenuItem onClick={() => runContextAction('delete_node', openDeleteNodeDialog)} sx={{ color: 'error.main' }}>
-            <ListItemIcon>
-              <DeleteOutlineIcon fontSize="small" color="error" />
-            </ListItemIcon>
-            <ListItemText>{text.deleteNode}</ListItemText>
-          </MenuItem>
         </Menu>
+
+        {/* Author layer: right-click on a LINK. showFilings opens a registry
+            officer edge's data preview; dismiss (registry) / edit / delete
+            (author) act on the relationship itself. */}
+        <Menu
+          open={!!linkMenu}
+          onClose={closeLinkMenu}
+          anchorReference="anchorPosition"
+          container={overlayContainer}
+          anchorPosition={linkMenu ? { top: linkMenu.y, left: linkMenu.x } : undefined}
+        >
+          {linkMenuOfficerNode && (
+            <MenuItem
+              key="show_filings"
+              onClick={() => {
+                openDataPreviewRef.current?.(linkMenuOfficerNode);
+                closeLinkMenu();
+              }}
+            >
+              <ListItemIcon><PreviewIcon fontSize="small" color="info" /></ListItemIcon>
+              <ListItemText>{text.showFilings}</ListItemText>
+            </MenuItem>
+          )}
+          {linkMenu?.link && !isAuthorLink(linkMenu.link) && (
+            <MenuItem
+              key="dismiss_link"
+              onClick={() => {
+                setDismissLinkReason('');
+                setDismissLinkDialog({ link: linkMenu.link });
+              }}
+            >
+              <ListItemIcon><DismissLinkIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>{text.dismissLink}</ListItemText>
+            </MenuItem>
+          )}
+          {linkMenu?.link && isAuthorLink(linkMenu.link) && (
+            <MenuItem key="edit_link" onClick={() => openEditAuthorLinkDialog(linkMenu.link)}>
+              <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>{text.editLink}</ListItemText>
+            </MenuItem>
+          )}
+          {linkMenu?.link && isAuthorLink(linkMenu.link) && (
+            <MenuItem
+              key="delete_link"
+              onClick={() => handleDeleteAuthorLink(linkMenu.link)}
+              sx={{ color: 'error.main' }}
+            >
+              <ListItemIcon><DeleteOutlineIcon fontSize="small" color="error" /></ListItemIcon>
+              <ListItemText>{text.delete}</ListItemText>
+            </MenuItem>
+          )}
+        </Menu>
+
+        {/* Author layer: the optional-reason dialog behind "Dismiss
+            relationship…" — a registry link is filtered out of the visible
+            graph, never deleted, so it can always come back via the undo
+            toast (or restoreLink, if a manager for hidden links is added). */}
+        <Dialog
+          open={!!dismissLinkDialog}
+          onClose={() => setDismissLinkDialog(null)}
+          maxWidth="xs"
+          fullWidth
+          container={overlayContainer}
+        >
+          <DialogTitle>{text.dismissLink}</DialogTitle>
+          <DialogContent>
+            <TextField
+              label={text.fieldReason}
+              value={dismissLinkReason}
+              onChange={e => setDismissLinkReason(e.target.value)}
+              fullWidth
+              multiline
+              minRows={2}
+              autoFocus
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDismissLinkDialog(null)}>{text.cancel}</Button>
+            <Button variant="contained" onClick={confirmDismissLink}>{text.save}</Button>
+          </DialogActions>
+        </Dialog>
 
         <ApoderadosSidebar
           open={apoderadosSidebar.open}
