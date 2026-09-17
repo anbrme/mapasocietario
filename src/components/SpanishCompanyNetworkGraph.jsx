@@ -376,8 +376,7 @@ const SEARCH_COPY = {
     ),
     loadSubsidiaries: count => `Load ${count} subsidiar${count === 1 ? 'y' : 'ies'}`,
     loading: 'Loading...',
-    loaded: 'Loaded',
-    loadMore: 'Load more',
+    loadMore: 'Load more results',
     active: 'Active',
     ceased: 'Ceased',
     soleShareholder: 'Sole shareholder',
@@ -806,8 +805,7 @@ const SEARCH_COPY = {
     ),
     loadSubsidiaries: count => `Cargar ${count} participada${count === 1 ? '' : 's'}`,
     loading: 'Cargando...',
-    loaded: 'Cargados',
-    loadMore: 'Cargar más',
+    loadMore: 'Cargar más resultados',
     active: 'Vigentes',
     ceased: 'Cesados',
     soleShareholder: 'Socio único',
@@ -10454,6 +10452,18 @@ const SpanishCompanyNetworkGraph = ({
       >
         {text.search}
       </Button>
+      {lastSearchContext?.hasMore && (
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={handleLoadMore}
+          disabled={loadingMore || isSearching}
+          startIcon={loadingMore ? <CircularProgress size={14} color="inherit" /> : undefined}
+          sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}
+        >
+          {text.loadMore}
+        </Button>
+      )}
     </>
   );
 
@@ -11000,26 +11010,6 @@ const SpanishCompanyNetworkGraph = ({
           <IconButton size="small" onClick={() => setPendingSubsidiaries(null)}>
             <CloseIcon fontSize="small" />
           </IconButton>
-        </Box>
-      )}
-
-      {lastSearchContext && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-          <Typography variant="caption" color="text.secondary">
-            {text.loaded}: {lastSearchContext.offset}
-            {lastSearchContext.total ? ` / ${lastSearchContext.total}` : ''}
-          </Typography>
-          {lastSearchContext.hasMore && (
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={handleLoadMore}
-              disabled={loadingMore || isSearching}
-              sx={{ textTransform: 'none' }}
-            >
-              {loadingMore ? <CircularProgress size={14} /> : text.loadMore}
-            </Button>
-          )}
         </Box>
       )}
 
