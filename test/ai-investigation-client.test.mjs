@@ -57,8 +57,8 @@ test('entitlementChipLabel: authorized shows remaining, else CTA', () => {
   const oneDay = { token: 'x', expiresAt: 1000 + 90000 };
   assert.equal(entitlementChipLabel(oneDay, 1000, 'es'), 'IA · 1 día restante');
   assert.equal(entitlementChipLabel(oneDay, 1000, 'en'), 'AI · 1 day left');
-  assert.equal(entitlementChipLabel(null, 1000, 'es'), 'Investigación por IA');
-  assert.equal(entitlementChipLabel(null, 1000, 'en'), 'AI Investigation');
+  assert.equal(entitlementChipLabel(null, 1000, 'es'), 'Preguntar a la IA');
+  assert.equal(entitlementChipLabel(null, 1000, 'en'), 'Ask AI');
 });
 
 test('buildInvestigationContext: maps selected nodes + edges among them', () => {
