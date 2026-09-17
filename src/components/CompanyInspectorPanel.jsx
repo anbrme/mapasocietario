@@ -32,6 +32,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import OfficerInspectorBody from './OfficerInspectorBody.jsx';
+import AuthorElementCard from './AuthorElementCard.jsx';
 import { FINDINGS_PANEL_ENABLED } from '../config';
 import { listedBadgeFor } from '../utils/ibex35Match';
 import { useCompanyAttestation } from '../hooks/useCompanyAttestation.js';
@@ -87,6 +88,12 @@ const CompanyInspectorPanel = ({
   // describing a node the canvas actually holds; null hides the control.
   onExpandNode = null,
   expandNodeLabel = '',
+  // Author layer: the node being shown, when it is one the author added
+  // (never fetched — see the parent's openDataPreview, which skips its fetch
+  // entirely for these). Takes over the whole body below in place of the
+  // registry-fetched `data`.
+  authorNode = null,
+  onEditAuthorNode,
 }) => {
   // The registry-detail disclosure. Closed for every node: carrying the
   // previous company's open state over is how a card stops being predictable.
@@ -113,6 +120,62 @@ const CompanyInspectorPanel = ({
   }, [open, onClose]);
 
   if (!open) return null;
+
+  // Author layer: an author-added node never reached the registry, so there
+  // is no `data` to render — the whole body is this one pure card, and it
+  // renders BEFORE any of the fetched-data branches below ever look at
+  // `data` (which stays null for these nodes; see openDataPreview).
+  if (authorNode) {
+    return (
+      <Paper
+        elevation={0}
+        onContextMenu={e => e.preventDefault()}
+        sx={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: width ?? '100%',
+          maxWidth: '100%',
+          zIndex: 40,
+          display: 'flex',
+          flexDirection: 'column',
+          borderRadius: 0,
+          borderLeft: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 1,
+            p: 2,
+            pb: 1.5,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+            {authorNode.type === 'officer' ? <PersonIcon /> : <BusinessIcon />}
+            <Typography variant="h6" component="span" noWrap sx={{ minWidth: 0 }}>
+              {authorNode.name}
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} size="small" aria-label={text.close}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 2 }}>
+          <AuthorElementCard node={authorNode} text={text} onEdit={onEditAuthorNode} />
+        </Box>
+        <Box sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', textAlign: 'right' }}>
+          <Button onClick={onClose}>{text.close}</Button>
+        </Box>
+      </Paper>
+    );
+  }
 
   // Lifted out of the company section below: the link to the full profile is
   // the panel's primary outbound action and now sits in the header, above the

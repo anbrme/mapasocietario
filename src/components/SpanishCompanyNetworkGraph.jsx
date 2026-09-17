@@ -95,6 +95,7 @@ import {
   StickyNote2 as NoteIcon,
   DeleteSweep as RemoveNoteIcon,
   Link as LinkIcon,
+  AddCircleOutline as AddEntityIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
@@ -123,9 +124,11 @@ import { graphKeys, diffExpansion, collapseExpansion, isEmptyExpansion } from '.
 import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
 import {
-  visibleWithoutDismissed, isAuthorLink, isAuthorNode, makeAuthorLink,
+  visibleWithoutDismissed, isAuthorLink, isAuthorNode, makeAuthorLink, makeAuthorNode, removeAuthorNode,
 } from '../utils/authorLayer';
 import AuthorLinkDialog from './AuthorLinkDialog';
+import AuthorNodeDialog from './AuthorNodeDialog';
+import AuthorElementCard from './AuthorElementCard';
 import { resolveCompanyGroupName } from '../utils/companyGroupName';
 import { buildCompanyAliasMap } from '../utils/companyAliasLookup';
 import { mobileGraphMode } from '../utils/mobileGraphMode';
@@ -1734,6 +1737,21 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, []);
 
+  // Author layer: where a fresh entity lands when it was added from the
+  // toolbar rather than the canvas menu — the centre of what is on screen
+  // right now, in graph coordinates. {0,0} when the ref or size isn't ready.
+  const getViewportCentreGraphPoint = useCallback(() => {
+    const fg = fgRef.current;
+    const { width, height } = canvasDimensionsRef.current;
+    if (!fg || !(width > 0) || !(height > 0)) return { x: 0, y: 0 };
+    try {
+      const point = fg.screen2GraphCoords(width / 2, height / 2);
+      return Number.isFinite(point?.x) && Number.isFinite(point?.y) ? point : { x: 0, y: 0 };
+    } catch {
+      return { x: 0, y: 0 }; // ref not attached yet
+    }
+  }, []);
+
   // Where a node sits on the canvas right now, in canvas pixels. Read before
   // the inspector reserves its width so the dock effect can put it back there.
   const rememberInspectorAnchor = useCallback(node => {
@@ -1840,6 +1858,13 @@ const SpanishCompanyNetworkGraph = ({
   const [linkPick, setLinkPick] = useState(null); // { sourceId } | null
   // Author layer: the add/edit-link dialog's target pair, or null when closed.
   const [linkDialog, setLinkDialog] = useState(null); // { sourceId, targetId, initial } | null
+  // Author layer: the background right-click menu — "Add entity…", "Manage
+  // hidden…", "Fit to view" — at a screen position with its resolved graph point.
+  const [canvasMenu, setCanvasMenu] = useState(null); // { x, y, graphPoint } | null
+  // Author layer: the add/edit-entity dialog's state, or null when closed.
+  // `graphPoint` places a fresh add; ignored (null) when editing, since an
+  // edit keeps the node where it already sits.
+  const [authorNodeDialog, setAuthorNodeDialog] = useState(null); // { initial, graphPoint } | null
   const [isNodeNoteDialogOpen, setIsNodeNoteDialogOpen] = useState(false);
   const [nodeNotePreviewId, setNodeNotePreviewId] = useState(null);
   const [nodeNoteTargetId, setNodeNoteTargetId] = useState(null);
@@ -5349,6 +5374,16 @@ const SpanishCompanyNetworkGraph = ({
     return node ? () => expandNode(node, 'inspector') : null;
   }, [previewNodeId, graphData.nodes, expandNode]);
 
+  // Author layer: the node the inspector is currently showing, when it is one
+  // the author added. Drives the AuthorElementCard branch in
+  // CompanyInspectorPanel instead of the registry-fetched one — see
+  // openDataPreview, which skips its fetch entirely for these nodes.
+  const previewedAuthorNode = React.useMemo(() => {
+    if (!previewNodeId) return null;
+    const node = graphData.nodes.find(n => isSameNodeId(n.id, previewNodeId));
+    return isAuthorNode(node) ? node : null;
+  }, [previewNodeId, graphData.nodes]);
+
   // handleNodeClick is defined after handleNodeRightClick (below) for mobile touch support
   const DOUBLE_CLICK_MS = 450;
   const EMBEDDED_DOUBLE_CLICK_MS = 750;
@@ -6081,7 +6116,15 @@ const SpanishCompanyNetworkGraph = ({
         lastClickRef.current = { nodeId: null, time: 0 };
         // The first click's dock is still waiting; a double-click expands instead.
         cancelPendingInspectorOpen();
-        expandNode(node, 'double_click');
+        // Author layer: an author node never reached the registry, so there is
+        // nothing to expand — a double-click just opens its card, same as a
+        // single click would.
+        if (isAuthorNode(node)) {
+          setActiveNodeId(nodeId);
+          openDataPreviewRef.current?.(node);
+        } else {
+          expandNode(node, 'double_click');
+        }
       } else {
         lastClickRef.current = { nodeId, time: now };
         trackEvent('graph_node_click', {
@@ -6245,6 +6288,83 @@ const SpanishCompanyNetworkGraph = ({
     setLinkDialog(null);
   }, [linkDialog, sitrepAuthor, text]);
 
+  // Author layer: right-click on empty canvas — "Add entity…", "Manage
+  // hidden…", "Fit to view". The graph point is resolved from the click
+  // against the canvas element itself (not the viewport), same as the lasso
+  // and connection-gesture pointer math elsewhere in this file.
+  const handleBackgroundRightClick = useCallback(event => {
+    event?.preventDefault?.();
+    closeHiddenNodesMenu();
+    closeNodeContextMenu();
+    let graphPoint = { x: 0, y: 0 };
+    const fg = fgRef.current;
+    const rect = event?.target?.getBoundingClientRect?.() || containerEl?.getBoundingClientRect?.();
+    if (fg && rect) {
+      try {
+        const point = fg.screen2GraphCoords(event.clientX - rect.left, event.clientY - rect.top);
+        if (Number.isFinite(point?.x) && Number.isFinite(point?.y)) graphPoint = point;
+      } catch {
+        /* ref not attached yet */
+      }
+    }
+    setCanvasMenu({ x: event.clientX, y: event.clientY, graphPoint });
+  }, [closeHiddenNodesMenu, closeNodeContextMenu, containerEl]);
+
+  // Author layer: "Edit entity…" on an author node opens AuthorNodeDialog
+  // seeded from it (in place of the registry rename dialog edit_node opens).
+  const openEditAuthorNodeDialog = useCallback(() => {
+    if (!contextNode) return;
+    setAuthorNodeDialog({ initial: contextNode, graphPoint: null });
+    closeNodeContextMenu();
+  }, [contextNode, closeNodeContextMenu]);
+
+  // Author layer: save (add or edit) the entity staged in authorNodeDialog.
+  // A fresh add lands at the canvas menu's point, or the viewport centre when
+  // opened from the toolbar; an edit keeps the node's current position. Never
+  // calls the registry — makeAuthorNode is a pure, local constructor.
+  const handleSaveAuthorNode = useCallback(draft => {
+    if (!authorNodeDialog) return;
+    const { initial, graphPoint } = authorNodeDialog;
+    const point = initial
+      ? { x: initial.fx ?? initial.x ?? 0, y: initial.fy ?? initial.y ?? 0 }
+      : (graphPoint || getViewportCentreGraphPoint());
+    const node = makeAuthorNode({
+      kind: draft.kind,
+      name: draft.name,
+      country: draft.country,
+      identifier: draft.identifier,
+      citationText: draft.citationText,
+      citationUrl: draft.citationUrl,
+      note: draft.note,
+      author: sitrepAuthor.name,
+      x: point.x,
+      y: point.y,
+      ...(initial ? { id: initial.id, now: initial.provenance?.at } : {}),
+    });
+    setGraphData(prev => ({
+      ...prev,
+      nodes: initial
+        ? prev.nodes.map(n => (n.id === initial.id ? node : n))
+        : [...prev.nodes, node],
+    }));
+    setCorrectionsSnackbar({
+      id: null,
+      message: text.authorNodeAdded,
+      undoGraph: initial
+        ? () => setGraphData(p => ({ ...p, nodes: p.nodes.map(n => (n.id === initial.id ? initial : n)) }))
+        : () => setGraphData(p => removeAuthorNode(p, node.id)),
+    });
+    if (!initial) {
+      trackEvent('graph_author_node_add', {
+        kind: draft.kind,
+        has_citation: !!(draft.citationText || draft.citationUrl),
+      });
+      setActiveNodeId(normalizeNodeId(node.id));
+      openDataPreviewRef.current?.(node);
+    }
+    setAuthorNodeDialog(null);
+  }, [authorNodeDialog, sitrepAuthor, text, getViewportCentreGraphPoint]);
+
   const openNodeNoteDialog = useCallback(() => {
     if (!contextNode) return;
     setNodeNoteTargetId(normalizeNodeId(contextNode.id));
@@ -6325,16 +6445,39 @@ const SpanishCompanyNetworkGraph = ({
 
   const confirmDeleteNode = useCallback(() => {
     if (!contextNode) return;
-    deleteNode(contextNode.id);
+    // Author layer: an author node never reached the registry, so its
+    // removal is never a DD correction — removeAuthorNode also drops the
+    // author links that touched it (deleteNode's generic filter only removes
+    // links referencing this specific node, which is equivalent here, but
+    // removeAuthorNode is the pure, tested primitive for this case).
+    if (isAuthorNode(contextNode)) {
+      setGraphData(prev => removeAuthorNode(prev, contextNode.id));
+      setPinnedNodeIds(prev => {
+        const next = new Set();
+        prev.forEach(id => { if (!isSameNodeId(id, contextNode.id)) next.add(id); });
+        return next;
+      });
+      setHiddenNodeIds(prev => {
+        const next = new Set();
+        prev.forEach(id => { if (!isSameNodeId(id, contextNode.id)) next.add(id); });
+        return next;
+      });
+      if (isSameNodeId(activeNodeId, contextNode.id)) setActiveNodeId(null);
+      closeHiddenNodesMenu();
+    } else {
+      deleteNode(contextNode.id);
+    }
     setIsDeleteNodeDialogOpen(false);
-  }, [contextNode, deleteNode]);
+  }, [contextNode, deleteNode, activeNodeId, closeHiddenNodesMenu]);
 
   const hideNodeFromMenu = useCallback(() => {
     if (!contextNode) return;
     const node = contextNode;
     hideNode(node.id, { withConnected: false });
     closeNodeContextMenu();
-    if (node.type === 'officer' && node.name) {
+    // Author layer: an author node never reached the registry, so hiding it
+    // is graph-only — never a DD correction against the subject company.
+    if (!isAuthorNode(node) && node.type === 'officer' && node.name) {
       recordCorrection({
         action: 'hide',
         nameA: node.name,
@@ -6349,8 +6492,9 @@ const SpanishCompanyNetworkGraph = ({
     const node = contextNode;
     hideNode(node.id, { withConnected: true });
     closeNodeContextMenu();
-    // Only the officer itself is a DD correction; connected nodes stay graph-only.
-    if (node.type === 'officer' && node.name) {
+    // Only the officer itself is a DD correction; connected nodes stay
+    // graph-only. An author node is always graph-only, same as above.
+    if (!isAuthorNode(node) && node.type === 'officer' && node.name) {
       recordCorrection({
         action: 'hide',
         nameA: node.name,
@@ -6661,6 +6805,14 @@ const SpanishCompanyNetworkGraph = ({
     setPreviewError(null);
     setPreviewLoading(true);
     setPreviewOpen(true);
+
+    // Author layer: an author node never reached the registry, so there is
+    // nothing to fetch — the docked panel renders AuthorElementCard instead
+    // (see previewedAuthorNode, derived from previewNodeId below).
+    if (isAuthorNode(previewTarget)) {
+      setPreviewLoading(false);
+      return;
+    }
 
     // Snapshot graphs carry no NIF, capital or address: BORME events never held
     // them, and they are only ever read off the live company doc. So a purely
@@ -7161,8 +7313,13 @@ const SpanishCompanyNetworkGraph = ({
     setMergeTargetOption(null);
     setMergeSearchText('');
     // Persist as a DD correction only when both are officers. name_a (the merged
-    // duplicate) collapses into name_b (the canonical spelling).
-    if (sourceNode.type === 'officer' && targetNode.type === 'officer' && sourceNode.name && targetNode.name) {
+    // duplicate) collapses into name_b (the canonical spelling). An author
+    // node is never a registry officer, however "person" one reads as
+    // (type === 'officer') — skip the correction whenever either side is one.
+    if (
+      !isAuthorNode(sourceNode) && !isAuthorNode(targetNode)
+      && sourceNode.type === 'officer' && targetNode.type === 'officer' && sourceNode.name && targetNode.name
+    ) {
       recordCorrection({
         action: 'merge',
         nameA: sourceNode.name,
@@ -10974,6 +11131,17 @@ const SpanishCompanyNetworkGraph = ({
                 >
                   {launch.mode === 'over_cap' ? text.investigationOverCap : label}
                 </Button>
+                {/* Author layer: add an entity that never reached the registry
+                    (a person or company sourced from outside BORME). */}
+                <Tooltip title={text.addEntity}>
+                  <IconButton
+                    size="small"
+                    aria-label={text.addEntity}
+                    onClick={() => setAuthorNodeDialog({ initial: null, graphPoint: null })}
+                  >
+                    <AddEntityIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
                 {count > 0 && (
                   <>
                     <Tooltip title={text.hideSelected(count)}>
@@ -11178,6 +11346,7 @@ const SpanishCompanyNetworkGraph = ({
               if (!connectionGesture.suppresses(event)) handleNodeRightClick(node, event, { interactionSource: 'right_click' });
             }}
             onBackgroundClick={handleBackgroundClick}
+            onBackgroundRightClick={handleBackgroundRightClick}
             onNodeDrag={handleNodeDrag}
             onNodeDragEnd={handleNodeDragEnd}
             onZoom={handleZoom}
@@ -11639,6 +11808,8 @@ const SpanishCompanyNetworkGraph = ({
           open={previewOpen}
           onClose={closeInspector}
           width={isInspectorDockable ? inspectorWidth : null}
+          authorNode={previewedAuthorNode}
+          onEditAuthorNode={() => setAuthorNodeDialog({ initial: previewedAuthorNode, graphPoint: null })}
           counts={inspectorCounts}
           isCorporateOfficer={
             previewNodeType === 'officer' && isCompanyOfficer(previewNodeName || '')
@@ -11891,6 +12062,56 @@ const SpanishCompanyNetworkGraph = ({
           onSave={handleSaveAuthorLink}
         />
 
+        <AuthorNodeDialog
+          open={!!authorNodeDialog}
+          initial={authorNodeDialog?.initial || null}
+          text={text}
+          onCancel={() => setAuthorNodeDialog(null)}
+          onSave={handleSaveAuthorNode}
+        />
+
+        {/* Author layer: right-click on empty canvas — add an entity, manage
+            hidden nodes, or fit the view. */}
+        <Menu
+          open={!!canvasMenu}
+          onClose={() => setCanvasMenu(null)}
+          anchorReference="anchorPosition"
+          container={overlayContainer}
+          anchorPosition={canvasMenu ? { top: canvasMenu.y, left: canvasMenu.x } : undefined}
+        >
+          <MenuItem
+            onClick={() => {
+              setAuthorNodeDialog({ initial: null, graphPoint: canvasMenu?.graphPoint || null });
+              setCanvasMenu(null);
+            }}
+          >
+            <ListItemIcon><AddEntityIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>{text.addEntity}</ListItemText>
+          </MenuItem>
+          <MenuItem
+            disabled={hiddenNodeIds.size === 0}
+            onClick={() => {
+              setCanvasMenu(null);
+              // Anchored to the graph container (stays mounted after this menu
+              // closes), not to the clicked menu item — anchoring to a node
+              // about to unmount would leave the popper with nowhere to sit.
+              setHiddenNodesMenuAnchorEl(containerEl);
+            }}
+          >
+            <ListItemIcon><VisibilityIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>{text.manageHidden}</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setCanvasMenu(null);
+              fitGraphToView(400, 50);
+            }}
+          >
+            <ListItemIcon><CenterIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>{text.fitView}</ListItemText>
+          </MenuItem>
+        </Menu>
+
         {/* Persistent hint while a link pick is armed — no auto-hide, since the
             pick can take as long as the analyst needs to find the other node. */}
         <Snackbar
@@ -11960,7 +12181,7 @@ const SpanishCompanyNetworkGraph = ({
           {/* Redundant on pointer devices — a single click already opens the
               inspector. On touch the first tap only selects, so this stays the
               way in. */}
-          {isTouchDevice && (
+          {isTouchDevice && !isAuthorNode(contextNode) && (
           <MenuItem onClick={() => runContextAction('data_preview', () => openDataPreview(contextNode))}>
             <ListItemIcon>
               <PreviewIcon fontSize="small" color="info" />
@@ -11969,8 +12190,10 @@ const SpanishCompanyNetworkGraph = ({
           </MenuItem>
           )}
           {/* Companies acting as officers have a registry record too — the old
-              `type !== 'officer'` test hid it from exactly those nodes. */}
+              `type !== 'officer'` test hid it from exactly those nodes. An
+              author node never has a registry profile to open. */}
           {contextNode
+            && !isAuthorNode(contextNode)
             && (contextNode.type !== 'officer' || isCompanyOfficer(contextNode.name || ''))
             && (() => {
             // A listed entity printed without its legal form ("REDEIA
@@ -12044,6 +12267,10 @@ const SpanishCompanyNetworkGraph = ({
                 : text.investigationAdd}
             </ListItemText>
           </MenuItem>
+          {/* Author layer: an author node never reached the registry, so
+              there is nothing to expand/collapse — see also handleNodeClick's
+              double-click branch, which opens the card directly instead. */}
+          {contextNode && !isAuthorNode(contextNode) && (
           <MenuItem
             onClick={() =>
               runContextAction('expand', () => {
@@ -12057,7 +12284,9 @@ const SpanishCompanyNetworkGraph = ({
             </ListItemIcon>
             <ListItemText>{text.expandNode}</ListItemText>
           </MenuItem>
-          {contextNode?.expanded && expansionRecordsRef.current[normalizeNodeId(contextNode.id)] && (
+          )}
+          {contextNode && !isAuthorNode(contextNode)
+            && contextNode.expanded && expansionRecordsRef.current[normalizeNodeId(contextNode.id)] && (
             <MenuItem
               onClick={() =>
                 runContextAction('collapse', () => {
@@ -12073,7 +12302,8 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.collapseNode}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type !== 'officer' && contextNode.cargoCount > 0 && !contextNode.unified && (
+          {contextNode && !isAuthorNode(contextNode)
+            && contextNode.type !== 'officer' && contextNode.cargoCount > 0 && !contextNode.unified && (
             <MenuItem
               onClick={() => {
                 runContextAction('unify_cargos', () => {
@@ -12089,7 +12319,7 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.cargoBadge(contextNode.cargoCount)}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.unified && !contextNode.promotedFromOfficer && (
+          {contextNode && !isAuthorNode(contextNode) && contextNode.unified && !contextNode.promotedFromOfficer && (
             <MenuItem
               onClick={() => {
                 runContextAction('undo_unify_cargos', () => {
@@ -12105,12 +12335,21 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.cargoUndo}</ListItemText>
             </MenuItem>
           )}
-          <MenuItem onClick={() => runContextAction('edit_node', openEditNodeDialog)}>
-            <ListItemIcon>
-              <EditIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{text.editNode}</ListItemText>
-          </MenuItem>
+          {isAuthorNode(contextNode) ? (
+            <MenuItem onClick={() => runContextAction('editEntity', openEditAuthorNodeDialog)}>
+              <ListItemIcon>
+                <EditIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>{text.editEntity}</ListItemText>
+            </MenuItem>
+          ) : (
+            <MenuItem onClick={() => runContextAction('edit_node', openEditNodeDialog)}>
+              <ListItemIcon>
+                <EditIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>{text.editNode}</ListItemText>
+            </MenuItem>
+          )}
           <MenuItem onClick={() => runContextAction('link_to_node', openLinkPickMode)}>
             <ListItemIcon>
               <LinkIcon fontSize="small" />
@@ -12168,7 +12407,7 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.unmergeNode}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type === 'officer' && (
+          {contextNode && !isAuthorNode(contextNode) && contextNode.type === 'officer' && (
             <MenuItem
               disabled={timelineLoading}
               onClick={() => {
@@ -12184,7 +12423,8 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.timeline}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type === 'officer' && contextOfficerCanMarkCeased && (
+          {contextNode && !isAuthorNode(contextNode)
+            && contextNode.type === 'officer' && contextOfficerCanMarkCeased && (
             <MenuItem onClick={() => runContextAction('mark_resigned', openMarkResignedDialog)}>
               <ListItemIcon>
                 <EventBusyIcon fontSize="small" color="warning" />
@@ -12192,7 +12432,8 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.markResigned}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type === 'officer' && contextOfficerCanMarkActive && (
+          {contextNode && !isAuthorNode(contextNode)
+            && contextNode.type === 'officer' && contextOfficerCanMarkActive && (
             <MenuItem onClick={() => runContextAction('mark_active', markContextOfficerActive)}>
               <ListItemIcon>
                 <EventAvailableIcon fontSize="small" color="success" />
@@ -12200,7 +12441,7 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.markActive}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type !== 'officer' && (
+          {contextNode && !isAuthorNode(contextNode) && contextNode.type !== 'officer' && (
             <MenuItem
               onClick={() => {
                 runContextAction('buy_due_diligence', () => {
@@ -12218,7 +12459,7 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.buyDueDiligence}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type === 'spanish-company-group' && (
+          {contextNode && !isAuthorNode(contextNode) && contextNode.type === 'spanish-company-group' && (
             <MenuItem
               onClick={() => {
                 runContextAction('show_apoderados', () => {
@@ -12235,7 +12476,8 @@ const SpanishCompanyNetworkGraph = ({
               <ListItemText>{text.showApoderados}</ListItemText>
             </MenuItem>
           )}
-          {contextNode && contextNode.type === 'spanish-company-group' && isAndroidNativeApp() && (() => {
+          {contextNode && !isAuthorNode(contextNode)
+            && contextNode.type === 'spanish-company-group' && isAndroidNativeApp() && (() => {
             const ibexSeed = matchIbexSeed(contextNode.name);
             const ibexData = ibexSeed ? androidIbexDataCache[ibexSeed.nif] : null;
             if (!ibexSeed || !ibexData) return null;
