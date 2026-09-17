@@ -690,7 +690,9 @@ const SEARCH_COPY = {
     copyTableError: 'Could not copy the table to the clipboard.',
     investigationAdd: 'Add to selection',
     investigationRemove: 'Remove from selection',
-    investigateSelection: 'Investigate selection',
+    askAi: 'Ask AI',
+    askAiAboutSelection: count => `Ask AI about the selection (${count})`,
+    askAiAboutNode: 'Ask AI about this node',
     investigationOverCap: `Reduce the selection to ${INVESTIGATION_CAP} entities`,
     // Author layer: links and entities the analyst adds to the map.
     linkToNode: 'Link to another node…',
@@ -1111,7 +1113,9 @@ const SEARCH_COPY = {
     copyTableError: 'No se pudo copiar la tabla al portapapeles.',
     investigationAdd: 'Añadir a la selección',
     investigationRemove: 'Quitar de la selección',
-    investigateSelection: 'Investigar selección',
+    askAi: 'Preguntar a la IA',
+    askAiAboutSelection: count => `Preguntar a la IA sobre la selección (${count})`,
+    askAiAboutNode: 'Preguntar a la IA sobre este nodo',
     investigationOverCap: `Reduce la selección a ${INVESTIGATION_CAP} entidades`,
     // Author layer: links and entities the analyst adds to the map.
     linkToNode: 'Enlazar con otro nodo…',
@@ -5624,6 +5628,13 @@ const SpanishCompanyNetworkGraph = ({
     },
     [contextNode, graphInteractionParams]
   );
+
+  // "Ask AI": the modest launcher for the AI panel. An empty `ids` falls back
+  // to the panel's focus mode on `primary`.
+  const openAiPanel = useCallback((ids, primary) => {
+    setAiPanelContext(buildInvestigationContext(ids, graphData.nodes, graphData.links, primary));
+    setAiPanelOpen(true);
+  }, [graphData.nodes, graphData.links]);
 
   const openHiddenNodesMenu = useCallback(event => {
     setHiddenNodesMenuAnchorEl(event.currentTarget);
@@ -10496,6 +10507,72 @@ const SpanishCompanyNetworkGraph = ({
     </Tooltip>
   );
 
+  const toggleEditMode = () => {
+    const next = !isEditMode;
+    setIsEditMode(next);
+    if (!next) return;
+    let alreadySeen = false;
+    try {
+      alreadySeen = window.localStorage.getItem('author_layer_explainer_seen') === '1';
+    } catch {
+      /* localStorage unavailable (private mode, blocked storage) — show it every time */
+    }
+    if (!alreadySeen) setShowEditExplainer(true);
+  };
+  // Edit map gate: off by default. Turning it on reveals the author's tools
+  // everywhere in the graph (selection tools, node/link/canvas menus) — see
+  // isEditMode. It is a mode, not a tool, so it is labelled and carries the
+  // author-layer violet the canvas draws added nodes and links in.
+  const editMapControls = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <ToggleButton
+        size="small"
+        value="edit-map"
+        selected={isEditMode}
+        aria-label={text.editMap}
+        onChange={toggleEditMode}
+        sx={{
+          height: 24,
+          px: 1.25,
+          gap: 0.5,
+          borderRadius: 4,
+          textTransform: 'none',
+          fontWeight: 600,
+          lineHeight: 1,
+          color: 'graph.node.author',
+          borderColor: (t) => alpha(t.palette.graph.node.author, 0.6),
+          '&:hover': { bgcolor: (t) => alpha(t.palette.graph.node.author, 0.08) },
+          '&.Mui-selected, &.Mui-selected:hover': {
+            bgcolor: 'graph.node.author',
+            color: (t) => t.palette.getContrastText(t.palette.graph.node.author),
+          },
+        }}
+      >
+        <EditIcon sx={{ fontSize: 16 }} />
+        {text.editMap}
+      </ToggleButton>
+      {/* Author layer: add an entity that never reached the registry (a person
+          or company sourced from outside BORME). Hidden outside edit mode, like
+          every other author-only control. */}
+      {isEditMode && (
+        <Tooltip title={text.addEntity}>
+          <IconButton
+            size="small"
+            aria-label={text.addEntity}
+            onClick={() => setAuthorNodeDialog({ initial: null, graphPoint: null })}
+            sx={{ color: 'graph.node.author' }}
+          >
+            <AddEntityIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
+  );
+  const hasChipsRow = graphData.links.length > 0 || Boolean(sharedConnectionsChip);
+  // The search panel (and the chips row inside it) is hidden in the embedded
+  // fullscreen layout; the edit gate then falls back into the graph toolbar.
+  const editControlsInChipsRow = hasChipsRow && !isCompactEmbed && !(embedded && isFullscreen);
+
   // Shared search panel content
   const searchPanelContent = (
     <Paper sx={{ p: 1, px: 1.5, m: embedded ? 0 : 2, mb: 0 }}>
@@ -10579,7 +10656,9 @@ const SpanishCompanyNetworkGraph = ({
           value={labelFilterText}
           onChange={e => setLabelFilterText(e.target.value)}
           size="small"
-          sx={{ flexGrow: 0.5, minWidth: 150, maxWidth: 260 }}
+          // Wide enough to show the whole placeholder; the entity search
+          // (flexGrow 3) gives up the width rather than the row growing.
+          sx={{ flexGrow: 1, flexBasis: 380, minWidth: 280, maxWidth: 440 }}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
@@ -10945,7 +11024,7 @@ const SpanishCompanyNetworkGraph = ({
       )}
 
       {/* Status & position filter chips */}
-      {(graphData.links.length > 0 || sharedConnectionsChip) && (
+      {hasChipsRow && (
         <Box sx={{ mt: 1 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
             <Chip
@@ -11086,6 +11165,7 @@ const SpanishCompanyNetworkGraph = ({
                 }}
               />
             )}
+            {editControlsInChipsRow && <Box sx={{ ml: 'auto', pl: 1 }}>{editMapControls}</Box>}
           </Box>
           {positionFiltersExpanded && availablePositionCount > 0 && (
             <Box
@@ -11364,82 +11444,41 @@ const SpanishCompanyNetworkGraph = ({
         </Tooltip>
             </>
           )}
-          {/* AI Investigation Launcher */}
+          {/* Selection tools + the "Ask AI" launcher. The launcher stays an
+              icon: the AI panel is an add-on, not the page's primary action. */}
           {!isCompactEmbed && (() => {
             const count = investigationSet.size;
             const launch = investigationLaunchState(count);
             const stored = loadToken();
             const nowSec = Math.floor(Date.now() / 1000);
-            const label = count > 0
-              ? `${text.investigateSelection} (${count})`
-              : entitlementChipLabel(stored, nowSec, uiLanguage);
+            const askAiTitle = launch.mode === 'over_cap'
+              ? text.investigationOverCap
+              : count > 0
+                ? text.askAiAboutSelection(count)
+                : entitlementChipLabel(stored, nowSec, uiLanguage);
             return (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center', ml: 0.75, maxWidth: '100%' }}>
-                <Button
-                  size="small"
-                  variant={count > 0 ? 'contained' : 'outlined'}
-                  startIcon={<PsychologyIcon />}
-                  disabled={!launch.canLaunch}
-                  // Keep the empty-state launcher legible in both themes.
-                  sx={count > 0 ? undefined : {
-                    color: 'accent.primary',
-                    borderColor: (t) => alpha(t.palette.accent.primary, 0.7),
-                    '&:hover': {
-                      borderColor: 'accent.primary',
-                      backgroundColor: (t) => alpha(t.palette.primary.light, 0.12),
-                    },
-                  }}
-                  onClick={() => {
-                    const primary = graphData.nodes.find((n) => isSameNodeId(n.id, activeNodeId))
-                      || graphData.nodes.find((n) => typeof primarySubject === 'string' && n.name && n.name.toUpperCase() === primarySubject.toUpperCase())
-                      || null;
-                    setAiPanelContext(
-                      buildInvestigationContext(Array.from(investigationSet), graphData.nodes, graphData.links, primary)
-                    );
-                    setAiPanelOpen(true);
-                  }}
-                >
-                  {launch.mode === 'over_cap' ? text.investigationOverCap : label}
-                </Button>
-                {/* Edit map gate: off by default. Turning it on reveals the
-                    author's tools everywhere in the graph (this toolbar, the
-                    node/link/canvas menus) — see isEditMode. */}
-                <Tooltip title={text.editMap}>
-                  <ToggleButton
-                    size="small"
-                    value="edit-map"
-                    selected={isEditMode}
-                    aria-label={text.editMap}
-                    onChange={() => {
-                      const next = !isEditMode;
-                      setIsEditMode(next);
-                      if (!next) return;
-                      let alreadySeen = false;
-                      try {
-                        alreadySeen = window.localStorage.getItem('author_layer_explainer_seen') === '1';
-                      } catch {
-                        /* localStorage unavailable (private mode, blocked storage) — show it every time */
-                      }
-                      if (!alreadySeen) setShowEditExplainer(true);
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-                {/* Author layer: add an entity that never reached the registry
-                    (a person or company sourced from outside BORME). Hidden
-                    outside edit mode, like every other author-only control. */}
-                {isEditMode && (
-                  <Tooltip title={text.addEntity}>
+                <Tooltip title={askAiTitle}>
+                  {/* span: a disabled button fires no events for the tooltip */}
+                  <span>
                     <IconButton
                       size="small"
-                      aria-label={text.addEntity}
-                      onClick={() => setAuthorNodeDialog({ initial: null, graphPoint: null })}
+                      aria-label={askAiTitle}
+                      disabled={!launch.canLaunch}
+                      onClick={() => {
+                        const primary = graphData.nodes.find((n) => isSameNodeId(n.id, activeNodeId))
+                          || graphData.nodes.find((n) => typeof primarySubject === 'string' && n.name && n.name.toUpperCase() === primarySubject.toUpperCase())
+                          || null;
+                        openAiPanel(Array.from(investigationSet), primary);
+                      }}
                     >
-                      <AddEntityIcon fontSize="small" />
+                      <Badge badgeContent={count} color="primary" max={99}>
+                        <PsychologyIcon />
+                      </Badge>
                     </IconButton>
-                  </Tooltip>
-                )}
+                  </span>
+                </Tooltip>
+                {!editControlsInChipsRow && editMapControls}
                 {count > 0 && (
                   <>
                     <Tooltip title={text.hideSelected(count)}>
@@ -11565,6 +11604,19 @@ const SpanishCompanyNetworkGraph = ({
         sx={{
           flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: 'graph.surface.canvas',
           ...(linkPick ? { cursor: 'crosshair' } : null),
+          // Edit mode frames the canvas in the author violet, so a glance tells
+          // you clicks now change the map. Drawn above the canvas, click-through.
+          ...(isEditMode ? {
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              border: '2px solid',
+              borderColor: 'graph.node.author',
+              pointerEvents: 'none',
+              zIndex: 5,
+            },
+          } : null),
         }}
         onMouseMove={handleContainerPointerMove}
         onPointerDownCapture={handleConnectionPointerDown}
@@ -12939,6 +12991,34 @@ const SpanishCompanyNetworkGraph = ({
                   </ListItemText>
                 </MenuItem>
               ),
+              // The AI only reads registry facts, so an author node has nothing to ask about.
+              contextNode && !isAuthorNode(contextNode) && (() => {
+                // Ask about the selection when this node is part of it,
+                // otherwise about this node alone.
+                const inSelection = investigationSet.has(normalizeNodeId(contextNode.id));
+                const ids = inSelection ? Array.from(investigationSet) : [contextNode.id];
+                const overCap = !investigationLaunchState(ids.length).canLaunch;
+                return (
+                  <MenuItem
+                    key="ask_ai"
+                    disabled={overCap}
+                    onClick={() => runContextAction('ask_ai', () => {
+                      const node = contextNode;
+                      closeNodeContextMenu();
+                      openAiPanel(ids, node);
+                    })}
+                  >
+                    <ListItemIcon><PsychologyIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText>
+                      {overCap
+                        ? text.investigationOverCap
+                        : inSelection && ids.length > 1
+                          ? text.askAiAboutSelection(ids.length)
+                          : text.askAiAboutNode}
+                    </ListItemText>
+                  </MenuItem>
+                );
+              })(),
               <MenuItem key="hide_node" onClick={() => runContextAction('hide_node', hideNodeFromMenu)}>
                 <ListItemIcon>
                   <VisibilityOffIcon fontSize="small" />

@@ -60,7 +60,7 @@ export function entitlementSecondsLeft(stored, nowSec) {
 export function entitlementChipLabel(stored, nowSec, lang) {
   const en = lang === 'en';
   const left = entitlementSecondsLeft(stored, nowSec);
-  if (left <= 0) return en ? 'AI Investigation' : 'Investigación por IA';
+  if (left <= 0) return en ? 'Ask AI' : 'Preguntar a la IA';
   const days = Math.floor(left / 86400);
   if (days >= 1) {
     return en ? `AI · ${days} day${days > 1 ? 's' : ''} left` : `IA · ${days} día${days > 1 ? 's' : ''} restante${days > 1 ? 's' : ''}`;
