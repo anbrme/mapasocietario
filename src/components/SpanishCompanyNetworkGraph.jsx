@@ -2762,6 +2762,12 @@ const SpanishCompanyNetworkGraph = ({
   // data already present, and when a cleared graph is refilled — see
   // graphAutoFit for why the node count alone was not enough.
   const autoFitStateRef = useRef({ count: 0, ready: false });
+  // A fit is owed to the layout that the simulation is still working out.
+  // The timed fit below frames the nodes where they stand 500 ms in; when the
+  // canvas appeared late (a background tab shown after the data arrived) the
+  // simulation has barely started at that point and the frame misses where
+  // the nodes end up. The engine-stop handler settles that debt.
+  const fitOnSettleRef = useRef(false);
   useEffect(() => {
     const { fit, next } = autoFitDecision({
       count: graphData.nodes.length,
@@ -2771,6 +2777,7 @@ const SpanishCompanyNetworkGraph = ({
     });
     autoFitStateRef.current = next;
     if (!fit) return undefined;
+    fitOnSettleRef.current = true;
     // Delay to let ForceGraph2D process new data and simulation settle
     const timer = setTimeout(() => {
       fitGraphToView(400, 50);
@@ -7180,6 +7187,16 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, [graphData.nodes]);
 
+  // The simulation has cooled: the nodes are where they will stay. If a fit
+  // is owed (see fitOnSettleRef), frame them now. A user drag also reheats
+  // and stops the engine, but owes no fit, so the flag stays false then.
+  const handleEngineStop = useCallback(() => {
+    handleEngineTick();
+    if (!fitOnSettleRef.current) return;
+    fitOnSettleRef.current = false;
+    fitGraphToView(400, 50);
+  }, [handleEngineTick, fitGraphToView]);
+
   // Parse filter into multiple terms and compute filtered graph data
   const filterTerms = React.useMemo(() => {
     return labelFilterText
@@ -10977,7 +10994,7 @@ const SpanishCompanyNetworkGraph = ({
             d3VelocityDecay={0.8}
             cooldownTicks={40}
             onEngineTick={handleEngineTick}
-            onEngineStop={handleEngineTick}
+            onEngineStop={handleEngineStop}
             width={canvasDimensions.width}
             height={canvasDimensions.height}
           />
