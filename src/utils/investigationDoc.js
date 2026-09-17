@@ -38,6 +38,11 @@ const noteEntry = node => ({
 export function buildInvestigationDoc({
   graphData,
   scope,
+  // Dismissed registry links, collected from the UNFILTERED graph by the
+  // caller. They cannot be recovered from `graphData` here: a dismissal's
+  // whole effect is that the link leaves the visible graph, so the document
+  // would otherwise never be able to say a relationship was taken off the map.
+  dismissedLinks = null,
   networkNote = '',
   corrections = [],
   primarySubject = '',
@@ -96,7 +101,19 @@ export function buildInvestigationDoc({
   const officersByCompany = Object.fromEntries(
     Object.entries(scope?.officersByCompany || {}).map(([name, officers]) => [name, [...(officers || [])]]));
 
-  const authorLayer = collectAuthorLayer(graphData);
+  const collected = collectAuthorLayer(graphData);
+  // Merged, not replaced: the given graph may still hold a dismissal (a caller
+  // passing the unfiltered graph), and the same one must not be listed twice.
+  const dismissedKey = d => `${d.from}|${d.to}|${d.relationship}|${d.at}`;
+  const seenDismissed = new Set(collected.dismissed.map(dismissedKey));
+  const dismissed = [...collected.dismissed];
+  (Array.isArray(dismissedLinks) ? dismissedLinks : []).forEach(d => {
+    const key = dismissedKey(d);
+    if (seenDismissed.has(key)) return;
+    seenDismissed.add(key);
+    dismissed.push({ ...d });
+  });
+  const authorLayer = { ...collected, dismissed };
   const authorElements = authorLayer.nodes.length + authorLayer.links.length
     + authorLayer.dismissed.length + authorLayer.renamed.length;
 

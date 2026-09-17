@@ -8315,6 +8315,10 @@ const SpanishCompanyNetworkGraph = ({
     return buildInvestigationDoc({
       graphData: filteredGraphData,
       scope: relationshipDetailedScope,
+      // A dismissed registry link is filtered OUT of filteredGraphData — that
+      // is what dismissing does — so the document can only learn about it from
+      // the unfiltered graph.
+      dismissedLinks: collectAuthorLayer(graphData).dismissed,
       networkNote,
       corrections: relCorrections,
       primarySubject: subjectCompanyName || relationshipDetailedScope.officerNodes[0]?.name || '',
@@ -8332,7 +8336,7 @@ const SpanishCompanyNetworkGraph = ({
       }),
     });
   }, [
-    relReportOpen, filteredGraphData, relationshipDetailedScope, networkNote, reportTitle,
+    relReportOpen, filteredGraphData, graphData, relationshipDetailedScope, networkNote, reportTitle,
     relCorrections, subjectCompanyName, relGeneratedAt,
     walkthrough.steps, sitrepAuthor, walkthrough.coverage,
     sitrepAuthor.blocks, walkthrough.mode, walkthrough.opening, walkthrough.stepData,
@@ -9649,7 +9653,9 @@ const SpanishCompanyNetworkGraph = ({
     const seen = new Set();
     const out = [];
     for (const node of filteredGraphData.nodes) {
-      if (!isMonitorableNode(node)) continue;
+      // An author company satisfies isMonitorableNode (type: 'company') but has
+      // no registry record to watch — BORME will never publish a filing for it.
+      if (isAuthorNode(node) || !isMonitorableNode(node)) continue;
       const name = (node.name || '').trim();
       if (!name) continue;
       const key = node.groupKey || name.toUpperCase();
