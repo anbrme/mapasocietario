@@ -80,6 +80,18 @@ const ES = {
   watchLink: 'Avísame si alguna de estas empresas cambia',
   explorer: 'Explorar la evidencia',
   momentLabel: 'Momento',
+  authorLayer: 'Añadido por el autor',
+  authorNotice: 'Este informe contiene elementos añadidos por el autor, dibujados con línea de puntos en el mapa y listados en el anexo "Añadido por el autor".',
+  authorRelationships: 'Relaciones',
+  authorEntities: 'Entidades',
+  legendAuthor: 'Añadido por el autor',
+  actionDismissed: 'relación descartada',
+  actionRenamed: 'renombrado desde',
+  asserted: 'afirmado',
+  hopAuthorNote: n => (n === 1
+    ? 'un enlace de esta ruta fue añadido por el autor'
+    : `${n} enlaces de esta ruta fueron añadidos por el autor`),
+  source: 'Fuente',
 };
 
 const EN = {
@@ -156,6 +168,18 @@ const EN = {
   watchLink: 'Alert me when any of these companies changes',
   explorer: 'Explore the evidence',
   momentLabel: 'Moment',
+  authorLayer: 'Added by the author',
+  authorNotice: 'This report contains elements added by the author, drawn dotted on the map and listed in the annex "Added by the author".',
+  authorRelationships: 'Relationships',
+  authorEntities: 'Entities',
+  legendAuthor: 'Added by the author',
+  actionDismissed: 'relationship dismissed',
+  actionRenamed: 'renamed from',
+  asserted: 'asserted',
+  hopAuthorNote: n => (n === 1
+    ? 'one link in this path was added by the author'
+    : `${n} links in this path were added by the author`),
+  source: 'Source',
 };
 
 export const EXPORT_COPY_KEYS = Object.freeze(Object.keys(ES));
@@ -171,6 +195,8 @@ const CORRECTION_VERB_KEYS = {
   merge: 'actionMerge',
   mark_resigned: 'actionResigned',
   mark_active: 'actionActive',
+  dismissed: 'actionDismissed',
+  renamed: 'actionRenamed',
 };
 
 export const correctionVerb = (t, action) => (

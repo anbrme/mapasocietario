@@ -31,6 +31,18 @@ const authorLine = (doc, t) => {
   return parts.length ? ` · ${esc(t.elaboratedBy)} ${esc(parts.join(' · '))}` : '';
 };
 
+// One escaped anchor for a citation, honouring the security rule everywhere a
+// citation surfaces: only an http(s) url ever becomes an <a href>, anything
+// else — including a blank or javascript: url — prints as escaped text.
+const citationHtml = citation => {
+  if (!citation) return '';
+  const label = citation.text || citation.url || '';
+  if (!label) return '';
+  return citation.url && /^https?:\/\//i.test(citation.url)
+    ? `<a href="${esc(citation.url)}">${esc(label)}</a>`
+    : esc(label);
+};
+
 // Five quiet numbers under the title: what the map holds, how many steps the
 // story has, how many notes the author wrote, and the day the registry was
 // read. A fact with nothing to say is left out rather than shown as zero.
@@ -52,6 +64,7 @@ export const renderCover = (doc, t, lang) => `
   <div class="eyebrow">${esc(t.title)}</div>
   <h1>${esc(doc.subject || t.title)}</h1>
   <div class="meta">${esc(t.generated)} ${esc(fmtDate(doc.generatedAt, lang))}${authorLine(doc, t)}</div>
+  ${doc.counts?.authorElements > 0 ? `<p class="notice">${esc(t.authorNotice)}</p>` : ''}
   ${renderFacts(doc, t, lang)}
   <div class="status">${esc(t.nonAuthoritative)}<br>${esc(t.sourceLine)}</div>
 </header>`;
@@ -196,9 +209,21 @@ const kv = (label, value) => (value ? `<p class="kv">${label ? `${esc(label)}: `
 
 // A registry day never wraps into "2011-12-" / "23": date-shaped cells get
 // the nowrap class the annex tables already use (isDay, from the model).
-const evidenceTable = (columns, rows, cells) => (rows.length
+//
+// A cell is normally a plain value, auto-escaped and auto-dated. A row can
+// instead hand back `rawCell(html)` for a cell it has already built itself
+// (pre-escaped) — the one case here is the hop-swatch prefix on an asserted
+// row's role cell, which needs a small inline marker no plain string can
+// carry without either escaping it away or losing the security guarantee.
+const rawCell = html => ({ raw: html });
+
+const evidenceTable = (columns, rows, cells, rowClass) => (rows.length
   ? `<div class="scroll"><table><thead><tr>${Object.values(columns).map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${
-    rows.map(r => `<tr>${cells(r).map(v => `<td${isDay(v) ? ' class="date"' : ''}>${esc(v || '')}</td>`).join('')}</tr>`).join('')
+    rows.map(r => `<tr${rowClass && rowClass(r) ? ` class="${esc(rowClass(r))}"` : ''}>${cells(r).map(v => (
+      v && typeof v === 'object'
+        ? `<td>${v.raw}</td>`
+        : `<td${isDay(v) ? ' class="date"' : ''}>${esc(v || '')}</td>`
+    )).join('')}</tr>`).join('')
   }</tbody></table></div>`
   : '');
 
@@ -269,18 +294,52 @@ const boardBlock = (ev, wt) => {
 
 const personEvidenceBlock = (s, wt) => seatsTable(s, wt);
 
-// A connection chapter's evidence is the path itself: one row per hop.
-const connectionEvidenceBlock = (s, wt) => {
+// A connection chapter's evidence is the path itself: one row per hop. A hop
+// the author asserted (origin: 'author') is never mixed in with the ones the
+// registry stands behind: its status cell reads "asserted" rather than a
+// registry status word, its role cell carries a dotted swatch to match the
+// map's own author stroke, and the whole row gets the hop-author class the
+// stylesheet italicises. The path's author-hop count, if any, gets its own
+// note under the table.
+const connectionEvidenceBlock = (s, t, wt) => {
   const hops = s.evidence?.hops || [];
   if (!hops.length) return '';
-  return `<p>${esc(s.summary || s.text || '')}</p>${evidenceTable(wt.hopColumns, hops,
-    r => [r.who, r.at, r.role, wt.statusWords[r.status] || r.status, r.since, r.until])}`;
+  const table = evidenceTable(wt.hopColumns, hops, r => [
+    r.who,
+    r.at,
+    r.origin === 'author' ? rawCell(`<span class="swatch"></span>${esc(r.role || '')}`) : r.role,
+    r.origin === 'author' ? t.asserted : (wt.statusWords[r.status] || r.status),
+    r.since,
+    r.until,
+  ], r => (r.origin === 'author' ? 'hop-author' : ''));
+  const authorHops = s.evidence?.authorHops || 0;
+  const note = authorHops > 0 ? `<p class="note">${esc(t.hopAuthorNote(authorHops))}</p>` : '';
+  return `<p>${esc(s.summary || s.text || '')}</p>${table}${note}`;
 };
 
 const evidenceBlockFor = (s, t, wt, blocks) => {
   if (s.kind === 'person') return personEvidenceBlock(s, wt);
-  if (s.kind === 'connection') return connectionEvidenceBlock(s, wt);
+  if (s.kind === 'connection') return connectionEvidenceBlock(s, t, wt);
   return companyEvidenceBlock(s, t, wt, blocks);
+};
+
+// The author links that touch this chapter's own node — either end of the
+// link, so a company chapter shows a link the author drew away from it just
+// as readily as one drawn onto it.
+const authorLinksFor = (doc, nodeId) => {
+  if (nodeId == null) return [];
+  const links = doc.authorLayer?.links || [];
+  return links.filter(l => l.fromId === nodeId || l.toId === nodeId);
+};
+
+const authorLinksBlock = (doc, step, t) => {
+  const links = authorLinksFor(doc, step.nodeId);
+  if (!links.length) return '';
+  const rows = links.map(l => {
+    const source = citationHtml(l.citation);
+    return `<li>${esc(l.from)} → ${esc(l.to)} · ${esc(l.label)}${source ? ` · ${source}` : ''}</li>`;
+  }).join('');
+  return `<h4>${esc(t.authorLayer)}</h4><ul class="plain">${rows}</ul>`;
 };
 
 export const renderChapters = (doc, t, wt, lang = 'es') => {
@@ -295,7 +354,8 @@ export const renderChapters = (doc, t, wt, lang = 'es') => {
     const narrative = noteBlock(s.narrative || s.authorNote, t);
     const dated = datedNotesBlock(s, wt, lang);
     const evidence = evidenceBlockFor(s, t, wt, blocks);
-    return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${dated}${evidence}</div></div>`;
+    const authorLinks = authorLinksBlock(doc, s, t);
+    return `<div class="chapter" id="ch-${i}" data-i="${i}" data-moment="${esc(s.moment || '')}"><button type="button" class="num" onclick="__sitrepShow(${i})">${String(i + 1).padStart(2, '0')}</button><div><div class="head">${head}</div><h3>${esc(s.title)}</h3>${narrative}${dated}${evidence}${authorLinks}</div></div>`;
   }).join('');
   // Slide zero of the presentation: the opening, shown where a chapter would
   // be while the map stands whole. Inert outside presenting.
@@ -333,7 +393,31 @@ export const renderAnnexes = (doc, t) => {
     <td>${esc(c.name)} <em>(${c.type === 'entity' ? esc(t.entity) : esc(t.individual)})</em>${c.note?.text ? noteBlock(c.note, t) : ''}</td>
     <td>${(c.companies || []).map(esc).join(', ')}</td><td>${(c.roles || []).map(esc).join(' / ')}</td><td>${esc(t[c.status] || c.status)}</td></tr>`).join('');
   const ownership = rows.ownership.map(o => `<li>${esc(o.owner)} ${esc(o.lost ? t.lostOf : t.soleOf)} ${esc(o.owned)}</li>`).join('');
-  const corrections = rows.corrections.map(c => `<li>${esc(c.nameA)} — ${esc(correctionVerb(t, c.action))}${c.nameB ? ` ${esc(c.nameB)}` : ''}${c.resignedDate ? ` <span class="date">(${esc(c.resignedDate)})</span>` : ''}</li>`).join('');
+  const registryCorrections = rows.corrections.map(c => `<li>${esc(c.nameA)} — ${esc(correctionVerb(t, c.action))}${c.nameB ? ` ${esc(c.nameB)}` : ''}${c.resignedDate ? ` <span class="date">(${esc(c.resignedDate)})</span>` : ''}</li>`).join('');
+  // The author's own corrections — a dismissed registry link, a renamed
+  // registry node — sit in the same annex as the registry-sourced ones
+  // above: both are things the author changed about what the registry said.
+  const authorCorrections = [
+    ...rows.authorLayer.dismissed.map(d => `<li>${esc(d.from)} — ${esc(d.to)}: ${esc(t.actionDismissed)}${d.reason ? ` (${esc(d.reason)})` : ''}</li>`),
+    ...rows.authorLayer.renamed.map(r => `<li>${esc(r.name)} — ${esc(t.actionRenamed)} ${esc(r.registryName)}</li>`),
+  ].join('');
+  const corrections = registryCorrections + authorCorrections;
+  // The relationships the author drew (a table: from, to, label, source,
+  // date, note) and the entities the author added (a flat list) — empty
+  // string when both are empty, so the panel hides like every other one.
+  const authorLinkRows = rows.authorLayer.links.map(l => {
+    const source = citationHtml(l.citation);
+    return `<tr><td>${esc(l.from)}</td><td>→</td><td>${esc(l.to)}</td><td>${esc(l.label)}</td><td>${source}</td><td${isDay(l.asserted) ? ' class="date"' : ''}>${esc(l.asserted || '')}</td><td>${esc(l.note || '')}</td></tr>`;
+  }).join('');
+  const authorEntityRows = rows.authorLayer.nodes.map(n => {
+    const source = citationHtml(n.citation);
+    const kind = n.kind === 'company' ? t.entity : t.individual;
+    return `<li>${esc(n.name)} · ${esc(kind)} · ${esc(n.country || '')} · ${esc(n.identifier || '')} · ${source} · ${esc(n.note || '')}</li>`;
+  }).join('');
+  const authorLayerBody = [
+    authorLinkRows ? `<h4>${esc(t.authorRelationships)}</h4><div class="scroll"><table><tbody>${authorLinkRows}</tbody></table></div>` : '',
+    authorEntityRows ? `<h4>${esc(t.authorEntities)}</h4><ul class="plain">${authorEntityRows}</ul>` : '',
+  ].filter(Boolean).join('');
   const num = sectionNumbers(doc).annexes;
   const panels = [
     { id: 'companies', title: t.companies, body: companies ? `<ul class="plain">${companies}</ul>` : '' },
@@ -346,6 +430,7 @@ export const renderAnnexes = (doc, t) => {
     },
     { id: 'ownership', title: t.ownership, body: ownership ? `<ul class="plain">${ownership}</ul>` : '' },
     { id: 'corrections', title: t.corrections, body: corrections ? `<ul class="plain">${corrections}</ul>` : '' },
+    { id: 'authorLayer', title: t.authorLayer, body: authorLayerBody },
   ].filter(p => p.body);
   const head = `<section id="annexes"><h2><span class="num">${num}</span>${esc(t.annexes)}</h2>`;
   // A single annex is just a block: a tab strip over one tab explores nothing.

@@ -19,11 +19,11 @@ ${face(700, PLEX_SANS_BOLD_WOFF2_B64)}
 :root{color-scheme:light dark;
 --bg:#FBFBFA;--fg:#0B1324;--muted:#58677D;--line:#CCD6E3;--card:#FFFFFF;--soft:#F3F6FA;
 --accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1;
---seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e}
+--seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e;--author:#6d28d9}
 @media (prefers-color-scheme: dark){:root{
 --bg:#14161A;--fg:#E8E8E4;--muted:#9A9A94;--line:#2A2D33;--card:#1C1F24;--soft:#181B20;
 --accent:#2DD4BF;--accent-soft:#12302C;--company:#2DD4BF;--officer:#94A3B8;--link:#3A3F47;
---seat:#34d399;--ceased:#f87171;--own:#fbbf24;--own-lost:#c79a3a}}
+--seat:#34d399;--ceased:#f87171;--own:#fbbf24;--own-lost:#c79a3a;--author:#a78bfa}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -109,6 +109,8 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .chapter p{margin:0;white-space:pre-line}
 .chapter h4{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 4px}
 .chapter table{font-size:.82rem}
+.hop-author td{font-style:italic}
+.hop-author .swatch{display:inline-block;width:12px;border-top:2px dotted var(--author);margin-right:4px;vertical-align:middle}
 .chapter ul{margin:0;padding-left:18px}
 .chapter .dated ul{list-style:none;padding:0;margin:0}
 .chapter .dated li{display:grid;grid-template-columns:120px 1fr;gap:0 12px;align-items:baseline;padding:3px 0;border-top:1px solid var(--line)}
@@ -230,7 +232,7 @@ body.presenting #walkthrough{height:auto;min-height:0;padding:16px;border-left:0
 @media print{
 :root{--bg:#FFFFFF;--fg:#0B1324;--muted:#58677D;--line:#CCD6E3;--card:#FFFFFF;--soft:#F3F6FA;
 --accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1;
---seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e}
+--seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e;--author:#6d28d9}
 #wt-panel,.hide-print{display:none!important}
 body{background:#fff;color:#0B1324;font-size:11pt}
 /* Margins live on the wrapper too: a "Margins: none" print setting must not

@@ -118,6 +118,20 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).toContain('.kv{');
     expect(DOCUMENT_STYLE).toContain('nav.contents a.sub{');
   });
+
+  it('defines the author accent in light and dark, and styles an asserted hop row', () => {
+    expect(DOCUMENT_STYLE).toContain('--author:#6d28d9');
+    expect(DOCUMENT_STYLE).toContain('--author:#a78bfa');
+    expect(DOCUMENT_STYLE).toContain('.hop-author td{font-style:italic}');
+    expect(DOCUMENT_STYLE).toContain('.hop-author .swatch{display:inline-block;width:12px;border-top:2px dotted var(--author);margin-right:4px;vertical-align:middle}');
+    // The dark value must live inside the dark-scheme media query, not just
+    // anywhere in the file.
+    const darkBlock = DOCUMENT_STYLE.slice(
+      DOCUMENT_STYLE.indexOf('@media (prefers-color-scheme: dark)'),
+      DOCUMENT_STYLE.indexOf('*{box-sizing:border-box}'),
+    );
+    expect(darkBlock).toContain('--author:#a78bfa');
+  });
 });
 
 
