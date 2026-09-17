@@ -139,6 +139,17 @@ const CompanyInspectorPanel = ({
   // Edit map gate: the author's card offers no Edit button while the map is
   // read-only. The node itself always stays drawn and inspectable.
   canEditAuthorNode = false,
+  // Inspector relationship rows (Task 10): edit mode gates the per-row
+  // dismiss/edit action; onLinkAction(link, action) runs it; resolveSeatLink
+  // maps an officer seat's company name back to the graph link it came from
+  // (null when that company isn't plotted, or its link was already dismissed).
+  isEditMode = false,
+  onLinkAction,
+  resolveSeatLink,
+  // Author layer: the registry name this node was renamed FROM, when it was
+  // renamed. Null for an unrenamed node and for an author node (which was
+  // never a registry name to begin with).
+  renamedFrom = null,
 }) => {
   // The registry-detail disclosure. Closed for every node: carrying the
   // previous company's open state over is how a card stops being predictable.
@@ -261,6 +272,11 @@ const CompanyInspectorPanel = ({
                 {nodeName}
               </Typography>
             </Box>
+            {renamedFrom && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                {text.registryName(renamedFrom)}
+              </Typography>
+            )}
             <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, mt: 0.75 }}>
               <Chip
                 label={nodeType === 'officer' ? text.officer : text.company}
@@ -733,6 +749,9 @@ const CompanyInspectorPanel = ({
                 onOpenTimeline={onOpenTimeline}
                 onFocusCompany={onFocusCompany}
                 onOpenDataset={onOpenDataset}
+                isEditMode={isEditMode}
+                onLinkAction={onLinkAction}
+                resolveSeatLink={resolveSeatLink}
               />
 
               <Typography

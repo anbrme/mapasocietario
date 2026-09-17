@@ -127,7 +127,7 @@ import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
 import {
   visibleWithoutDismissed, isAuthorLink, isAuthorNode, makeAuthorLink, makeAuthorNode, removeAuthorNode,
-  collectAuthorLayer, dismissLink, restoreLink,
+  collectAuthorLayer, dismissLink, restoreLink, isDismissedLink, isRenamedNode, markRenamed,
 } from '../utils/authorLayer';
 import AuthorLinkDialog from './AuthorLinkDialog';
 import AuthorNodeDialog from './AuthorNodeDialog';
@@ -424,7 +424,6 @@ const SEARCH_COPY = {
     fullscreenExit: 'Exit fullscreen',
     fullscreenEmbedded: 'Fullscreen (needed to manage nodes with right click)',
     fullscreen: 'Fullscreen',
-    manageHiddenNodes: 'Manage hidden nodes',
     hiddenButton: count => `${count} hidden`,
     nodes: 'Nodes',
     links: 'Links',
@@ -850,7 +849,6 @@ const SEARCH_COPY = {
     fullscreenExit: 'Salir de pantalla completa',
     fullscreenEmbedded: 'Pantalla completa (necesaria para gestionar nodos con clic derecho)',
     fullscreen: 'Pantalla completa',
-    manageHiddenNodes: 'Gestionar nodos ocultos',
     hiddenButton: count => `${count} ocultos`,
     nodes: 'Nodos',
     links: 'Enlaces',
@@ -1922,6 +1920,7 @@ const SpanishCompanyNetworkGraph = ({
   // DD Checkout dialog state
   const [ddCheckoutOpen, setDdCheckoutOpen] = useState(false);
   const [ddCheckoutCompany, setDdCheckoutCompany] = useState('');
+
 
   // Situation report dialog state. `relDoc` is DERIVED (see the useMemo below,
   // declared after filteredGraphData) rather than captured once on open: a
@@ -5429,6 +5428,36 @@ const SpanishCompanyNetworkGraph = ({
     return isAuthorNode(node) ? node : null;
   }, [previewNodeId, graphData.nodes]);
 
+  // Author layer: the node the inspector is showing, when it is a REGISTRY
+  // node (never one the author added). Drives the "renamed from" caption and
+  // the seat-row dismiss action below — both are registry-only concerns.
+  const previewedRegistryNode = React.useMemo(() => {
+    if (!previewNodeId) return null;
+    const node = graphData.nodes.find(n => isSameNodeId(n.id, previewNodeId));
+    return node && !isAuthorNode(node) ? node : null;
+  }, [previewNodeId, graphData.nodes]);
+
+  // Inspector relationship rows (Task 10, officer seats): a seat is built
+  // from the fetched officer payload (company name + role), not from a graph
+  // link id, so it has to be matched back to the actual registry edge before
+  // it can be dismissed. No match (the company isn't plotted, or the link is
+  // already dismissed) means no action on that row.
+  const resolveSeatLink = useCallback(companyName => {
+    if (!previewedRegistryNode || previewedRegistryNode.type !== 'officer') return null;
+    const officerId = normalizeNodeId(previewedRegistryNode.id);
+    const target = String(companyName || '').trim().toLowerCase();
+    if (!target) return null;
+    const nodesById = new Map(graphData.nodes.map(n => [normalizeNodeId(n.id), n]));
+    return (graphData.links || []).find(l => {
+      if (isAuthorLink(l) || isDismissedLink(l)) return false;
+      const sId = normalizeNodeId(getNodeIdFromRef(l.source));
+      const tId = normalizeNodeId(getNodeIdFromRef(l.target));
+      if (sId !== officerId && tId !== officerId) return false;
+      const otherNode = nodesById.get(sId === officerId ? tId : sId);
+      return !!otherNode && String(otherNode.name || '').trim().toLowerCase() === target;
+    }) || null;
+  }, [previewedRegistryNode, graphData.links, graphData.nodes]);
+
   // handleNodeClick is defined after handleNodeRightClick (below) for mobile touch support
   const DOUBLE_CLICK_MS = 450;
   const EMBEDDED_DOUBLE_CLICK_MS = 750;
@@ -5512,6 +5541,22 @@ const SpanishCompanyNetworkGraph = ({
       .filter(node => hiddenNodeIds.has(normalizeNodeId(node.id)))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [graphData.nodes, hiddenNodeIds]);
+
+  // Author layer: the "Manage hidden…" menu's second list — dismissed
+  // registry links, each restorable on its own (separate from unhiding a
+  // node, and from the undo toast a fresh dismissal offers).
+  const hiddenLinksList = React.useMemo(() => {
+    const dismissed = (graphData.links || []).filter(isDismissedLink);
+    if (dismissed.length === 0) return [];
+    const nodesById = new Map(graphData.nodes.map(n => [normalizeNodeId(n.id), n]));
+    const nameOf = ref => nodesById.get(normalizeNodeId(getNodeIdFromRef(ref)))?.name || '';
+    return dismissed.map(link => ({
+      id: link.id,
+      from: nameOf(link.source),
+      to: nameOf(link.target),
+      relationship: link.relationship || link.category || '',
+    }));
+  }, [graphData.links, graphData.nodes]);
 
   const closeNodeContextMenu = useCallback(() => {
     setNodeContextMenu(null);
@@ -6412,6 +6457,25 @@ const SpanishCompanyNetworkGraph = ({
     setDismissLinkReason('');
     closeLinkMenu();
   }, [dismissLinkDialog, dismissLinkReason, dismissLinkWithReason, closeLinkMenu, isEditMode]);
+
+  // Opens the reason prompt for a registry link — shared by the canvas link
+  // menu and the inspector's own per-row dismiss action, so the two never
+  // drift into different flows for the same operation.
+  const openDismissLinkDialog = useCallback(link => {
+    if (!link) return;
+    setDismissLinkReason('');
+    setDismissLinkDialog({ link });
+  }, []);
+
+  // Inspector relationship rows (Task 10): the same dismiss/edit affordances
+  // the canvas link menu offers, reached from a row instead of a right-click.
+  // Never acts outside edit mode — the row action is hidden then anyway, but
+  // this is the belt-and-suspenders guard other author-only handlers use.
+  const onInspectorLinkAction = useCallback((link, action) => {
+    if (!isEditMode || !link) return;
+    if (action === 'dismiss') openDismissLinkDialog(link);
+    else if (action === 'edit') openEditAuthorLinkDialog(link);
+  }, [isEditMode, openDismissLinkDialog, openEditAuthorLinkDialog]);
 
   // Author layer: right-click on empty canvas — "Add entity…", "Manage
   // hidden…", "Fit to view". The graph point is resolved from the click
@@ -7388,11 +7452,17 @@ const SpanishCompanyNetworkGraph = ({
       const oldName = contextNode.name;
       const updatedNodes = prev.nodes.map(node => {
         if (node.id === contextNode.id) {
-          return {
+          const updated = {
             ...node,
             name: nextName,
             ...(node.type === 'officer' ? { subtype: editNodeSubtype } : {}),
           };
+          // Author layer: a renamed REGISTRY node carries where it came from
+          // (markRenamed keeps the first registry name across later renames;
+          // an author node is never marked — it has no registry name to keep).
+          return (oldName && oldName !== nextName && !isAuthorNode(node))
+            ? markRenamed(updated, oldName)
+            : updated;
         }
         // Keep company/officer textual references aligned when renaming companies.
         if (oldName && oldName !== nextName) {
@@ -11379,8 +11449,8 @@ const SpanishCompanyNetworkGraph = ({
               sx={{ height: 22, fontSize: '0.68rem' }}
             />
           )}
-          {!isCompactEmbed && hiddenNodeIds.size > 0 && (
-            <Tooltip title={text.manageHiddenNodes}>
+          {!isCompactEmbed && (hiddenNodeIds.size > 0 || hiddenLinksList.length > 0) && (
+            <Tooltip title={text.manageHidden}>
               <Button
                 size="small"
                 variant="outlined"
@@ -11391,7 +11461,7 @@ const SpanishCompanyNetworkGraph = ({
                 startIcon={<VisibilityIcon sx={{ fontSize: 14 }} />}
                 sx={{ fontSize: '0.7rem', py: 0, textTransform: 'none' }}
               >
-                {text.hiddenButton(hiddenNodesList.length)}
+                {text.hiddenButton(hiddenNodesList.length + hiddenLinksList.length)}
               </Button>
             </Tooltip>
           )}
@@ -12028,6 +12098,10 @@ const SpanishCompanyNetworkGraph = ({
           authorNode={previewedAuthorNode}
           onEditAuthorNode={() => setAuthorNodeDialog({ initial: previewedAuthorNode, graphPoint: null })}
           canEditAuthorNode={isEditMode}
+          isEditMode={isEditMode}
+          onLinkAction={onInspectorLinkAction}
+          resolveSeatLink={resolveSeatLink}
+          renamedFrom={isRenamedNode(previewedRegistryNode) ? previewedRegistryNode.provenance.renamedFrom : null}
           counts={inspectorCounts}
           isCorporateOfficer={
             previewNodeType === 'officer' && isCompanyOfficer(previewNodeName || '')
@@ -12243,28 +12317,52 @@ const SpanishCompanyNetworkGraph = ({
             <ListItemText>{text.showAll}</ListItemText>
           </MenuItem>
           <Divider />
-          {hiddenNodesList.length === 0 ? (
+          {hiddenNodesList.length === 0 && hiddenLinksList.length === 0 ? (
             <MenuItem disabled>
               <ListItemText>{text.noHiddenNodes}</ListItemText>
             </MenuItem>
           ) : (
-            hiddenNodesList.map(node => (
-              <MenuItem
-                key={`hidden-${node.id}`}
-                onClick={() => {
-                  unhideNode(node.id);
-                  closeHiddenNodesMenu();
-                }}
-              >
-                <ListItemIcon>
-                  <VisibilityIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={node.name}
-                  secondary={node.type === 'officer' ? text.officer : text.company}
-                />
-              </MenuItem>
-            ))
+            <>
+              {hiddenNodesList.map(node => (
+                <MenuItem
+                  key={`hidden-${node.id}`}
+                  onClick={() => {
+                    unhideNode(node.id);
+                    closeHiddenNodesMenu();
+                  }}
+                >
+                  <ListItemIcon>
+                    <VisibilityIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={node.name}
+                    secondary={node.type === 'officer' ? text.officer : text.company}
+                  />
+                </MenuItem>
+              ))}
+              {hiddenLinksList.length > 0 && (
+                <>
+                  <Divider />
+                  <Box sx={{ px: 2, py: 0.5 }}>
+                    <Typography variant="subtitle2">{text.hiddenLinks}</Typography>
+                  </Box>
+                  {hiddenLinksList.map(link => (
+                    <MenuItem key={`hidden-link-${link.id}`} disableRipple sx={{ cursor: 'default' }}>
+                      <ListItemText
+                        primary={`${link.from} — ${link.to}${link.relationship ? ` · ${link.relationship}` : ''}`}
+                      />
+                      <Button
+                        size="small"
+                        onClick={() => setGraphData(prev => restoreLink(prev, link.id))}
+                        sx={{ ml: 1, flexShrink: 0 }}
+                      >
+                        {text.restoreLink}
+                      </Button>
+                    </MenuItem>
+                  ))}
+                </>
+              )}
+            </>
           )}
         </Menu>
 
@@ -12354,7 +12452,7 @@ const SpanishCompanyNetworkGraph = ({
             </MenuItem>
           )}
           <MenuItem
-            disabled={hiddenNodeIds.size === 0}
+            disabled={hiddenNodeIds.size === 0 && hiddenLinksList.length === 0}
             onClick={() => {
               setCanvasMenu(null);
               // Anchored to the graph container (stays mounted after this menu
@@ -12846,10 +12944,7 @@ const SpanishCompanyNetworkGraph = ({
           {isEditMode && linkMenu?.link && !isAuthorLink(linkMenu.link) && (
             <MenuItem
               key="dismiss_link"
-              onClick={() => {
-                setDismissLinkReason('');
-                setDismissLinkDialog({ link: linkMenu.link });
-              }}
+              onClick={() => openDismissLinkDialog(linkMenu.link)}
             >
               <ListItemIcon><DismissLinkIcon fontSize="small" /></ListItemIcon>
               <ListItemText>{text.dismissLink}</ListItemText>
