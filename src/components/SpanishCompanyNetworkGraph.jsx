@@ -94,6 +94,7 @@ import {
   UploadFile as UploadFileIcon,
   StickyNote2 as NoteIcon,
   DeleteSweep as RemoveNoteIcon,
+  Link as LinkIcon,
 } from '@mui/icons-material';
 import PersonIcon from '@mui/icons-material/Person';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
@@ -121,7 +122,10 @@ import { anchoredCentre } from '../utils/graphDockViewport';
 import { graphKeys, diffExpansion, collapseExpansion, isEmptyExpansion } from '../utils/expansionCollapse';
 import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
-import { visibleWithoutDismissed, isAuthorLink, isAuthorNode } from '../utils/authorLayer';
+import {
+  visibleWithoutDismissed, isAuthorLink, isAuthorNode, makeAuthorLink,
+} from '../utils/authorLayer';
+import AuthorLinkDialog from './AuthorLinkDialog';
 import { resolveCompanyGroupName } from '../utils/companyGroupName';
 import { buildCompanyAliasMap } from '../utils/companyAliasLookup';
 import { mobileGraphMode } from '../utils/mobileGraphMode';
@@ -679,6 +683,43 @@ const SEARCH_COPY = {
     investigationRemove: 'Remove from selection',
     investigateSelection: 'Investigate selection',
     investigationOverCap: `Reduce the selection to ${INVESTIGATION_CAP} entities`,
+    // Author layer: links and entities the analyst adds to the map.
+    linkToNode: 'Link to another node…',
+    linkSelected: 'Link selected',
+    linkPickHint: name => `Click the node to link to ${name}. Esc cancels.`,
+    addEntity: 'Add entity…',
+    editEntity: 'Edit entity…',
+    editLink: 'Edit link…',
+    dismissLink: 'Dismiss relationship…',
+    restoreLink: 'Restore',
+    showFilings: 'Show filings',
+    fitView: 'Fit to view',
+    manageHidden: 'Manage hidden…',
+    hiddenLinks: 'Hidden relationships',
+    authorCard: 'Added by you',
+    authorLinkAdded: 'Relationship added',
+    authorNodeAdded: 'Entity added',
+    linkDismissed: 'Relationship dismissed',
+    registryName: name => `Registry name: ${name}`,
+    fieldLabel: 'Label',
+    fieldDirection: 'Direction',
+    directionNone: 'None',
+    fieldSourceText: 'Source',
+    fieldSourceUrl: 'Source URL',
+    fieldDate: 'Date',
+    fieldNote: 'Note',
+    fieldName: 'Name',
+    fieldKind: 'Kind',
+    kindPerson: 'Person',
+    kindCompany: 'Company',
+    fieldCountry: 'Country (ISO code)',
+    fieldIdentifier: 'Identifier',
+    fieldReason: 'Reason',
+    labelChips: ['Director', 'Shareholder', 'Beneficial owner', 'Family', 'Same address', 'Business partner'],
+    labelRequired: 'A label is required.',
+    nameRequired: 'A name is required.',
+    urlInvalid: 'The URL must start with http:// or https://.',
+    save: 'Save',
   },
   es: {
     type: 'Tipo',
@@ -1056,6 +1097,43 @@ const SEARCH_COPY = {
     investigationRemove: 'Quitar de la selección',
     investigateSelection: 'Investigar selección',
     investigationOverCap: `Reduce la selección a ${INVESTIGATION_CAP} entidades`,
+    // Author layer: links and entities the analyst adds to the map.
+    linkToNode: 'Enlazar con otro nodo…',
+    linkSelected: 'Enlazar selección',
+    linkPickHint: name => `Haz clic en el nodo que quieres enlazar con ${name}. Esc cancela.`,
+    addEntity: 'Añadir entidad…',
+    editEntity: 'Modificar entidad…',
+    editLink: 'Modificar enlace…',
+    dismissLink: 'Descartar relación…',
+    restoreLink: 'Restaurar',
+    showFilings: 'Ver asientos',
+    fitView: 'Ajustar vista',
+    manageHidden: 'Gestionar ocultos…',
+    hiddenLinks: 'Relaciones ocultas',
+    authorCard: 'Añadido por ti',
+    authorLinkAdded: 'Relación añadida',
+    authorNodeAdded: 'Entidad añadida',
+    linkDismissed: 'Relación descartada',
+    registryName: name => `Nombre registral: ${name}`,
+    fieldLabel: 'Etiqueta',
+    fieldDirection: 'Dirección',
+    directionNone: 'Ninguna',
+    fieldSourceText: 'Fuente',
+    fieldSourceUrl: 'URL de la fuente',
+    fieldDate: 'Fecha',
+    fieldNote: 'Nota',
+    fieldName: 'Nombre',
+    fieldKind: 'Tipo',
+    kindPerson: 'Persona',
+    kindCompany: 'Empresa',
+    fieldCountry: 'País (código ISO)',
+    fieldIdentifier: 'Identificador',
+    fieldReason: 'Motivo',
+    labelChips: ['Administrador', 'Socio', 'Titular real', 'Familia', 'Mismo domicilio', 'Socio de negocio'],
+    labelRequired: 'La etiqueta es obligatoria.',
+    nameRequired: 'El nombre es obligatorio.',
+    urlInvalid: 'La URL debe empezar por http:// o https://.',
+    save: 'Guardar',
   },
 };
 
@@ -1757,6 +1835,11 @@ const SpanishCompanyNetworkGraph = ({
   // Re-render the chip as the entitlement ticks; loadToken() is read at render.
   const [entitlementTick, setEntitlementTick] = useState(0);
   const [isEditNodeDialogOpen, setIsEditNodeDialogOpen] = useState(false);
+  // Author layer: armed by "Link to another node…"; the next node click (or
+  // Escape/background click) completes or cancels the pick.
+  const [linkPick, setLinkPick] = useState(null); // { sourceId } | null
+  // Author layer: the add/edit-link dialog's target pair, or null when closed.
+  const [linkDialog, setLinkDialog] = useState(null); // { sourceId, targetId, initial } | null
   const [isNodeNoteDialogOpen, setIsNodeNoteDialogOpen] = useState(false);
   const [nodeNotePreviewId, setNodeNotePreviewId] = useState(null);
   const [nodeNoteTargetId, setNodeNoteTargetId] = useState(null);
@@ -5910,6 +5993,15 @@ const SpanishCompanyNetworkGraph = ({
   // Click/tap handler — desktop: double-click expands; mobile: single tap opens context menu, double tap expands
   const handleNodeClick = useCallback(
     (node, event) => {
+      // Author layer: a link pick armed via the context menu intercepts the
+      // very next node click — clicking the source node itself cancels,
+      // clicking any other node opens AuthorLinkDialog on that pair.
+      if (linkPick) {
+        if (isSameNodeId(node.id, linkPick.sourceId)) { setLinkPick(null); return; }
+        setLinkDialog({ sourceId: linkPick.sourceId, targetId: node.id, initial: null });
+        setLinkPick(null);
+        return;
+      }
       if (connectionGesture.suppresses(event)) {
         lastClickRef.current = { nodeId: null, time: 0 };
         return;
@@ -6031,6 +6123,7 @@ const SpanishCompanyNetworkGraph = ({
       cancelPendingInspectorOpen,
       previewOpen,
       isInspectorDockable,
+      linkPick,
     ]
   );
 
@@ -6069,6 +6162,12 @@ const SpanishCompanyNetworkGraph = ({
 
   const handleBackgroundClick = useCallback(event => {
     if (connectionGesture.suppresses(event)) return;
+    // A background click while link-pick is armed cancels the pick instead of
+    // touching selection/focus state.
+    if (linkPick) {
+      setLinkPick(null);
+      return;
+    }
     // A node clicked moments ago is being deselected: its inspector must not
     // dock after the fact.
     cancelPendingInspectorOpen();
@@ -6078,7 +6177,7 @@ const SpanishCompanyNetworkGraph = ({
       interaction_source: isTouchDevice ? 'touch' : 'mouse',
     });
     setActiveNodeId(null);
-  }, [graphInteractionParams, isTouchDevice, clearConnectionFocus, connectionGesture, cancelPendingInspectorOpen]);
+  }, [graphInteractionParams, isTouchDevice, clearConnectionFocus, connectionGesture, cancelPendingInspectorOpen, linkPick]);
 
   const openEditNodeDialog = useCallback(() => {
     if (!contextNode) return;
@@ -6087,6 +6186,64 @@ const SpanishCompanyNetworkGraph = ({
     setIsEditNodeDialogOpen(true);
     closeNodeContextMenu();
   }, [contextNode, closeNodeContextMenu]);
+
+  // Author layer: "Link to another node…" arms pick mode; the next node
+  // click (handleNodeClick, below) supplies the second endpoint and opens
+  // AuthorLinkDialog. Escape or a background click cancels it.
+  const openLinkPickMode = useCallback(() => {
+    if (!contextNode) return;
+    setLinkPick({ sourceId: contextNode.id });
+    closeNodeContextMenu();
+  }, [contextNode, closeNodeContextMenu]);
+
+  // Author layer: the two endpoint nodes for the open AuthorLinkDialog, or
+  // null while no dialog is open. Resolved by id every render so the dialog
+  // always shows the current node name even if it was edited elsewhere.
+  const linkDialogNodes = React.useMemo(() => {
+    if (!linkDialog) return { sourceNode: null, targetNode: null };
+    const byId = new Map(graphData.nodes.map(n => [normalizeNodeId(n.id), n]));
+    return {
+      sourceNode: byId.get(normalizeNodeId(linkDialog.sourceId)) || null,
+      targetNode: byId.get(normalizeNodeId(linkDialog.targetId)) || null,
+    };
+  }, [linkDialog, graphData.nodes]);
+
+  // Author layer: save (add or edit) the link staged in linkDialog. The
+  // author's name comes from sitrepAuthor, never from the dialog, and never
+  // rides along in analytics params.
+  const handleSaveAuthorLink = useCallback(draft => {
+    if (!linkDialog) return;
+    const { sourceId, targetId, initial } = linkDialog;
+    const link = makeAuthorLink({
+      sourceId: draft.directed === 'backward' ? targetId : sourceId,
+      targetId: draft.directed === 'backward' ? sourceId : targetId,
+      label: draft.label,
+      directed: draft.directed !== 'none',
+      citationText: draft.citationText,
+      citationUrl: draft.citationUrl,
+      asserted: draft.asserted,
+      note: draft.note,
+      author: sitrepAuthor.name,
+      ...(initial ? { id: initial.id, now: initial.provenance?.at } : {}),
+    });
+    setGraphData(prev => (
+      initial
+        ? { ...prev, links: prev.links.map(l => (l.id === initial.id ? link : l)) }
+        : { ...prev, links: [...prev.links, link] }
+    ));
+    setCorrectionsSnackbar({
+      id: null,
+      message: text.authorLinkAdded,
+      undoGraph: initial
+        ? () => setGraphData(p => ({ ...p, links: p.links.map(l => (l.id === initial.id ? initial : l)) }))
+        : () => setGraphData(p => ({ ...p, links: p.links.filter(l => l.id !== link.id) })),
+    });
+    trackEvent('graph_author_link_add', {
+      directed: draft.directed !== 'none',
+      has_citation: !!(draft.citationText || draft.citationUrl),
+    });
+    setLinkDialog(null);
+  }, [linkDialog, sitrepAuthor, text]);
 
   const openNodeNoteDialog = useCallback(() => {
     if (!contextNode) return;
@@ -7656,6 +7813,18 @@ const SpanishCompanyNetworkGraph = ({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [clearConnectionFocus, tourActive, relReportOpen, nodeContextMenu]);
+
+  // Author layer: Escape cancels an armed link-pick regardless of focus, so a
+  // half-started link never lingers behind an input the user tabbed into.
+  useEffect(() => {
+    if (!linkPick) return undefined;
+    const onKeyDown = event => {
+      if (event.key !== 'Escape') return;
+      setLinkPick(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [linkPick]);
 
   // Re-fetch findings in the new language when the toggle changes while the
   // report is open; steps otherwise keep displaying whatever language they
@@ -10812,6 +10981,20 @@ const SpanishCompanyNetworkGraph = ({
                         <VisibilityOffIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
+                    {count === 2 && (
+                      <Tooltip title={text.linkSelected}>
+                        <IconButton
+                          size="small"
+                          aria-label={text.linkSelected}
+                          onClick={() => {
+                            const [sourceId, targetId] = Array.from(investigationSet);
+                            setLinkDialog({ sourceId, targetId, initial: null });
+                          }}
+                        >
+                          <LinkIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     <Tooltip title={text.clearSelection}>
                       <IconButton size="small" onClick={() => setInvestigationSet(new Set())} aria-label={text.clearSelection}>
                         <DeselectIcon fontSize="small" />
@@ -10913,7 +11096,10 @@ const SpanishCompanyNetworkGraph = ({
       {/* Graph Container (full width, table floats on top) */}
       <Box
         ref={containerCallbackRef}
-        sx={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: 'graph.surface.canvas' }}
+        sx={{
+          flex: 1, position: 'relative', overflow: 'hidden', minHeight: 200, bgcolor: 'graph.surface.canvas',
+          ...(linkPick ? { cursor: 'crosshair' } : null),
+        }}
         onMouseMove={handleContainerPointerMove}
         onPointerDownCapture={handleConnectionPointerDown}
         onPointerLeave={handleConnectionPointerLeave}
@@ -11695,6 +11881,35 @@ const SpanishCompanyNetworkGraph = ({
           onClose={() => setMonitorCompany(null)}
         />
 
+        <AuthorLinkDialog
+          open={!!linkDialog}
+          sourceNode={linkDialogNodes.sourceNode}
+          targetNode={linkDialogNodes.targetNode}
+          initial={linkDialog?.initial || null}
+          text={text}
+          onCancel={() => setLinkDialog(null)}
+          onSave={handleSaveAuthorLink}
+        />
+
+        {/* Persistent hint while a link pick is armed — no auto-hide, since the
+            pick can take as long as the analyst needs to find the other node. */}
+        <Snackbar
+          open={!!linkPick}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          message={
+            linkPick
+              ? text.linkPickHint(
+                  graphData.nodes.find(n => isSameNodeId(n.id, linkPick.sourceId))?.name || ''
+                )
+              : ''
+          }
+          action={
+            <Button color="warning" size="small" onClick={() => setLinkPick(null)}>
+              {text.cancel}
+            </Button>
+          }
+        />
+
         <Menu
           open={!!nodeContextMenu}
           onClose={closeNodeContextMenu}
@@ -11895,6 +12110,12 @@ const SpanishCompanyNetworkGraph = ({
               <EditIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>{text.editNode}</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => runContextAction('link_to_node', openLinkPickMode)}>
+            <ListItemIcon>
+              <LinkIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{text.linkToNode}</ListItemText>
           </MenuItem>
           <MenuItem
             onClick={() =>
