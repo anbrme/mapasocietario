@@ -80,11 +80,21 @@ const hopRows = (graphData, byId, path) => {
     };
     if (!links.length) {
       const { who, at } = attribution({ source: a });
-      rows.push({ who: who?.name || '', whoId: nid(who?.id), at: at?.name || '', atId: nid(at?.id), role: '', status: '', since: '', until: '' });
+      rows.push({
+        who: who?.name || '', whoId: nid(who?.id), at: at?.name || '', atId: nid(at?.id),
+        role: '', status: '', since: '', until: '', origin: 'registry',
+      });
       continue;
     }
     links.forEach(l => {
       const { who, at } = attribution(l);
+      if (l.type === 'author') {
+        rows.push({
+          who: who?.name || '', whoId: nid(who?.id), at: at?.name || '', atId: nid(at?.id),
+          role: l.relationship || '', status: 'asserted', since: day(l.date) || '', until: '', origin: 'author',
+        });
+        return;
+      }
       const ownership = l.type === 'ownership';
       const cat = getLinkEffectiveCategory(l) || l.category;
       const active = ownership ? !l.lost : isActiveOfficerCategory(cat) && !at?.isDissolved && !at?.is_dissolved;
@@ -94,7 +104,7 @@ const hopRows = (graphData, byId, path) => {
       rows.push({
         who: who?.name || '', whoId: nid(who?.id), at: at?.name || '', atId: nid(at?.id),
         role: l.relationship || l.category || '', status: active ? 'active' : 'ceased',
-        since: from || (linkCeased ? '' : d), until: linkCeased ? (to || d) : '',
+        since: from || (linkCeased ? '' : d), until: linkCeased ? (to || d) : '', origin: 'registry',
       });
     });
   }
@@ -192,7 +202,7 @@ export const connectionStep = ({ suggestion, graphData, order, lang = 'es' }) =>
     source: 'graph',
     summary,
     text: summary,
-    evidence: { hops, ends, via },
+    evidence: { hops, ends, via, authorHops: hops.filter(h => h.origin === 'author').length },
     nodeIds: [...ends, ...via],
     linkKeys,
     moment: dates.length ? dates[dates.length - 1] : null,

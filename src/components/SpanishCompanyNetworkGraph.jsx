@@ -121,6 +121,7 @@ import { anchoredCentre } from '../utils/graphDockViewport';
 import { graphKeys, diffExpansion, collapseExpansion, isEmptyExpansion } from '../utils/expansionCollapse';
 import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
+import { visibleWithoutDismissed } from '../utils/authorLayer';
 import { resolveCompanyGroupName } from '../utils/companyGroupName';
 import { buildCompanyAliasMap } from '../utils/companyAliasLookup';
 import { mobileGraphMode } from '../utils/mobileGraphMode';
@@ -1467,6 +1468,7 @@ const dedupeGraphLinks = links => {
   const dedupedMap = new Map();
 
   (links || []).forEach((link, index) => {
+    if (link.type === 'author') { dedupedMap.set(`author|${link.id}`, link); return; }
     const sourceId = normalizeNodeId(getNodeIdFromRef(link.source));
     const targetId = normalizeNodeId(getNodeIdFromRef(link.target));
     if (!sourceId || !targetId || isSameNodeId(sourceId, targetId)) return;
@@ -7275,6 +7277,7 @@ const SpanishCompanyNetworkGraph = ({
     // Start by excluding manually hidden nodes
     let activeNodes = graphData.nodes;
     let activeLinks = graphData.links;
+    activeLinks = visibleWithoutDismissed(activeLinks);
 
     // When an officer holds an ACTIVE seat at a company, drop their resigned
     // sibling-seat edges to that SAME company — otherwise a currently-active

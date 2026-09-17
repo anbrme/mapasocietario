@@ -84,8 +84,8 @@ describe('connectionStep', () => {
     expect(s.nodeIds).toEqual(['A', 'B', 'p1']);
     expect(s.linkKeys).toEqual([pairKey('A', 'p1'), pairKey('B', 'p1')]);
     expect(s.evidence.hops).toEqual([
-      { who: 'PEREZ ANA', whoId: 'p1', at: 'ALFA SL', atId: 'A', role: 'Administradora única', status: 'active', since: '2020-01-01', until: '' },
-      { who: 'PEREZ ANA', whoId: 'p1', at: 'BETA SL', atId: 'B', role: 'Consejera', status: 'ceased', since: '', until: '2021-06-01' },
+      { who: 'PEREZ ANA', whoId: 'p1', at: 'ALFA SL', atId: 'A', role: 'Administradora única', status: 'active', since: '2020-01-01', until: '', origin: 'registry' },
+      { who: 'PEREZ ANA', whoId: 'p1', at: 'BETA SL', atId: 'B', role: 'Consejera', status: 'ceased', since: '', until: '2021-06-01', origin: 'registry' },
     ]);
     expect(s.moment).toBe('2021-06-01');
     expect(s.summary).toBe('ALFA SL y BETA SL se conectan a través de PEREZ ANA · 2 pasos');
@@ -117,6 +117,28 @@ describe('connectionStep', () => {
   });
 });
 
+
+describe('connectionStep — author links', () => {
+  it('marks a hop that crosses an author link as asserted, and counts author hops', () => {
+    const a = off('a', 'A');
+    const c = co('c', 'C');
+    const b = off('b', 'B');
+    const links = [
+      {
+        id: 'author-link-1', source: 'a', target: 'c', type: 'author', category: 'author',
+        relationship: 'Family', provenance: { by: 'author' },
+      },
+      link('b', 'c', { id: 'r', type: 'officer-company', category: 'nombramientos', relationship: 'Administrador' }),
+    ];
+    const graphData = { nodes: [a, c, b], links };
+    const suggestion = { key: connectionKey(['c'], ['a', 'b']), via: ['c'], ends: ['a', 'b'], hops: 2 };
+    const s = connectionStep({ suggestion, graphData, order: 0, lang: 'en' });
+    const rows = s.evidence.hops;
+    expect(rows.find(r => r.role === 'Family')).toMatchObject({ origin: 'author', status: 'asserted' });
+    expect(rows.find(r => r.role === 'Administrador').origin).toBe('registry');
+    expect(s.evidence.authorHops).toBe(1);
+  });
+});
 
 describe('hopRows attribution per link', () => {
   it('two companies holding seats at each other in opposite directions each keep their own actor', () => {
