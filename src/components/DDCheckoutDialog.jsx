@@ -57,6 +57,7 @@ import { furthestCheckoutStage } from '../utils/checkoutAbandon';
 // here so surfaces that only announce the offer (landing page, prerenderer)
 // don't pull this dialog into their bundle; re-exported for existing importers.
 import { FREE_FIRST_REPORT_CODE } from '../copy/freeFirstReport';
+import { OPEN_DATA_LISTING_URL, openDataListingCopy } from '../copy/openDataListing';
 import { initialFreeReportState } from './freeReportDeepLink';
 export { FREE_FIRST_REPORT_CODE };
 const ANDROID_PLAY_BILLING_ENABLED = true;
@@ -1276,6 +1277,10 @@ function DDCheckoutDialogInner({
           <a href="/terms.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{copy.terms}</a>{' '}
           {copy.and}{' '}
           <a href="/privacy.html" target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{copy.privacy}</a>.
+          {' '}
+          {openDataListingCopy(lang).prefix}
+          <a href={OPEN_DATA_LISTING_URL} target="_blank" rel="noopener" style={{ color: 'inherit', textDecoration: 'underline' }}>{openDataListingCopy(lang).linkText}</a>
+          {openDataListingCopy(lang).suffix}
         </Typography>
         <Typography
           variant="caption"

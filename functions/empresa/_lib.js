@@ -30,6 +30,7 @@ import { companyPageHeaders, notFoundPageHeaders } from './_page_headers.js';
 import { groupOfficersForDisplay, BOARD_CATEGORIES } from '../../src/utils/officerGroups.js';
 import { positionLabelFor } from '../../src/utils/positionLabels.js';
 import { reconcileOfficersWithEvents } from '../../src/utils/pendingOfficerEvents.js';
+import { openDataListingHtml } from '../../src/copy/openDataListing.js';
 // A cese BORME printed under a variant spelling of an active officer closes that
 // seat here (HAJJAJI ABDELKRIM / HAJJAJI ABDEL KARIM); see the module header.
 import { foldVariantSeats } from '../../src/utils/officerNameVariants.js';
@@ -418,7 +419,7 @@ const T = {
     // list the promoted set were reachable only from a sitemap.
     footerDirectory: '<a href="/directorio">Directorio de empresas por provincia</a>',
     footer: (d) =>
-      `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial.`,
+      `Datos procedentes del Boletín Oficial del Registro Mercantil (BORME). Última actualización del registro: ${d}. Mapa Societario no es un registro oficial. ${openDataListingHtml('es')}`,
     // Held apart from the provenance sentence above so a page carrying a live
     // confirmation can drop the invitation without losing the source note.
     footerVerifyInvite: '<a href="/verificacion">¿Es esta su empresa? Verifique sus datos.</a>',
@@ -712,7 +713,7 @@ const T = {
       `Explore the ownership network, shared directors and subsidiaries of ${name}.`,
     ctaBtn: 'Open interactive map →',
     footer: (d) =>
-      `Data sourced from the Spanish Official Commercial Registry Gazette (BORME). Registry last updated: ${d}. Mapa Societario is not an official registry.`,
+      `Data sourced from the Spanish Official Commercial Registry Gazette (BORME). Registry last updated: ${d}. Mapa Societario is not an official registry. ${openDataListingHtml('en')}`,
     footerVerifyInvite: '<a href="/verificacion?lang=en">Is this your company? Verify its data.</a>',
     siblingsTitle: (province) => `Other companies in ${province}`,
     siblingsAll: (province) => `See every company in ${province} →`,

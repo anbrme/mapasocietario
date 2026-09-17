@@ -22,6 +22,7 @@ import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
+import { OPEN_DATA_LISTING_URL, openDataListingCopy } from '../copy/openDataListing';
 import FeedbackWidget from './FeedbackWidget';
 import HeroNetwork from './HeroNetwork';
 import LandingEntitySearch, { landingGraphRequestFromHref } from './LandingEntitySearch';
@@ -824,6 +825,13 @@ export default function LandingPage({ lang = 'en' }) {
               Agencia Estatal Boletín Oficial del Estado
             </Link>
             {copy.footer.basedOnSuffix}
+          </Typography>
+          <Typography variant="caption" sx={{ color: t.muted, fontSize: '0.78rem', lineHeight: 1.5, maxWidth: 760, px: 2 }}>
+            {openDataListingCopy(lang).prefix}
+            <Link href={OPEN_DATA_LISTING_URL} target="_blank" rel="noopener" sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+              {openDataListingCopy(lang).linkText}
+            </Link>
+            {openDataListingCopy(lang).suffix}
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
             <Link href={nav.reports} variant="caption" sx={{ fontSize: '0.78rem', color: 'accent.warning', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>

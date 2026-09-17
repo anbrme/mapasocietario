@@ -29,6 +29,7 @@ import { Helmet } from 'react-helmet-async';
 import LegalDisclaimer from './LegalDisclaimer';
 import DDCheckoutDialog, { FREE_FIRST_REPORT_CODE } from './DDCheckoutDialog';
 import { FREE_FIRST_REPORT_COPY } from '../copy/freeFirstReport';
+import { OPEN_DATA_LISTING_URL, openDataListingCopy } from '../copy/openDataListing';
 import { parseFreeReportParam } from './freeReportDeepLink';
 import { normalizeLanguage, getStoredSearchLanguage, getBrowserLanguage } from '../utils/language';
 import { siteNav } from '../utils/siteNav';
@@ -584,6 +585,11 @@ export default function DueDiligencePage() {
             {t.trust.sourcedPre}
             <Link href="https://stripe.com" target="_blank" rel="noopener" sx={{ color: 'text.secondary' }}>Stripe</Link>
             {t.trust.sourcedPost}
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6, display: 'block', mt: 0.5 }}>
+            {openDataListingCopy(lang).prefix}
+            <Link href={OPEN_DATA_LISTING_URL} target="_blank" rel="noopener" sx={{ color: 'text.secondary' }}>{openDataListingCopy(lang).linkText}</Link>
+            {openDataListingCopy(lang).suffix}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.disabled', lineHeight: 1.6, display: 'block', mt: 0.5 }}>
             {t.trust.invoicedPre}
