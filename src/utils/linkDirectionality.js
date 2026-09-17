@@ -32,6 +32,7 @@ export const getLinkEffectiveCategory = link => {
 // particles never disagree with what's drawn/colored on screen.
 export const isDirectionalLink = link => {
   if (!link) return false;
+  if (link.type === 'author') return !!link.directed;
   if (link.type === 'officer-company' || link.type === 'ownership') return true;
   const cat = (getLinkEffectiveCategory(link) || '').toLowerCase();
   if (BORME_SECTION_NAMES.has(cat)) return true;

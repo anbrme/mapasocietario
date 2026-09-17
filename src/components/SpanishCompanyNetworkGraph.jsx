@@ -121,7 +121,7 @@ import { anchoredCentre } from '../utils/graphDockViewport';
 import { graphKeys, diffExpansion, collapseExpansion, isEmptyExpansion } from '../utils/expansionCollapse';
 import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
-import { visibleWithoutDismissed } from '../utils/authorLayer';
+import { visibleWithoutDismissed, isAuthorLink, isAuthorNode } from '../utils/authorLayer';
 import { resolveCompanyGroupName } from '../utils/companyGroupName';
 import { buildCompanyAliasMap } from '../utils/companyAliasLookup';
 import { mobileGraphMode } from '../utils/mobileGraphMode';
@@ -439,6 +439,7 @@ const SEARCH_COPY = {
     legendSearch: 'Search',
     legendAppointments: 'Appts.',
     legendCessations: 'Cessations',
+    legendAuthor: 'Added by you',
     legendHintEmbedded: 'Click: company card | Double-click: expand | Right-click: more options',
     legendHint: 'Click: company card | Double-click: expand | Right-click: more options',
     legendHintTouch: 'Tap: company card | Double-tap: more options',
@@ -820,6 +821,7 @@ const SEARCH_COPY = {
     legendSearch: 'Búsqueda',
     legendAppointments: 'Nombram.',
     legendCessations: 'Ceses',
+    legendAuthor: 'Añadido por ti',
     legendHintEmbedded: 'Clic: ficha de empresa | Doble clic: expandir | Clic derecho: más opciones',
     legendHint: 'Clic: ficha de empresa | Doble clic: expandir | Clic derecho: más opciones',
     legendHintTouch: 'Toque: ficha de empresa | Doble toque: más opciones',
@@ -2202,6 +2204,7 @@ const SpanishCompanyNetworkGraph = ({
       expanded: graphPalette.node.expanded,
       selected: graphPalette.node.selected,
       searchOrigin: graphPalette.node.searchOrigin,
+      author: graphPalette.node.author,
     }),
     [graphPalette]
   );
@@ -7490,6 +7493,14 @@ const SpanishCompanyNetworkGraph = ({
 
   const simplifiedLowValueCount = filteredGraphData.simplifiedCount || 0;
 
+  // Whether the legend's author row should render — the visible graph has at
+  // least one author-added node or author link.
+  const hasAuthorElements = React.useMemo(
+    () =>
+      filteredGraphData.nodes.some(isAuthorNode) || filteredGraphData.links.some(isAuthorLink),
+    [filteredGraphData]
+  );
+
   const contextOfficerStatus = React.useMemo(() => {
     if (!contextNode || contextNode.type !== 'officer') return 'unknown';
 
@@ -8032,6 +8043,19 @@ const SpanishCompanyNetworkGraph = ({
         ctx.stroke();
       }
 
+      // Author-added nodes get a violet dotted ring, drawn in addition to (not
+      // instead of) the origin/pathfinder/shared-connector ring above.
+      if (isAuthorNode(node)) {
+        ctx.save();
+        ctx.setLineDash([1.5, 3]);
+        ctx.strokeStyle = nodeColors.author;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeRadius + 3.5, 0, 2 * Math.PI, false);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // Nodes are TINTED, not hollow. Outline-only shapes read as empty
       // placeholders at this size, which is exactly how they looked. An opaque
       // surface base keeps the tint identical wherever a link passes underneath,
@@ -8350,7 +8374,13 @@ const SpanishCompanyNetworkGraph = ({
       const touchesShared = !!sharedHighlightIds && (sharedHighlightIds.has(sId) || sharedHighlightIds.has(tId));
       let linkColor;
 
-      if (pathfinderActive && isLinkInPath) {
+      // Author links get a violet stroke ahead of every other branch — the
+      // pathfinder/tour/shared-highlight overrides below (the separate alpha
+      // control block) still run afterwards and may replace this colour.
+      const isAuthor = isAuthorLink(link);
+      if (isAuthor) {
+        linkColor = graphPalette.link.author;
+      } else if (pathfinderActive && isLinkInPath) {
         linkColor = PATH_HIGHLIGHT_COLOR;
       } else if (!connectionFocusActive && sharedHighlightIds && touchesShared) {
         linkColor = PATH_HIGHLIGHT_COLOR;
@@ -8389,6 +8419,7 @@ const SpanishCompanyNetworkGraph = ({
       }
 
       // Draw link — dashed for officers from a previous company name and ownership links
+      if (isAuthor) { ctx.save(); ctx.setLineDash([1.5, 3.5]); ctx.lineCap = 'round'; }
       ctx.beginPath();
       if (link.fromPreviousName) {
         ctx.setLineDash([Math.max(4, 6 / globalScale), Math.max(2, 3 / globalScale)]);
@@ -8398,7 +8429,7 @@ const SpanishCompanyNetworkGraph = ({
       ctx.moveTo(start.x, start.y);
       ctx.lineTo(end.x, end.y);
       ctx.strokeStyle = link.fromPreviousName ? (linkColor + 'AA') : linkColor; // Slightly transparent for old-name links
-      
+
       let strokeWidth = Math.max(0.3, 1 / globalScale);
       if (pathfinderActive && isLinkInPath) {
         strokeWidth = Math.max(1.3, 3 / globalScale);
@@ -8408,9 +8439,10 @@ const SpanishCompanyNetworkGraph = ({
         strokeWidth = Math.max(0.6, 1.6 / globalScale);
       }
       ctx.lineWidth = strokeWidth;
-      
+
       ctx.stroke();
       ctx.setLineDash([]); // Reset dash
+      if (isAuthor) ctx.restore();
 
       // Arrowhead at the target end — DIRECTIONAL edges only (entity→company cargo
       // appointments/ceses and owner→owned ownership). Non-directional links (e.g.
@@ -11538,6 +11570,10 @@ const SpanishCompanyNetworkGraph = ({
         {!isCompactEmbed && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
           <Box sx={{ width: 14, height: 2, bgcolor: 'graph.link.cessation' }} />
           <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.legendCessations}</Typography>
+        </Box>}
+        {!isCompactEmbed && hasAuthorElements && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+          <Box sx={{ width: 14, height: 0, borderTop: `2px dotted ${graphPalette.link.author}` }} />
+          <Typography sx={{ fontSize: 'inherit', lineHeight: 1 }}>{text.legendAuthor}</Typography>
         </Box>}
         {!isCompactEmbed && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
           <Box
