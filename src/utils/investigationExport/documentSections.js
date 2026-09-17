@@ -14,6 +14,9 @@ import { renderGraphSvg } from './renderGraphSvg';
 import { flagVar } from './documentStyle';
 import { looksLikeGroupKey } from '../companyName';
 import { RETURN_COMPANY_CAP } from '../returnParams';
+import {
+  authorCorrectionRows, authorEntityRows, authorLinkRows, authorLinkTableHead, citationHtml,
+} from './authorLayerRows';
 
 // Re-exported: both belong to the document model now, and callers (including
 // this file's tests) reach them through the renderer they already import.
@@ -29,18 +32,6 @@ const fmtDay = isoDayLong;
 const authorLine = (doc, t) => {
   const parts = [doc.author?.name, doc.author?.organisation].map(v => String(v || '').trim()).filter(Boolean);
   return parts.length ? ` · ${esc(t.elaboratedBy)} ${esc(parts.join(' · '))}` : '';
-};
-
-// One escaped anchor for a citation, honouring the security rule everywhere a
-// citation surfaces: only an http(s) url ever becomes an <a href>, anything
-// else — including a blank or javascript: url — prints as escaped text.
-const citationHtml = citation => {
-  if (!citation) return '';
-  const label = citation.text || citation.url || '';
-  if (!label) return '';
-  return citation.url && /^https?:\/\//i.test(citation.url)
-    ? `<a href="${esc(citation.url)}">${esc(label)}</a>`
-    : esc(label);
 };
 
 // Five quiet numbers under the title: what the map holds, how many steps the
@@ -184,7 +175,7 @@ export const renderMapFigure = (doc, graphData, t, lang = 'es') => {
   </div>
   <figcaption>
     <span>${esc(t.mapCaption(c.companies || 0, c.officers || 0, c.sharedPeople || 0))}</span>
-    <span class="legend"><span><i class="co"></i>${esc(t.legendCompany)}</span><span><i class="of"></i>${esc(t.legendPerson)}</span><span><i class="live"></i>${esc(t.legendActive)}</span><span><i class="ceased"></i>${esc(t.legendCeased)}</span><span><i class="own"></i>${esc(t.legendOwnership)}</span><span><i class="flag"></i>${esc(t.legendFlag)}</span></span>
+    <span class="legend"><span><i class="co"></i>${esc(t.legendCompany)}</span><span><i class="of"></i>${esc(t.legendPerson)}</span><span><i class="live"></i>${esc(t.legendActive)}</span><span><i class="ceased"></i>${esc(t.legendCeased)}</span><span><i class="own"></i>${esc(t.legendOwnership)}</span><span><i class="flag"></i>${esc(t.legendFlag)}</span>${doc.counts?.authorElements > 0 ? `<span><i class="author"></i>${esc(t.legendAuthor)}</span>` : ''}</span>
   </figcaption>
 </figure>
 ${renderTimeControl(doc, t, lang)}
@@ -397,26 +388,17 @@ export const renderAnnexes = (doc, t) => {
   // The author's own corrections — a dismissed registry link, a renamed
   // registry node — sit in the same annex as the registry-sourced ones
   // above: both are things the author changed about what the registry said.
-  const authorCorrections = [
-    ...rows.authorLayer.dismissed.map(d => `<li>${esc(d.from)} — ${esc(d.to)}: ${esc(t.actionDismissed)}${d.reason ? ` (${esc(d.reason)})` : ''}</li>`),
-    ...rows.authorLayer.renamed.map(r => `<li>${esc(r.name)} — ${esc(t.actionRenamed)} ${esc(r.registryName)}</li>`),
-  ].join('');
-  const corrections = registryCorrections + authorCorrections;
+  // Routed through the shared correction-verb map (authorLayerRows.js) so
+  // the wording never drifts from the registry-sourced corrections beside it.
+  const corrections = registryCorrections + authorCorrectionRows(rows.authorLayer, t);
   // The relationships the author drew (a table: from, to, label, source,
   // date, note) and the entities the author added (a flat list) — empty
   // string when both are empty, so the panel hides like every other one.
-  const authorLinkRows = rows.authorLayer.links.map(l => {
-    const source = citationHtml(l.citation);
-    return `<tr><td>${esc(l.from)}</td><td>→</td><td>${esc(l.to)}</td><td>${esc(l.label)}</td><td>${source}</td><td${isDay(l.asserted) ? ' class="date"' : ''}>${esc(l.asserted || '')}</td><td>${esc(l.note || '')}</td></tr>`;
-  }).join('');
-  const authorEntityRows = rows.authorLayer.nodes.map(n => {
-    const source = citationHtml(n.citation);
-    const kind = n.kind === 'company' ? t.entity : t.individual;
-    return `<li>${esc(n.name)} · ${esc(kind)} · ${esc(n.country || '')} · ${esc(n.identifier || '')} · ${source} · ${esc(n.note || '')}</li>`;
-  }).join('');
+  const authorLinkRowsHtml = authorLinkRows(rows.authorLayer.links);
+  const authorEntityRowsHtml = authorEntityRows(rows.authorLayer.nodes, t);
   const authorLayerBody = [
-    authorLinkRows ? `<h4>${esc(t.authorRelationships)}</h4><div class="scroll"><table><tbody>${authorLinkRows}</tbody></table></div>` : '',
-    authorEntityRows ? `<h4>${esc(t.authorEntities)}</h4><ul class="plain">${authorEntityRows}</ul>` : '',
+    authorLinkRowsHtml ? `<h4>${esc(t.authorRelationships)}</h4><div class="scroll"><table>${authorLinkTableHead(t)}<tbody>${authorLinkRowsHtml}</tbody></table></div>` : '',
+    authorEntityRowsHtml ? `<h4>${esc(t.authorEntities)}</h4><ul class="plain">${authorEntityRowsHtml}</ul>` : '',
   ].filter(Boolean).join('');
   const num = sectionNumbers(doc).annexes;
   const panels = [

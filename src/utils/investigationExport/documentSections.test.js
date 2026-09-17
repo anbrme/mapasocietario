@@ -878,6 +878,44 @@ describe('author layer export', () => {
     expect(html).toContain(t.hopAuthorNote(1));
   });
 
+  it('the relationships table carries a header row naming every column', () => {
+    const html = renderAnnexes(authorLayerDoc, t);
+    expect(html).toContain('<thead>');
+    expect(html).toContain(`<th>${t.colFrom}</th>`);
+    expect(html).toContain(`<th>${t.colTo}</th>`);
+    expect(html).toContain(`<th>${t.colLabel}</th>`);
+    expect(html).toContain(`<th>${t.source}</th>`);
+    expect(html).toContain(`<th>${t.colDate}</th>`);
+    expect(html).toContain(`<th>${t.colNote}</th>`);
+  });
+
+  it('an entity with no country, identifier or note leaves no dangling separators', () => {
+    const bareEntityDoc = {
+      ...doc,
+      counts: { ...doc.counts, authorElements: 1 },
+      authorLayer: {
+        nodes: [{
+          nodeId: 'author-node-q', name: 'Q', kind: 'company', country: '', identifier: '',
+          citation: null, note: '', at: '2026-09-17T00:00:00.000Z', author: '',
+        }],
+        links: [],
+        dismissed: [],
+        renamed: [],
+      },
+    };
+    const html = renderAnnexes(bareEntityDoc, t);
+    expect(html).toContain('<li>Q · Entidad</li>');
+    expect(html).not.toMatch(/ ·\s*·/);
+  });
+
+  it('shows the author legend swatch only when the layer is non-empty', () => {
+    const withLayer = renderMapFigure(authorLayerDoc, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
+    expect(withLayer).toContain('<i class="author"></i>');
+    expect(withLayer).toContain(t.legendAuthor);
+    const withoutLayer = renderMapFigure(doc, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
+    expect(withoutLayer).not.toContain('<i class="author"></i>');
+  });
+
   it('does not mark or note a connection chapter with no author hops', () => {
     const registryOnly = {
       key: 'conn:o1', nodeId: null, kind: 'connection', order: 2, title: 'GARCIA LOPEZ ANA', source: 'graph',

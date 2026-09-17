@@ -92,6 +92,11 @@ const ES = {
     ? 'un enlace de esta ruta fue añadido por el autor'
     : `${n} enlaces de esta ruta fueron añadidos por el autor`),
   source: 'Fuente',
+  colFrom: 'De',
+  colTo: 'A',
+  colLabel: 'Etiqueta',
+  colDate: 'Fecha',
+  colNote: 'Nota',
 };
 
 const EN = {
@@ -180,6 +185,11 @@ const EN = {
     ? 'one link in this path was added by the author'
     : `${n} links in this path were added by the author`),
   source: 'Source',
+  colFrom: 'From',
+  colTo: 'To',
+  colLabel: 'Label',
+  colDate: 'Date',
+  colNote: 'Note',
 };
 
 export const EXPORT_COPY_KEYS = Object.freeze(Object.keys(ES));

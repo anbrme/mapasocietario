@@ -61,8 +61,10 @@ figure .frame{position:relative;background:var(--card);border:1px solid var(--li
 #map .l{stroke:var(--seat);stroke-width:1.2;transition:opacity .2s}
 #map .l[data-kind="ownership"]{stroke-dasharray:4 3;stroke:var(--own)}
 #map .l[data-kind="ownership"][data-lost]{stroke:var(--own-lost);opacity:.7}
+#map .l[data-kind="author"]{stroke:var(--author);stroke-dasharray:1.5 3.5;stroke-linecap:round}
 #map g.n circle{fill:var(--officer)}
 #map g.n[data-kind="company"] circle{fill:var(--company)}
+#map g.n[data-origin="author"] circle.ring{fill:none;stroke:var(--author);stroke-dasharray:1.5 3;stroke-width:1.2}
 #map g.n text{fill:var(--fg);font-size:9px;text-anchor:middle;pointer-events:none}
 #map g.n[data-kind="officer"] text{font-size:7.5px;fill:var(--muted)}
 #map g.n[data-step] text{font-weight:700;fill:var(--fg)}
@@ -79,6 +81,7 @@ figcaption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;ma
 .legend i.live{width:18px;height:0;border-top:2px solid var(--seat);border-radius:0;vertical-align:3px}
 .legend i.ceased{width:18px;height:0;border-top:2px dashed var(--ceased);border-radius:0;vertical-align:3px}
 .legend i.flag{background:transparent;border:2px solid #ef4444}
+.legend i.author{border-top:2px dotted var(--author);width:14px;height:0}
 #wt-panel{margin-top:12px;background:var(--card);border:1px solid var(--line);
 border-radius:8px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.08);flex:1 1 auto;min-height:0;overflow:auto}
 #wt-opening{border-bottom:1px solid var(--line);margin-bottom:8px;padding-bottom:8px}
