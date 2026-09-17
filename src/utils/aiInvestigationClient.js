@@ -1,6 +1,8 @@
 // Pure helpers for the AI Investigation gate. Network calls live in the
 // component; these are the unit-tested building blocks.
 
+import { isAuthorNode, isAuthorLink } from './authorLayer.js';
+
 export function isTokenValid(stored, nowSec) {
   if (!stored || !stored.token || typeof stored.expiresAt !== 'number') return false;
   return stored.expiresAt > nowSec;
@@ -75,15 +77,20 @@ function _toEntity(node) {
   return { id: node.id, name: node.name || node.label || '', type: node.type === 'officer' ? 'officer' : 'company' };
 }
 
+// The context is sent to the AI worker, so it carries only what the registry
+// published. An author entity or an author relationship is the author's own
+// work: it never leaves the browser by name, here or anywhere else.
 export function buildInvestigationContext(selectedIds, nodes, links, primarySubject) {
-  const byId = new Map((nodes || []).map((n) => [n.id, n]));
+  const byId = new Map((nodes || []).filter((n) => !isAuthorNode(n)).map((n) => [n.id, n]));
+  const registrySubject = primarySubject && !isAuthorNode(primarySubject) ? primarySubject : null;
   let entityNodes = (selectedIds || []).map((id) => byId.get(id)).filter(Boolean);
-  if (entityNodes.length === 0 && primarySubject) entityNodes = [primarySubject];
+  if (entityNodes.length === 0 && registrySubject) entityNodes = [registrySubject];
   const entities = entityNodes.map(_toEntity);
   const idSet = new Set(entities.map((e) => e.id));
-  const focusNode = (primarySubject && idSet.has(primarySubject.id)) ? primarySubject : entityNodes[0] || primarySubject || null;
+  const focusNode = (registrySubject && idSet.has(registrySubject.id)) ? registrySubject : entityNodes[0] || registrySubject || null;
   const focus = focusNode ? _toEntity(focusNode) : null;
   const edges = (links || [])
+    .filter((l) => !isAuthorLink(l))
     .map((l) => ({ source: _endpointId(l.source), target: _endpointId(l.target), type: l.type || l.category || '' }))
     .filter((e) => idSet.has(e.source) && idSet.has(e.target));
   return { focus, entities, edges };

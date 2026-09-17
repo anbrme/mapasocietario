@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { Box, Typography, Tooltip, ButtonBase, Skeleton, Chip } from '@mui/material';
+import { Box, Typography, Tooltip, ButtonBase, IconButton, Skeleton, Chip } from '@mui/material';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import GroupsIcon from '@mui/icons-material/Groups';
 import PieChartOutlineIcon from '@mui/icons-material/PieChartOutline';
+import DismissLinkIcon from '@mui/icons-material/Block';
 import OfficerMiniTimeline from './OfficerMiniTimeline.jsx';
 import { summariseOfficerSeats, officerSeatStatus } from '../utils/officerTimeline';
 import { formatDate } from '../utils/formatDate';
@@ -67,6 +68,16 @@ const OfficerInspectorBody = ({
   onOpenTimeline,
   onFocusCompany,
   onOpenDataset,
+  // Inspector relationship rows (Task 10): a seat is a registry relationship
+  // row. isEditMode gates the action (read directly here, never from global
+  // state — the parent decides and passes it down); onLinkAction(link,
+  // 'dismiss') runs it; resolveSeatLink(seat) maps the seat (company + role,
+  // not company alone — the same pair can hold several links) back to the
+  // one graph link it came from. Null hides the action for that row: no
+  // match, or more than one candidate link, both mean "don't guess".
+  isEditMode = false,
+  onLinkAction,
+  resolveSeatLink,
 }) => {
   const officers = data?.officers || [];
   const whollyOwned = data?.whollyOwned || [];
@@ -155,51 +166,76 @@ const OfficerInspectorBody = ({
             {text.rolesShort} · {seats.length}
           </SectionTitle>
           <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
-            {visibleSeats.map((seat, idx) => (
-              <ButtonBase
-                key={`${seat.company}-${seat.role}-${idx}`}
-                onClick={() => onFocusCompany?.(seat.company)}
-                sx={{
-                  display: 'flex',
-                  width: '100%',
-                  textAlign: 'left',
-                  alignItems: 'center',
-                  gap: 1,
-                  px: 1.25,
-                  py: 0.75,
-                  borderTop: idx === 0 ? 'none' : '1px solid',
-                  borderColor: 'divider',
-                  '&:hover': { bgcolor: 'action.hover' },
-                }}
-              >
-                <Tooltip title={text[seat.status] || text.unknown} arrow>
-                  <Box sx={{
-                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                    bgcolor: STATUS_COLOR[seat.status],
-                  }} />
-                </Tooltip>
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 600, fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            {visibleSeats.map((seat, idx) => {
+              // Inspector relationship rows (Task 10): only a registry link
+              // that is actually plotted (and not already dismissed) gets an
+              // action here — resolveSeatLink returns null otherwise.
+              const seatLink = isEditMode ? resolveSeatLink?.(seat) : null;
+              return (
+                <Box
+                  key={`${seat.company}-${seat.role}-${idx}`}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    borderTop: idx === 0 ? 'none' : '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <ButtonBase
+                    onClick={() => onFocusCompany?.(seat.company)}
+                    sx={{
+                      display: 'flex',
+                      width: '100%',
+                      textAlign: 'left',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.25,
+                      py: 0.75,
+                      '&:hover': { bgcolor: 'action.hover' },
+                    }}
                   >
-                    {seat.company}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.66rem' }}>
-                    {seat.role}
-                  </Typography>
+                    <Tooltip title={text[seat.status] || text.unknown} arrow>
+                      <Box sx={{
+                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                        bgcolor: STATUS_COLOR[seat.status],
+                      }} />
+                    </Tooltip>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 600, fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      >
+                        {seat.company}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.66rem' }}>
+                        {seat.role}
+                      </Typography>
+                    </Box>
+                    {seat.date && (
+                      <Typography
+                        variant="caption"
+                        className="registry-ref"
+                        sx={{ color: 'text.secondary', fontSize: '0.66rem', flexShrink: 0 }}
+                      >
+                        {formatDate(seat.date, lang)}
+                      </Typography>
+                    )}
+                  </ButtonBase>
+                  {seatLink && (
+                    <Tooltip title={text.dismissLink}>
+                      <IconButton
+                        size="small"
+                        onClick={() => onLinkAction?.(seatLink, 'dismiss')}
+                        aria-label={text.dismissLink}
+                        sx={{ borderRadius: 0, px: 1 }}
+                      >
+                        <DismissLinkIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </Box>
-                {seat.date && (
-                  <Typography
-                    variant="caption"
-                    className="registry-ref"
-                    sx={{ color: 'text.secondary', fontSize: '0.66rem', flexShrink: 0 }}
-                  >
-                    {formatDate(seat.date, lang)}
-                  </Typography>
-                )}
-              </ButtonBase>
-            ))}
+              );
+            })}
           </Box>
           {hiddenSeats > 0 && (
             <Typography

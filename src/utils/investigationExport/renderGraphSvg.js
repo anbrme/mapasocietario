@@ -55,7 +55,9 @@ export function renderGraphSvg(graphData, { flaggedIds, stepIds } = {}) {
     // A link can outlive one of its endpoints (hidden or deleted node); drawing
     // it would throw on the missing coordinates.
     if (!a || !b) return '';
-    const kindAttr = l.type === 'ownership' ? ` data-kind="ownership"${l.lost ? ' data-lost="1"' : ''}` : '';
+    const kindAttr = l.type === 'author'
+      ? ' data-kind="author"'
+      : (l.type === 'ownership' ? ` data-kind="ownership"${l.lost ? ' data-lost="1"' : ''}` : '');
     return `<line class="l" data-key="${escapeHtml(linkKey(l))}"${kindAttr} data-a="${escapeHtml(nodeId(a.id))}" data-b="${escapeHtml(nodeId(b.id))}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
   }).join('');
 
@@ -66,9 +68,13 @@ export function renderGraphSvg(graphData, { flaggedIds, stepIds } = {}) {
     const flagAttr = flag ? ` data-flag="${escapeHtml(flag)}"` : '';
     const kind = isCompany(n) ? 'company' : 'officer';
     const stepAttr = stepped.has(id) ? ' data-step="1"' : '';
+    const isAuthorNode = n.provenance?.by === 'author';
+    const originAttr = isAuthorNode ? ' data-origin="author"' : '';
+    const ring = isAuthorNode ? `<circle class="ring" cx="${n.x}" cy="${n.y}" r="${r + 3}"/>` : '';
     return (
-      `<g class="n" data-id="${escapeHtml(id)}" data-x="${n.x}" data-y="${n.y}" data-kind="${kind}"${flagAttr}${stepAttr}>`
+      `<g class="n" data-id="${escapeHtml(id)}" data-x="${n.x}" data-y="${n.y}" data-kind="${kind}"${originAttr}${flagAttr}${stepAttr}>`
       + `<circle cx="${n.x}" cy="${n.y}" r="${r}"/>`
+      + ring
       + `<text x="${n.x}" y="${n.y - r - LABEL_OFFSET}">${escapeHtml(truncate(n.name))}</text>`
       + '</g>'
     );

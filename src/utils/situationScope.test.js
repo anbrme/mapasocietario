@@ -55,3 +55,38 @@ describe('situation reports from directors', () => {
     expect(scope.companies).toEqual(['ALFA SL']);
   });
 });
+
+describe('the scope is registry-shaped', () => {
+  const authorProvenance = { by: 'author', citation: null, asserted: null, note: '', at: 'T', author: '' };
+  const withAuthorWork = {
+    nodes: [
+      ...graph.nodes,
+      { id: 'author-node-c', type: 'company', name: 'HOLDING BV', provenance: authorProvenance },
+      { id: 'author-node-p', type: 'officer', subtype: 'individual', name: 'JAN DE VRIES', provenance: authorProvenance },
+    ],
+    links: [
+      ...graph.links,
+      { id: 'author-link-1', source: 'author-node-p', target: 'a', type: 'author', category: 'author', relationship: 'Director', provenance: authorProvenance },
+      { id: 'author-link-2', source: 'author-node-p', target: 'b', type: 'author', category: 'author', relationship: 'Director', provenance: authorProvenance },
+    ],
+  };
+
+  it('keeps an author company out of the subjects and an author person out of the connectors', () => {
+    const scope = extractSituationScope(withAuthorWork, String, new Set(['director', 'author-node-c']));
+
+    expect(scope.companies).not.toContain('HOLDING BV');
+    expect(scope.companyNodes.map(c => c.nodeId)).not.toContain('author-node-c');
+    expect(scope.connectors.map(c => c.name)).not.toContain('JAN DE VRIES');
+    expect(scope.officerNodes.map(o => o.name)).not.toContain('JAN DE VRIES');
+    expect(Object.values(scope.officersByCompany).flat()).not.toContain('JAN DE VRIES');
+  });
+
+  it('leaves the registry scope exactly as it was before the author drew anything', () => {
+    const before = extractSituationScope(graph, String, new Set(['director']));
+    const after = extractSituationScope(withAuthorWork, String, new Set(['director']));
+
+    expect(after.companies).toEqual(before.companies);
+    expect(after.connectors).toEqual(before.connectors);
+    expect(after.counts).toEqual(before.counts);
+  });
+});

@@ -54,6 +54,7 @@ export const DARK_TOKENS = deepFreeze({
       expanded: '#56b387',
       selected: '#e26d9a',
       searchOrigin: '#5fd6c6',
+      author: '#a78bfa',
     },
     link: {
       appointment: '#34d399',
@@ -64,6 +65,7 @@ export const DARK_TOKENS = deepFreeze({
       ownershipLost: '#c79a3a',
       unknown: '#64748b',
       pathHighlight: '#4dd0e1',
+      author: '#a78bfa',
     },
     badge: {
       unified: '#14b8a6',
@@ -114,6 +116,7 @@ export const LIGHT_TOKENS = deepFreeze({
       expanded: '#15803d',
       selected: '#be123c',
       searchOrigin: '#0d9488',
+      author: '#6d28d9',
     },
     link: {
       appointment: '#047857',
@@ -124,6 +127,7 @@ export const LIGHT_TOKENS = deepFreeze({
       ownershipLost: '#92400e',
       unknown: '#475569',
       pathHighlight: '#0891b2',
+      author: '#6d28d9',
     },
     badge: {
       unified: '#0f766e',

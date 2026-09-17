@@ -49,6 +49,10 @@ export const hasChronology = doc => chronologyEntries(doc).length >= 2;
 // person) does not retire it here; it keeps its annex row, and any note on
 // it. Ownership rows are covered only when either side is a COMPANY
 // chapter's own title — a person chapter's title never retires one.
+const EMPTY_AUTHOR_LAYER = {
+  nodes: [], links: [], dismissed: [], renamed: [],
+};
+
 export const annexRows = doc => {
   const steps = doc?.steps || [];
   const stepIds = new Set(steps.map(s => s.nodeId || s.nodeIds?.[0]));
@@ -58,12 +62,15 @@ export const annexRows = doc => {
     connectors: (doc?.connectors || []).filter(c => !stepIds.has(c.nodeId)),
     ownership: (doc?.ownership || []).filter(o => !companyChapterTitles.has(o.owner) && !companyChapterTitles.has(o.owned)),
     corrections: doc?.corrections || [],
+    authorLayer: doc?.authorLayer || EMPTY_AUTHOR_LAYER,
   };
 };
 
 export const hasAnnexes = doc => {
   const rows = annexRows(doc);
-  return !!(rows.companies.length || rows.connectors.length || rows.ownership.length || rows.corrections.length);
+  return !!(rows.companies.length || rows.connectors.length || rows.ownership.length || rows.corrections.length
+    || rows.authorLayer.nodes.length || rows.authorLayer.links.length
+    || rows.authorLayer.dismissed.length || rows.authorLayer.renamed.length);
 };
 
 /** The single sourced line a chapter leads with, under its title. */

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildInvestigationDoc, REPORT_TITLE_MAX_LENGTH } from './investigationDoc';
+import { collectAuthorLayer, visibleWithoutDismissed } from './authorLayer';
+import { hasAnnexes } from './sitrepModel';
 
 const AT = '2026-09-10T09:00:00.000Z';
 
@@ -115,7 +117,9 @@ describe('buildInvestigationDoc', () => {
     expect(doc.corrections).toEqual([
       { action: 'merge', nameA: 'GARCIA LOPEZ, ANA', nameB: 'GARCIA LOPEZ ANA', resignedDate: '' },
     ]);
-    expect(doc.counts).toEqual({ companies: 2, officers: 2, sharedPeople: 1, notes: 3, flagged: 2 });
+    expect(doc.counts).toEqual({
+      companies: 2, officers: 2, sharedPeople: 1, notes: 3, flagged: 2, authorElements: 0,
+    });
   });
 
   it('does not mutate its inputs', () => {
@@ -274,5 +278,78 @@ describe('report title', () => {
   it('a non-string title is tolerated', () => {
     expect(build({ title: null }).subject).toBe('ALFA SL');
     expect(build({ title: 42 }).subject).toBe('42');
+  });
+});
+
+describe('author layer', () => {
+  const emptyScope = { companyNodes: [], connectors: [], ownership: [], counts: { companies: 0, officers: 0, sharedPeople: 0 } };
+
+  it('carries the author layer and counts it', () => {
+    const p = { id: 'author-node-p', name: 'P', type: 'officer', subtype: 'individual', provenance: { by: 'author', citation: null, asserted: null, note: '', at: 'T', author: '' } };
+    const c = { id: 'company-c', name: 'C', type: 'company' };
+    const l = {
+      id: 'author-link-1', source: 'author-node-p', target: 'company-c', type: 'author', category: 'author',
+      relationship: 'Director', directed: false,
+      provenance: { by: 'author', citation: null, asserted: null, note: '', at: 'T', author: '' },
+    };
+    const docWithAuthorLayer = buildInvestigationDoc({ graphData: { nodes: [p, c], links: [l] }, scope: emptyScope });
+
+    expect(docWithAuthorLayer.authorLayer.links).toHaveLength(1);
+    expect(docWithAuthorLayer.authorLayer.nodes[0].name).toBe('P');
+    expect(docWithAuthorLayer.counts.authorElements).toBe(2);
+    expect(hasAnnexes(docWithAuthorLayer)).toBe(true);
+  });
+
+  it('lists a dismissal the visible graph can no longer show', () => {
+    // The caller hands the document the graph it is looking at, which is past
+    // visibleWithoutDismissed — the dismissed link is simply not in it.
+    const a = { id: 'company-a', name: 'A', type: 'company' };
+    const b = { id: 'company-b', name: 'B', type: 'company' };
+    const dismissed = {
+      id: 'l1', source: 'company-a', target: 'company-b', type: 'officer-company',
+      relationship: 'Administrador',
+      dismissed: { by: 'author', reason: 'Ceased in 2019', at: 'T' },
+    };
+    const full = { nodes: [a, b], links: [dismissed] };
+    const visible = { ...full, links: visibleWithoutDismissed(full.links) };
+    expect(visible.links).toHaveLength(0);
+
+    const doc = buildInvestigationDoc({
+      graphData: visible,
+      scope: emptyScope,
+      dismissedLinks: collectAuthorLayer(full).dismissed,
+    });
+
+    expect(doc.authorLayer.dismissed).toEqual([
+      { from: 'A', to: 'B', relationship: 'Administrador', reason: 'Ceased in 2019', at: 'T' },
+    ]);
+    expect(doc.counts.authorElements).toBe(1);
+  });
+
+  it('lists a dismissal once when the caller passes the unfiltered graph as well', () => {
+    const a = { id: 'company-a', name: 'A', type: 'company' };
+    const b = { id: 'company-b', name: 'B', type: 'company' };
+    const full = {
+      nodes: [a, b],
+      links: [{
+        id: 'l1', source: 'company-a', target: 'company-b', type: 'officer-company',
+        relationship: 'Administrador', dismissed: { by: 'author', reason: '', at: 'T' },
+      }],
+    };
+    const doc = buildInvestigationDoc({
+      graphData: full, scope: emptyScope, dismissedLinks: collectAuthorLayer(full).dismissed,
+    });
+
+    expect(doc.authorLayer.dismissed).toHaveLength(1);
+    expect(doc.counts.authorElements).toBe(1);
+  });
+
+  it('counts zero and stays annex-empty when the graph carries no author elements', () => {
+    const plainDoc = buildInvestigationDoc({ graphData: { nodes: [], links: [] }, scope: emptyScope });
+
+    expect(plainDoc.counts.authorElements).toBe(0);
+    expect(plainDoc.authorLayer).toEqual({
+      nodes: [], links: [], dismissed: [], renamed: [],
+    });
   });
 });

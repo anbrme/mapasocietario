@@ -173,6 +173,143 @@ describe('buildReportHtml', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
+  describe('author layer', () => {
+    const authorLayerDoc = {
+      ...doc,
+      counts: { ...doc.counts, authorElements: 1 },
+      authorLayer: {
+        nodes: [{
+          nodeId: 'author-node-p', name: 'P', kind: 'person', country: 'ES', identifier: '',
+          citation: null, note: '', at: '2026-09-17T00:00:00.000Z', author: '',
+        }],
+        links: [{
+          from: 'P', fromId: 'author-node-p', to: 'ALFA SL', toId: 'c1', label: 'Director', directed: false,
+          citation: { text: '', url: 'https://example.com/proof' }, asserted: '2026-09-01', note: '', at: '2026-09-17T00:00:00.000Z', author: '',
+        }],
+        dismissed: [{
+          from: 'ALFA SL', to: 'BETA SL', relationship: 'Administrador', reason: 'wrong link', at: '2026-09-17T00:00:00.000Z',
+        }],
+        renamed: [{ nodeId: 'c1', name: 'ALFA SL NUEVO', registryName: 'ALFA SL' }],
+      },
+    };
+
+    it('mirrors the annex: a header-bearing relationships table and an entities list', () => {
+      const html = buildReportHtml(authorLayerDoc, { es: false });
+
+      expect(html).toContain('Added by the author');
+      expect(html).toContain('Relationships');
+      expect(html).toContain('Entities');
+      expect(html).toContain('Director');
+      expect(html).toContain('href="https://example.com/proof"');
+      expect(html).toContain('<th>From</th>');
+      expect(html).toContain('<th>To</th>');
+      expect(html).toContain('<th>Label</th>');
+      expect(html).toContain('<th>Date</th>');
+      expect(html).toContain('<th>Note</th>');
+    });
+
+    it('appends author dismissals and renames to the corrections list', () => {
+      const html = buildReportHtml(authorLayerDoc, { es: false });
+
+      expect(html).toContain('relationship dismissed');
+      expect(html).toContain('wrong link');
+      expect(html).toContain('renamed from');
+      expect(html).toContain('ALFA SL NUEVO');
+    });
+
+    it('omits the author-layer block entirely when the layer is empty', () => {
+      const html = buildReportHtml(doc, { es: false });
+      expect(html).not.toContain('Added by the author');
+    });
+
+    it('marks an asserted hop in a connection chapter', () => {
+      const connectionWithAuthorHop = {
+        key: 'conn:o1', nodeId: null, kind: 'connection', order: 2, title: 'GARCIA LOPEZ ANA', source: 'graph',
+        summary: 'ALFA SL and OTRA SL connect through GARCIA LOPEZ ANA', text: '',
+        narrative: null, authorNote: null, moment: null, nodeIds: ['c1', 'other', 'o1'], linkKeys: [],
+        evidence: {
+          hops: [
+            {
+              who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'ALFA SL', atId: 'c1', role: 'Sole director', status: 'active', since: '2021-03-01', until: '',
+            },
+            {
+              who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'OTRA SL', atId: 'other', role: 'Declared link', status: 'asserted', since: '', until: '', origin: 'author',
+            },
+          ],
+        },
+      };
+      const html = buildReportHtml({ ...doc, steps: [connectionWithAuthorHop] }, { es: false });
+
+      expect(html).toContain('(asserted)');
+    });
+
+    it('does not mark a connection chapter with no author hops', () => {
+      const registryOnly = {
+        key: 'conn:o1', nodeId: null, kind: 'connection', order: 2, title: 'GARCIA LOPEZ ANA', source: 'graph',
+        summary: 'x', text: '',
+        narrative: null, authorNote: null, moment: null, nodeIds: ['c1', 'other', 'o1'], linkKeys: [],
+        evidence: {
+          hops: [{
+            who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'ALFA SL', atId: 'c1', role: 'Sole director', status: 'active', since: '2021-03-01', until: '',
+          }],
+        },
+      };
+      const html = buildReportHtml({ ...doc, steps: [registryOnly] }, { es: false });
+
+      expect(html).not.toContain('(asserted)');
+    });
+
+    it('never emits an href for a javascript: url citation, printing it as escaped text instead', () => {
+      const hostile = {
+        ...doc,
+        authorLayer: {
+          nodes: [],
+          dismissed: [],
+          renamed: [],
+          links: [{
+            from: 'A', fromId: 'a', to: 'B', toId: 'b', label: 'L', directed: false,
+            citation: { text: '', url: 'javascript:alert(1)' }, asserted: null, note: '', at: 'T', author: '',
+          }],
+        },
+      };
+      const html = buildReportHtml(hostile, { es: false });
+
+      expect(html).not.toContain('href="javascript');
+      expect(html).toContain('javascript:alert(1)');
+    });
+
+    it("lists a chapter's own author-added links, but not a connection chapter that touches none", () => {
+      const connectionStep = {
+        key: 'conn:o1',
+        nodeId: null,
+        kind: 'connection',
+        order: 2,
+        title: 'GARCIA LOPEZ ANA',
+        source: 'graph',
+        summary: 'x',
+        text: '',
+        narrative: null,
+        authorNote: null,
+        moment: null,
+        nodeIds: ['c1', 'other', 'o1'],
+        linkKeys: [],
+        evidence: { hops: [] },
+      };
+      // step's nodeId is 'c1', which authorLayerDoc's one link touches (toId: 'c1').
+      const html = buildReportHtml({ ...authorLayerDoc, steps: [step, connectionStep] }, { es: false });
+
+      const companyChapterHtml = html.slice(html.indexOf('01 ·'), html.indexOf('02 ·'));
+      expect(companyChapterHtml).toContain('Added by the author');
+      expect(companyChapterHtml).toContain('Director');
+
+      // Bounded to the chapters section only — the document-level annex
+      // further down legitimately carries its own "Added by the author"
+      // heading, which must not leak into this assertion.
+      const connectionChapterHtml = html.slice(html.indexOf('02 ·'), html.indexOf('<h3>Shared connections'));
+      expect(connectionChapterHtml).not.toContain('Added by the author');
+    });
+  });
+
   it('speaks English when the report does', () => {
     const html = buildReportHtml({ ...doc, steps: [step] }, { es: false });
 

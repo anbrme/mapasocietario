@@ -29,6 +29,16 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).not.toMatch(/url\(https?:/);
   });
 
+  it('styles the cover author notice instead of leaving it unstyled', () => {
+    // documentSections renders <p class="notice"> on the cover whenever the
+    // document carries author elements; without a rule it printed as an
+    // ordinary paragraph, as loud as the title's neighbours.
+    expect(DOCUMENT_STYLE).toContain('.notice{');
+    expect(DOCUMENT_STYLE).toMatch(/\.notice\{[^}]*color:var\(--muted\)/);
+    expect(DOCUMENT_STYLE).toMatch(/\.notice\{[^}]*font-size:/);
+    expect(DOCUMENT_STYLE).toMatch(/\.notice\{[^}]*margin:/);
+  });
+
   it('flagVar maps known flags and falls back to none', () => {
     expect(flagVar('red')).toBe(`--f:${FLAG_COLORS.red}`);
     expect(flagVar('bogus')).toBe(`--f:${FLAG_COLORS.none}`);
@@ -117,6 +127,20 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).toContain('.chapter h4{');
     expect(DOCUMENT_STYLE).toContain('.kv{');
     expect(DOCUMENT_STYLE).toContain('nav.contents a.sub{');
+  });
+
+  it('defines the author accent in light and dark, and styles an asserted hop row', () => {
+    expect(DOCUMENT_STYLE).toContain('--author:#6d28d9');
+    expect(DOCUMENT_STYLE).toContain('--author:#a78bfa');
+    expect(DOCUMENT_STYLE).toContain('.hop-author td{font-style:italic}');
+    expect(DOCUMENT_STYLE).toContain('.hop-author .swatch{display:inline-block;width:12px;border-top:2px dotted var(--author);margin-right:4px;vertical-align:middle}');
+    // The dark value must live inside the dark-scheme media query, not just
+    // anywhere in the file.
+    const darkBlock = DOCUMENT_STYLE.slice(
+      DOCUMENT_STYLE.indexOf('@media (prefers-color-scheme: dark)'),
+      DOCUMENT_STYLE.indexOf('*{box-sizing:border-box}'),
+    );
+    expect(darkBlock).toContain('--author:#a78bfa');
   });
 });
 

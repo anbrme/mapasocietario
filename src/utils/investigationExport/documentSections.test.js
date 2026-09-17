@@ -770,3 +770,201 @@ describe('company roster: governing body, folded apoderados, ceased folded, on-m
     expect(h).not.toContain('Órgano de administración');
   });
 });
+
+describe('author layer export', () => {
+  const authorLayerDoc = {
+    ...doc,
+    counts: { ...doc.counts, authorElements: 2 },
+    authorLayer: {
+      nodes: [{
+        nodeId: 'author-node-p', name: 'P', kind: 'person', country: 'ES', identifier: '',
+        citation: null, note: '', at: '2026-09-17T00:00:00.000Z', author: '',
+      }],
+      links: [{
+        from: 'P', fromId: 'author-node-p', to: 'ALFA SL', toId: 'c1', label: 'Director', directed: false,
+        citation: { text: '', url: 'https://example.com/proof' }, asserted: '2026-09-01', note: '', at: '2026-09-17T00:00:00.000Z', author: '',
+      }],
+      dismissed: [],
+      renamed: [],
+    },
+  };
+
+  it('prints the author notice under the byline when the layer is non-empty', () => {
+    const html = renderCover(authorLayerDoc, t, 'es');
+    expect(html).toContain('class="notice"');
+    expect(html).toContain('elementos añadidos por el autor');
+  });
+
+  it('omits the notice when there is no author layer', () => {
+    expect(renderCover(doc, t, 'es')).not.toContain('class="notice"');
+  });
+
+  it('renders the Added by the author annex with relationship and entity rows', () => {
+    const html = renderAnnexes(authorLayerDoc, t);
+    expect(html).toContain('id="authorLayer"');
+    expect(html).toContain('Director');
+    expect(html).toContain('P ·');
+    expect(html).toContain('href="https://example.com/proof"');
+  });
+
+  it('gives the relationships table an arrow only when the link is directed', () => {
+    // The direction column sits between From and To; an undirected link is a
+    // mutual statement and must not print as a claim about direction.
+    expect(renderAnnexes(authorLayerDoc, t)).toContain('<td>—</td>');
+    expect(renderAnnexes(authorLayerDoc, t)).not.toContain('<td>→</td>');
+
+    const directed = {
+      ...authorLayerDoc,
+      authorLayer: {
+        ...authorLayerDoc.authorLayer,
+        links: [{ ...authorLayerDoc.authorLayer.links[0], directed: true }],
+      },
+    };
+    expect(renderAnnexes(directed, t)).toContain('<td>→</td>');
+  });
+
+  it('renderAnnexes omits the author-layer panel when it is entirely empty', () => {
+    const html = renderAnnexes(doc, t);
+    expect(html).not.toContain('id="authorLayer"');
+  });
+
+  it('lists dismissals and renames in the corrections annex', () => {
+    const withCorrections = {
+      ...doc,
+      authorLayer: {
+        nodes: [],
+        links: [],
+        dismissed: [{
+          from: 'ALFA SL', to: 'BETA SL', relationship: 'Administrador', reason: 'wrong link', at: '2026-09-17T00:00:00.000Z',
+        }],
+        renamed: [{ nodeId: 'c1', name: 'ALFA SL NUEVO', registryName: 'ALFA SL' }],
+      },
+    };
+    const html = renderAnnexes(withCorrections, t);
+    expect(html).toContain('relación descartada');
+    expect(html).toContain('wrong link');
+    expect(html).toContain('renombrado desde');
+    expect(html).toContain('ALFA SL NUEVO');
+  });
+
+  it('lists author-added relationships under the chapter of the node they touch', () => {
+    const docWithLinks = {
+      ...doc,
+      steps: [companyStep('c1')],
+      authorLayer: {
+        nodes: [],
+        dismissed: [],
+        renamed: [],
+        links: [{
+          from: 'ALFA SL', fromId: 'c1', to: 'P', toId: 'author-node-p', label: 'Director', directed: false,
+          citation: { text: 'Press release', url: 'https://example.com/press' }, asserted: null, note: '', at: 'T', author: '',
+        }],
+      },
+    };
+    const html = renderChapters(docWithLinks, t, wt);
+    expect(html).toContain(t.authorLayer);
+    // The link is undirected, so it reads as a dash: an arrow would claim a
+    // direction the author did not assert.
+    expect(html).toContain('ALFA SL — P');
+    expect(html).not.toContain('ALFA SL → P');
+    expect(html).toContain('Director');
+    expect(html).toContain('href="https://example.com/press"');
+  });
+
+  it('draws the arrow only for a relationship the author marked directed', () => {
+    const directedDoc = {
+      ...doc,
+      steps: [companyStep('c1')],
+      authorLayer: {
+        nodes: [],
+        dismissed: [],
+        renamed: [],
+        links: [{
+          from: 'ALFA SL', fromId: 'c1', to: 'P', toId: 'author-node-p', label: 'Director', directed: true,
+          citation: null, asserted: null, note: '', at: 'T', author: '',
+        }],
+      },
+    };
+    expect(renderChapters(directedDoc, t, wt)).toContain('ALFA SL → P');
+  });
+
+  it('omits the author-links block from a chapter that touches none', () => {
+    const html = renderChapters({ ...doc, steps: [companyStep('c1')] }, t, wt);
+    expect(html).not.toContain(t.authorLayer);
+  });
+
+  it('marks an asserted hop row and notes how many the path holds', () => {
+    const connectionWithAuthorHop = {
+      key: 'conn:o1', nodeId: null, kind: 'connection', order: 2, title: 'GARCIA LOPEZ ANA', source: 'graph',
+      summary: 'ALFA SL y OTRA SL se conectan a través de GARCIA LOPEZ ANA', text: '',
+      narrative: null, authorNote: null, moment: null, nodeIds: ['c1', 'other', 'o1'], linkKeys: [],
+      evidence: {
+        ends: ['c1', 'other'],
+        via: ['o1'],
+        authorHops: 1,
+        hops: [
+          { who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'ALFA SL', atId: 'c1', role: 'Administradora única', status: 'active', since: '2021-03-01', until: '' },
+          { who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'OTRA SL', atId: 'other', role: 'Enlace declarado', status: 'asserted', since: '', until: '', origin: 'author' },
+        ],
+      },
+    };
+    const html = renderChapters({ ...doc, steps: [connectionWithAuthorHop] }, t, wt);
+    expect(html).toContain('class="hop-author"');
+    expect(html).toContain('afirmado');
+    expect(html).toContain(t.hopAuthorNote(1));
+  });
+
+  it('the relationships table carries a header row naming every column', () => {
+    const html = renderAnnexes(authorLayerDoc, t);
+    expect(html).toContain('<thead>');
+    expect(html).toContain(`<th>${t.colFrom}</th>`);
+    expect(html).toContain(`<th>${t.colTo}</th>`);
+    expect(html).toContain(`<th>${t.colLabel}</th>`);
+    expect(html).toContain(`<th>${t.source}</th>`);
+    expect(html).toContain(`<th>${t.colDate}</th>`);
+    expect(html).toContain(`<th>${t.colNote}</th>`);
+  });
+
+  it('an entity with no country, identifier or note leaves no dangling separators', () => {
+    const bareEntityDoc = {
+      ...doc,
+      counts: { ...doc.counts, authorElements: 1 },
+      authorLayer: {
+        nodes: [{
+          nodeId: 'author-node-q', name: 'Q', kind: 'company', country: '', identifier: '',
+          citation: null, note: '', at: '2026-09-17T00:00:00.000Z', author: '',
+        }],
+        links: [],
+        dismissed: [],
+        renamed: [],
+      },
+    };
+    const html = renderAnnexes(bareEntityDoc, t);
+    expect(html).toContain('<li>Q · Entidad</li>');
+    expect(html).not.toMatch(/ ·\s*·/);
+  });
+
+  it('shows the author legend swatch only when the layer is non-empty', () => {
+    const withLayer = renderMapFigure(authorLayerDoc, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
+    expect(withLayer).toContain('<i class="author"></i>');
+    expect(withLayer).toContain(t.legendAuthor);
+    const withoutLayer = renderMapFigure(doc, { nodes: [{ id: 'c1', type: 'company', name: 'ALFA SL', x: 1, y: 2 }], links: [] }, t);
+    expect(withoutLayer).not.toContain('<i class="author"></i>');
+  });
+
+  it('does not mark or note a connection chapter with no author hops', () => {
+    const registryOnly = {
+      key: 'conn:o1', nodeId: null, kind: 'connection', order: 2, title: 'GARCIA LOPEZ ANA', source: 'graph',
+      summary: 'x', text: '',
+      narrative: null, authorNote: null, moment: null, nodeIds: ['c1', 'other', 'o1'], linkKeys: [],
+      evidence: {
+        ends: ['c1', 'other'],
+        via: ['o1'],
+        hops: [{ who: 'GARCIA LOPEZ ANA', whoId: 'o1', at: 'ALFA SL', atId: 'c1', role: 'Administradora única', status: 'active', since: '2021-03-01', until: '' }],
+      },
+    };
+    const html = renderChapters({ ...doc, steps: [registryOnly] }, t, wt);
+    expect(html).not.toContain('hop-author');
+    expect(html).not.toContain(t.hopAuthorNote(1));
+  });
+});

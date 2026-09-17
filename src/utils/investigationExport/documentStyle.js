@@ -19,11 +19,11 @@ ${face(700, PLEX_SANS_BOLD_WOFF2_B64)}
 :root{color-scheme:light dark;
 --bg:#FBFBFA;--fg:#0B1324;--muted:#58677D;--line:#CCD6E3;--card:#FFFFFF;--soft:#F3F6FA;
 --accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1;
---seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e}
+--seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e;--author:#6d28d9}
 @media (prefers-color-scheme: dark){:root{
 --bg:#14161A;--fg:#E8E8E4;--muted:#9A9A94;--line:#2A2D33;--card:#1C1F24;--soft:#181B20;
 --accent:#2DD4BF;--accent-soft:#12302C;--company:#2DD4BF;--officer:#94A3B8;--link:#3A3F47;
---seat:#34d399;--ceased:#f87171;--own:#fbbf24;--own-lost:#c79a3a}}
+--seat:#34d399;--ceased:#f87171;--own:#fbbf24;--own-lost:#c79a3a;--author:#a78bfa}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -35,6 +35,11 @@ a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 header.cover{padding-bottom:28px;border-bottom:1px solid var(--line);margin-bottom:32px}
 header.cover h1{font-size:2rem;line-height:1.15;margin:8px 0 10px;font-weight:700;letter-spacing:-.01em}
 .meta{color:var(--muted);font-size:.88rem}
+/* The cover's author notice: the document says on its face that it carries
+   the author's own elements. Muted and small so it sits under the byline
+   without competing with the title, and carrying the author layer's violet
+   edge so the page and the map say "author" the same way. */
+.notice{margin:10px 0 0;padding-left:10px;border-left:2px solid var(--author);color:var(--muted);font-size:.84rem}
 .status{margin-top:18px;padding:10px 14px;border-left:2px solid var(--line);color:var(--muted);font-size:.86rem}
 .facts{list-style:none;display:flex;flex-wrap:wrap;gap:8px 28px;margin:18px 0 0;padding:0}
 .facts li{display:flex;flex-direction:column;line-height:1.25}
@@ -61,8 +66,10 @@ figure .frame{position:relative;background:var(--card);border:1px solid var(--li
 #map .l{stroke:var(--seat);stroke-width:1.2;transition:opacity .2s}
 #map .l[data-kind="ownership"]{stroke-dasharray:4 3;stroke:var(--own)}
 #map .l[data-kind="ownership"][data-lost]{stroke:var(--own-lost);opacity:.7}
+#map .l[data-kind="author"]{stroke:var(--author);stroke-dasharray:1.5 3.5;stroke-linecap:round}
 #map g.n circle{fill:var(--officer)}
 #map g.n[data-kind="company"] circle{fill:var(--company)}
+#map g.n[data-origin="author"] circle.ring{fill:none;stroke:var(--author);stroke-dasharray:1.5 3;stroke-width:1.2}
 #map g.n text{fill:var(--fg);font-size:9px;text-anchor:middle;pointer-events:none}
 #map g.n[data-kind="officer"] text{font-size:7.5px;fill:var(--muted)}
 #map g.n[data-step] text{font-weight:700;fill:var(--fg)}
@@ -79,6 +86,7 @@ figcaption{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;ma
 .legend i.live{width:18px;height:0;border-top:2px solid var(--seat);border-radius:0;vertical-align:3px}
 .legend i.ceased{width:18px;height:0;border-top:2px dashed var(--ceased);border-radius:0;vertical-align:3px}
 .legend i.flag{background:transparent;border:2px solid #ef4444}
+.legend i.author{border-top:2px dotted var(--author);width:14px;height:0}
 #wt-panel{margin-top:12px;background:var(--card);border:1px solid var(--line);
 border-radius:8px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.08);flex:1 1 auto;min-height:0;overflow:auto}
 #wt-opening{border-bottom:1px solid var(--line);margin-bottom:8px;padding-bottom:8px}
@@ -109,6 +117,8 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .chapter p{margin:0;white-space:pre-line}
 .chapter h4{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 4px}
 .chapter table{font-size:.82rem}
+.hop-author td{font-style:italic}
+.hop-author .swatch{display:inline-block;width:12px;border-top:2px dotted var(--author);margin-right:4px;vertical-align:middle}
 .chapter ul{margin:0;padding-left:18px}
 .chapter .dated ul{list-style:none;padding:0;margin:0}
 .chapter .dated li{display:grid;grid-template-columns:120px 1fr;gap:0 12px;align-items:baseline;padding:3px 0;border-top:1px solid var(--line)}
@@ -230,7 +240,7 @@ body.presenting #walkthrough{height:auto;min-height:0;padding:16px;border-left:0
 @media print{
 :root{--bg:#FFFFFF;--fg:#0B1324;--muted:#58677D;--line:#CCD6E3;--card:#FFFFFF;--soft:#F3F6FA;
 --accent:#0E8178;--accent-soft:#E5F6F3;--company:#0E8178;--officer:#64748B;--link:#CBD5E1;
---seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e}
+--seat:#047857;--ceased:#dc2626;--own:#b45309;--own-lost:#92400e;--author:#6d28d9}
 #wt-panel,.hide-print{display:none!important}
 body{background:#fff;color:#0B1324;font-size:11pt}
 /* Margins live on the wrapper too: a "Margins: none" print setting must not

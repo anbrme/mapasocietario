@@ -3,6 +3,8 @@
 // which companies are subjects and, per company, which officer names are visible.
 // Pure — no network. group_key resolution happens at submit time (async), not here.
 
+import { isAuthorNode, isAuthorLink } from './authorLayer.js';
+
 const refId = ref => (ref && typeof ref === 'object' ? ref.id : ref);
 const isCompany = n => !!n && (n.type === 'company' || n.type === 'spanish-company-group');
 const isOfficer = n => !!n && n.type === 'officer';
@@ -13,15 +15,27 @@ export function isActiveOfficerCategory(category) {
 }
 const isOwnership = l => !!l && l.type === 'ownership';
 
+// The scope is registry-shaped: every company in it becomes a subject the
+// walkthrough loader looks up in the registry API, and every person in it
+// becomes an officer row in the Connections annex. An author element has no
+// registry record behind it, so it is dropped before any of that starts — it
+// reaches the document through the author layer instead.
+export const registryOnlyGraph = graphData => ({
+  ...graphData,
+  nodes: (graphData?.nodes || []).filter(n => !isAuthorNode(n)),
+  links: (graphData?.links || []).filter(l => !isAuthorLink(l)),
+});
+
 // A working document can start from a director as well as a company. Include
 // the visible companies attached to explicitly added directors, keeping the
 // existing company-only rule for automatically pulled ownership subsidiaries.
-export function extractSituationScope(graphData, normalizeId = x => x, pinnedIds = new Set()) {
-  const nodes = graphData?.nodes || [];
+export function extractSituationScope(fullGraphData, normalizeId = x => x, pinnedIds = new Set()) {
+  const graphData = registryOnlyGraph(fullGraphData);
+  const nodes = graphData.nodes;
   const subjects = new Set([...pinnedIds].map(normalizeId));
   const officerRoots = nodes.filter(n => isOfficer(n) && subjects.has(normalizeId(n.id)));
   const officerIds = new Set(officerRoots.map(n => normalizeId(n.id)));
-  for (const link of graphData?.links || []) {
+  for (const link of graphData.links) {
     const a = normalizeId(refId(link.source)), b = normalizeId(refId(link.target));
     if (officerIds.has(a)) subjects.add(b);
     if (officerIds.has(b)) subjects.add(a);

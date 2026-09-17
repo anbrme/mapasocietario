@@ -75,6 +75,7 @@ export const personSeats = (node, graphData, lang) => {
     // A sole-shareholder link is ownership, not a seat — it never belongs in
     // the "cargos" table, however it happens to be categorised.
     if (l.type === 'ownership') return [];
+    if (l.type === 'author') return [];
     if (holderIsCompany && !(l.unified && a === id)) return [];
     // The link's effective category (latest event, falling back to the
     // build-time category) decides active/ceased — same rule the graph draws

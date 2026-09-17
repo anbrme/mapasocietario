@@ -32,6 +32,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import OfficerInspectorBody from './OfficerInspectorBody.jsx';
+import AuthorElementCard from './AuthorElementCard.jsx';
 import { FINDINGS_PANEL_ENABLED } from '../config';
 import { listedBadgeFor } from '../utils/ibex35Match';
 import { useCompanyAttestation } from '../hooks/useCompanyAttestation.js';
@@ -42,6 +43,48 @@ import { deputyTenure } from '../services/deputyTenure';
 import { trackFullCompanyProfileClick } from '../utils/track';
 import { recordCompanyDemand } from '../utils/companyDemand';
 import { formatDate } from '../utils/formatDate';
+
+// Shared chrome for both panel bodies below (the registry-fetched one and the
+// author-node one): position/size/z-index and the header's own box model live
+// here exactly once, so the two panels can never drift out of sync with each
+// other. `header` is whatever row of content each caller wants inside it;
+// everything else (body, footer) is passed as `children`.
+const InspectorPanelShell = ({ width, header, children }) => (
+  <Paper
+    elevation={0}
+    onContextMenu={e => e.preventDefault()}
+    sx={{
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      width: width ?? '100%',
+      maxWidth: '100%',
+      zIndex: 40,
+      display: 'flex',
+      flexDirection: 'column',
+      borderRadius: 0,
+      borderLeft: '1px solid',
+      borderColor: 'divider',
+    }}
+  >
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 1,
+        p: 2,
+        pb: 1.5,
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      {header}
+    </Box>
+    {children}
+  </Paper>
+);
 
 /**
  * Company / officer inspector for the network graph.
@@ -87,6 +130,26 @@ const CompanyInspectorPanel = ({
   // describing a node the canvas actually holds; null hides the control.
   onExpandNode = null,
   expandNodeLabel = '',
+  // Author layer: the node being shown, when it is one the author added
+  // (never fetched — see the parent's openDataPreview, which skips its fetch
+  // entirely for these). Takes over the whole body below in place of the
+  // registry-fetched `data`.
+  authorNode = null,
+  onEditAuthorNode,
+  // Edit map gate: the author's card offers no Edit button while the map is
+  // read-only. The node itself always stays drawn and inspectable.
+  canEditAuthorNode = false,
+  // Inspector relationship rows (Task 10): edit mode gates the per-row
+  // dismiss/edit action; onLinkAction(link, action) runs it; resolveSeatLink
+  // maps an officer seat's company name back to the graph link it came from
+  // (null when that company isn't plotted, or its link was already dismissed).
+  isEditMode = false,
+  onLinkAction,
+  resolveSeatLink,
+  // Author layer: the registry name this node was renamed FROM, when it was
+  // renamed. Null for an unrenamed node and for an author node (which was
+  // never a registry name to begin with).
+  renamedFrom = null,
 }) => {
   // The registry-detail disclosure. Closed for every node: carrying the
   // previous company's open state over is how a card stops being predictable.
@@ -113,6 +176,43 @@ const CompanyInspectorPanel = ({
   }, [open, onClose]);
 
   if (!open) return null;
+
+  // Author layer: an author-added node never reached the registry, so there
+  // is no `data` to render — the whole body is this one pure card, and it
+  // renders BEFORE any of the fetched-data branches below ever look at
+  // `data` (which stays null for these nodes; see openDataPreview).
+  if (authorNode) {
+    return (
+      <InspectorPanelShell
+        width={width}
+        header={
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+              {authorNode.type === 'officer' ? <PersonIcon /> : <BusinessIcon />}
+              <Typography variant="h6" component="span" noWrap sx={{ minWidth: 0 }}>
+                {authorNode.name}
+              </Typography>
+            </Box>
+            <IconButton onClick={onClose} size="small" aria-label={text.close}>
+              <CloseIcon />
+            </IconButton>
+          </>
+        }
+      >
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 2 }}>
+          <AuthorElementCard
+            node={authorNode}
+            text={text}
+            onEdit={onEditAuthorNode}
+            canEdit={canEditAuthorNode}
+          />
+        </Box>
+        <Box sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', textAlign: 'right' }}>
+          <Button onClick={onClose}>{text.close}</Button>
+        </Box>
+      </InspectorPanelShell>
+    );
+  }
 
   // Lifted out of the company section below: the link to the full profile is
   // the panel's primary outbound action and now sits in the header, above the
@@ -159,84 +259,65 @@ const CompanyInspectorPanel = ({
     // container reserves this width out of the canvas, so the graph reflows
     // beside the panel instead of hiding under it. `width` null means the
     // viewport is too narrow to sit side by side — the panel covers the canvas.
-    <Paper
-      elevation={0}
-      onContextMenu={e => e.preventDefault()}
-      sx={{
-        position: 'absolute',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: width ?? '100%',
-        maxWidth: '100%',
-        zIndex: 40,
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: 0,
-        borderLeft: '1px solid',
-        borderColor: 'divider',
-      }}
-    >
-      {/* Header — name on its own line, chips wrapping beneath it: the panel is
-          far narrower than the dialog was, so the old single-row title overflows. */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 1,
-          p: 2,
-          pb: 1.5,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-            {nodeType === 'officer' ? <PersonIcon /> : <BusinessIcon />}
-            <Typography variant="h6" component="span" noWrap sx={{ minWidth: 0 }}>
-              {nodeName}
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, mt: 0.75 }}>
-            <Chip
-              label={nodeType === 'officer' ? text.officer : text.company}
-              size="small"
-              color={nodeType === 'officer' ? 'warning' : 'primary'}
-              variant="outlined"
-            />
-            {/* An officer node can BE one of the curated listed entities, when
-                the filing printed the company without its legal form ("BANCO
-                SANTANDER"). The company path badges via CompanyFindings. */}
-            {nodeType === 'officer' && listedBadgeFor(nodeName, lang) && (
+    <InspectorPanelShell
+      width={width}
+      header={
+        // Name on its own line, chips wrapping beneath it: the panel is far
+        // narrower than the dialog was, so the old single-row title overflows.
+        <>
+          <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+              {nodeType === 'officer' ? <PersonIcon /> : <BusinessIcon />}
+              <Typography variant="h6" component="span" noWrap sx={{ minWidth: 0 }}>
+                {nodeName}
+              </Typography>
+            </Box>
+            {renamedFrom && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                {text.registryName(renamedFrom)}
+              </Typography>
+            )}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, mt: 0.75 }}>
               <Chip
-                label={listedBadgeFor(nodeName, lang).label}
+                label={nodeType === 'officer' ? text.officer : text.company}
                 size="small"
-                color="success"
+                color={nodeType === 'officer' ? 'warning' : 'primary'}
                 variant="outlined"
               />
-            )}
-            {userMerged && (
-              <Tooltip title={text.userMergedTooltip}>
-                <Chip label={text.userMergedBadge} size="small" color="warning" variant="outlined" />
+              {/* An officer node can BE one of the curated listed entities, when
+                  the filing printed the company without its legal form ("BANCO
+                  SANTANDER"). The company path badges via CompanyFindings. */}
+              {nodeType === 'officer' && listedBadgeFor(nodeName, lang) && (
+                <Chip
+                  label={listedBadgeFor(nodeName, lang).label}
+                  size="small"
+                  color="success"
+                  variant="outlined"
+                />
+              )}
+              {userMerged && (
+                <Tooltip title={text.userMergedTooltip}>
+                  <Chip label={text.userMergedBadge} size="small" color="warning" variant="outlined" />
+                </Tooltip>
+              )}
+              {statusChips}
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+            {onExpandNode && (
+              <Tooltip title={expandNodeLabel}>
+                <IconButton onClick={onExpandNode} size="small" color="primary" aria-label={expandNodeLabel}>
+                  <AccountTreeIcon fontSize="small" />
+                </IconButton>
               </Tooltip>
             )}
-            {statusChips}
+            <IconButton onClick={onClose} size="small" aria-label={text.close}>
+              <CloseIcon />
+            </IconButton>
           </Box>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-          {onExpandNode && (
-            <Tooltip title={expandNodeLabel}>
-              <IconButton onClick={onExpandNode} size="small" color="primary" aria-label={expandNodeLabel}>
-                <AccountTreeIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-          <IconButton onClick={onClose} size="small" aria-label={text.close}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </Box>
+        </>
+      }
+    >
       {fullHref && (
         <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
           <Button
@@ -668,6 +749,9 @@ const CompanyInspectorPanel = ({
                 onOpenTimeline={onOpenTimeline}
                 onFocusCompany={onFocusCompany}
                 onOpenDataset={onOpenDataset}
+                isEditMode={isEditMode}
+                onLinkAction={onLinkAction}
+                resolveSeatLink={resolveSeatLink}
               />
 
               <Typography
@@ -744,7 +828,7 @@ const CompanyInspectorPanel = ({
           <Button onClick={onClose}>{text.close}</Button>
         </Box>
       )}
-    </Paper>
+    </InspectorPanelShell>
   );
 };
 

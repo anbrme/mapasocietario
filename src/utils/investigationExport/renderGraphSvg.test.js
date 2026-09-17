@@ -90,6 +90,36 @@ describe('renderGraphSvg', () => {
     expect(svg).toContain('<line class="l" data-key="a|b|" data-a="a" data-b="b"');
   });
 
+  it('tags an author link with data-kind="author"', () => {
+    const authored = {
+      nodes: graphData.nodes,
+      links: [{ source: 'c1', target: 'o1', type: 'author' }],
+    };
+    const line = renderGraphSvg(authored, {}).match(/<line[^>]*>/)[0];
+    expect(line).toContain('data-kind="author"');
+  });
+
+  it('marks an author-added node with data-origin and draws a dotted ring around it', () => {
+    const authored = {
+      nodes: [{
+        id: 'a1', type: 'officer', name: 'AUTHOR NODE', x: 5, y: 5, provenance: { by: 'author' },
+      }],
+      links: [],
+    };
+    const svg = renderGraphSvg(authored, {});
+
+    expect(svg).toContain('data-origin="author"');
+    expect(svg).toContain('class="ring"');
+    // OFFICER_RADIUS (7) + 3, the ring's own radius past the fill circle.
+    expect(svg).toContain('r="10"');
+  });
+
+  it('leaves a registry node with no data-origin and no ring', () => {
+    const svg = renderGraphSvg(graphData, {});
+    expect(svg).not.toContain('data-origin');
+    expect(svg).not.toContain('class="ring"');
+  });
+
   it('stamps every line with the timeline link key', () => {
     const svg = renderGraphSvg({
       nodes: [{ id: 'a', type: 'officer', name: 'A', x: 0, y: 0 }, { id: 'b', type: 'company', name: 'B', x: 10, y: 10 }],

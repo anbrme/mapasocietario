@@ -17,6 +17,10 @@ import { walkthroughCopy, stepKindLabel } from './walkthrough/walkthroughCopy';
 import { publishableAnnotations } from './walkthrough/applyWalkthroughEdits';
 import { annexRows, chronologyEntries, hasChronology, stepEvidenceLine } from './sitrepModel';
 import { isoDayLong } from './isoDay';
+import {
+  authorCorrectionRows, authorEntityRows, authorLinkListItems, authorLinkRows, authorLinkTableHead,
+  linksTouchingNode,
+} from './investigationExport/authorLayerRows';
 
 export function buildReportHtml(doc, { es = true } = {}) {
   const lang = es ? 'es' : 'en';
@@ -60,7 +64,23 @@ export function buildReportHtml(doc, { es = true } = {}) {
     return `<li>${esc(correction.nameA)} — ${esc(correctionVerb(t, correction.action))}${tail}${when}</li>`;
   };
 
-  const correctionRows = annexes.corrections.map(correctionLine).join('');
+  // Author-made dismissals and renames go in the same list as the
+  // registry-sourced corrections above — the exported .html annex does the
+  // same, and both are routed through the shared correction-verb map.
+  const correctionRows = annexes.corrections.map(correctionLine).join('') + authorCorrectionRows(annexes.authorLayer, t);
+
+  // The author layer's own annex block: the relationships table (with the
+  // same header row and http(s)-only citation rule as the exported map) and
+  // the entities list, built from the row-builders shared with
+  // documentSections.js so the two documents never drift apart.
+  const authorLinkRowsHtml = authorLinkRows(annexes.authorLayer.links);
+  const authorEntityRowsHtml = authorEntityRows(annexes.authorLayer.nodes, t);
+  const authorLayerBody = [
+    authorLinkRowsHtml
+      ? `<p><b>${esc(t.authorRelationships)}</b></p><table border="1" cellpadding="4" cellspacing="0">${authorLinkTableHead(t)}<tbody>${authorLinkRowsHtml}</tbody></table>`
+      : '',
+    authorEntityRowsHtml ? `<p><b>${esc(t.authorEntities)}</b></p><ul>${authorEntityRowsHtml}</ul>` : '',
+  ].filter(Boolean).join('');
 
   // The story's dates in order — the chapters' own moments and every dated
   // note hung off them, each saying which chapter it belongs to.
@@ -81,7 +101,21 @@ export function buildReportHtml(doc, { es = true } = {}) {
       day(s.moment),
     ].filter(Boolean).join(' · ');
     const summary = s.summary || s.text || '';
-    const evidence = stepEvidenceLine(s, wt);
+    // A connection chapter's evidence line names its first hops; a hop the
+    // author asserted (origin: 'author') gets its own '(asserted)' suffix so
+    // it never reads as something the registry stands behind — the same
+    // distinction the exported map's hop table draws with the hop-author
+    // class and the "asserted" status word.
+    const evidence = s.kind === 'connection'
+      ? (s.evidence?.hops || []).slice(0, 2)
+        .map(h => `${h.who} · ${h.role} · ${h.at}${h.origin === 'author' ? ` (${t.asserted})` : ''}`)
+        .join(' · ')
+      : stepEvidenceLine(s, wt);
+    // The author links that touch this chapter's own node — the same
+    // per-chapter "Added by the author" list the exported .html page renders
+    // (documentSections.js's authorLinksBlock), built from the row-builder
+    // shared between the two documents.
+    const chapterAuthorLinks = linksTouchingNode(annexes.authorLayer.links, s.nodeId);
     const note = s.narrative || s.authorNote;
     const dated = publishableAnnotations(s);
     return [
@@ -89,6 +123,7 @@ export function buildReportHtml(doc, { es = true } = {}) {
       eyebrow ? `<p><small>${esc(eyebrow)}</small></p>` : '',
       summary ? `<p>${esc(summary)}</p>` : '',
       evidence ? `<p><small>${esc(t.evidenceLabel)}: ${esc(evidence)}</small></p>` : '',
+      chapterAuthorLinks.length ? `<p><b>${esc(t.authorLayer)}</b></p><ul>${authorLinkListItems(chapterAuthorLinks)}</ul>` : '',
       note?.text ? `<p><i>${esc(t.authorNote)}: ${esc(note.text)}</i></p>` : '',
       dated.length
         ? `<p><b>${esc(wt.datedNotes)}</b></p><ul>${dated.map(a =>
@@ -119,6 +154,7 @@ export function buildReportHtml(doc, { es = true } = {}) {
   ${block(t.ownership, ownershipRows ? `<ul>${ownershipRows}</ul>` : '')}
   ${block(t.otherNotes, otherRows ? `<ul>${otherRows}</ul>` : '')}
   ${block(t.corrections, correctionRows ? `<ul>${correctionRows}</ul>` : '')}
+  ${block(t.authorLayer, authorLayerBody)}
   <p><small>${esc(t.sourceLine)} — mapasocietario.es</small></p>
 </div>`;
 }

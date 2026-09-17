@@ -114,6 +114,19 @@ describe('personSeats', () => {
   });
 });
 
+describe('personSeats — author links', () => {
+  it('never lists an author link as a seat', () => {
+    const person = { id: 'p', name: 'P', type: 'officer' };
+    const company = { id: 'c', name: 'C', type: 'company' };
+    const author = {
+      id: 'author-link-1', source: 'p', target: 'c', type: 'author', category: 'author',
+      relationship: 'Director', provenance: { by: 'author' },
+    };
+    const seats = personSeats(person, { nodes: [person, company], links: [author] }, 'en');
+    expect(seats).toEqual([]);
+  });
+});
+
 describe('companyEvidence', () => {
   it('assembles identity, status, capital, activity, board, filings, findings and unseen', () => {
     const ev = companyEvidence({ node: { id: 'H:1', name: 'ACME IBERIA, SL' }, profile, events, findings, lang: 'es' });
