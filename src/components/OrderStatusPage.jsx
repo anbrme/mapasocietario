@@ -103,10 +103,10 @@ const ORDER_COPY = {
       downloadHtml: 'Download interactive edition (HTML)',
       downloadFs: (year) => `Download Financial Statements (${year})`,
       searchAnother: 'Search another company',
-      openAi: 'Open AI Investigation (2 days)',
+      openAi: 'Ask AI about this network (2 days)',
     },
     aiCode: {
-      label: 'Your AI Investigation code (valid 2 days):',
+      label: 'Your Ask AI code (valid 2 days):',
       hint: 'Keep it: this is the same code available from this page for the next 2 days.',
     },
     monitor: {
@@ -183,10 +183,10 @@ const ORDER_COPY = {
       downloadHtml: 'Descargar edición interactiva (HTML)',
       downloadFs: (year) => `Descargar Cuentas Anuales (${year})`,
       searchAnother: 'Buscar otra empresa',
-      openAi: 'Abrir Investigación por IA (2 días)',
+      openAi: 'Preguntar a la IA sobre esta red (2 días)',
     },
     aiCode: {
-      label: 'Tu código de Investigación por IA (válido 2 días):',
+      label: 'Tu código para Preguntar a la IA (válido 2 días):',
       hint: 'Guárdalo: es el mismo código disponible desde esta página durante los próximos 2 días.',
     },
     monitor: {

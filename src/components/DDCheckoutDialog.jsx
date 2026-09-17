@@ -133,7 +133,7 @@ const DD_COPY = {
     googlePlaySoon: 'Google Play checkout coming soon',
     continueStripe: subtotal => `Continue to Stripe · from EUR ${subtotal.toFixed(2)}`,
     cancel: 'Cancel',
-    aiIncluded: 'Includes 2 days of AI investigation on this company’s network',
+    aiIncluded: 'Includes 2 days to ask AI about this company’s network',
     freeReportToggle: '🎁 Use my free first report',
     freeReportHelp:
       'Your first report is on us — without financial statements. If you have a moment, tell us who you are and what you needed it for; both fields are optional. We may email one short question later. No calls, ever.',
@@ -232,7 +232,7 @@ const DD_COPY = {
     googlePlaySoon: 'Pago con Google Play próximamente',
     continueStripe: subtotal => `Continuar a Stripe · desde EUR ${subtotal.toFixed(2)}`,
     cancel: 'Cancelar',
-    aiIncluded: 'Incluye 2 días de investigación por IA sobre la red de esta empresa',
+    aiIncluded: 'Incluye 2 días para preguntar a la IA sobre la red de esta empresa',
     freeReportToggle: '🎁 Usar mi primer informe gratis',
     freeReportHelp:
       'Tu primer informe corre de nuestra cuenta — sin cuentas anuales. Si tienes un momento, cuéntanos quién eres y para qué lo necesitabas; ambos campos son opcionales. Puede que te enviemos una pregunta corta por email más adelante. Nunca llamadas.',

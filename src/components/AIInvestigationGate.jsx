@@ -16,7 +16,7 @@ const TURNSTILE_SITEKEY = '0x4AAAAAADp3WnZGNiZai_32';
 
 const COPY = {
   en: {
-    title: 'AI Investigation',
+    title: 'Ask AI',
     intro: 'Enter the email you bought with and the code from your confirmation email. Access lasts 2 days from purchase.',
     email: 'Email', code: 'Redemption code', unlock: 'Unlock',
     ask: 'Ask about this company or network…', send: 'Ask', close: 'Close',
@@ -26,11 +26,11 @@ const COPY = {
     rateLimited: 'You have hit the rate limit. Try again shortly.',
     expired: 'Your session expired. Please redeem again.',
     buyTitle: 'Don\'t have a Due Diligence report yet?',
-    buyBody: 'AI Investigation is included with every Due Diligence report: ask questions about this network and get cited answers that separate registry facts from press. 2 days of access per report.',
+    buyBody: 'Every Due Diligence report includes 2 days of Ask AI: ask questions about this network and get cited answers that separate registry facts from press.',
     buyCta: company => company ? `Get the Due Diligence report for ${company}` : 'Get a Due Diligence report',
   },
   es: {
-    title: 'Investigación por IA',
+    title: 'Preguntar a la IA',
     intro: 'Introduce el email con el que compraste y el código de tu email de confirmación. El acceso dura 2 días desde la compra.',
     email: 'Email', code: 'Código de canje', unlock: 'Desbloquear',
     ask: 'Pregunta sobre esta empresa o red…', send: 'Preguntar', close: 'Cerrar',
@@ -40,7 +40,7 @@ const COPY = {
     rateLimited: 'Has alcanzado el límite. Inténtalo en un momento.',
     expired: 'Tu sesión ha expirado. Vuelve a canjear.',
     buyTitle: '¿Aún no tienes un informe de Due Diligence?',
-    buyBody: 'La Investigación por IA se incluye con cada informe de Due Diligence: pregunta sobre esta red y obtén respuestas citadas que separan los hechos registrales de la prensa. 2 días de acceso por informe.',
+    buyBody: 'Cada informe de Due Diligence incluye 2 días para preguntar a la IA sobre esta red, con respuestas citadas que separan los hechos registrales de la prensa.',
     buyCta: company => company ? `Obtener el informe de Due Diligence de ${company}` : 'Obtener un informe de Due Diligence',
   },
 };

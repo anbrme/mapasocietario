@@ -25,7 +25,9 @@ export default function GraphReportMenu({
         aria-controls={open ? `${id}-menu` : undefined}
         aria-haspopup="menu"
         aria-expanded={open ? 'true' : undefined}
-        variant="outlined"
+        // The graph's one primary action: nothing else in its chrome is filled.
+        variant="contained"
+        disableElevation
         size="small"
         startIcon={<DescriptionIcon />}
         endIcon={<ExpandMoreIcon />}
