@@ -277,6 +277,37 @@ describe('buildReportHtml', () => {
       expect(html).not.toContain('href="javascript');
       expect(html).toContain('javascript:alert(1)');
     });
+
+    it("lists a chapter's own author-added links, but not a connection chapter that touches none", () => {
+      const connectionStep = {
+        key: 'conn:o1',
+        nodeId: null,
+        kind: 'connection',
+        order: 2,
+        title: 'GARCIA LOPEZ ANA',
+        source: 'graph',
+        summary: 'x',
+        text: '',
+        narrative: null,
+        authorNote: null,
+        moment: null,
+        nodeIds: ['c1', 'other', 'o1'],
+        linkKeys: [],
+        evidence: { hops: [] },
+      };
+      // step's nodeId is 'c1', which authorLayerDoc's one link touches (toId: 'c1').
+      const html = buildReportHtml({ ...authorLayerDoc, steps: [step, connectionStep] }, { es: false });
+
+      const companyChapterHtml = html.slice(html.indexOf('01 ·'), html.indexOf('02 ·'));
+      expect(companyChapterHtml).toContain('Added by the author');
+      expect(companyChapterHtml).toContain('Director');
+
+      // Bounded to the chapters section only — the document-level annex
+      // further down legitimately carries its own "Added by the author"
+      // heading, which must not leak into this assertion.
+      const connectionChapterHtml = html.slice(html.indexOf('02 ·'), html.indexOf('<h3>Shared connections'));
+      expect(connectionChapterHtml).not.toContain('Added by the author');
+    });
   });
 
   it('speaks English when the report does', () => {

@@ -15,7 +15,8 @@ import { flagVar } from './documentStyle';
 import { looksLikeGroupKey } from '../companyName';
 import { RETURN_COMPANY_CAP } from '../returnParams';
 import {
-  authorCorrectionRows, authorEntityRows, authorLinkRows, authorLinkTableHead, citationHtml,
+  authorCorrectionRows, authorEntityRows, authorLinkListItems, authorLinkRows, authorLinkTableHead,
+  linksTouchingNode,
 } from './authorLayerRows';
 
 // Re-exported: both belong to the document model now, and callers (including
@@ -314,23 +315,13 @@ const evidenceBlockFor = (s, t, wt, blocks) => {
   return companyEvidenceBlock(s, t, wt, blocks);
 };
 
-// The author links that touch this chapter's own node — either end of the
-// link, so a company chapter shows a link the author drew away from it just
-// as readily as one drawn onto it.
-const authorLinksFor = (doc, nodeId) => {
-  if (nodeId == null) return [];
-  const links = doc.authorLayer?.links || [];
-  return links.filter(l => l.fromId === nodeId || l.toId === nodeId);
-};
-
+// A chapter's own "Added by the author" list — the author links touching its
+// node, built from the row-builder shared with the Copy-for-Word path so the
+// two documents never drift apart.
 const authorLinksBlock = (doc, step, t) => {
-  const links = authorLinksFor(doc, step.nodeId);
+  const links = linksTouchingNode(doc.authorLayer?.links, step.nodeId);
   if (!links.length) return '';
-  const rows = links.map(l => {
-    const source = citationHtml(l.citation);
-    return `<li>${esc(l.from)} → ${esc(l.to)} · ${esc(l.label)}${source ? ` · ${source}` : ''}</li>`;
-  }).join('');
-  return `<h4>${esc(t.authorLayer)}</h4><ul class="plain">${rows}</ul>`;
+  return `<h4>${esc(t.authorLayer)}</h4><ul class="plain">${authorLinkListItems(links)}</ul>`;
 };
 
 export const renderChapters = (doc, t, wt, lang = 'es') => {

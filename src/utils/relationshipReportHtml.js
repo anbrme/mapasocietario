@@ -18,7 +18,8 @@ import { publishableAnnotations } from './walkthrough/applyWalkthroughEdits';
 import { annexRows, chronologyEntries, hasChronology, stepEvidenceLine } from './sitrepModel';
 import { isoDayLong } from './isoDay';
 import {
-  authorCorrectionRows, authorEntityRows, authorLinkRows, authorLinkTableHead,
+  authorCorrectionRows, authorEntityRows, authorLinkListItems, authorLinkRows, authorLinkTableHead,
+  linksTouchingNode,
 } from './investigationExport/authorLayerRows';
 
 export function buildReportHtml(doc, { es = true } = {}) {
@@ -110,6 +111,11 @@ export function buildReportHtml(doc, { es = true } = {}) {
         .map(h => `${h.who} · ${h.role} · ${h.at}${h.origin === 'author' ? ` (${t.asserted})` : ''}`)
         .join(' · ')
       : stepEvidenceLine(s, wt);
+    // The author links that touch this chapter's own node — the same
+    // per-chapter "Added by the author" list the exported .html page renders
+    // (documentSections.js's authorLinksBlock), built from the row-builder
+    // shared between the two documents.
+    const chapterAuthorLinks = linksTouchingNode(annexes.authorLayer.links, s.nodeId);
     const note = s.narrative || s.authorNote;
     const dated = publishableAnnotations(s);
     return [
@@ -117,6 +123,7 @@ export function buildReportHtml(doc, { es = true } = {}) {
       eyebrow ? `<p><small>${esc(eyebrow)}</small></p>` : '',
       summary ? `<p>${esc(summary)}</p>` : '',
       evidence ? `<p><small>${esc(t.evidenceLabel)}: ${esc(evidence)}</small></p>` : '',
+      chapterAuthorLinks.length ? `<p><b>${esc(t.authorLayer)}</b></p><ul>${authorLinkListItems(chapterAuthorLinks)}</ul>` : '',
       note?.text ? `<p><i>${esc(t.authorNote)}: ${esc(note.text)}</i></p>` : '',
       dated.length
         ? `<p><b>${esc(wt.datedNotes)}</b></p><ul>${dated.map(a =>

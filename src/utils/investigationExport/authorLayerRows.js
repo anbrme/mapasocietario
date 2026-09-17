@@ -39,6 +39,23 @@ export const authorLinkRows = links => links.map(l => {
     + `<td${isDay(l.asserted) ? ' class="date"' : ''}>${esc(l.asserted || '')}</td><td>${esc(l.note || '')}</td></tr>`;
 }).join('');
 
+// The author links that touch a given node — either end of the link, so a
+// chapter shows a link the author drew away from its node just as readily as
+// one drawn onto it. Shared by a chapter's own author-links list in both
+// documents (the exported annex's per-chapter block and the Word paste).
+export const linksTouchingNode = (links, nodeId) => {
+  if (nodeId == null) return [];
+  return (links || []).filter(l => l.fromId === nodeId || l.toId === nodeId);
+};
+
+// One plain <li> per author link, for a chapter's own "Added by the author"
+// list: from → to · label · source, the source honouring the same
+// http(s)-only citation rule as the relationships table.
+export const authorLinkListItems = links => links.map(l => {
+  const source = citationHtml(l.citation);
+  return `<li>${esc(l.from)} → ${esc(l.to)} · ${esc(l.label)}${source ? ` · ${source}` : ''}</li>`;
+}).join('');
+
 // Non-empty fields only, joined by ' · ' — an entity with no country, no
 // identifier and no note must never leave a dangling separator behind.
 const joinNonEmpty = parts => parts.filter(Boolean).join(' · ');
