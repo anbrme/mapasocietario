@@ -706,6 +706,7 @@ const SEARCH_COPY = {
     authorLinkAdded: 'Relationship added',
     authorNodeAdded: 'Entity added',
     linkDismissed: 'Relationship dismissed',
+    authorLinkDeleted: 'Relationship removed',
     registryName: name => `Registry name: ${name}`,
     fieldLabel: 'Label',
     fieldDirection: 'Direction',
@@ -1126,6 +1127,7 @@ const SEARCH_COPY = {
     authorLinkAdded: 'Relación añadida',
     authorNodeAdded: 'Entidad añadida',
     linkDismissed: 'Relación descartada',
+    authorLinkDeleted: 'Relación eliminada',
     registryName: name => `Nombre registral: ${name}`,
     fieldLabel: 'Etiqueta',
     fieldDirection: 'Dirección',
@@ -1894,6 +1896,17 @@ const SpanishCompanyNetworkGraph = ({
   // the snapshot-open rule that turns this on automatically.
   const [isEditMode, setIsEditMode] = useState(false);
   const [showEditExplainer, setShowEditExplainer] = useState(false);
+  // Edit map gate: turning it off cancels whatever authoring is in flight —
+  // an armed link pick, an open add/edit-link dialog, an open add/edit-entity
+  // dialog, an open dismiss-reason dialog — instead of leaving it live behind
+  // a menu that no longer offers a way to finish or reach it.
+  useEffect(() => {
+    if (isEditMode) return;
+    setLinkPick(null);
+    setLinkDialog(null);
+    setAuthorNodeDialog(null);
+    setDismissLinkDialog(null);
+  }, [isEditMode]);
   const [isNodeNoteDialogOpen, setIsNodeNoteDialogOpen] = useState(false);
   const [nodeNotePreviewId, setNodeNotePreviewId] = useState(null);
   const [nodeNoteTargetId, setNodeNoteTargetId] = useState(null);
@@ -6062,8 +6075,12 @@ const SpanishCompanyNetworkGraph = ({
     (node, event) => {
       // Author layer: a link pick armed via the context menu intercepts the
       // very next node click — clicking the source node itself cancels,
-      // clicking any other node opens AuthorLinkDialog on that pair.
+      // clicking any other node opens AuthorLinkDialog on that pair. Turning
+      // the edit-map gate off mid-pick already clears linkPick (see the
+      // isEditMode cleanup effect below), but a stale event queued in the
+      // same tick is guarded here too.
       if (linkPick) {
+        if (!isEditMode) { setLinkPick(null); return; }
         if (isSameNodeId(node.id, linkPick.sourceId)) { setLinkPick(null); return; }
         setLinkDialog({ sourceId: linkPick.sourceId, targetId: node.id, initial: null });
         setLinkPick(null);
@@ -6199,6 +6216,7 @@ const SpanishCompanyNetworkGraph = ({
       previewOpen,
       isInspectorDockable,
       linkPick,
+      isEditMode,
     ]
   );
 
@@ -6301,7 +6319,7 @@ const SpanishCompanyNetworkGraph = ({
   // author's name comes from sitrepAuthor, never from the dialog, and never
   // rides along in analytics params.
   const handleSaveAuthorLink = useCallback(draft => {
-    if (!linkDialog) return;
+    if (!linkDialog || !isEditMode) return;
     const { sourceId, targetId, initial } = linkDialog;
     const link = makeAuthorLink({
       sourceId: draft.directed === 'backward' ? targetId : sourceId,
@@ -6335,7 +6353,7 @@ const SpanishCompanyNetworkGraph = ({
       has_citation: !!(draft.citationText || draft.citationUrl),
     });
     setLinkDialog(null);
-  }, [linkDialog, sitrepAuthor, text]);
+  }, [linkDialog, sitrepAuthor, text, isEditMode]);
 
   // Author layer: right-click on a LINK opens this menu (see onLinkRightClick
   // on ForceGraph2D, below). showFilings is always offered for a registry
@@ -6360,17 +6378,17 @@ const SpanishCompanyNetworkGraph = ({
   // so removing it is its whole story — no dismissal record, just gone,
   // with the usual undo toast in case the click was a mistake.
   const handleDeleteAuthorLink = useCallback(link => {
-    if (!link) return;
+    if (!link || !isEditMode) return;
     const removed = link;
     setGraphData(prev => ({ ...prev, links: (prev.links || []).filter(l => l.id !== removed.id) }));
     setCorrectionsSnackbar({
       id: null,
-      message: text.linkDismissed,
+      message: text.authorLinkDeleted,
       undoGraph: () => setGraphData(prev => ({ ...prev, links: [...(prev.links || []), removed] })),
     });
     trackEvent('graph_author_link_delete', {});
     closeLinkMenu();
-  }, [text, closeLinkMenu]);
+  }, [text, closeLinkMenu, isEditMode]);
 
   // "Dismiss relationship…" (registry link only): filtered out of the visible
   // graph (visibleWithoutDismissed) but never deleted, so the undo toast — or
@@ -6388,12 +6406,12 @@ const SpanishCompanyNetworkGraph = ({
   }, [text]);
 
   const confirmDismissLink = useCallback(() => {
-    if (!dismissLinkDialog?.link) return;
+    if (!dismissLinkDialog?.link || !isEditMode) return;
     dismissLinkWithReason(dismissLinkDialog.link, dismissLinkReason);
     setDismissLinkDialog(null);
     setDismissLinkReason('');
     closeLinkMenu();
-  }, [dismissLinkDialog, dismissLinkReason, dismissLinkWithReason, closeLinkMenu]);
+  }, [dismissLinkDialog, dismissLinkReason, dismissLinkWithReason, closeLinkMenu, isEditMode]);
 
   // Author layer: right-click on empty canvas — "Add entity…", "Manage
   // hidden…", "Fit to view". The graph point is resolved from the click
@@ -6430,7 +6448,7 @@ const SpanishCompanyNetworkGraph = ({
   // opened from the toolbar; an edit keeps the node's current position. Never
   // calls the registry — makeAuthorNode is a pure, local constructor.
   const handleSaveAuthorNode = useCallback(draft => {
-    if (!authorNodeDialog) return;
+    if (!authorNodeDialog || !isEditMode) return;
     const { initial, graphPoint } = authorNodeDialog;
     const point = initial
       ? { x: initial.fx ?? initial.x ?? 0, y: initial.fy ?? initial.y ?? 0 }
@@ -6473,7 +6491,7 @@ const SpanishCompanyNetworkGraph = ({
       openDataPreviewRef.current?.(node);
     }
     setAuthorNodeDialog(null);
-  }, [authorNodeDialog, sitrepAuthor, text, getViewportCentreGraphPoint]);
+  }, [authorNodeDialog, sitrepAuthor, text, getViewportCentreGraphPoint, isEditMode]);
 
   const openNodeNoteDialog = useCallback(() => {
     if (!contextNode) return;
@@ -11493,7 +11511,20 @@ const SpanishCompanyNetworkGraph = ({
             // without changing what onLinkClick/onLinkRightClick fire on.
             linkPointerAreaPaint={(link, color, ctx) => {
               const { source, target } = link;
-              if (typeof source !== 'object' || typeof target !== 'object') return;
+              // Same guard as linkCanvasObject above — before the simulation
+              // has positioned both endpoints, source/target are bare id
+              // strings (or objects still missing x/y), and there is nothing
+              // to hit-test yet.
+              if (
+                typeof source !== 'object' ||
+                typeof target !== 'object' ||
+                !Object.prototype.hasOwnProperty.call(source, 'x') ||
+                !Object.prototype.hasOwnProperty.call(source, 'y') ||
+                !Object.prototype.hasOwnProperty.call(target, 'x') ||
+                !Object.prototype.hasOwnProperty.call(target, 'y')
+              ) {
+                return;
+              }
               ctx.strokeStyle = color;
               ctx.lineWidth = 8;
               ctx.beginPath();
@@ -12428,8 +12459,9 @@ const SpanishCompanyNetworkGraph = ({
             };
 
             // 1. Read — looking at what is already there, never a mutation.
-            // Monitor/investigation-selection are informational the same
-            // way, so they ride along here rather than earning a sixth group.
+            // Monitor is informational the same way, so it rides along here
+            // rather than earning a sixth group (investigation-selection
+            // moved to group 4 — it is a view/selection toggle, not a read).
             const groupRead = [
               isTouchDevice && !isAuthorNode(contextNode) && (
                 <MenuItem key="data_preview" onClick={() => runContextAction('data_preview', () => openDataPreview(contextNode))}>
@@ -12483,7 +12515,10 @@ const SpanishCompanyNetworkGraph = ({
                   </MenuItem>
                 ) : null;
               })(),
-              isMonitorableNode(contextNode) && (
+              // An author company node satisfies isMonitorableNode's own
+              // `type: 'company'` check — it never reached the registry, so
+              // there is nothing to monitor for filing changes.
+              !isAuthorNode(contextNode) && isMonitorableNode(contextNode) && (
                 <MenuItem
                   key="monitor"
                   onClick={() => {
@@ -12497,29 +12532,6 @@ const SpanishCompanyNetworkGraph = ({
                 >
                   <ListItemIcon><NotificationsActiveIcon fontSize="small" color="warning" /></ListItemIcon>
                   <ListItemText>{text.monitorCompany}</ListItemText>
-                </MenuItem>
-              ),
-              contextNode && (
-                <MenuItem
-                  key="investigation"
-                  onClick={() =>
-                    runContextAction(
-                      investigationSet.has(normalizeNodeId(contextNode?.id))
-                        ? 'investigation_remove'
-                        : 'investigation_add',
-                      () => {
-                        if (contextNode) toggleInvestigationNode(contextNode.id);
-                        closeNodeContextMenu();
-                      }
-                    )
-                  }
-                >
-                  <ListItemIcon><PsychologyIcon fontSize="small" /></ListItemIcon>
-                  <ListItemText>
-                    {investigationSet.has(normalizeNodeId(contextNode?.id))
-                      ? text.investigationRemove
-                      : text.investigationAdd}
-                  </ListItemText>
                 </MenuItem>
               ),
               contextNode && !isAuthorNode(contextNode) && contextNode.type === 'officer' && (
@@ -12745,8 +12757,33 @@ const SpanishCompanyNetworkGraph = ({
               ),
             ].filter(Boolean);
 
-            // 4. View — hide from the canvas (never deletes anything).
+            // 4. View — selecting for the walkthrough/investigation panel and
+            // hiding are both about what is shown, not what exists, so an
+            // author node may legitimately use either — ungated.
             const groupView = [
+              contextNode && (
+                <MenuItem
+                  key="investigation"
+                  onClick={() =>
+                    runContextAction(
+                      investigationSet.has(normalizeNodeId(contextNode?.id))
+                        ? 'investigation_remove'
+                        : 'investigation_add',
+                      () => {
+                        if (contextNode) toggleInvestigationNode(contextNode.id);
+                        closeNodeContextMenu();
+                      }
+                    )
+                  }
+                >
+                  <ListItemIcon><PsychologyIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText>
+                    {investigationSet.has(normalizeNodeId(contextNode?.id))
+                      ? text.investigationRemove
+                      : text.investigationAdd}
+                  </ListItemText>
+                </MenuItem>
+              ),
               <MenuItem key="hide_node" onClick={() => runContextAction('hide_node', hideNodeFromMenu)}>
                 <ListItemIcon>
                   <VisibilityOffIcon fontSize="small" />
@@ -12759,7 +12796,7 @@ const SpanishCompanyNetworkGraph = ({
                 </ListItemIcon>
                 <ListItemText>{text.hideNodeRelations}</ListItemText>
               </MenuItem>,
-            ];
+            ].filter(Boolean);
 
             // 5. Delete — its own group so it never sits one row above "Hide".
             const groupDelete = [
