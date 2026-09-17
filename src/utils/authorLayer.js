@@ -17,6 +17,10 @@ export const AUTHOR_SOURCE_MAX = 300;
 const nid = id => (id == null ? '' : String(id));
 const refId = ref => (ref && typeof ref === 'object' ? ref.id : ref);
 const clean = (value, max) => String(value || '').trim().slice(0, max);
+const countryCode = value => {
+  const code = String(value || '').trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : '';
+};
 const randomId = prefix => `${prefix}${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 
 export const isAuthorLink = link => !!link && link.type === AUTHOR_LINK_TYPE && link.provenance?.by === 'author';
@@ -77,7 +81,10 @@ export const makeAuthorNode = ({ kind, name, country, identifier, id, x = 0, y =
   name: clean(name, AUTHOR_NAME_MAX),
   type: kind === 'company' ? 'company' : 'officer',
   ...(kind === 'company' ? {} : { subtype: 'individual' }),
-  country: clean(country, 2).toUpperCase(),
+  // A two-letter code or nothing: the country prints as a bare code beside the
+  // entity's name in the document, where a truncated word ('NE' for
+  // 'Netherlands') would read as a country it is not.
+  country: countryCode(country),
   identifier: clean(identifier, AUTHOR_SOURCE_MAX),
   companies: [],
   positions: [],
@@ -101,14 +108,53 @@ export const markRenamed = (node, registryName) => {
   return { ...node, provenance: { renamedFrom: String(registryName || '') } };
 };
 
+// Deleting an author entity drops EVERY link touching it, not only the author
+// links: a merge can leave registry links hanging off an author node, and a
+// link whose endpoint no longer exists is what d3 rejects as "node not found"
+// and what makes a snapshot unloadable.
 export const removeAuthorNode = (graphData, nodeId) => {
   const target = nid(nodeId);
   const node = (graphData?.nodes || []).find(n => nid(n.id) === target);
   if (!isAuthorNode(node)) return graphData;
+  const touchesTarget = l => nid(refId(l.source)) === target || nid(refId(l.target)) === target;
   return {
     ...graphData,
     nodes: graphData.nodes.filter(n => nid(n.id) !== target),
-    links: (graphData.links || []).filter(l => !(isAuthorLink(l) && (nid(refId(l.source)) === target || nid(refId(l.target)) === target))),
+    links: (graphData.links || []).filter(l => !touchesTarget(l)),
+  };
+};
+
+// A merge keeps the TARGET's identity. Merging a registry node INTO an author
+// entity would therefore leave an author node holding registry links — an
+// identity with no group key, no filings, and a provenance that claims the
+// author invented a company BORME published. Registry identity always wins:
+// the roles swap so the author entity is the one absorbed. Two author nodes,
+// or two registry nodes, keep the order the caller gave.
+export const resolveMergeRoles = (nodes, sourceId, targetId) => {
+  const find = id => (nodes || []).find(n => nid(n.id) === nid(id));
+  const source = find(sourceId);
+  const target = find(targetId);
+  return isAuthorNode(target) && source && !isAuthorNode(source)
+    ? { sourceId: targetId, targetId: sourceId, swapped: true }
+    : { sourceId, targetId, swapped: false };
+};
+
+// An edit PATCHES the node instead of rebuilding it: only the fields the
+// dialog owns are replaced, so a note, merge history, name variants, expansion
+// state and absorbed companies/positions all survive an edit, as does the
+// node's position on the canvas.
+export const applyAuthorNodeEdit = (node, built) => {
+  const { subtype, ...rest } = node;
+  return {
+    ...rest,
+    name: built.name,
+    type: built.type,
+    // Present only for a person; a person edited into a company must not keep
+    // a stale 'individual' subtype behind.
+    ...(built.subtype ? { subtype: built.subtype } : {}),
+    country: built.country,
+    identifier: built.identifier,
+    provenance: built.provenance,
   };
 };
 

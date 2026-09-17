@@ -4,6 +4,7 @@ import {
   isAuthorLink, isAuthorNode, isAuthorElement, isRegistryElement, isDismissedLink, isRenamedNode,
   validateAuthorLinkDraft, validateAuthorNodeDraft,
   makeAuthorLink, makeAuthorNode, dismissLink, restoreLink, markRenamed, removeAuthorNode,
+  resolveMergeRoles, applyAuthorNodeEdit,
   visibleWithoutDismissed, collectAuthorLayer,
 } from './authorLayer';
 
@@ -89,6 +90,16 @@ describe('constructors', () => {
     const link = makeAuthorLink({ sourceId: 'a', targetId: 'b', label: 'x'.repeat(200), now: NOW });
     expect(link.relationship).toHaveLength(80);
   });
+  it('keeps a two-letter country code and drops anything else', () => {
+    const code = makeAuthorNode({ kind: 'company', name: 'A', country: ' nl ', now: NOW, id: 'a' });
+    expect(code.country).toBe('NL');
+    // A typed country name truncated to two letters would read as a country
+    // it is not ('Netherlands' -> 'NE', which is Niger).
+    expect(makeAuthorNode({ kind: 'company', name: 'A', country: 'Netherlands', now: NOW, id: 'a' }).country).toBe('');
+    expect(makeAuthorNode({ kind: 'company', name: 'A', country: 'N', now: NOW, id: 'a' }).country).toBe('');
+    expect(makeAuthorNode({ kind: 'company', name: 'A', country: 'N1', now: NOW, id: 'a' }).country).toBe('');
+    expect(makeAuthorNode({ kind: 'company', name: 'A', now: NOW, id: 'a' }).country).toBe('');
+  });
   it('builds a pinned node at the given position', () => {
     const node = makeAuthorNode({ kind: 'company', name: ' Holding BV ', country: 'nl', identifier: 'KVK 1', now: NOW, id: 'author-node-fixed', x: 10, y: 20 });
     expect(node).toEqual({
@@ -125,9 +136,104 @@ describe('removeAuthorNode', () => {
     expect(next.nodes.map(x => x.id)).toEqual(['c']);
     expect(next.links.map(x => x.id)).toEqual(['r']);
   });
+  it('leaves no link dangling, whatever its provenance', () => {
+    // A merge can rewire registry links onto an author node. Deleting it must
+    // take them with it: a link pointing at a node that no longer exists is
+    // what d3 rejects as "node not found".
+    const n = makeAuthorNode({ kind: 'person', name: 'P', now: NOW, id: 'author-node-p' });
+    const graph = {
+      nodes: [n, { id: 'c', name: 'C', type: 'company' }],
+      links: [
+        { id: 'registry-in', source: 'c', target: 'author-node-p', type: 'officer-company' },
+        { id: 'registry-out', source: { id: 'author-node-p' }, target: { id: 'c' }, type: 'officer-company' },
+        { id: 'elsewhere', source: 'c', target: 'd' },
+      ],
+    };
+    const next = removeAuthorNode(graph, 'author-node-p');
+    expect(next.links.map(x => x.id)).toEqual(['elsewhere']);
+  });
   it('refuses to remove a registry node', () => {
     const graph = { nodes: [{ id: 'c', name: 'C', type: 'company' }], links: [] };
     expect(removeAuthorNode(graph, 'c')).toBe(graph);
+  });
+});
+
+describe('resolveMergeRoles', () => {
+  const author = makeAuthorNode({ kind: 'company', name: 'HOLDING BV', now: NOW, id: 'author-node-c' });
+  const registry = { id: 'c', name: 'ALFA SL', type: 'company', groupKey: 'gk-1' };
+  const otherAuthor = makeAuthorNode({ kind: 'company', name: 'OTRA BV', now: NOW, id: 'author-node-d' });
+  const nodes = [author, registry, otherAuthor];
+
+  it('swaps the roles so the registry identity survives', () => {
+    expect(resolveMergeRoles(nodes, 'c', 'author-node-c'))
+      .toEqual({ sourceId: 'author-node-c', targetId: 'c', swapped: true });
+  });
+  it('leaves a registry-into-registry merge alone', () => {
+    expect(resolveMergeRoles([registry, { id: 'c2', name: 'BETA SL', type: 'company' }], 'c', 'c2'))
+      .toEqual({ sourceId: 'c', targetId: 'c2', swapped: false });
+  });
+  it('leaves an author-into-author merge alone', () => {
+    expect(resolveMergeRoles(nodes, 'author-node-c', 'author-node-d'))
+      .toEqual({ sourceId: 'author-node-c', targetId: 'author-node-d', swapped: false });
+  });
+  it('leaves an author-into-registry merge alone — it already keeps the registry', () => {
+    expect(resolveMergeRoles(nodes, 'author-node-c', 'c'))
+      .toEqual({ sourceId: 'author-node-c', targetId: 'c', swapped: false });
+  });
+});
+
+describe('applyAuthorNodeEdit', () => {
+  const built = makeAuthorNode({
+    kind: 'company', name: 'HOLDING BV', country: 'NL', identifier: 'KVK 2',
+    now: '2026-09-18T00:00:00.000Z', id: 'ignored', x: 99, y: 99,
+  });
+
+  it('keeps everything the node accumulated elsewhere', () => {
+    const node = {
+      ...makeAuthorNode({ kind: 'person', name: 'P', country: 'ES', now: NOW, id: 'author-node-p', x: 10, y: 20 }),
+      userNote: { text: 'my note', flag: 'red' },
+      nameVariants: ['P', 'P LOPEZ'],
+      mergeHistory: [{ sourceId: 'x' }],
+      expanded: true,
+      companies: ['ALFA SL'],
+      positions: [{ company: 'ALFA SL', position: 'Administrador' }],
+    };
+    const next = applyAuthorNodeEdit(node, built);
+
+    expect(next.userNote).toEqual({ text: 'my note', flag: 'red' });
+    expect(next.nameVariants).toEqual(['P', 'P LOPEZ']);
+    expect(next.mergeHistory).toEqual([{ sourceId: 'x' }]);
+    expect(next.expanded).toBe(true);
+    expect(next.companies).toEqual(['ALFA SL']);
+    expect(next.positions).toEqual([{ company: 'ALFA SL', position: 'Administrador' }]);
+    expect(next.id).toBe('author-node-p');
+    expect([next.x, next.y, next.fx, next.fy]).toEqual([10, 20, 10, 20]);
+  });
+
+  it('replaces the fields the dialog owns and drops a stale person subtype', () => {
+    const person = makeAuthorNode({ kind: 'person', name: 'P', country: 'ES', now: NOW, id: 'author-node-p' });
+    expect(person.subtype).toBe('individual');
+
+    const next = applyAuthorNodeEdit(person, built);
+    expect(next.name).toBe('HOLDING BV');
+    expect(next.type).toBe('company');
+    expect('subtype' in next).toBe(false);
+    expect(next.country).toBe('NL');
+    expect(next.identifier).toBe('KVK 2');
+    expect(next.provenance).toEqual(built.provenance);
+  });
+
+  it('gives a company edited into a person its subtype back', () => {
+    const company = makeAuthorNode({ kind: 'company', name: 'C', now: NOW, id: 'author-node-c' });
+    const asPerson = makeAuthorNode({ kind: 'person', name: 'P', now: NOW, id: 'ignored' });
+    expect(applyAuthorNodeEdit(company, asPerson).subtype).toBe('individual');
+  });
+
+  it('does not mutate the node it patches', () => {
+    const person = makeAuthorNode({ kind: 'person', name: 'P', now: NOW, id: 'author-node-p' });
+    applyAuthorNodeEdit(person, built);
+    expect(person.name).toBe('P');
+    expect(person.type).toBe('officer');
   });
 });
 

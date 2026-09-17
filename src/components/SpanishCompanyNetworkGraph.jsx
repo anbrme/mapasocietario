@@ -127,6 +127,7 @@ import { useLassoSelect } from '../hooks/useLassoSelect';
 import { findCompanyNode } from '../utils/companyNodeLookup';
 import {
   visibleWithoutDismissed, isAuthorLink, isAuthorNode, makeAuthorLink, makeAuthorNode, removeAuthorNode,
+  applyAuthorNodeEdit, resolveMergeRoles,
   collectAuthorLayer, dismissLink, restoreLink, isDismissedLink, isRenamedNode, markRenamed,
 } from '../utils/authorLayer';
 import AuthorLinkDialog from './AuthorLinkDialog';
@@ -5741,7 +5742,14 @@ const SpanishCompanyNetworkGraph = ({
   );
 
   const mergeNodes = useCallback(
-    (sourceNodeId, targetNodeId, snapshot = null) => {
+    (requestedSourceId, requestedTargetId, snapshot = null) => {
+      // The survivor keeps the TARGET's identity, so merging a registry node
+      // into an author entity would leave an author node holding registry
+      // links. resolveMergeRoles swaps the two in that one case; the swap is
+      // resolved here, once, so the pinned/hidden/active bookkeeping below
+      // acts on the node that actually survives.
+      const { sourceId: sourceNodeId, targetId: targetNodeId } =
+        resolveMergeRoles(graphDataRef.current?.nodes, requestedSourceId, requestedTargetId);
       setGraphData(prev => {
         const sourceNode = prev.nodes.find(node => isSameNodeId(node.id, sourceNodeId));
         const targetNode = prev.nodes.find(node => isSameNodeId(node.id, targetNodeId));
@@ -6580,7 +6588,7 @@ const SpanishCompanyNetworkGraph = ({
     setGraphData(prev => ({
       ...prev,
       nodes: initial
-        ? prev.nodes.map(n => (n.id === initial.id ? node : n))
+        ? prev.nodes.map(n => (n.id === initial.id ? applyAuthorNodeEdit(n, node) : n))
         : [...prev.nodes, node],
     }));
     setCorrectionsSnackbar({
@@ -6588,9 +6596,21 @@ const SpanishCompanyNetworkGraph = ({
       message: text.authorNodeAdded,
       undoGraph: initial
         ? () => setGraphData(p => ({ ...p, nodes: p.nodes.map(n => (n.id === initial.id ? initial : n)) }))
-        : () => setGraphData(p => removeAuthorNode(p, node.id)),
+        : () => {
+          setGraphData(p => removeAuthorNode(p, node.id));
+          setPinnedNodeIds(prev => {
+            const next = new Set(prev);
+            next.delete(normalizeNodeId(node.id));
+            return next;
+          });
+        },
     });
     if (!initial) {
+      // Pinned on arrival: a fresh entity has no links yet, and the shareholder
+      // filters prune an unpinned, unlinked node on the next recompute — the
+      // author would watch what they just added vanish before they could draw
+      // a relationship from it. Deleting it unpins it again (confirmDeleteNode).
+      setPinnedNodeIds(prev => new Set([...prev, normalizeNodeId(node.id)]));
       trackEvent('graph_author_node_add', {
         kind: draft.kind,
         has_citation: !!(draft.citationText || draft.citationUrl),
@@ -7570,10 +7590,16 @@ const SpanishCompanyNetworkGraph = ({
         label: text.mergedOfficerCorrection(sourceNode.name, targetNode.name),
       });
     } else if (undoGraph) {
-      // Non-officer merges have no overlay row, but the graph undo still applies.
+      // Non-officer merges have no overlay row, but the graph undo still
+      // applies. The toast names the pair in the order the merge actually
+      // resolved — mergeNodes swaps the two when the target is an author
+      // entity, so that the registry identity is the one that survives.
+      const roles = resolveMergeRoles(graphData.nodes, sourceNode.id, targetNode.id);
+      const absorbed = roles.swapped ? targetNode : sourceNode;
+      const survivor = roles.swapped ? sourceNode : targetNode;
       setCorrectionsSnackbar({
         id: null,
-        message: text.nodesMergedToast(sourceNode.name, targetNode.name),
+        message: text.nodesMergedToast(absorbed.name, survivor.name),
         undoGraph,
       });
     }
