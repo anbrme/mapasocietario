@@ -6483,7 +6483,10 @@ const SpanishCompanyNetworkGraph = ({
       message: text.authorLinkDeleted,
       undoGraph: () => setGraphData(prev => ({ ...prev, links: [...(prev.links || []), removed] })),
     });
-    trackEvent('graph_author_link_delete', {});
+    // One event for both kinds of author element, so a deletion is counted the
+    // same whether the author removed a relationship or an entity. Never a
+    // name: an author element's name is the author's own work.
+    trackEvent('graph_author_element_delete', { kind: 'link' });
     closeLinkMenu();
   }, [text, closeLinkMenu, isEditMode]);
 
@@ -6720,6 +6723,9 @@ const SpanishCompanyNetworkGraph = ({
       });
       if (isSameNodeId(activeNodeId, contextNode.id)) setActiveNodeId(null);
       closeHiddenNodesMenu();
+      // Same event as an author link's deletion (handleDeleteAuthorLink), told
+      // apart by `kind` alone — no name, no identifier.
+      trackEvent('graph_author_element_delete', { kind: 'node' });
     } else {
       deleteNode(contextNode.id);
     }
@@ -12465,6 +12471,7 @@ const SpanishCompanyNetworkGraph = ({
           text={text}
           onCancel={() => setLinkDialog(null)}
           onSave={handleSaveAuthorLink}
+          container={overlayContainer}
         />
 
         <AuthorNodeDialog
@@ -12473,6 +12480,7 @@ const SpanishCompanyNetworkGraph = ({
           text={text}
           onCancel={() => setAuthorNodeDialog(null)}
           onSave={handleSaveAuthorNode}
+          container={overlayContainer}
         />
 
         {/* Edit map gate: one-time explainer, shown the first time edit mode
@@ -12982,14 +12990,13 @@ const SpanishCompanyNetworkGraph = ({
               </MenuItem>,
             ];
 
+            // A FLAT array, never fragments: Menu reads its children to move
+            // focus between rows and to decide which one is highlighted, and a
+            // Fragment hides the rows inside it from that walk — which is what
+            // MUI warns about, once per render of this menu.
             return [groupRead, groupFetch, groupAuthor, groupView, groupDelete]
               .filter(group => group.length > 0)
-              .map((group, index) => (
-                <React.Fragment key={`group-${index}`}>
-                  {index > 0 && <Divider />}
-                  {group}
-                </React.Fragment>
-              ));
+              .flatMap((group, index) => (index > 0 ? [<Divider key={`group-divider-${index}`} />, ...group] : group));
           })()}
         </Menu>
 

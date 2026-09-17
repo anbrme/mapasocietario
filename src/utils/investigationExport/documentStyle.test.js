@@ -29,6 +29,16 @@ describe('DOCUMENT_STYLE', () => {
     expect(DOCUMENT_STYLE).not.toMatch(/url\(https?:/);
   });
 
+  it('styles the cover author notice instead of leaving it unstyled', () => {
+    // documentSections renders <p class="notice"> on the cover whenever the
+    // document carries author elements; without a rule it printed as an
+    // ordinary paragraph, as loud as the title's neighbours.
+    expect(DOCUMENT_STYLE).toContain('.notice{');
+    expect(DOCUMENT_STYLE).toMatch(/\.notice\{[^}]*color:var\(--muted\)/);
+    expect(DOCUMENT_STYLE).toMatch(/\.notice\{[^}]*font-size:/);
+    expect(DOCUMENT_STYLE).toMatch(/\.notice\{[^}]*margin:/);
+  });
+
   it('flagVar maps known flags and falls back to none', () => {
     expect(flagVar('red')).toBe(`--f:${FLAG_COLORS.red}`);
     expect(flagVar('bogus')).toBe(`--f:${FLAG_COLORS.none}`);

@@ -35,7 +35,7 @@ const buildDraft = initial => {
  * never collected here.
  */
 export default function AuthorLinkDialog({
-  open, sourceNode, targetNode, initial = null, text, onCancel, onSave,
+  open, sourceNode, targetNode, initial = null, text, onCancel, onSave, container = undefined,
 }) {
   const [draft, setDraft] = useState(() => buildDraft(initial));
 
@@ -58,8 +58,11 @@ export default function AuthorLinkDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
-      <DialogTitle>{text.linkToNode}</DialogTitle>
+    // container: in the embedded fullscreen graph the dialog must portal into
+    // the fullscreen element, or it renders behind it — same rule as every
+    // other overlay the graph opens.
+    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth container={container}>
+      <DialogTitle>{initial ? text.editLink : text.linkToNode}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>
           <Box>

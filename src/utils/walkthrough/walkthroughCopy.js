@@ -47,9 +47,6 @@ const ES = {
   suggestionsHelp: 'Entidades seleccionadas que solo se conectan a través de nodos no seleccionados. Añádelas como paso para contar el camino.',
   addStep: 'Añadir al recorrido',
   hopColumns: { who: 'Quién', at: 'En', role: 'Cargo', status: 'Estado', since: 'Desde', until: 'Hasta' },
-  hopAuthorNote: n => (n === 1
-    ? 'un enlace de esta ruta fue añadido por el autor'
-    : `${n} enlaces de esta ruta fueron añadidos por el autor`),
   playOnMap: 'Ver en el mapa',
   editInReport: 'Editar en el informe',
   selectionHelp: mod => `Tu selección. Añade o quita nodos con ${mod}+clic en el mapa, o quítalos aquí con el ojo.`,
@@ -145,9 +142,6 @@ const EN = {
   suggestionsHelp: 'Selected entities that only connect through nodes you did not select. Add one as a step to tell the path.',
   addStep: 'Add to walkthrough',
   hopColumns: { who: 'Who', at: 'At', role: 'Role', status: 'Status', since: 'Since', until: 'Until' },
-  hopAuthorNote: n => (n === 1
-    ? 'one link in this path was added by the author'
-    : `${n} links in this path were added by the author`),
   playOnMap: 'Play on the map',
   editInReport: 'Edit in the report',
   selectionHelp: mod => `Your selection. Add or remove nodes with ${mod}+click on the map, or remove them here with the eye.`,

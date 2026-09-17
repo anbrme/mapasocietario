@@ -35,6 +35,11 @@ a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 header.cover{padding-bottom:28px;border-bottom:1px solid var(--line);margin-bottom:32px}
 header.cover h1{font-size:2rem;line-height:1.15;margin:8px 0 10px;font-weight:700;letter-spacing:-.01em}
 .meta{color:var(--muted);font-size:.88rem}
+/* The cover's author notice: the document says on its face that it carries
+   the author's own elements. Muted and small so it sits under the byline
+   without competing with the title, and carrying the author layer's violet
+   edge so the page and the map say "author" the same way. */
+.notice{margin:10px 0 0;padding-left:10px;border-left:2px solid var(--author);color:var(--muted);font-size:.84rem}
 .status{margin-top:18px;padding:10px 14px;border-left:2px solid var(--line);color:var(--muted);font-size:.86rem}
 .facts{list-style:none;display:flex;flex-wrap:wrap;gap:8px 28px;margin:18px 0 0;padding:0}
 .facts li{display:flex;flex-direction:column;line-height:1.25}

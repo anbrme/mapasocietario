@@ -27,15 +27,20 @@ export const citationHtml = citation => {
 };
 
 // The relationships table's header row: From / To / Label / Source / Date /
-// Note, plus a blank header over the arrow column between From and To.
+// Note, plus a blank header over the direction column between From and To.
 export const authorLinkTableHead = t => (
   `<thead><tr><th>${esc(t.colFrom)}</th><th></th><th>${esc(t.colTo)}</th>`
   + `<th>${esc(t.colLabel)}</th><th>${esc(t.source)}</th><th>${esc(t.colDate)}</th><th>${esc(t.colNote)}</th></tr></thead>`
 );
 
+// An arrow is a claim about direction, so it is drawn only for a link the
+// author marked directed; an undirected relationship gets a plain dash and
+// reads as the mutual statement it is.
+const directionGlyph = link => (link.directed ? '→' : '—');
+
 export const authorLinkRows = links => links.map(l => {
   const source = citationHtml(l.citation);
-  return `<tr><td>${esc(l.from)}</td><td>→</td><td>${esc(l.to)}</td><td>${esc(l.label)}</td><td>${source}</td>`
+  return `<tr><td>${esc(l.from)}</td><td>${directionGlyph(l)}</td><td>${esc(l.to)}</td><td>${esc(l.label)}</td><td>${source}</td>`
     + `<td${isDay(l.asserted) ? ' class="date"' : ''}>${esc(l.asserted || '')}</td><td>${esc(l.note || '')}</td></tr>`;
 }).join('');
 
@@ -53,7 +58,7 @@ export const linksTouchingNode = (links, nodeId) => {
 // http(s)-only citation rule as the relationships table.
 export const authorLinkListItems = links => links.map(l => {
   const source = citationHtml(l.citation);
-  return `<li>${esc(l.from)} → ${esc(l.to)} · ${esc(l.label)}${source ? ` · ${source}` : ''}</li>`;
+  return `<li>${esc(l.from)} ${directionGlyph(l)} ${esc(l.to)} · ${esc(l.label)}${source ? ` · ${source}` : ''}</li>`;
 }).join('');
 
 // Non-empty fields only, joined by ' · ' — an entity with no country, no

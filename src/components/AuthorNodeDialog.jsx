@@ -35,7 +35,7 @@ const buildDraft = initial => {
  * (sitrepAuthor), never collected here.
  */
 export default function AuthorNodeDialog({
-  open, initial = null, text, onCancel, onSave,
+  open, initial = null, text, onCancel, onSave, container = undefined,
 }) {
   const [draft, setDraft] = useState(() => buildDraft(initial));
 
@@ -55,7 +55,10 @@ export default function AuthorNodeDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
+    // container: in the embedded fullscreen graph the dialog must portal into
+    // the fullscreen element, or it renders behind it — same rule as every
+    // other overlay the graph opens.
+    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth container={container}>
       <DialogTitle>{initial ? text.editEntity : text.addEntity}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 0.5 }}>

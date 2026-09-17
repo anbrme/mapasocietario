@@ -807,6 +807,22 @@ describe('author layer export', () => {
     expect(html).toContain('href="https://example.com/proof"');
   });
 
+  it('gives the relationships table an arrow only when the link is directed', () => {
+    // The direction column sits between From and To; an undirected link is a
+    // mutual statement and must not print as a claim about direction.
+    expect(renderAnnexes(authorLayerDoc, t)).toContain('<td>—</td>');
+    expect(renderAnnexes(authorLayerDoc, t)).not.toContain('<td>→</td>');
+
+    const directed = {
+      ...authorLayerDoc,
+      authorLayer: {
+        ...authorLayerDoc.authorLayer,
+        links: [{ ...authorLayerDoc.authorLayer.links[0], directed: true }],
+      },
+    };
+    expect(renderAnnexes(directed, t)).toContain('<td>→</td>');
+  });
+
   it('renderAnnexes omits the author-layer panel when it is entirely empty', () => {
     const html = renderAnnexes(doc, t);
     expect(html).not.toContain('id="authorLayer"');
@@ -847,9 +863,29 @@ describe('author layer export', () => {
     };
     const html = renderChapters(docWithLinks, t, wt);
     expect(html).toContain(t.authorLayer);
-    expect(html).toContain('ALFA SL → P');
+    // The link is undirected, so it reads as a dash: an arrow would claim a
+    // direction the author did not assert.
+    expect(html).toContain('ALFA SL — P');
+    expect(html).not.toContain('ALFA SL → P');
     expect(html).toContain('Director');
     expect(html).toContain('href="https://example.com/press"');
+  });
+
+  it('draws the arrow only for a relationship the author marked directed', () => {
+    const directedDoc = {
+      ...doc,
+      steps: [companyStep('c1')],
+      authorLayer: {
+        nodes: [],
+        dismissed: [],
+        renamed: [],
+        links: [{
+          from: 'ALFA SL', fromId: 'c1', to: 'P', toId: 'author-node-p', label: 'Director', directed: true,
+          citation: null, asserted: null, note: '', at: 'T', author: '',
+        }],
+      },
+    };
+    expect(renderChapters(directedDoc, t, wt)).toContain('ALFA SL → P');
   });
 
   it('omits the author-links block from a chapter that touches none', () => {
