@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { AI_INVESTIGATION_API } from '../config';
+import { createTurnstileWidget } from '../utils/turnstileWidget';
 import {
   buildRedeemBody, buildInvestigateHeaders, isTokenValid,
   buildInvestigatePayload, loadToken, saveToken,
@@ -20,6 +21,8 @@ const COPY = {
     email: 'Email', code: 'Redemption code', unlock: 'Unlock',
     ask: 'Ask about this company or network…', send: 'Ask', close: 'Close',
     invalid: 'Could not unlock. Check your email and code.',
+    verifying: 'Complete the verification before unlocking.',
+    verificationFailed: 'Verification failed to load. Close this dialog and try again.',
     rateLimited: 'You have hit the rate limit. Try again shortly.',
     expired: 'Your session expired. Please redeem again.',
     buyTitle: 'Don\'t have a Due Diligence report yet?',
@@ -32,6 +35,8 @@ const COPY = {
     email: 'Email', code: 'Código de canje', unlock: 'Desbloquear',
     ask: 'Pregunta sobre esta empresa o red…', send: 'Preguntar', close: 'Cerrar',
     invalid: 'No se pudo desbloquear. Revisa tu email y código.',
+    verifying: 'Completa la verificación antes de desbloquear.',
+    verificationFailed: 'No se pudo cargar la verificación. Cierra este diálogo e inténtalo de nuevo.',
     rateLimited: 'Has alcanzado el límite. Inténtalo en un momento.',
     expired: 'Tu sesión ha expirado. Vuelve a canjear.',
     buyTitle: '¿Aún no tienes un informe de Due Diligence?',
@@ -63,42 +68,58 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState(null);
   const turnstileRef = useRef(null);
-  const widgetId = useRef(null);
+  const widgetRef = useRef(null);
+  const [verified, setVerified] = useState(false);
+  const [verificationFailed, setVerificationFailed] = useState(false);
 
   // Render the Turnstile widget when the dialog opens and we are not yet unlocked.
   useEffect(() => {
+    setVerified(false);
+    setVerificationFailed(false);
     if (!open || session) return;
-    const id = setInterval(() => {
-      if (window.turnstile && turnstileRef.current && widgetId.current == null) {
-        widgetId.current = window.turnstile.render(turnstileRef.current, { sitekey: TURNSTILE_SITEKEY });
-        clearInterval(id);
-      }
-    }, 200);
-    return () => clearInterval(id);
+    const widget = createTurnstileWidget({
+      getApi: () => window.turnstile,
+      getContainer: () => turnstileRef.current,
+      sitekey: TURNSTILE_SITEKEY,
+      onToken: token => {
+        setVerified(Boolean(token));
+        if (token) setVerificationFailed(false);
+      },
+      onError: () => setVerificationFailed(true),
+    });
+    widgetRef.current = widget;
+    return () => {
+      widgetRef.current = null;
+      widget.dispose();
+    };
   }, [open, session]);
 
   const redeem = useCallback(async () => {
+    const widget = widgetRef.current;
+    const turnstileToken = widget?.getResponse() || '';
+    if (!turnstileToken) { setError(t.verifying); return; }
     setBusy(true); setError('');
     try {
-      const turnstileToken = window.turnstile && widgetId.current != null
-        ? window.turnstile.getResponse(widgetId.current) : '';
       const res = await fetch(`${AI_INVESTIGATION_API}/redeem`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buildRedeemBody(email, code, turnstileToken)),
       });
+      if (widgetRef.current !== widget) return;
       if (!res.ok) {
-        setError(t.invalid);
-        if (window.turnstile && widgetId.current != null) window.turnstile.reset(widgetId.current);
+        setError(res.status === 429 ? t.rateLimited : t.invalid);
+        widget.reset();
         return;
       }
       const data = await res.json();
+      if (widgetRef.current !== widget) return;
       const stored = { token: data.token, expiresAt: data.expires_at };
       saveToken(stored);
       setSession(stored);
     } catch {
+      if (widgetRef.current !== widget) return;
       setError(t.invalid);
-      if (window.turnstile && widgetId.current != null) window.turnstile.reset(widgetId.current);
+      widget.reset();
     } finally {
       setBusy(false);
     }
@@ -141,7 +162,10 @@ export default function AIInvestigationGate({ open, onClose, language = 'es', pr
             <TextField label={t.email} value={email} onChange={(e) => setEmail(e.target.value)} fullWidth size="small" />
             <TextField label={t.code} value={code} onChange={(e) => setCode(e.target.value)} fullWidth size="small" />
             <div ref={turnstileRef} />
-            <Button variant="contained" onClick={redeem} disabled={busy || !email || !code}>
+            {!verified && <Typography variant="body2" color={verificationFailed ? 'error' : 'text.secondary'} role="status">
+              {verificationFailed ? t.verificationFailed : t.verifying}
+            </Typography>}
+            <Button variant="contained" onClick={redeem} disabled={busy || !email || !code || !verified}>
               {busy ? <CircularProgress size={20} /> : t.unlock}
             </Button>
             {onBuy && focusCompany && (
