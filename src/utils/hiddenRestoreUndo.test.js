@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { forceSimulation, forceLink, forceManyBody } from 'd3-force';
-import { captureHiddenRestore, applyHiddenRestore, undoHiddenRestore } from './hiddenRestoreUndo';
+import { captureHiddenRestore, captureSelectionHide, applyHiddenRestore, undoHiddenRestore, undoVisibilityChange } from './hiddenRestoreUndo';
 
 function fixture() {
   const nodes = [
@@ -99,5 +99,86 @@ describe('undo hidden item restoration', () => {
     const shown = applyHiddenRestore(graph, new Set(['unplaced']), snapshot);
     expect(shown.graph.nodes[3]).not.toHaveProperty('fx');
     expect(shown.graph.nodes[3]).not.toHaveProperty('x');
+  });
+});
+
+describe('undo hiding a selection', () => {
+  it('recovers an entirely hidden graph, its selection and its exact stable layout', () => {
+    const graph = fixture();
+    const selected = new Set(['a', 'b', 3]);
+    const snapshot = captureSelectionHide(graph, new Set(), selected);
+    const hidden = undoHiddenRestore(graph, new Set(), snapshot);
+    expect(hidden.hiddenNodeIds).toEqual(new Set(['a', 'b', '3']));
+    expect(hidden.graph.nodes.filter(node => !hidden.hiddenNodeIds.has(String(node.id)))).toEqual([]);
+    const undone = undoVisibilityChange(hidden.graph, hidden.hiddenNodeIds, new Set(), snapshot);
+    expect(undone.hiddenNodeIds.size).toBe(0);
+    expect(undone.selection).toEqual(new Set(['a', 'b', '3']));
+    const sim = forceSimulation(undone.graph.nodes).stop()
+      .force('link', forceLink(undone.graph.links).id(node => node.id))
+      .force('charge', forceManyBody().strength(-350));
+    sim.tick(50);
+    expect(undone.graph.nodes.map(({ x, y }) => [x, y])).toEqual([[20, 40], [180, -30], [-90, 75]]);
+    expect(undone.graph.links[0].source).toBe(undone.graph.nodes[0]);
+    expect(undone.graph.links[1].dismissed).toEqual(graph.links[1].dismissed);
+  });
+
+  it('only recovers the newly hidden selection, keeping previously hidden nodes and connections hidden', () => {
+    const graph = fixture();
+    const snapshot = captureSelectionHide(graph, new Set(['3']), new Set(['b', 3, 'missing']));
+    expect(snapshot.nodeIds).toEqual(['b']);
+    const hidden = undoHiddenRestore(graph, new Set(['3']), snapshot);
+    const undone = undoVisibilityChange(hidden.graph, hidden.hiddenNodeIds, new Set(['a']), snapshot);
+    expect(undone.hiddenNodeIds).toEqual(new Set(['3']));
+    expect(undone.selection).toEqual(new Set(['a', 'b']));
+    expect(undone.graph.links[1].dismissed).toEqual(graph.links[1].dismissed);
+  });
+
+  it('undoes hide selection and Show all from the chip in chronological order', () => {
+    const graph = fixture();
+    const first = captureSelectionHide(graph, new Set(['3']), new Set(['a', 'b']));
+    const hidden = undoHiddenRestore(graph, new Set(['3']), first);
+    const second = captureHiddenRestore(hidden.graph, hidden.hiddenNodeIds, { nodeIds: ['a', 'b', 3] });
+    const shown = applyHiddenRestore(hidden.graph, hidden.hiddenNodeIds, second);
+    expect(shown.hiddenNodeIds.size).toBe(0);
+    const undoShow = undoVisibilityChange(shown.graph, shown.hiddenNodeIds, new Set(), second);
+    expect(undoShow.hiddenNodeIds).toEqual(new Set(['a', 'b', '3']));
+    const undoHide = undoVisibilityChange(undoShow.graph, undoShow.hiddenNodeIds, undoShow.selection, first);
+    expect(undoHide.hiddenNodeIds).toEqual(new Set(['3']));
+    expect(undoHide.selection).toEqual(new Set(['a', 'b']));
+  });
+
+  it('undoes a restore followed by hiding the selection without retaining invisible selected nodes', () => {
+    const graph = fixture();
+    const first = captureHiddenRestore(graph, new Set(['b']), { nodeIds: ['b'] });
+    const shown = applyHiddenRestore(graph, new Set(['b']), first);
+    const second = captureSelectionHide(shown.graph, shown.hiddenNodeIds, new Set(['b']));
+    const hidden = undoHiddenRestore(shown.graph, shown.hiddenNodeIds, second);
+    const undoHide = undoVisibilityChange(hidden.graph, hidden.hiddenNodeIds, new Set(), second);
+    expect(undoHide.selection).toEqual(new Set(['b']));
+    const undoShow = undoVisibilityChange(undoHide.graph, undoHide.hiddenNodeIds, undoHide.selection, first);
+    expect(undoShow.hiddenNodeIds).toEqual(new Set(['b']));
+    expect(undoShow.selection.size).toBe(0);
+  });
+
+  it('preserves later notes and added nodes without reviving deleted nodes or their selection', () => {
+    const graph = fixture();
+    const snapshot = captureSelectionHide(graph, new Set(), new Set(['a', 'b']));
+    const hidden = undoHiddenRestore(graph, new Set(), snapshot);
+    const edited = {
+      ...hidden.graph,
+      nodes: [...hidden.graph.nodes.filter(n => n.id !== 'b').map(n => ({ ...n, userNote: 'New note' })), { id: 'later', x: 900, y: 100 }],
+      links: [hidden.graph.links[1]],
+    };
+    const undone = undoVisibilityChange(edited, hidden.hiddenNodeIds, new Set(['later']), snapshot);
+    expect(undone.graph.nodes.map(n => n.id)).toEqual(['a', 3, 'later']);
+    expect(undone.graph.nodes[0].userNote).toBe('New note');
+    expect(undone.graph.nodes[2]).toBe(edited.nodes[2]);
+    expect(undone.selection).toEqual(new Set(['later', 'a']));
+  });
+
+  it('does not record an empty, deleted or already hidden selection', () => {
+    const graph = fixture();
+    expect(captureSelectionHide(graph, new Set(), new Set())).toBeNull();
+    expect(captureSelectionHide(graph, new Set(['b']), new Set(['b', 'missing']))).toBeNull();
   });
 });

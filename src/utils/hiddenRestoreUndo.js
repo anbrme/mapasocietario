@@ -1,6 +1,21 @@
 import { rebindLinksAfterNodeUpdate } from './graphLinkBinding';
 
 const key = id => String(id);
+const capturePositions = graph => new Map(graph.nodes
+  .filter(node => Number.isFinite(node.x) && Number.isFinite(node.y))
+  .map(node => [key(node.id), { x: node.x, y: node.y }]));
+
+// Only newly hidden nodes belong to this action. A stale selection can include
+// an already hidden or deleted node; undo must not reveal either one.
+export function captureSelectionHide(graph, hiddenNodeIds, selectedNodeIds) {
+  const hidden = new Set([...hiddenNodeIds].map(key));
+  const selected = new Set([...selectedNodeIds].map(key));
+  const nodeIds = graph.nodes
+    .filter(node => selected.has(key(node.id)) && !hidden.has(key(node.id)))
+    .map(node => key(node.id));
+  if (!nodeIds.length) return null;
+  return { action: 'hide', nodeIds, dismissedLinks: [], positions: capturePositions(graph) };
+}
 
 // Store only visibility changes and coordinates, never a whole graph that
 // would overwrite notes, edits or expansions made after revealing items.
@@ -16,11 +31,10 @@ export function captureHiddenRestore(graph, hiddenNodeIds, { nodeIds = [], linkI
     .map(link => ({ id: key(link.id), dismissed: { ...link.dismissed } }));
   if (!restoredNodeIds.length && !dismissedLinks.length) return null;
   return {
+    action: 'restore',
     nodeIds: restoredNodeIds,
     dismissedLinks,
-    positions: new Map(graph.nodes
-      .filter(node => Number.isFinite(node.x) && Number.isFinite(node.y))
-      .map(node => [key(node.id), { x: node.x, y: node.y }])),
+    positions: capturePositions(graph),
   };
 }
 
@@ -65,5 +79,18 @@ export function undoHiddenRestore(graph, hiddenNodeIds, snapshot) {
       ...[...hiddenNodeIds].map(key),
       ...snapshot.nodeIds.filter(id => existing.has(id)),
     ]),
+  };
+}
+
+export function undoVisibilityChange(graph, hiddenNodeIds, selection, snapshot) {
+  const restored = snapshot.action === 'hide'
+    ? applyHiddenRestore(graph, hiddenNodeIds, snapshot)
+    : undoHiddenRestore(graph, hiddenNodeIds, snapshot);
+  const existingIds = new Set(graph.nodes.map(node => key(node.id)));
+  const selectedIds = [...selection].map(key);
+  if (snapshot.action === 'hide') selectedIds.push(...snapshot.nodeIds);
+  return {
+    ...restored,
+    selection: new Set(selectedIds.filter(id => existingIds.has(id) && !restored.hiddenNodeIds.has(id))),
   };
 }
