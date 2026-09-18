@@ -6,8 +6,8 @@
 // same term, a same-day cese + re-appointment ends held, and a cessation with
 // nothing open becomes an unknown start. Two things happen before the sweep,
 // because the event log is noisier than the sweep assumes:
-//   - acts the registry vocabulary does not name are DROPPED, never read as
-//     cessations (isAppointmentMovement's else-branch would close a seat);
+//   - acts the registry vocabulary does not name are DROPPED, never guessed
+//     at (ex-officio cancellations ARE named: they end the seat);
 //   - role spellings are folded per person-company pair, so a "CON.DELEGADO"
 //     cessation closes the "CONS. DELEG." seat it belongs to.
 // And one thing after: a dissolution or extinction closes the seats still
@@ -27,9 +27,16 @@ const CLOSED_TAIL_MONTHS = 6;
 // more likely where the record begins than where the career did.
 const COVERAGE_FIRST_YEAR_END = '2010-01-01';
 
+// "Cancelaciones de oficio de nombramientos": the registry cancels expired
+// appointments ex officio, so the seat ENDS. A routine section (~1,400
+// filings a year); /officer-events labels it 'other', so it is recognised
+// here before the server classification is trusted.
+const isCancellation = act => act.startsWith('CANCELACION');
+
 /** 'appointment' | 'cessation' | null. null = not a seat movement; never guessed. */
 export const classifyAct = record => {
   if (!record) return null;
+  if (isCancellation((record.event_type || '').trim().toUpperCase())) return 'cessation';
   if (record.movement) {
     return record.movement === 'appointment' || record.movement === 'cessation' ? record.movement : null;
   }

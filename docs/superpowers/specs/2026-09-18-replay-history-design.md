@@ -191,9 +191,11 @@ ReplayModel {
   function groups by `name` + role and does not care which side of the link `name`
   names, so the adapter only renames `span.company` → `counterpartId`.
 - Before the sweep, two cleanups run:
-  - **Unmapped acts are dropped** (`classifyAct` → null). They are not passed through
-    as cessations: `isAppointmentMovement` treats anything that isn't an appointment as
-    an end, so an unmapped act would close a seat.
+  - **Ex-officio cancellations end the seat.** "Cancelaciones de oficio de nombramientos"
+    is the registry cancelling expired appointments (about 1,400 filings a year).
+    `/officer-events` used to label it `other`, so `classifyAct` recognises it before
+    trusting the server label. The backend classifier is fixed too.
+  - **Other unmapped acts are dropped** (`classifyAct` → null), never guessed at.
   - **Role spellings are folded per person-company pair.** Exact `roleKey` matches share
     one spelling. A cessation whose spelling was never appointed attaches to the only
     appointed seat of the same category, and to no seat when there are several (the

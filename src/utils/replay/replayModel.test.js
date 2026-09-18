@@ -32,8 +32,13 @@ describe('classifyAct', () => {
     expect(classifyAct({ event_type: 'Revocaciones' })).toBe('cessation');
   });
 
+  it('reads an ex-officio cancellation as the end of the seat, whatever the server labelled it', () => {
+    expect(classifyAct({ event_type: 'Cancelaciones', movement: 'other' })).toBe('cessation');
+    expect(classifyAct({ event_type: 'Cancelaciones de oficio de nombramientos' })).toBe('cessation');
+  });
+
   it('refuses to guess an unmapped act — it must never close a seat', () => {
-    expect(classifyAct({ event_type: 'Cancelaciones de oficio' })).toBeNull();
+    expect(classifyAct({ event_type: 'Otros conceptos' })).toBeNull();
     expect(classifyAct({})).toBeNull();
   });
 });
@@ -95,6 +100,15 @@ describe('buildCompanyReplayModel', () => {
     ], subject, { today: TODAY });
 
     expect(termsOf(model, 'PEREZ LUIS').map(t => [t.from, t.to])).toEqual([['2012-01-10', '2015-03-01']]);
+  });
+
+  it('an ex-officio cancellation closes the seat', () => {
+    const model = buildCompanyReplayModel([
+      ev('2012-01-10', [['PEREZ LUIS', 'CONSEJERO', 'Nombramientos']]),
+      ev('2019-01-10', [['PEREZ LUIS', 'CONSEJERO', 'Cancelaciones']]),
+    ], subject, { today: TODAY });
+
+    expect(termsOf(model, 'PEREZ LUIS')[0]).toMatchObject({ to: '2019-01-10', endKind: 'published' });
   });
 
   it('an unmapped act neither opens nor closes a seat', () => {
