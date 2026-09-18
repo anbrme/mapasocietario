@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupProvinces, renderDirectoryIndex, renderProvincePage } from './_lib.js';
+import { groupProvinces, renderDirectoryIndex, renderProvincePage, HUB_HEADERS, HUB_NOT_FOUND_HEADERS } from './_lib.js';
 import { directorySitemapUrls } from '../sitemap-directorio.xml.js';
 
 describe('groupProvinces', () => {
@@ -184,5 +184,21 @@ describe('recently added block', () => {
 
   it('names each company province so the block reads as content, not a link farm', () => {
     expect(renderDirectoryIndex(madrid, 'es', { recent })).toContain('A Coruña');
+  });
+});
+
+describe('hub response headers', () => {
+  it('sends x-accel-expires so the Hetzner front caches deterministically', () => {
+    // The front reads x-accel-expires ahead of cache-control. Company pages
+    // always sent it; the hubs did not, which is half of why /en/directory
+    // served BYPASS on the front (measured 2026-09-18).
+    expect(HUB_HEADERS['x-accel-expires']).toBe('3600');
+    expect(HUB_HEADERS['cache-control']).toContain('s-maxage=3600');
+    expect(HUB_NOT_FOUND_HEADERS['x-accel-expires']).toBe('600');
+  });
+
+  it('is frozen, so a route cannot mutate the shared object', () => {
+    expect(Object.isFrozen(HUB_HEADERS)).toBe(true);
+    expect(Object.isFrozen(HUB_NOT_FOUND_HEADERS)).toBe(true);
   });
 });

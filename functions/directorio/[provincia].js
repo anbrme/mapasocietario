@@ -4,12 +4,7 @@
  * pages appear and disappear with the underlying promoted data.
  */
 import { listPromotedProvinceCounts, listPromotedByProvinces } from '../empresa/_demand.js';
-import { groupProvinces, renderProvincePage } from './_lib.js';
-
-const HTML_HEADERS = {
-  'content-type': 'text/html; charset=utf-8',
-  'cache-control': 'public, max-age=0, s-maxage=3600',
-};
+import { groupProvinces, renderProvincePage, HUB_HEADERS, HUB_NOT_FOUND_HEADERS } from './_lib.js';
 
 export async function onRequestGet({ params, env }) {
   try {
@@ -19,11 +14,11 @@ export async function onRequestGet({ params, env }) {
     if (!group) {
       return new Response('Not found', {
         status: 404,
-        headers: { 'cache-control': 'public, s-maxage=600' },
+        headers: HUB_NOT_FOUND_HEADERS,
       });
     }
     const companies = await listPromotedByProvinces(env.SEO_DB, group.variants);
-    return new Response(renderProvincePage(group, companies), { headers: HTML_HEADERS });
+    return new Response(renderProvincePage(group, companies), { headers: HUB_HEADERS });
   } catch (error) {
     console.error('[directorio] province failed:', error?.message || error);
     return new Response('Service unavailable', { status: 503, headers: { 'cache-control': 'no-store' } });

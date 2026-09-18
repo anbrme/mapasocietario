@@ -42,6 +42,31 @@ const SITE = 'https://mapasocietario.es';
 // as soon as the next promotions take it over this threshold.
 export const MIN_INDEXABLE_PROVINCE_COMPANIES = 3;
 
+// Response headers for every hub page, in one place so the four routes
+// (ES/EN x index/province) cannot drift.
+//
+// x-accel-expires is the half that matters on the Hetzner front: nginx reads
+// it ahead of Cache-Control and strips it on the way out, so the lifetime
+// there is deterministic rather than inferred (the same reason
+// functions/empresa/_page_headers.js sends it). Company pages have always
+// sent it; the hubs never did, which left their cache lifetime up to whatever
+// the front chose to infer.
+const HUB_TTL = '3600';
+const NOT_FOUND_TTL = '600';
+
+export const HUB_HEADERS = Object.freeze({
+  'content-type': 'text/html; charset=utf-8',
+  // Counts move slowly (batch promotions plus a trickle of organic ones); an
+  // hour of edge cache keeps D1 reads negligible.
+  'cache-control': `public, max-age=0, s-maxage=${HUB_TTL}`,
+  'x-accel-expires': HUB_TTL,
+});
+
+export const HUB_NOT_FOUND_HEADERS = Object.freeze({
+  'cache-control': `public, s-maxage=${NOT_FOUND_TTL}`,
+  'x-accel-expires': NOT_FOUND_TTL,
+});
+
 // Re-exported so the sitemap and the hub pages share one import site.
 export { DIRECTORY_LANGS, directoryPath, provincePath };
 
