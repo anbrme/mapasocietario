@@ -60,6 +60,7 @@ import {
 } from '@mui/material';
 import { alpha, darken } from '@mui/material/styles';
 import TuneIcon from '@mui/icons-material/Tune';
+import SyncIcon from '@mui/icons-material/Sync';
 import {
   Close as CloseIcon,
   Search as SearchIcon,
@@ -182,6 +183,9 @@ import {
 } from '../utils/positionCategories';
 import { pruneChipFilterOrphans } from '../utils/graphFilterPrune';
 import { matchesRole } from '../utils/roleKey';
+import { buildOfficerEventMap, applyOfficerEventsToLinks } from '../utils/linkEventMerge';
+import { useSnapshotRefresh } from '../hooks/useSnapshotRefresh';
+import SnapshotRefreshOverlay from './SnapshotRefreshOverlay';
 import { isActiveCategory, effectiveCategoryFromEvents, isDissolvedLink } from '../utils/officerLinkStatus';
 import { BORME_SECTION_NAMES, getLinkEffectiveCategory, isDirectionalLink } from '../utils/linkDirectionality';
 import { useTerms } from '../hooks/useTerms';
@@ -398,6 +402,9 @@ const SEARCH_COPY = {
     exportGraph: 'Export graph snapshot',
     importGraph: 'Import graph snapshot',
     importedSnapshot: 'Imported snapshot',
+    refreshSnapshot: 'Refresh with current data',
+    refreshSnapshotTooltip: 'Fetch current registry data for every company in this snapshot. Nodes, positions and your edits are kept.',
+    snapshotRefreshedAt: time => `Refreshed with current data · ${time}`,
     restoredSession: 'Restored session',
     watchCompanies: 'Watch these companies (free)',
     watchlistEmpty: 'This watchlist has no companies to draw yet. Confirm the link in your email first.',
@@ -572,6 +579,7 @@ const SEARCH_COPY = {
     reportThanks: 'Thanks — an administrator will review the correction.',
     reportError: (msg) => `Could not send the report: ${msg}`,
     nifMissingLabel: 'No NIF on record',
+    nifNotInSnapshot: 'Not included in the snapshot',
     reportNifMissingCta: 'Suggest one',
     reportNifMissingTitle: 'Suggest a NIF',
     reportMissingIntro: 'No NIF is on record for this company. If you know it, suggest it and an administrator will review it.',
@@ -827,6 +835,9 @@ const SEARCH_COPY = {
     exportGraph: 'Exportar instantánea del grafo',
     importGraph: 'Importar instantánea del grafo',
     importedSnapshot: 'Instantánea importada',
+    refreshSnapshot: 'Actualizar con datos actuales',
+    refreshSnapshotTooltip: 'Consulta los datos actuales del registro para cada empresa de esta instantánea. Se conservan los nodos, las posiciones y tus ediciones.',
+    snapshotRefreshedAt: time => `Actualizada con datos actuales · ${time}`,
     restoredSession: 'Sesión restaurada',
     watchCompanies: 'Vigilar estas empresas (gratis)',
     watchlistEmpty: 'Esta lista aún no tiene empresas que dibujar. Confirma antes el enlace de tu correo.',
@@ -999,6 +1010,7 @@ const SEARCH_COPY = {
     reportThanks: 'Gracias — un administrador revisará la corrección.',
     reportError: (msg) => `No se pudo enviar el reporte: ${msg}`,
     nifMissingLabel: 'Sin NIF registrado',
+    nifNotInSnapshot: 'No incluido en la instantánea',
     reportNifMissingCta: 'Sugerir uno',
     reportNifMissingTitle: 'Sugerir un NIF',
     reportMissingIntro: 'No consta ningún NIF para esta empresa. Si lo conoces, sugiérelo y un administrador lo revisará.',
@@ -1802,6 +1814,30 @@ const SpanishCompanyNetworkGraph = ({
   const autosaveTimerRef = useRef(null);
   const autosaveWriteIdRef = useRef(0);
 
+  // Imported snapshot → live graph, in one click. A snapshot freezes each node
+  // as it was built — a company reached through an officer carries only the
+  // filings that named him — so its facts can be far behind the registry.
+  const [snapshotRefreshedAt, setSnapshotRefreshedAt] = useState(null);
+  const getLatestGraph = useCallback(() => graphDataRef.current, []);
+  const onSnapshotRefreshed = useCallback(summary => {
+    if (summary.refreshed === 0) return;
+    // Refreshed facts are today's registry, so the graph is live from here on:
+    // panel clicks fetch as on any other graph.
+    setSnapshotMode(false);
+    setSnapshotSource(null);
+    setSnapshotRefreshedAt(new Date());
+  }, []);
+  const snapshotRefresh = useSnapshotRefresh({
+    getGraph: getLatestGraph,
+    setGraph: setGraphData,
+    service: spanishCompaniesService,
+    onComplete: onSnapshotRefreshed,
+  });
+  // Anything that replaces the graph must abandon an in-flight refresh, or its
+  // results would land on the new graph and flip it out of snapshot mode.
+  const { abandon: abandonSnapshotRefresh } = snapshotRefresh;
+  const canRefreshSnapshot = snapshotMode && snapshotSource !== 'autosave';
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState(initialSearchType === 'officer' ? 'officer' : 'company'); // 'company' or 'officer'
@@ -2504,6 +2540,8 @@ const SpanishCompanyNetworkGraph = ({
       closeInspector();
       setSnapshotMode(false);
       setSnapshotSource(null);
+      setSnapshotRefreshedAt(null);
+      abandonSnapshotRefresh();
       pendingSnapshotCameraRef.current = null;
       setError(null);
       setSearchQuery('');
@@ -3364,6 +3402,8 @@ const SpanishCompanyNetworkGraph = ({
     // A deliberate new search leaves offline snapshot mode and may use live data.
     setSnapshotMode(false);
     setSnapshotSource(null);
+    setSnapshotRefreshedAt(null);
+    abandonSnapshotRefresh();
     setIsSearching(true);
     setError(null);
     setLastSearchContext(null);
@@ -3962,135 +4002,16 @@ const SpanishCompanyNetworkGraph = ({
       })
     );
 
-    // Build (officerUpper|companyUpper|category) → Map<"date|position", {date, position}>
-    // Keyed by date+position so that e.g. a revocation as "APO." and an appointment
-    // as "ADM." on the same date remain distinct rows with their own Cargo.
-    const eventMap = new Map();
-    results.forEach(({ company, events }) => {
-      const companyUpper = company.toUpperCase();
-      events.forEach(evt => {
-        const evtDate = evt.event_date || evt.indexed_date || evt.date;
-        if (!evtDate) return;
-        (evt.officers || []).forEach(o => {
-          const officerUpper = (o.name || '').trim().toUpperCase();
-          if (!officerUpper) return;
-          const evtType = (o.event_type || '').toLowerCase();
-          let cat = null;
-          if (evtType.includes('cese') || evtType.includes('dimisi')) cat = 'ceses_dimisiones';
-          else if (evtType.includes('reelecc')) cat = 'reelecciones';
-          else if (evtType.includes('revocac')) cat = 'revocaciones';
-          else if (evtType.includes('nombr')) cat = 'nombramientos';
-          if (!cat) return;
-          const position = o.specific_role || o.position_normalized || o.role || o.position || '';
-          const key = `${officerUpper}|${companyUpper}|${cat}`;
-          if (!eventMap.has(key)) eventMap.set(key, new Map());
-          const dedupKey = `${evtDate}|${position}`;
-          if (!eventMap.get(key).has(dedupKey)) {
-            eventMap.get(key).set(dedupKey, { date: evtDate, position });
-          }
-        });
-      });
-    });
+    const eventMap = buildOfficerEventMap(results);
 
     // Do NOT early-return when eventMap is empty: a dissolved company that has
     // no events in the v3 index still needs its officer links stamped
-    // companyDissolved=true.  The setGraphData pass below already skips links
-    // where events.length===0 && !companyDissolved (line ~2479), so the
-    // non-dissolved / no-event path is unaffected.
-
-    setGraphData(prev => {
-      const nodesById = new Map(prev.nodes.map(n => [n.id, n]));
-
-      // Which seat an act belongs to is only decidable against every seat the
-      // pair holds: a role that shares its category with a sibling can never be
-      // matched by category alone. See utils/roleKey.js.
-      const rolesByPair = new Map();
-      prev.links.forEach(l => {
-        if (l.type !== 'officer-company') return;
-        const sid = normalizeNodeId(getNodeIdFromRef(l.source));
-        const tid = normalizeNodeId(getNodeIdFromRef(l.target));
-        if (!sid || !tid) return;
-        const pairKey = sid < tid ? `${sid}|${tid}` : `${tid}|${sid}`;
-        if (!rolesByPair.has(pairKey)) rolesByPair.set(pairKey, []);
-        rolesByPair.get(pairKey).push(l.relationship || '');
-      });
-
-      const newLinks = prev.links.map(link => {
-        const sourceNode =
-          typeof link.source === 'object' ? link.source : nodesById.get(link.source);
-        const targetNode =
-          typeof link.target === 'object' ? link.target : nodesById.get(link.target);
-        if (!sourceNode || !targetNode) return link;
-
-        let officerNode, companyNode;
-        if (sourceNode.type === 'officer') {
-          officerNode = sourceNode;
-          companyNode = targetNode;
-        } else if (targetNode.type === 'officer') {
-          officerNode = targetNode;
-          companyNode = sourceNode;
-        } else if (link.type === 'officer-company' && link.unified) {
-          // A company unified with its own cargos: the source company IS the
-          // officer of this link. Without this branch the link was skipped
-          // whole — no events, no dissolution — and a seat held by an
-          // extinguished company stayed green.
-          officerNode = sourceNode;
-          companyNode = targetNode;
-        } else {
-          return link;
-        }
-
-        const officerUpper = (officerNode.name || '').toUpperCase();
-        const companyUpper = (companyNode.name || '').toUpperCase();
-
-        // If the company node is marked dissolved, every officer-company link
-        // for this company is implicitly ceased — dissolution implies cessation
-        // even when individual cese events were never inscribed in BORME.
-        const companyDissolved = !!companyNode.isDissolved;
-        // …and a dissolved HOLDER can hold no seat: a company unified with its
-        // cargos that has itself been extinguished.
-        const holderDissolved = officerNode.type !== 'officer' && !!officerNode.isDissolved;
-
-        // Only attach events for THIS link's role. An officer can hold several
-        // roles at one company with independent active/ceased status (e.g. an
-        // active CONSEJERO and a later-revoked APODERADO); without this filter
-        // every role-link inherits the company's latest event, so a still-active
-        // seat is mislabeled ceased and the company disappears under an
-        // active-only filter.
-        //
-        // Matching used to run at position-CATEGORY granularity, which is too
-        // coarse where a person holds several seats of one category: DAGA
-        // GELABERT TOMAS holds three "Vocal / Comisión" roles at GRIFOLS SA, so
-        // his 2025-08-01 re-appointment to the nominations committee was the
-        // latest act of that category for all three and drew two revoked seats
-        // as live. matchesRole requires the exact role unless the seat is the
-        // only one of its category on this pair. See utils/roleKey.js.
-        const linkRole = link.relationship || '';
-        const pairRoles =
-          rolesByPair.get(
-            [normalizeNodeId(officerNode.id), normalizeNodeId(companyNode.id)].sort().join('|')
-          ) || [linkRole];
-        const events = [];
-        ['nombramientos', 'ceses_dimisiones', 'reelecciones', 'revocaciones'].forEach(cat => {
-          const entries = eventMap.get(`${officerUpper}|${companyUpper}|${cat}`);
-          if (entries) {
-            entries.forEach(({ date, position }) => {
-              if (!matchesRole(position, linkRole, pairRoles)) return;
-              events.push({ category: cat, date, position });
-            });
-          }
-        });
-
-        if (events.length === 0 && !companyDissolved && !holderDissolved) return link;
-        return {
-          ...link,
-          ...(events.length > 0 && { events }),
-          ...(companyDissolved && { companyDissolved: true }),
-          ...(holderDissolved && { holderDissolved: true }),
-        };
-      });
-      return { nodes: prev.nodes, links: newLinks };
-    });
+    // companyDissolved=true. applyOfficerEventsToLinks leaves links with no
+    // events and no dissolution untouched.
+    setGraphData(prev => ({
+      nodes: prev.nodes,
+      links: applyOfficerEventsToLinks(prev, eventMap),
+    }));
   }, []);
 
   // Add company with all its officers to the graph
@@ -7482,6 +7403,15 @@ const SpanishCompanyNetworkGraph = ({
     rememberInspectorAnchor,
   ]);
 
+  // A panel opened on the frozen snapshot keeps showing its partial facts
+  // after the refresh turns the graph live; reload it from the registry.
+  useEffect(() => {
+    if (snapshotMode || !previewOpen || !previewData?.snapshotLocal || !previewedRegistryNode) return;
+    openDataPreview(previewedRegistryNode);
+    // Only the snapshot → live transition should trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshotMode]);
+
   /**
    * The officer track record, shaped for the chart. Bound to the officer the
    * inspector is actually showing: without the name check a stale chart from
@@ -9242,6 +9172,8 @@ const SpanishCompanyNetworkGraph = ({
     closeInspector();
     setSnapshotMode(false);
     setSnapshotSource(null);
+    setSnapshotRefreshedAt(null);
+    abandonSnapshotRefresh();
     pendingSnapshotCameraRef.current = null;
     setPinnedNodeIds(new Set());
     setHiddenNodeIds(new Set());
@@ -9764,6 +9696,8 @@ const SpanishCompanyNetworkGraph = ({
     autoFitStateRef.current = { count: snapshot.graph.nodes.length, ready: true };
     setSnapshotMode(true);
     setSnapshotSource(source);
+    setSnapshotRefreshedAt(null);
+    abandonSnapshotRefresh();
     setGraphData(snapshot.graph);
     // Edit map gate: a snapshot that already carries author work (added
     // nodes/links, a dismissed registry link, a rename) opens straight into
@@ -11532,6 +11466,33 @@ const SpanishCompanyNetworkGraph = ({
               sx={{ height: 22, fontSize: '0.68rem' }}
             />
           )}
+          {!isCompactEmbed && canRefreshSnapshot && (
+            <Tooltip title={text.refreshSnapshotTooltip}>
+              <Button
+                size="small"
+                variant="contained"
+                disableElevation
+                onClick={() => {
+                  trackGraphToolbarAction('refresh_snapshot');
+                  snapshotRefresh.start();
+                }}
+                disabled={snapshotRefresh.state.status === 'running'}
+                startIcon={<SyncIcon sx={{ fontSize: 14 }} />}
+                sx={{ fontSize: '0.7rem', py: 0, textTransform: 'none' }}
+              >
+                {text.refreshSnapshot}
+              </Button>
+            </Tooltip>
+          )}
+          {!isCompactEmbed && !snapshotMode && snapshotRefreshedAt && (
+            <Chip
+              label={text.snapshotRefreshedAt(snapshotRefreshedAt.toLocaleTimeString(uiLanguage === 'en' ? 'en-GB' : 'es-ES', { hour: '2-digit', minute: '2-digit' }))}
+              size="small"
+              color="success"
+              variant="outlined"
+              sx={{ height: 22, fontSize: '0.68rem' }}
+            />
+          )}
           {!isCompactEmbed && (hiddenNodeIds.size > 0 || hiddenLinksList.length > 0) && (
             <Tooltip title={text.manageHidden}>
               <Button
@@ -12185,12 +12146,21 @@ const SpanishCompanyNetworkGraph = ({
           />
         )}
 
+        <SnapshotRefreshOverlay
+          state={snapshotRefresh.state}
+          lang={uiLanguage}
+          onCancel={snapshotRefresh.cancel}
+          onRetry={snapshotRefresh.start}
+          onDismiss={snapshotRefresh.dismiss}
+        />
+
         {/* Company inspector — docked to the right edge of the canvas. The
             canvas already reserved this width (canvasDimensions), so the graph
             sits beside the panel rather than under it. */}
         <CompanyInspectorPanel
           open={previewOpen}
           onClose={closeInspector}
+          onRefreshSnapshot={canRefreshSnapshot ? () => snapshotRefresh.start() : null}
           width={isInspectorDockable ? inspectorWidth : null}
           authorNode={previewedAuthorNode}
           onEditAuthorNode={() => setAuthorNodeDialog({ initial: previewedAuthorNode, graphPoint: null })}

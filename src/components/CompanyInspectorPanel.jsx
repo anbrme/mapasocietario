@@ -100,6 +100,7 @@ const InspectorPanelShell = ({ width, header, children }) => (
 const CompanyInspectorPanel = ({
   open,
   onClose,
+  onRefreshSnapshot = null,
   nodeName,
   nodeType,
   userMerged,
@@ -369,8 +370,21 @@ const CompanyInspectorPanel = ({
         {error && (
           <Alert severity="warning" sx={{ my: 2 }}>{error}</Alert>
         )}
+        {/* Snapshot facts are only what each node stored when the graph was
+            built — a company reached through an officer may hold one filing
+            of dozens — so the notice carries the click that replaces them. */}
         {data?.snapshotLocal && (
-          <Alert severity="info" sx={{ mb: 2 }}>{text.snapshotPreviewNotice}</Alert>
+          <Alert
+            severity="info"
+            sx={{ mb: 2 }}
+            action={onRefreshSnapshot && (
+              <Button color="inherit" size="small" onClick={onRefreshSnapshot} sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
+                {text.refreshSnapshot}
+              </Button>
+            )}
+          >
+            {text.snapshotPreviewNotice}
+          </Alert>
         )}
 
         {/* Findings live on /empresa, not here. They are an INTERPRETATION, and
@@ -460,7 +474,12 @@ const CompanyInspectorPanel = ({
                     <Box>
                       <Typography variant="caption" color="text.secondary">CIF/NIF</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                        <Typography variant="body2" color="text.disabled">{text.nifMissingLabel}</Typography>
+                        <Typography variant="body2" color="text.disabled">
+                          {data.snapshotLocal ? text.nifNotInSnapshot : text.nifMissingLabel}
+                        </Typography>
+                        {/* A snapshot never carries the NIF; "none on record" would
+                            be false, and inviting a suggestion for it pointless. */}
+                        {!data.snapshotLocal && (
                         <Button
                           size="small"
                           variant="text"
@@ -470,6 +489,7 @@ const CompanyInspectorPanel = ({
                         >
                           {text.reportNifMissingCta}
                         </Button>
+                        )}
                       </Box>
                     </Box>
                   ) : null}
