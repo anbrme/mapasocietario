@@ -30,6 +30,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import GroupsIcon from '@mui/icons-material/Groups';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import TableRowsIcon from '@mui/icons-material/TableRows';
+import HistoryIcon from '@mui/icons-material/History';
 import CurrencyConfirmationCard from './CurrencyConfirmationCard.jsx';
 import OfficerInspectorBody from './OfficerInspectorBody.jsx';
 import AuthorElementCard from './AuthorElementCard.jsx';
@@ -151,6 +152,9 @@ const CompanyInspectorPanel = ({
   // renamed. Null for an unrenamed node and for an author node (which was
   // never a registry name to begin with).
   renamedFrom = null,
+  // Replay history: opens the registry-time replay of this company or person.
+  // Null hides the control (author nodes have no registry history).
+  onReplayHistory = null,
 }) => {
   // The registry-detail disclosure. Closed for every node: carrying the
   // previous company's open state over is how a card stops being predictable.
@@ -346,6 +350,19 @@ const CompanyInspectorPanel = ({
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
             {text.fullProfileHint}
           </Typography>
+        </Box>
+      )}
+      {onReplayHistory && !authorNode && (
+        <Box sx={{ px: 2, pt: fullHref ? 0.5 : 1.5 }}>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<HistoryIcon />}
+            onClick={onReplayHistory}
+            sx={{ textTransform: 'none', fontWeight: 600 }}
+          >
+            {text.replayHistory}
+          </Button>
         </Box>
       )}
       {/* The card does not scroll. Everything above the disclosure is bounded —
