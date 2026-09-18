@@ -177,6 +177,7 @@ export default function ReplayPlayer({ model, copy, language, isNarrow, reducedM
           labelChanges={!isDense}
           flashesRef={flashesRef}
           ariaLabel={`${copy.title}: ${model.subject.name}`}
+          labels={{ zoomIn: copy.zoomIn, zoomOut: copy.zoomOut, resetView: copy.resetView }}
         />
         {ledgerOpen && (
           <Box sx={{

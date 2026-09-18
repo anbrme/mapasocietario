@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box } from '@mui/material';
+import { Box, IconButton, Tooltip } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import { useTheme } from '@mui/material/styles';
 import { graphInk } from '../../theme/graphInk';
 import { isCorporateName } from '../../utils/legalEntity';
+import { IDENTITY_VIEW, zoomAt, panBy } from '../../utils/replay/replayView';
 
 // A plain canvas on purpose: react-force-graph-2d exists to run a simulation,
 // and the replay needs fixed positions and frame-exact control of what is
@@ -17,6 +21,10 @@ const NODE_RADIUS = 6;
 const HOVER_PX = 12;
 const FIT_MARGIN = 70;
 const MAX_SCALE = 1.4;
+const WHEEL_ZOOM_RATE = 0.0015;
+const BUTTON_ZOOM_STEP = 1.4;
+// A press that moves less than this is a click, not a pan.
+const DRAG_THRESHOLD_PX = 3;
 
 const withAlpha = (hex, alpha) => {
   const h = hex.replace('#', '');
@@ -58,16 +66,40 @@ const linkStyle = (st, palette, ink) => {
  * @param {boolean} props.labelChanges - label counterparts just after they move
  * @param {React.MutableRefObject<{act: object, at: number}[]>} props.flashesRef
  * @param {string} props.ariaLabel
+ * @param {{ zoomIn: string, zoomOut: string, resetView: string }} props.labels
  */
-export default function ReplayCanvas({ model, positions, radius, state, showPast, labelChanges, flashesRef, ariaLabel }) {
+export default function ReplayCanvas({ model, positions, radius, state, showPast, labelChanges, flashesRef, ariaLabel, labels }) {
   const theme = useTheme();
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const propsRef = useRef(null);
   const hoverRef = useRef(null);
+  const viewRef = useRef(IDENTITY_VIEW);
+  const dragRef = useRef(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
   propsRef.current = { model, positions, radius, state, showPast, labelChanges, palette: theme.palette.graph, ink: graphInk(theme.palette.mode), size };
+
+  // A new layout (another subject, or the apoderados toggle) starts fitted.
+  useEffect(() => { viewRef.current = IDENTITY_VIEW; }, [positions]);
+
+  const centre = () => ({ x: propsRef.current.size.w / 2, y: propsRef.current.size.h / 2 });
+  const zoomBy = factor => { viewRef.current = zoomAt(viewRef.current, factor, centre(), centre()); };
+
+  // Wheel zoom about the cursor. Registered by hand: React's wheel listener is
+  // passive, and the page must not scroll while the stage zooms.
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return undefined;
+    const onWheel = e => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const cursor = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      viewRef.current = zoomAt(viewRef.current, Math.exp(-e.deltaY * WHEEL_ZOOM_RATE), cursor, centre());
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -82,19 +114,37 @@ export default function ReplayCanvas({ model, positions, radius, state, showPast
   useEffect(() => {
     let raf = 0;
     const frame = () => {
-      draw(canvasRef.current, propsRef.current, flashesRef.current, hoverRef.current);
+      draw(canvasRef.current, propsRef.current, flashesRef.current, hoverRef.current, viewRef.current);
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
   }, [flashesRef]);
 
+  const onPointerDown = e => {
+    dragRef.current = { x: e.clientX, y: e.clientY, moved: false };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onPointerUp = () => { dragRef.current = null; };
+
   const onMove = e => {
+    const drag = dragRef.current;
+    if (drag) {
+      const dx = e.clientX - drag.x;
+      const dy = e.clientY - drag.y;
+      if (drag.moved || Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) {
+        viewRef.current = panBy(viewRef.current, dx, dy);
+        dragRef.current = { x: e.clientX, y: e.clientY, moved: true };
+        hoverRef.current = null;
+        return;
+      }
+    }
     const { positions: pos, state: st, size: sz, radius: r } = propsRef.current;
+    const view = viewRef.current;
     const rect = canvasRef.current.getBoundingClientRect();
-    const scale = fitScale(sz, r);
-    const wx = (e.clientX - rect.left - sz.w / 2) / scale;
-    const wy = (e.clientY - rect.top - sz.h / 2) / scale;
+    const scale = fitScale(sz, r) * view.k;
+    const wx = (e.clientX - rect.left - sz.w / 2 - view.x) / scale;
+    const wy = (e.clientY - rect.top - sz.h / 2 - view.y) / scale;
     let best = null;
     let bestD = HOVER_PX / scale;
     pos.forEach((p, id) => {
@@ -115,10 +165,27 @@ export default function ReplayCanvas({ model, positions, radius, state, showPast
         aria-label={ariaLabel}
         width={size.w * dpr}
         height={size.h * dpr}
-        style={{ width: size.w, height: size.h, display: 'block' }}
-        onMouseMove={onMove}
-        onMouseLeave={() => { hoverRef.current = null; }}
+        style={{ width: size.w, height: size.h, display: 'block', cursor: 'grab', touchAction: 'none' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={() => { hoverRef.current = null; }}
       />
+      <Box sx={{
+        position: 'absolute', top: 8, right: 8, display: 'flex', flexDirection: 'column',
+        bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1,
+      }}>
+        <Tooltip title={labels.zoomIn} placement="left">
+          <IconButton size="small" aria-label={labels.zoomIn} onClick={() => zoomBy(BUTTON_ZOOM_STEP)}><AddIcon fontSize="small" /></IconButton>
+        </Tooltip>
+        <Tooltip title={labels.zoomOut} placement="left">
+          <IconButton size="small" aria-label={labels.zoomOut} onClick={() => zoomBy(1 / BUTTON_ZOOM_STEP)}><RemoveIcon fontSize="small" /></IconButton>
+        </Tooltip>
+        <Tooltip title={labels.resetView} placement="left">
+          <IconButton size="small" aria-label={labels.resetView} onClick={() => { viewRef.current = IDENTITY_VIEW; }}><CenterFocusStrongIcon fontSize="small" /></IconButton>
+        </Tooltip>
+      </Box>
     </Box>
   );
 }
@@ -126,17 +193,20 @@ export default function ReplayCanvas({ model, positions, radius, state, showPast
 const fitScale = (size, radius) =>
   Math.min(MAX_SCALE, Math.max(0.1, (Math.min(size.w, size.h) / 2) / (radius + FIT_MARGIN)));
 
-function draw(canvas, p, flashes, hoverId) {
+function draw(canvas, p, flashes, hoverId, view) {
   if (!canvas || !p || !p.size.w) return;
   const ctx = canvas.getContext('2d');
   const dpr = canvas.width / p.size.w || 1;
   const now = performance.now();
-  const scale = fitScale(p.size, p.radius);
+  const scale = fitScale(p.size, p.radius) * view.k;
+  // Screen position of the stage origin (the subject), in CSS pixels.
+  const ox = p.size.w / 2 + view.x;
+  const oy = p.size.h / 2 + view.y;
   const { palette, ink } = p;
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, (dpr * p.size.w) / 2, (dpr * p.size.h) / 2);
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * ox, dpr * oy);
 
   // Recent acts, newest last; expired flashes are pruned in place of a timer.
   const recent = new Map();
@@ -200,7 +270,7 @@ function draw(canvas, p, flashes, hoverId) {
     if (isHovered || (p.labelChanges && flash)) {
       const roles = isHovered && st.liveRoles.length ? ` · ${st.liveRoles.join(', ')}` : '';
       ctx.save();
-      ctx.setTransform(dpr, 0, 0, dpr, (dpr * p.size.w) / 2 + pos.x * scale * dpr, (dpr * p.size.h) / 2 + pos.y * scale * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, dpr * (ox + pos.x * scale), dpr * (oy + pos.y * scale));
       drawLabel(ctx, `${cp.name}${roles}`, 0, NODE_RADIUS * scale + 4, palette.surface, isHovered);
       ctx.restore();
     }
@@ -218,7 +288,7 @@ function draw(canvas, p, flashes, hoverId) {
   ctx.strokeStyle = subjectColor;
   ctx.stroke();
   ctx.save();
-  ctx.setTransform(dpr, 0, 0, dpr, (dpr * p.size.w) / 2, (dpr * p.size.h) / 2);
+  ctx.setTransform(dpr, 0, 0, dpr, dpr * ox, dpr * oy);
   drawLabel(ctx, p.model.subject.name, 0, SUBJECT_RADIUS * scale + 6, palette.surface, true);
   ctx.restore();
 }
