@@ -8,7 +8,7 @@ import { useWalkthrough } from '../hooks/useWalkthrough';
 import { useConnectionFocus } from '../hooks/useConnectionFocus';
 import { shouldDeferInspectorOpen } from '../utils/inspectorDockTiming';
 import { autoFitDecision } from '../utils/graphAutoFit';
-import { captureHiddenRestore, applyHiddenRestore, undoHiddenRestore } from '../utils/hiddenRestoreUndo';
+import { captureHiddenRestore, captureSelectionHide, applyHiddenRestore, undoHiddenRestore, undoVisibilityChange } from '../utils/hiddenRestoreUndo';
 import { connectionIndex, connectionFocus } from '../utils/connectionFocus';
 import WalkthroughPlayer, { walkthroughControllerInset } from './WalkthroughPlayer';
 import {
@@ -471,6 +471,9 @@ const SEARCH_COPY = {
     showAll: 'Show all',
     undoRestore: 'Undo restore',
     undoRestoreHint: 'Hide the last restored items again and return to the layout before restoring them.',
+    undoHide: 'Undo hide selection',
+    undoHideHint: 'Restore the last hidden selection and its previous layout.',
+    allNodesHidden: 'All nodes are hidden. Your graph is still here.',
     noHiddenNodes: 'No hidden nodes',
     // Company⇄cargo unify
     cargoBadge: count => `+${count} cargo${count === 1 ? '' : 's'}`,
@@ -905,6 +908,9 @@ const SEARCH_COPY = {
     showAll: 'Mostrar todos',
     undoRestore: 'Deshacer restauración',
     undoRestoreHint: 'Volver a ocultar los últimos elementos restaurados y recuperar la disposición anterior.',
+    undoHide: 'Deshacer ocultar selección',
+    undoHideHint: 'Recuperar la última selección ocultada y su disposición anterior.',
+    allNodesHidden: 'Todos los nodos están ocultos. Tu grafo sigue aquí.',
     noHiddenNodes: 'Sin nodos ocultos',
     // Unificación empresa⇄cargo
     cargoBadge: count => `+${count} cargo${count === 1 ? '' : 's'}`,
@@ -1902,9 +1908,9 @@ const SpanishCompanyNetworkGraph = ({
   const [pinnedNodeIds, setPinnedNodeIds] = useState(new Set());
   // Manually hidden nodes (right-click to hide)
   const [hiddenNodeIds, setHiddenNodeIds] = useState(new Set());
-  // Session history: unlike a toast, this remains available after the last
-  // hidden item is restored. Each click undoes one restore operation.
-  const [hiddenRestoreHistory, setHiddenRestoreHistory] = useState([]);
+  // One chronological history for hiding selections and restoring items.
+  // Remains available even when every node is hidden or restored.
+  const [visibilityHistory, setVisibilityHistory] = useState([]);
   const [hiddenNodesMenuAnchorEl, setHiddenNodesMenuAnchorEl] = useState(null);
   const [activeNodeId, setActiveNodeId] = useState(null);
   // Company⇄cargo unify: `isUnifying` gates the toolbar toggle's spinner while the
@@ -2550,7 +2556,7 @@ const SpanishCompanyNetworkGraph = ({
   useEffect(() => {
     if (!embedded && !visible) {
       setGraphData({ nodes: [], links: [] });
-      setHiddenRestoreHistory([]);
+      setVisibilityHistory([]);
       closeInspector();
       setSnapshotMode(false);
       setSnapshotSource(null);
@@ -5592,20 +5598,21 @@ const SpanishCompanyNetworkGraph = ({
     const snapshot = captureHiddenRestore(graphData, hiddenNodeIds, items);
     if (!snapshot) return;
     const center = getViewportCentreGraphPoint();
-    setHiddenRestoreHistory(history => [...history, { ...snapshot, camera: { ...cameraState }, center, spacing }]);
+    setVisibilityHistory(history => [...history, { ...snapshot, camera: { ...cameraState }, center, spacing }]);
     const restored = applyHiddenRestore(graphData, hiddenNodeIds, snapshot);
     setGraphData(restored.graph);
     setHiddenNodeIds(restored.hiddenNodeIds);
     fitOnSettleRef.current = false;
   }, [graphData, hiddenNodeIds, cameraState, spacing, getViewportCentreGraphPoint]);
 
-  const undoLastHiddenRestore = useCallback(() => {
-    const snapshot = hiddenRestoreHistory[hiddenRestoreHistory.length - 1];
+  const undoLastVisibilityChange = useCallback(() => {
+    const snapshot = visibilityHistory[visibilityHistory.length - 1];
     if (!snapshot) return;
-    const restored = undoHiddenRestore(graphData, hiddenNodeIds, snapshot);
+    const restored = undoVisibilityChange(graphData, hiddenNodeIds, investigationSet, snapshot);
     setGraphData(restored.graph);
     setHiddenNodeIds(restored.hiddenNodeIds);
-    setHiddenRestoreHistory(history => history.slice(0, -1));
+    setInvestigationSet(restored.selection);
+    setVisibilityHistory(history => history.slice(0, -1));
     prevSpacingRef.current = snapshot.spacing;
     setSpacing(snapshot.spacing);
     fitOnSettleRef.current = false;
@@ -5614,7 +5621,7 @@ const SpanishCompanyNetworkGraph = ({
     setCameraState(snapshot.camera);
     setZoomLevel(snapshot.camera.k);
     closeHiddenNodesMenu();
-  }, [hiddenRestoreHistory, graphData, hiddenNodeIds, closeHiddenNodesMenu]);
+  }, [visibilityHistory, graphData, hiddenNodeIds, investigationSet, closeHiddenNodesMenu]);
 
   const unhideAllNodes = useCallback(() => {
     restoreHiddenItems({ nodeIds: hiddenNodesList.map(node => node.id) });
@@ -5648,12 +5655,19 @@ const SpanishCompanyNetworkGraph = ({
   // Hide every node in the selection at once (Shift-click or Shift-drag built
   // it), then release the selection so the chip does not keep counting ghosts.
   const hideSelectedNodes = useCallback(() => {
-    const ids = Array.from(investigationSet).map(normalizeNodeId);
-    if (ids.length === 0) return;
-    setHiddenNodeIds(prev => new Set([...prev, ...ids]));
+    const snapshot = captureSelectionHide(graphData, hiddenNodeIds, investigationSet);
+    if (!snapshot) return;
+    const center = getViewportCentreGraphPoint();
+    setVisibilityHistory(history => [...history, { ...snapshot, camera: { ...cameraState }, center, spacing }]);
+    // Hiding is the inverse of restoring: reuse the same scoped visibility
+    // change and pinned layout so hiding a selection cannot disturb the rest.
+    const hidden = undoHiddenRestore(graphData, hiddenNodeIds, snapshot);
+    setGraphData(hidden.graph);
+    setHiddenNodeIds(hidden.hiddenNodeIds);
     setInvestigationSet(new Set());
-    trackGraphToolbarAction('hide_selected', { node_count: ids.length });
-  }, [investigationSet, trackGraphToolbarAction]);
+    fitOnSettleRef.current = false;
+    trackGraphToolbarAction('hide_selected', { node_count: snapshot.nodeIds.length });
+  }, [graphData, hiddenNodeIds, investigationSet, cameraState, spacing, getViewportCentreGraphPoint, trackGraphToolbarAction]);
 
   // Take back what expanding this node added. Anything the user claimed since
   // (pinned, noted, selected, expanded in turn) or that a later expansion
@@ -9234,7 +9248,7 @@ const SpanishCompanyNetworkGraph = ({
     pendingSnapshotCameraRef.current = null;
     setPinnedNodeIds(new Set());
     setHiddenNodeIds(new Set());
-    setHiddenRestoreHistory([]);
+    setVisibilityHistory([]);
     setError(null);
     setLastSearchContext(null);
     lastSuccessfulSearchAtRef.current = null;
@@ -9734,7 +9748,7 @@ const SpanishCompanyNetworkGraph = ({
 
   const applyGraphSnapshot = useCallback((snapshot, notice, source = 'imported') => {
     clearConnectionFocus();
-    setHiddenRestoreHistory([]);
+    setVisibilityHistory([]);
     const view = snapshot.view || {};
     const nodeById = new Map(
       snapshot.graph.nodes.map(node => [normalizeNodeId(node.id), node])
@@ -11568,16 +11582,16 @@ const SpanishCompanyNetworkGraph = ({
               </Button>
             </Tooltip>
           )}
-          {!isCompactEmbed && hiddenRestoreHistory.length > 0 && (
-            <Tooltip title={text.undoRestoreHint}>
+          {visibilityHistory.length > 0 && (
+            <Tooltip title={visibilityHistory[visibilityHistory.length - 1].action === 'hide' ? text.undoHideHint : text.undoRestoreHint}>
               <Button
                 size="small"
                 variant="outlined"
-                onClick={undoLastHiddenRestore}
+                onClick={undoLastVisibilityChange}
                 startIcon={<UndoIcon sx={{ fontSize: 14 }} />}
                 sx={{ fontSize: '0.7rem', py: 0, textTransform: 'none' }}
               >
-                {text.undoRestore}
+                {visibilityHistory[visibilityHistory.length - 1].action === 'hide' ? text.undoHide : text.undoRestore}
               </Button>
             </Tooltip>
           )}
@@ -11663,6 +11677,15 @@ const SpanishCompanyNetworkGraph = ({
               zIndex: 15,
             }}
           />
+        )}
+        {graphData.nodes.length > 0 && graphData.nodes.every(node => hiddenNodeIds.has(normalizeNodeId(node.id))) && (
+          <Alert
+            severity="info"
+            sx={{ position: 'absolute', top: 16, left: 16, right: isCompactEmbed ? 68 : 16, zIndex: 22 }}
+            action={<Button color="inherit" size="small" onClick={unhideAllNodes}>{text.showAll}</Button>}
+          >
+            {text.allNodesHidden}
+          </Alert>
         )}
         {shouldShowGraphEmptyState({
           nodeCount: graphData.nodes.length,
