@@ -144,6 +144,8 @@ import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
 import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
+// Replay history ships in its own chunk: most sessions never open it.
+const ReplayDialog = React.lazy(() => import('./replay/ReplayDialog'));
 import ApoderadosSidebar from './ApoderadosSidebar';
 import CompanyInspectorPanel from './CompanyInspectorPanel';
 import CompanyDataDock from './CompanyDataDock';
@@ -638,6 +640,7 @@ const SEARCH_COPY = {
     structureHint: 'Opens the full table in the panel below.',
     trackRecord: 'Track record',
     openTimeline: 'Open the full timeline',
+    replayHistory: 'Replay history',
     andMoreSeats: n => `+${n} more · view all`,
     seeInTable: 'Table',
     companiesShort: 'Companies',
@@ -1064,6 +1067,7 @@ const SEARCH_COPY = {
     structureHint: 'Abre la tabla completa en el panel inferior.',
     trackRecord: 'Trayectoria',
     openTimeline: 'Ver la línea temporal completa',
+    replayHistory: 'Reproducir historia',
     andMoreSeats: n => `+${n} más · ver todo`,
     seeInTable: 'Tabla',
     companiesShort: 'Empresas',
@@ -6968,6 +6972,21 @@ const SpanishCompanyNetworkGraph = ({
     }
   }, []);
 
+  // Replay history (docs/superpowers/specs/2026-09-18-replay-history-design.md):
+  // the inspected company or person, replayed in registry time in its own
+  // dialog. A company goes by the group key already on its node when there is
+  // one; the dialog resolves it otherwise.
+  const [replaySubject, setReplaySubject] = useState(null);
+  const openReplayHistory = useCallback(() => {
+    if (!previewNodeName) return;
+    trackGraphToolbarAction('replay_history');
+    setReplaySubject({
+      kind: previewNodeType === 'officer' ? 'officer' : 'company',
+      name: previewNodeName,
+      groupKey: previewNodeType === 'officer' ? null : (previewedRegistryNode?.groupKey || null),
+    });
+  }, [previewNodeName, previewNodeType, previewedRegistryNode, trackGraphToolbarAction]);
+
   const openOfficerTimeline = useCallback((node) => {
     if (!node?.name) return;
     setTimelineDialogOpen(true);
@@ -12204,6 +12223,9 @@ const SpanishCompanyNetworkGraph = ({
             name: previewNodeName,
             nameVariants: previewData?.nameVariants || [],
           })}
+          onReplayHistory={previewNodeName && (previewNodeType === 'officer' || previewNodeType === 'company')
+            ? openReplayHistory
+            : null}
           onFocusCompany={focusCompanyByName}
           onExpandNode={expandFromInspector}
           expandNodeLabel={text.expandNode}
@@ -13460,6 +13482,18 @@ const SpanishCompanyNetworkGraph = ({
 
 
         {/* Officer Timeline Dialog */}
+        {replaySubject && (
+          <React.Suspense fallback={null}>
+            <ReplayDialog
+              open={Boolean(replaySubject)}
+              subject={replaySubject}
+              language={uiLanguage}
+              onClose={() => setReplaySubject(null)}
+              container={overlayContainer}
+            />
+          </React.Suspense>
+        )}
+
         <OfficerTimelineDialog
           open={timelineDialogOpen}
           officerName={timelineOfficerName}
