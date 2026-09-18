@@ -1833,6 +1833,9 @@ const SpanishCompanyNetworkGraph = ({
     service: spanishCompaniesService,
     onComplete: onSnapshotRefreshed,
   });
+  // Anything that replaces the graph must abandon an in-flight refresh, or its
+  // results would land on the new graph and flip it out of snapshot mode.
+  const { abandon: abandonSnapshotRefresh } = snapshotRefresh;
   const canRefreshSnapshot = snapshotMode && snapshotSource !== 'autosave';
 
   // Search state
@@ -2538,6 +2541,7 @@ const SpanishCompanyNetworkGraph = ({
       setSnapshotMode(false);
       setSnapshotSource(null);
       setSnapshotRefreshedAt(null);
+      abandonSnapshotRefresh();
       pendingSnapshotCameraRef.current = null;
       setError(null);
       setSearchQuery('');
@@ -3399,6 +3403,7 @@ const SpanishCompanyNetworkGraph = ({
     setSnapshotMode(false);
     setSnapshotSource(null);
     setSnapshotRefreshedAt(null);
+    abandonSnapshotRefresh();
     setIsSearching(true);
     setError(null);
     setLastSearchContext(null);
@@ -9168,6 +9173,7 @@ const SpanishCompanyNetworkGraph = ({
     setSnapshotMode(false);
     setSnapshotSource(null);
     setSnapshotRefreshedAt(null);
+    abandonSnapshotRefresh();
     pendingSnapshotCameraRef.current = null;
     setPinnedNodeIds(new Set());
     setHiddenNodeIds(new Set());
@@ -9691,6 +9697,7 @@ const SpanishCompanyNetworkGraph = ({
     setSnapshotMode(true);
     setSnapshotSource(source);
     setSnapshotRefreshedAt(null);
+    abandonSnapshotRefresh();
     setGraphData(snapshot.graph);
     // Edit map gate: a snapshot that already carries author work (added
     // nodes/links, a dismissed registry link, a rename) opens straight into

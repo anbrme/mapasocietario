@@ -1,14 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { runPool } from '../utils/concurrencyPool';
-import {
-  applyLiveRefresh,
-  selectRefreshTargets,
-  summarizeRefresh,
-} from '../utils/snapshotRefresh';
-
-// Companies fetched at once. Each costs up to three calls (key resolution,
-// profile, events) and the API bans bursts, so this stays small.
-export const SNAPSHOT_REFRESH_CONCURRENCY = 3;
+import { runSnapshotRefresh } from '../utils/runSnapshotRefresh';
 
 // Same page size as the inspector panel's events fetch, so the request cache
 // serves the panel when the user clicks a node after refreshing.
@@ -17,12 +8,13 @@ const EVENTS_PAGE_SIZE = 100;
 const IDLE = { status: 'idle', done: 0, total: 0, current: null, summary: null };
 
 /**
- * One-click refresh of an imported snapshot against the live registry.
+ * One-click refresh of an imported snapshot against the live registry. State
+ * and lifecycle only; the rules live in utils/runSnapshotRefresh.
  *
- * Fetches every registry company in the graph with bounded concurrency,
- * then applies all results in ONE graph update (see applyLiveRefresh), so the
- * canvas re-renders once instead of once per company. A cancel keeps what was
- * already fetched.
+ * `cancel` stops the refresh and keeps what was fetched (same graph).
+ * `abandon` must be called by anything that REPLACES the graph — a new search,
+ * a clear, another import — so an in-flight refresh never writes one graph's
+ * data into another.
  *
  * @param {object} deps
  * @param {() => {nodes: object[], links: object[]}} deps.getGraph  Latest graph.
@@ -32,7 +24,7 @@ const IDLE = { status: 'idle', done: 0, total: 0, current: null, summary: null }
  */
 export function useSnapshotRefresh({ getGraph, setGraph, service, onComplete }) {
   const [state, setState] = useState(IDLE);
-  const controllerRef = useRef(null);
+  const runRef = useRef(null); // { controller, isAbandoned }
 
   const fetchLive = useCallback(async node => {
     const groupKey = await service.resolveCompanyGroupKey(node.name, node.groupKey || null);
@@ -56,58 +48,51 @@ export function useSnapshotRefresh({ getGraph, setGraph, service, onComplete }) 
    * @param {Set<string>} [onlyIds] Refresh just these node ids (retry failures).
    */
   const start = useCallback(async (onlyIds = null) => {
-    if (controllerRef.current) return;
-    const controller = new AbortController();
-    controllerRef.current = controller;
+    if (runRef.current) return;
+    const run = { controller: new AbortController(), isAbandoned: false };
+    runRef.current = run;
 
     try {
-      const targets = selectRefreshTargets(getGraph().nodes)
-        .filter(n => !onlyIds || onlyIds.has(n.id));
-      setState({ status: 'running', done: 0, total: targets.length, current: targets[0]?.name || null, summary: null });
-
-      const { results } = await runPool(targets, fetchLive, {
-        concurrency: SNAPSHOT_REFRESH_CONCURRENCY,
-        signal: controller.signal,
-        onProgress: (done, total) => {
-          const current = targets[Math.min(done, total - 1)]?.name || null;
-          setState(prev => ({ ...prev, done, current }));
+      const outcome = await runSnapshotRefresh({
+        getGraph,
+        fetchLive,
+        signal: run.controller.signal,
+        isAbandoned: () => run.isAbandoned,
+        onlyIds,
+        onStart: (done, total, current) =>
+          setState({ status: 'running', done, total, current, summary: null }),
+        onProgress: (done, total, current) => {
+          if (!run.isAbandoned) setState(prev => ({ ...prev, done, current }));
         },
+        onFailure: (node, reason) =>
+          console.warn(`[SnapshotRefresh] ${node.name}:`, reason?.message || reason),
       });
+      if (!outcome) return; // abandoned: state was already reset by abandon()
 
-      const liveById = new Map();
-      const failed = [];
-      results.forEach((result, i) => {
-        if (!result) return; // never started: cancelled
-        if (result.status === 'fulfilled') {
-          liveById.set(targets[i].id, result.value);
-        } else {
-          console.warn(`[SnapshotRefresh] ${targets[i].name}:`, result.reason?.message || result.reason);
-          failed.push({ id: targets[i].id, name: targets[i].name });
-        }
-      });
-
-      // Read the graph again at apply time rather than reusing the pre-fetch copy.
-      const before = getGraph();
-      const after = applyLiveRefresh(before, liveById, new Date().toISOString());
-      setGraph(after);
-
-      const summary = {
-        ...summarizeRefresh({ before, after, refreshed: liveById.size, failed }),
-        cancelled: controller.signal.aborted,
-        skipped: targets.length - liveById.size - failed.length,
-      };
-      setState(prev => ({ ...prev, status: 'done', current: null, summary }));
-      onComplete?.(summary);
+      setGraph(outcome.graph);
+      setState(prev => ({ ...prev, status: 'done', current: null, summary: outcome.summary }));
+      onComplete?.(outcome.summary);
     } catch (err) {
       console.error('[SnapshotRefresh] refresh failed:', err);
-      setState(prev => ({ ...prev, status: 'error', current: null, summary: null }));
+      if (!run.isAbandoned) setState(prev => ({ ...prev, status: 'error', current: null, summary: null }));
     } finally {
-      controllerRef.current = null;
+      if (runRef.current === run) runRef.current = null;
     }
   }, [fetchLive, getGraph, setGraph, onComplete]);
 
-  const cancel = useCallback(() => controllerRef.current?.abort(), []);
+  const cancel = useCallback(() => runRef.current?.controller.abort(), []);
+
+  const abandon = useCallback(() => {
+    const run = runRef.current;
+    if (run) {
+      run.isAbandoned = true;
+      run.controller.abort();
+      runRef.current = null;
+    }
+    setState(IDLE);
+  }, []);
+
   const dismiss = useCallback(() => setState(IDLE), []);
 
-  return { state, start, cancel, dismiss };
+  return { state, start, cancel, abandon, dismiss };
 }
