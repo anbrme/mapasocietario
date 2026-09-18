@@ -122,6 +122,9 @@ const DIMENSIONS = [
   // `steps`, `companies` and the sitrep-tier definitions below.
   ['has_author', 'Situation report signed', 'sitrep',
     'true when the author line (name or organisation) was filled in — a professional-use signal.'],
+  // Replay history: replay_open / replay_play / replay_scrub / replay_complete.
+  // The inspector button also fires graph_toolbar_action{toolbar_action:'replay_history'}.
+  ['subject_kind', 'Replay subject kind', 'replay', 'company or officer: what was replayed.'],
 ];
 
 /**
@@ -153,6 +156,9 @@ const METRICS = [
     'Summary + node notes + step narratives written into the report (count, never the text).'],
   ['blocks_off', 'Situation report blocks off', 'sitrep', 'STANDARD',
     'How many of the four content blocks the author switched off before exporting.'],
+  ['acts_total', 'Replay acts', 'replay', 'STANDARD', 'Registry acts in the replayed history.'],
+  ['truncated', 'Replay truncated', 'replay', 'STANDARD',
+    '1 when older acts could not be loaded (history hit the result window).'],
 ];
 
 /* ------------------------------------------------------------------ auth */
