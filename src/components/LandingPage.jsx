@@ -421,11 +421,13 @@ export default function LandingPage({ lang = 'en' }) {
                   /directorio: the hubs that list every promoted company page
                   were reachable only from a sitemap, which is why a crawl
                   sample on 2026-09-16 found batch 2 entirely unvisited. A plain
-                  <a> on purpose — /directorio is a server-rendered page, not a
-                  SPA route, so client-routing to it would 404. */}
+                  <a> on purpose — the hub is a server-rendered page, not a
+                  SPA route, so client-routing to it would 404. Per language:
+                  the ES hub lists /empresa/* only, so an EN visitor sent there
+                  leaves the English mesh (see functions/directorio/_lib.js). */}
               <Link
                 component="a"
-                href="/directorio"
+                href={lang === 'es' ? '/directorio' : '/en/directory'}
                 sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, color: 'accent.primary', fontWeight: 600, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
               >
                 <ApartmentIcon sx={{ fontSize: 18 }} /> {copy.quickLinks.directory}

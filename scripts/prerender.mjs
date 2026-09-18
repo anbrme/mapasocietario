@@ -282,7 +282,7 @@ const routes = [
           <li><strong>Investigators and journalists:</strong> follow people across companies through shared roles, prior appointments and wider corporate networks.</li>
           <li><strong>Advisers, analysts and researchers:</strong> annotate and save an investigation, then generate a sourced report when a client or internal file needs documentation.</li>
         </ul>
-        <p><a href="/app/?source=home_search">Search a Spanish company or officer</a> | <a href="/directorio">Company directory by province</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/spanish-company-due-diligence/">Document a due diligence review</a> | <a href="/glossary/">Spanish registry glossary</a></p>
+        <p><a href="/app/?source=home_search">Search a Spanish company or officer</a> | <a href="/en/directory">Company directory by province</a> | <a href="/company-director-search/">Search company directors</a> | <a href="/spanish-company-due-diligence/">Document a due diligence review</a> | <a href="/glossary/">Spanish registry glossary</a></p>
         <h2>Data quality you can understand, not a black box</h2>
         <p>Mapa Societario reconciles companies across name changes, mergers, spin-offs and registry transfers; preserves appointments and resignations so historical and current roles are not silently mixed; and updates from official BOE/BORME publications on business days.</p>
         <p>Name matching, automated extraction and incomplete shareholder publication are disclosed so professionals know which findings still require verification against the original notice or current Registro Mercantil documents.</p>
@@ -318,6 +318,7 @@ const routes = [
         <ul>
           <li><a href="/app/">Open the Spanish company relationship graph</a></li>
           <li><a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a> &middot; <a href="/en/listed-companies">IBEX 35 listed companies</a></li>
+          <li><a href="/directorio">Directorio de empresas por provincia</a> &middot; <a href="/en/directory">Spanish companies by province</a></li>
           <li><a href="/es/">Mapa societario de empresas espa&ntilde;olas</a></li>
           <li><a href="/es/buscar-administradores-empresas/">Buscar administradores de empresas</a></li>
           <li><a href="/es/borme-grafo-empresas/">Grafo de empresas BORME</a></li>

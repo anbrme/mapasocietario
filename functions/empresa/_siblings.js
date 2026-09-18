@@ -20,6 +20,7 @@
  */
 
 import { nameToSlug } from './_slug.js';
+import { provincePath } from '../directorio/_paths.js';
 
 // Below this the block is noise rather than a mesh — a heading and one link.
 export const MIN_SIBLINGS = 2;
@@ -68,5 +69,5 @@ export function renderSiblingsBlock({
 
   return `<h2>${esc(t.siblingsTitle(province))}</h2>
   <ul class="siblings">${items}</ul>
-  <p class="more"><a href="/directorio/${esc(nameToSlug(province))}">${esc(t.siblingsAll(province))}</a></p>`;
+  <p class="more"><a href="${provincePath(lang, esc(nameToSlug(province)))}">${esc(t.siblingsAll(province))}</a></p>`;
 }
