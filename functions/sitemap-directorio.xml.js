@@ -4,20 +4,28 @@
  */
 import { listPromotedProvinceCounts } from './empresa/_demand.js';
 import {
+  DIRECTORY_LANGS,
   MIN_INDEXABLE_PROVINCE_COMPANIES,
+  directoryPath,
+  provincePath,
   groupProvinces,
   esc,
 } from './directorio/_lib.js';
 
 const SITE = 'https://mapasocietario.es';
 
+/**
+ * Both language variants of every hub URL. The ES and EN pages are an hreflang
+ * pair on a shared province slug, so they are listed together and gated by the
+ * same thin-province threshold — submitting one side only would advertise a
+ * pair whose other half Google was never told about.
+ */
 export function directorySitemapUrls(groups) {
-  return [
-    `${SITE}/directorio`,
-    ...groups
-      .filter((group) => group.total >= MIN_INDEXABLE_PROVINCE_COMPANIES)
-      .map((group) => `${SITE}/directorio/${group.slug}`),
-  ];
+  const indexable = groups.filter((group) => group.total >= MIN_INDEXABLE_PROVINCE_COMPANIES);
+  return DIRECTORY_LANGS.flatMap((lang) => [
+    `${SITE}${directoryPath(lang)}`,
+    ...indexable.map((group) => `${SITE}${provincePath(lang, group.slug)}`),
+  ]);
 }
 
 export async function onRequestGet({ env }) {

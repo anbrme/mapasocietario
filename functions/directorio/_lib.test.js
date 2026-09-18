@@ -83,3 +83,72 @@ describe('directory sitemap', () => {
     expect(urls).not.toContain('https://mapasocietario.es/directorio/ourense');
   });
 });
+
+describe('English directory hub', () => {
+  const madrid = groupProvinces([{ province: 'Madrid', total: 40 }]);
+  const group = { slug: 'madrid', name: 'Madrid', total: 3, variants: ['Madrid'] };
+  const companies = [
+    { slug: 'acme-sl', canonical_name: 'ACME SL', nif: 'B12345678' },
+    { slug: 'ohara-y-cia-sl', canonical_name: "O'HARA & CÍA SL", nif: null },
+    { slug: 'tercera-sl', canonical_name: 'TERCERA SL', nif: 'B87654321' },
+  ];
+
+  it('renders the index in English at its own canonical', () => {
+    const html = renderDirectoryIndex(madrid, 'en');
+    expect(html).toContain('<html lang="en">');
+    expect(html).toContain('rel="canonical" href="https://mapasocietario.es/en/directory"');
+    expect(html).toContain('content="en_GB"');
+    expect(html).toContain('href="/en/directory/madrid"');
+    expect(html).not.toContain('href="/directorio/madrid"');
+  });
+
+  it('links province rows to the EN company page, not the ES one', () => {
+    const html = renderProvincePage(group, companies, 'en');
+    expect(html).toContain('rel="canonical" href="https://mapasocietario.es/en/directory/madrid"');
+    expect(html).toContain('href="/en/company/acme-sl"');
+    expect(html).not.toContain('href="/empresa/acme-sl"');
+    expect(html).toContain('O&#39;HARA &amp; CÍA SL');
+    expect(html).toContain('content="index, follow"');
+  });
+
+  it('applies the same thin-province threshold as Spanish', () => {
+    const html = renderProvincePage(group, companies.slice(0, 2), 'en');
+    expect(html).toContain('content="noindex, follow"');
+  });
+
+  it('defaults to Spanish when no language is given', () => {
+    expect(renderDirectoryIndex(madrid)).toContain('href="/directorio/madrid"');
+    expect(renderProvincePage(group, companies)).toContain('href="/empresa/acme-sl"');
+  });
+});
+
+describe('directory hreflang', () => {
+  const madrid = groupProvinces([{ province: 'Madrid', total: 40 }]);
+  const group = { slug: 'madrid', name: 'Madrid', total: 3, variants: ['Madrid'] };
+
+  it('pairs the two index pages in both directions, x-default to Spanish', () => {
+    for (const html of [renderDirectoryIndex(madrid, 'es'), renderDirectoryIndex(madrid, 'en')]) {
+      expect(html).toContain('hreflang="es" href="https://mapasocietario.es/directorio"');
+      expect(html).toContain('hreflang="en" href="https://mapasocietario.es/en/directory"');
+      expect(html).toContain('hreflang="x-default" href="https://mapasocietario.es/directorio"');
+    }
+  });
+
+  it('pairs province pages on the shared province slug', () => {
+    const html = renderProvincePage(group, [], 'en');
+    expect(html).toContain('hreflang="es" href="https://mapasocietario.es/directorio/madrid"');
+    expect(html).toContain('hreflang="en" href="https://mapasocietario.es/en/directory/madrid"');
+  });
+});
+
+describe('directory sitemap with both languages', () => {
+  it('lists the EN hub alongside the ES one, honouring the threshold', () => {
+    const urls = directorySitemapUrls([
+      { slug: 'madrid', total: 647 },
+      { slug: 'ceuta', total: 2 },
+    ]);
+    expect(urls).toContain('https://mapasocietario.es/en/directory');
+    expect(urls).toContain('https://mapasocietario.es/en/directory/madrid');
+    expect(urls).not.toContain('https://mapasocietario.es/en/directory/ceuta');
+  });
+});

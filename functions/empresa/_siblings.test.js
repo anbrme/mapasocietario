@@ -57,6 +57,15 @@ describe('renderSiblingsBlock', () => {
     expect(html).toContain('href="/directorio/a-coruna"');
   });
 
+  it('sends an English page to the English hub, on the same province slug', () => {
+    // The EN corpus was orphaned precisely here: an EN company page whose only
+    // hub link went to /directorio handed the crawler back to a page that
+    // lists Spanish URLs only, so the EN mesh had no return path.
+    const html = renderSiblingsBlock({ neighbours, province: 'A CORUÑA', lang: 'en', t: T, companyPath, esc });
+    expect(html).toContain('href="/en/directory/a-coruna"');
+    expect(html).not.toContain('href="/directorio/a-coruna"');
+  });
+
   it('renders nothing below the useful minimum', () => {
     const one = { before: [row('A SL')], after: [] };
     expect(renderSiblingsBlock({ neighbours: one, province: 'Madrid', lang: 'es', t: T, companyPath, esc })).toBe('');
@@ -85,7 +94,7 @@ describe('the crawl edges on a company page', () => {
     // This is what lifts /directorio out of orphan status: ~4,000 inbound links
     // from the pages it lists.
     expect(render('es', {})).toContain('<a href="/directorio">Directorio de empresas por provincia</a>');
-    expect(render('en', {})).toContain('<a href="/directorio">Company directory by province</a>');
+    expect(render('en', {})).toContain('<a href="/en/directory">Company directory by province</a>');
   });
 
   it('renders the sibling block when D1 supplied neighbours', () => {
@@ -93,6 +102,14 @@ describe('the crawl edges on a company page', () => {
     expect(html).toContain('Otras empresas en Las Palmas');
     expect(html).toContain('href="/empresa/a-sl"');
     expect(html).toContain('href="/directorio/las-palmas"');
+  });
+
+  it('keeps an English page inside the English mesh end to end', () => {
+    const html = render('en', { siblings });
+    expect(html).toContain('href="/en/company/a-sl"');
+    expect(html).toContain('href="/en/directory/las-palmas"');
+    expect(html).toContain('<a href="/en/directory">');
+    expect(html).not.toContain('href="/directorio');
   });
 
   it('omits the block, and only the block, when D1 answered nothing', () => {

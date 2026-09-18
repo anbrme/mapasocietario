@@ -20,6 +20,7 @@ import { buildTrademarksBlock } from './_trademarks.js';
 import { buildAwardsBlock } from './_awards.js';
 import { findPromotedCompanyBySlug, listPromotedSiblings, repointStaleSlug } from './_demand.js';
 import { renderSiblingsBlock } from './_siblings.js';
+import { provincePath } from '../directorio/_paths.js';
 import { companyPageHeaders, notFoundPageHeaders } from './_page_headers.js';
 // The canonical position classifier shared with the graph + officer-capping
 // service (backed by src/data/terms.json, swept by test/position-categories.test.mjs).
@@ -719,7 +720,7 @@ const T = {
     siblingsAll: (province) => `See every company in ${province} →`,
     // The hub itself is Spanish-only (the query it targets is), but the link
     // belongs on both language variants: it is a crawl edge first.
-    footerDirectory: '<a href="/directorio">Company directory by province</a>',
+    footerDirectory: '<a href="/en/directory">Company directory by province</a>',
     renamedTo: (href, name) =>
       `This company was renamed to <a href="${href}">${name}</a>. See the updated profile.`,
     priorNames: (names) => `Former names: ${names}.`,
@@ -1803,12 +1804,14 @@ export function renderCompanyPage(rawCompany, events, slug, seed, lang = 'es', c
   const facts = [
     [t.cNif, nifVal],
     [t.factLegalForm, esc(company.company_type)],
-    // Linking the province to its /directorio hub closes the crawl mesh:
-    // hub → companies and every company → its hub.
+    // Linking the province to its directory hub closes the crawl mesh:
+    // hub → companies and every company → its hub. Per language: an EN page
+    // linking the ES hub would hand the crawler to a page listing ES URLs only,
+    // which is how the EN corpus stayed orphaned (see directorio/_lib.js).
     [
       t.factProvince,
       company.province
-        ? `<a href="/directorio/${esc(nameToSlug(company.province))}">${esc(company.province)}</a>`
+        ? `<a href="${provincePath(lang, esc(nameToSlug(company.province)))}">${esc(company.province)}</a>`
         : '',
     ],
     [t.factAddress, addressVal],
