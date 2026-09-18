@@ -66,7 +66,19 @@ ${crawlTrapDisallows}
 Disallow: /empresa/`)
   .join('\n\n');
 
-const robotsTxt = `# Content signals: https://contentsignals.org/
+// The /verificacion rationale below lives INSIDE this template, not in
+// public/robots.txt, because this file is written wholesale on every build:
+// a comment added to the output is deleted by the next `npm run build` with no
+// error and no diff anyone reads. test/robots-generated.test.mjs pins that
+// every comment in the generated file originates here.
+const robotsTxt = `# /verificacion is deliberately NOT disallowed here. It is the one indexable
+# member of its family; its token-bearing siblings (/verificacion/g/*,
+# /verificacion/p/*) carry their own per-response noindex, which a crawler can
+# only see by being allowed to fetch them. A Disallow on the family would hide
+# that header from crawlers; a mistyped one without the trailing slash
+# (Disallow: /verificacion, no /) would de-index the front door itself.
+
+# Content signals: https://contentsignals.org/
 User-agent: *
 Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
