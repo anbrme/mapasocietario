@@ -91,7 +91,10 @@ export default function ReplayControls({
         valueLabelDisplay="off"
         aria-label={copy.publicationDate}
         getAriaValueText={v => isoDayLong(isoFromDay(v), language)}
-        sx={{ mt: -0.5, py: 1 }}
+        // No transitions: the clock sets a new value every frame, and MUI's
+        // 150 ms ease-in restarts each time from a near-flat start, so the
+        // thumb crawled at the domain start while the replay reached 2020.
+        sx={{ mt: -0.5, py: 1, '& .MuiSlider-thumb, & .MuiSlider-track': { transition: 'none' } }}
       />
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
