@@ -82,6 +82,8 @@ const T = {
       `${count} fichas societarias verificadas de ${name}: CIF, administradores, capital social e historial BORME. El directorio crece progresivamente.`,
     provinceLead: (name, count) =>
       `Esta selección incorpora progresivamente fichas verificadas. Actualmente incluye ${count} sociedades con domicilio en ${name}; utilice el buscador para consultar el conjunto completo.`,
+    recentTitle: 'Nuevas incorporaciones',
+    recentLead: 'Las fichas publicadas más recientemente.',
     relatedIndexTitle: 'También en Mapa Societario',
     relatedListed: '<a href="/empresas-cotizadas">Empresas cotizadas (IBEX 35)</a> — accionistas significativos y consejos de administración.',
     relatedSearch: '<a href="/app/">Buscador de empresas y administradores</a> — más de 3 millones de sociedades españolas.',
@@ -113,6 +115,8 @@ const T = {
       `${count} verified company profiles registered in ${name}: tax ID, directors, share capital and BORME filing history. The directory grows progressively.`,
     provinceLead: (name, count) =>
       `This selection publishes verified profiles progressively. It currently holds ${count} companies with a registered address in ${name}; use the search to reach the full set.`,
+    recentTitle: 'Recently added',
+    recentLead: 'The most recently published company profiles.',
     relatedIndexTitle: 'Also on Mapa Societario',
     relatedListed: '<a href="/en/listed-companies">Listed companies (IBEX 35)</a> — significant shareholders and boards of directors.',
     relatedSearch: '<a href="/app/">Company and director search</a> — more than 3 million Spanish companies.',
@@ -188,8 +192,22 @@ ${body}
 </html>`;
 }
 
-export function renderDirectoryIndex(groups, lang = 'es') {
+/**
+ * `recent` comes from listRecentlyPromoted and is optional: when D1 answers
+ * nothing the block is omitted and the rest of the page is unaffected, exactly
+ * as the sibling block behaves on a company page.
+ */
+export function renderDirectoryIndex(groups, lang = 'es', { recent = [] } = {}) {
   const t = pick(lang);
+  const recentBlock = recent.length
+    ? `  <div class="related">
+    <h2>${esc(t.recentTitle)}</h2>
+    <p>${esc(t.recentLead)}</p>
+    <ul class="siblings">${recent
+      .map((c) => `<li><a href="${companyPath(lang, esc(c.slug))}">${esc(c.canonical_name)}</a>${c.province ? ` — ${esc(c.province)}` : ''}</li>`)
+      .join('')}</ul>
+  </div>`
+    : '';
   const total = groups.reduce((sum, g) => sum + g.total, 0);
   const rows = groups
     .map(
@@ -221,6 +239,7 @@ export function renderDirectoryIndex(groups, lang = 'es') {
     body: `  <h1>${esc(t.indexH1)}</h1>
   <p class="lead">${esc(t.indexLead(total))}</p>
   <table><thead><tr><th>${esc(t.colProvince)}</th><th>${esc(t.colCompanies)}</th></tr></thead><tbody>${rows}</tbody></table>
+${recentBlock}
   <div class="related">
     <h2>${esc(t.relatedIndexTitle)}</h2>
     <p>${t.relatedListed}</p>

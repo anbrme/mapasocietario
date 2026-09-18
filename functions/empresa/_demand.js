@@ -128,6 +128,30 @@ export async function listPromotedCompanies(db, { limit, offset, from = null, be
   return result?.results || [];
 }
 
+/**
+ * The newest promotions, for the "recently added" block on the directory hubs.
+ *
+ * Why it exists: a company from a fresh batch is otherwise four clicks from the
+ * root (home -> hub -> province -> company), and province lists are alphabetical,
+ * so a new arrival lands wherever its name sorts — invisible among ~1,300
+ * siblings. Ordered by promoted_at DESC, this is the one edge that puts a new
+ * batch one click from a page Googlebot already refetches often.
+ *
+ * Served by idx_company_index_candidates_status_promoted (status, promoted_at),
+ * so it is an index range scan in reverse, not a sort.
+ */
+export async function listRecentlyPromoted(db, { limit = 30 } = {}) {
+  if (!db) return [];
+  const result = await db.prepare(
+    `SELECT slug, canonical_name, province
+     FROM company_index_candidates
+     WHERE status = ? AND promoted_at IS NOT NULL
+     ORDER BY promoted_at DESC, slug ASC
+     LIMIT ?`,
+  ).bind(PROMOTED_STATUS, limit).all();
+  return result?.results || [];
+}
+
 /** Distinct provinces of promoted companies with their page counts. */
 export async function listPromotedProvinceCounts(db) {
   if (!db) return [];

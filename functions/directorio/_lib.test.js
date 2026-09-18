@@ -152,3 +152,37 @@ describe('directory sitemap with both languages', () => {
     expect(urls).not.toContain('https://mapasocietario.es/en/directory/ceuta');
   });
 });
+
+describe('recently added block', () => {
+  const madrid = groupProvinces([{ province: 'Madrid', total: 40 }]);
+  const recent = [
+    { slug: 'nueva-uno-sl', canonical_name: 'NUEVA UNO SL', province: 'Madrid' },
+    { slug: 'nueva-dos-sl', canonical_name: "O'HARA & CÍA SL", province: 'A Coruña' },
+  ];
+
+  it('lists the newest promotions at depth 1, in the page language', () => {
+    // A new batch's companies are otherwise only reachable at depth 3
+    // (home -> /directorio -> province -> company). This block is the one
+    // edge that puts them one click from a page Googlebot already refetches.
+    const es = renderDirectoryIndex(madrid, 'es', { recent });
+    expect(es).toContain('Nuevas incorporaciones');
+    expect(es).toContain('href="/empresa/nueva-uno-sl"');
+    expect(es).toContain('O&#39;HARA &amp; CÍA SL');
+
+    const en = renderDirectoryIndex(madrid, 'en', { recent });
+    expect(en).toContain('Recently added');
+    expect(en).toContain('href="/en/company/nueva-uno-sl"');
+    expect(en).not.toContain('href="/empresa/nueva-uno-sl"');
+  });
+
+  it('is omitted entirely when D1 returned nothing, leaving the page intact', () => {
+    const html = renderDirectoryIndex(madrid, 'es', { recent: [] });
+    expect(html).not.toContain('Nuevas incorporaciones');
+    expect(html).toContain('href="/directorio/madrid"');
+    expect(renderDirectoryIndex(madrid, 'es')).toContain('href="/directorio/madrid"');
+  });
+
+  it('names each company province so the block reads as content, not a link farm', () => {
+    expect(renderDirectoryIndex(madrid, 'es', { recent })).toContain('A Coruña');
+  });
+});
