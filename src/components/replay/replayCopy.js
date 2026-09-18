@@ -37,6 +37,9 @@ export const REPLAY_COPY = {
     legendCessations: 'Cessations',
     legendHidden: 'Hidden',
     actsCount: n => `${n.toLocaleString('en-GB')} acts`,
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    resetView: 'Fit to view',
   },
   es: {
     title: 'Reproducir historia',
@@ -75,6 +78,9 @@ export const REPLAY_COPY = {
     legendCessations: 'Ceses',
     legendHidden: 'Ocultos',
     actsCount: n => `${n.toLocaleString('es-ES')} actos`,
+    zoomIn: 'Acercar',
+    zoomOut: 'Alejar',
+    resetView: 'Ajustar a la vista',
   },
 };
 
