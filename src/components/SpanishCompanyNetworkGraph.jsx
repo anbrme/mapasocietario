@@ -8,6 +8,7 @@ import { useWalkthrough } from '../hooks/useWalkthrough';
 import { useConnectionFocus } from '../hooks/useConnectionFocus';
 import { shouldDeferInspectorOpen } from '../utils/inspectorDockTiming';
 import { autoFitDecision } from '../utils/graphAutoFit';
+import { captureHiddenRestore, applyHiddenRestore, undoHiddenRestore } from '../utils/hiddenRestoreUndo';
 import { connectionIndex, connectionFocus } from '../utils/connectionFocus';
 import WalkthroughPlayer, { walkthroughControllerInset } from './WalkthroughPlayer';
 import {
@@ -81,6 +82,7 @@ import {
   TableChart as TableIcon,
   VisibilityOff as VisibilityOffIcon,
   Visibility as VisibilityIcon,
+  Undo as UndoIcon,
   UnfoldLess as UnfoldLessIcon,
   Deselect as DeselectIcon,
   Edit as EditIcon,
@@ -467,6 +469,8 @@ const SEARCH_COPY = {
     hiddenNodes: 'Hidden nodes',
     nodeCount: count => `${count} node${count === 1 ? '' : 's'}`,
     showAll: 'Show all',
+    undoRestore: 'Undo restore',
+    undoRestoreHint: 'Hide the last restored items again and return to the layout before restoring them.',
     noHiddenNodes: 'No hidden nodes',
     // Company⇄cargo unify
     cargoBadge: count => `+${count} cargo${count === 1 ? '' : 's'}`,
@@ -899,6 +903,8 @@ const SEARCH_COPY = {
     hiddenNodes: 'Nodos ocultos',
     nodeCount: count => `${count} nodo${count === 1 ? '' : 's'}`,
     showAll: 'Mostrar todos',
+    undoRestore: 'Deshacer restauración',
+    undoRestoreHint: 'Volver a ocultar los últimos elementos restaurados y recuperar la disposición anterior.',
     noHiddenNodes: 'Sin nodos ocultos',
     // Unificación empresa⇄cargo
     cargoBadge: count => `+${count} cargo${count === 1 ? '' : 's'}`,
@@ -1896,6 +1902,9 @@ const SpanishCompanyNetworkGraph = ({
   const [pinnedNodeIds, setPinnedNodeIds] = useState(new Set());
   // Manually hidden nodes (right-click to hide)
   const [hiddenNodeIds, setHiddenNodeIds] = useState(new Set());
+  // Session history: unlike a toast, this remains available after the last
+  // hidden item is restored. Each click undoes one restore operation.
+  const [hiddenRestoreHistory, setHiddenRestoreHistory] = useState([]);
   const [hiddenNodesMenuAnchorEl, setHiddenNodesMenuAnchorEl] = useState(null);
   const [activeNodeId, setActiveNodeId] = useState(null);
   // Company⇄cargo unify: `isUnifying` gates the toolbar toggle's spinner while the
@@ -2541,6 +2550,7 @@ const SpanishCompanyNetworkGraph = ({
   useEffect(() => {
     if (!embedded && !visible) {
       setGraphData({ nodes: [], links: [] });
+      setHiddenRestoreHistory([]);
       closeInspector();
       setSnapshotMode(false);
       setSnapshotSource(null);
@@ -5578,10 +5588,38 @@ const SpanishCompanyNetworkGraph = ({
     });
   }, []);
 
-  const unhideAllNodes = useCallback(() => {
-    setHiddenNodeIds(new Set());
+  const restoreHiddenItems = useCallback(items => {
+    const snapshot = captureHiddenRestore(graphData, hiddenNodeIds, items);
+    if (!snapshot) return;
+    const center = getViewportCentreGraphPoint();
+    setHiddenRestoreHistory(history => [...history, { ...snapshot, camera: { ...cameraState }, center, spacing }]);
+    const restored = applyHiddenRestore(graphData, hiddenNodeIds, snapshot);
+    setGraphData(restored.graph);
+    setHiddenNodeIds(restored.hiddenNodeIds);
+    fitOnSettleRef.current = false;
+  }, [graphData, hiddenNodeIds, cameraState, spacing, getViewportCentreGraphPoint]);
+
+  const undoLastHiddenRestore = useCallback(() => {
+    const snapshot = hiddenRestoreHistory[hiddenRestoreHistory.length - 1];
+    if (!snapshot) return;
+    const restored = undoHiddenRestore(graphData, hiddenNodeIds, snapshot);
+    setGraphData(restored.graph);
+    setHiddenNodeIds(restored.hiddenNodeIds);
+    setHiddenRestoreHistory(history => history.slice(0, -1));
+    prevSpacingRef.current = snapshot.spacing;
+    setSpacing(snapshot.spacing);
+    fitOnSettleRef.current = false;
+    fgRef.current?.centerAt(snapshot.center.x, snapshot.center.y, 0);
+    fgRef.current?.zoom(snapshot.camera.k, 0);
+    setCameraState(snapshot.camera);
+    setZoomLevel(snapshot.camera.k);
     closeHiddenNodesMenu();
-  }, [closeHiddenNodesMenu]);
+  }, [hiddenRestoreHistory, graphData, hiddenNodeIds, closeHiddenNodesMenu]);
+
+  const unhideAllNodes = useCallback(() => {
+    restoreHiddenItems({ nodeIds: hiddenNodesList.map(node => node.id) });
+    closeHiddenNodesMenu();
+  }, [restoreHiddenItems, hiddenNodesList, closeHiddenNodesMenu]);
 
   const hideNode = useCallback(
     (nodeId, options = {}) => {
@@ -9196,6 +9234,7 @@ const SpanishCompanyNetworkGraph = ({
     pendingSnapshotCameraRef.current = null;
     setPinnedNodeIds(new Set());
     setHiddenNodeIds(new Set());
+    setHiddenRestoreHistory([]);
     setError(null);
     setLastSearchContext(null);
     lastSuccessfulSearchAtRef.current = null;
@@ -9695,6 +9734,7 @@ const SpanishCompanyNetworkGraph = ({
 
   const applyGraphSnapshot = useCallback((snapshot, notice, source = 'imported') => {
     clearConnectionFocus();
+    setHiddenRestoreHistory([]);
     const view = snapshot.view || {};
     const nodeById = new Map(
       snapshot.graph.nodes.map(node => [normalizeNodeId(node.id), node])
@@ -11528,6 +11568,19 @@ const SpanishCompanyNetworkGraph = ({
               </Button>
             </Tooltip>
           )}
+          {!isCompactEmbed && hiddenRestoreHistory.length > 0 && (
+            <Tooltip title={text.undoRestoreHint}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={undoLastHiddenRestore}
+                startIcon={<UndoIcon sx={{ fontSize: 14 }} />}
+                sx={{ fontSize: '0.7rem', py: 0, textTransform: 'none' }}
+              >
+                {text.undoRestore}
+              </Button>
+            </Tooltip>
+          )}
           {!isCompactEmbed && <Typography variant="caption">
             {text.nodes}: {filteredGraphData.nodes.length}
             {filterTerms.length > 0 || hiddenNodeIds.size > 0
@@ -12416,7 +12469,7 @@ const SpanishCompanyNetworkGraph = ({
                 <MenuItem
                   key={`hidden-${node.id}`}
                   onClick={() => {
-                    unhideNode(node.id);
+                    restoreHiddenItems({ nodeIds: [node.id] });
                     closeHiddenNodesMenu();
                   }}
                 >
@@ -12442,7 +12495,10 @@ const SpanishCompanyNetworkGraph = ({
                       />
                       <Button
                         size="small"
-                        onClick={() => setGraphData(prev => restoreLink(prev, link.id))}
+                        onClick={() => {
+                          restoreHiddenItems({ linkIds: [link.id] });
+                          closeHiddenNodesMenu();
+                        }}
                         sx={{ ml: 1, flexShrink: 0 }}
                       >
                         {text.restoreLink}
