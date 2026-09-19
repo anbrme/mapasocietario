@@ -7,10 +7,10 @@ import { listedEntityForName } from './ibex35Match.js';
 // Trailing legal-form spellings → dotless canonical code, longest first.
 // JS port of borme_v3_enricher/normalize.py::_LEGAL_FORM_DOTLESS (the
 // canonicalizer applied to STORED v3 officer/company names) — keep the two
-// lists in sync. The LIST matches; the boundary does not: the backend still
-// requires whitespace before the form, so a stored "GIVASA,SA" is canonical
-// only on this side until that regex is widened and the affected names
-// re-enriched (that shifts their stored name, hence their slug). Needed client-side because autocomplete returns raw BORME
+// lists in sync. The boundary now matches too: the backend accepts a comma
+// before the form as of the registry-punctuation fix, so a stored "GIVASA,SA"
+// canonicalizes identically on both sides. Names still carry the old spelling
+// until their company is re-enriched. Needed client-side because autocomplete returns raw BORME
 // spellings ("... SOCIEDAD LIMITADA") while v3 stores the code ("... SL"),
 // and the graph's exact-name filter must treat them as the same entity.
 const LEGAL_FORM_DOTLESS = [
