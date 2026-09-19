@@ -144,6 +144,7 @@ import { mobileGraphMode } from '../utils/mobileGraphMode';
 import { trackEvent, trackFullCompanyProfileClick } from '../utils/track';
 import { companyGroupKey, recordCompanyDemand } from '../utils/companyDemand';
 import { captureMergeSnapshot, restoreMergeSnapshot } from '../utils/mergeUndo';
+import { officerQueryNames, fetchOfficerRecordsForNames } from '../utils/officerVariantLookup';
 import { postCorrection, listCorrections, deleteCorrection, resolveGroupKey } from '../services/correctionsService';
 import OfficerTimelineDialog from './OfficerTimelineDialog';
 // Replay history ships in its own chunk: most sessions never open it.
@@ -522,6 +523,8 @@ const SEARCH_COPY = {
     userMergedTooltip:
       'You grouped these records manually. The grouping is your working hypothesis — it is not confirmed by BORME data.',
     nodesMergedToast: (from, to) => `Merged: ${from} → ${to}`,
+    expandedVariantsToast: (count, name) =>
+      `${name}: expanded under ${count} name spellings you merged`,
     dataPreview: 'Data preview',
     selectedCompany: 'Selected company',
     companyProfile: 'Company profile',
@@ -959,6 +962,8 @@ const SEARCH_COPY = {
     userMergedTooltip:
       'Has agrupado estos registros manualmente. La agrupación es tu hipótesis de trabajo — no está confirmada por los datos del BORME.',
     nodesMergedToast: (from, to) => `Fusionados: ${from} → ${to}`,
+    expandedVariantsToast: (count, name) =>
+      `${name}: expandido con ${count} variantes del nombre que fusionaste`,
     dataPreview: 'Vista previa de datos',
     selectedCompany: 'Empresa seleccionada',
     companyProfile: 'Ficha societaria',
@@ -4773,7 +4778,7 @@ const SpanishCompanyNetworkGraph = ({
   // (expandOfficerV3 → addOfficerToGraph) to build the cargo nodes/links, then fold
   // them off the throwaway officer node ONTO the loaded company node via the pure
   // mergeCargoIntoCompanyNode transform (one node, marked unified).
-  const unifyCargosForNode = useCallback(async (companyNodeId, companyName) => {
+  const unifyCargosForNode = useCallback(async (companyNodeId, companyName, nameVariants = []) => {
     if (!companyNodeId || !companyName) return;
     setIsLoading(true);
     setIsUnifying(true);
@@ -4782,10 +4787,20 @@ const SpanishCompanyNetworkGraph = ({
     // never delete it — only the cargo nodes the reverse lookup is about to add.
     const preexistingNodeIds = new Set(graphDataRef.current.nodes.map(n => n.id));
     try {
-      const data = await spanishCompaniesService.expandOfficerV3(companyName);
-      if (data.success && Array.isArray(data.officers) && data.officers.length > 0) {
+      // Every spelling merged into this company node: a corporate officer's
+      // seats can be filed under either denomination. The node keeps ITS name
+      // for the id and label; only the lookup fans out.
+      const { officers: cargoOfficers } = await fetchOfficerRecordsForNames(
+        officerQueryNames({ name: companyName, nameVariants }),
+        queryName => spanishCompaniesService.expandOfficerV3(queryName),
+        {
+          onError: (queryName, error) =>
+            console.warn(`[Unify] variant "${queryName}" failed:`, error.message),
+        }
+      );
+      if (cargoOfficers.length > 0) {
         // Builds the officer node + cargo company nodes + officer-company links.
-        await addOfficerToGraph(data.officers, companyName);
+        await addOfficerToGraph(cargoOfficers, companyName);
         const officerNodeId = officerIdFor(companyName);
         // Relocate those cargo links onto the company node and drop the officer node.
         setGraphData(prev =>
@@ -4942,13 +4957,35 @@ const SpanishCompanyNetworkGraph = ({
   // Expand officer node to show other companies
   const expandOfficerNode = useCallback(async officerNode => {
     try {
-      // Use borme_companies_v3 for explicit active/resigned status
-      const data = await spanishCompaniesService.expandOfficerV3(officerNode.name.trim());
+      // Query EVERY spelling the user merged into this node, not just the
+      // survivor's. BORME publishes no person id, so a seat filed under the
+      // absorbed spelling is invisible to a single-name lookup — the canvas
+      // used to draw less than its own preview panel, which has always queried
+      // all variants. See officerVariantLookup.js.
+      const queryNames = officerQueryNames(officerNode);
+      const { officers: expandedOfficers, contributingNames } =
+        await fetchOfficerRecordsForNames(
+          queryNames,
+          queryName => spanishCompaniesService.expandOfficerV3(queryName),
+          {
+            onError: (queryName, error) =>
+              console.warn(`[Expand] variant "${queryName}" failed:`, error.message),
+          }
+        );
 
-      if (data.success && data.officers && data.officers.length > 0) {
+      if (expandedOfficers.length > 0) {
+        // Tell the user the expansion spanned more than one spelling — a merge
+        // they made is doing work, and silent extra edges would be worse than
+        // none. Only spellings that actually returned a seat are claimed.
+        if (contributingNames.length > 1) {
+          setCorrectionsSnackbar({
+            id: null,
+            message: text.expandedVariantsToast(contributingNames.length, officerNode.name),
+          });
+        }
         // Check for name change aliases among the companies
         const uniqueNames = new Set(
-          data.officers
+          expandedOfficers
             .map(e => (e.company_name || e.company || e.name || '').trim().toUpperCase())
             .filter(Boolean)
         );
@@ -4963,7 +5000,7 @@ const SpanishCompanyNetworkGraph = ({
         // Group officer results by (company, position), merging name-changed
         // companies. See addOfficerToGraph — same rationale: one role per link.
         const companiesMap = new Map();
-        data.officers.forEach(entry => {
+        expandedOfficers.forEach(entry => {
           const companyName = (entry.company_name || entry.company || entry.name || '').trim();
           if (!companyName) return;
           let key = companyName.toUpperCase();
@@ -5120,7 +5157,7 @@ const SpanishCompanyNetworkGraph = ({
       console.error('Error expanding officer node:', err);
       throw err;
     }
-  }, [viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates]);
+  }, [viewportCenter, showShareholders, addShareholdersForCompany, addOwnedCompaniesForEntity, enrichLinksWithEventDates, text]);
 
   // Load a company's OWN registry record (board + sole shareholder) into the
   // graph, anchored at `anchorNode`. Shared by the company double-click and by
@@ -6977,7 +7014,7 @@ const SpanishCompanyNetworkGraph = ({
     setTimelineOfficerRecords([]);
     setTimelineLoading(true);
     try {
-      const allNames = [name, ...nameVariants.filter(v => v !== name)];
+      const allNames = officerQueryNames({ name, nameVariants });
       const allRecords = [];
       const seenKeys = new Set();
       await Promise.all(
@@ -7105,9 +7142,12 @@ const SpanishCompanyNetworkGraph = ({
 
     try {
       if (isOfficer) {
-        // Query all name variants (from merged nodes) to get complete appointment history
+        // Query all name variants (from merged nodes) to get complete appointment
+        // history. Shares officerVariantLookup.js with the canvas expansion, so
+        // the panel and the graph can never disagree about what a merged node
+        // covers.
         const nameVariants = previewTarget.nameVariants || [];
-        const allNames = [name, ...nameVariants.filter(v => v !== name)];
+        const allNames = officerQueryNames(previewTarget);
 
         // Track record, in parallel and deliberately un-awaited: the panel must
         // paint on the profile, not wait on the chart. It is the same request
@@ -7115,41 +7155,43 @@ const SpanishCompanyNetworkGraph = ({
         // when the user opens the full chart.
         loadOfficerTimeline(name, nameVariants);
 
-        const allOfficers = [];
-        const seenKeys = new Set();
+        const { officers: allOfficers } = await fetchOfficerRecordsForNames(
+          allNames,
+          queryName => spanishCompaniesService.expandOfficerV3(queryName),
+          {
+            onError: (queryName, error) =>
+              console.warn(`[Preview] Failed to expand variant "${queryName}":`, error.message),
+          }
+        );
+
+        // Companies where this person is sole shareholder (100% owner). Also
+        // per spelling: a merged person can own one company under each, and
+        // ownership is the strongest claim the panel makes.
+        const ownedSeen = new Set();
+        const whollyOwned = [];
         await Promise.all(
-          allNames.map(async (queryName) => {
+          allNames.map(async queryName => {
             try {
-              const data = await spanishCompaniesService.expandOfficerV3(queryName);
-              if (data.success && data.officers?.length > 0) {
-                data.officers.forEach(o => {
-                  // Deduplicate by company+role+date
-                  const key = `${(o.company_name || '').toUpperCase()}|${(o.specific_role || o.position || '').toUpperCase()}|${o.date || o.event_date || ''}`;
-                  if (!seenKeys.has(key)) {
-                    seenKeys.add(key);
-                    allOfficers.push(o);
-                  }
+              const ownedRes = await spanishCompaniesService.getCompaniesOwnedByShareholder(
+                queryName,
+                { limit: 100 },
+              );
+              (ownedRes.companies || [])
+                .filter(c => c.shareholder_type === 'individual')
+                .forEach(c => {
+                  const key = (c.group_key || c.company_name || '').toUpperCase();
+                  if (!key || ownedSeen.has(key)) return;
+                  ownedSeen.add(key);
+                  whollyOwned.push(c);
                 });
-              }
             } catch (err) {
-              console.warn(`[Preview] Failed to expand variant "${queryName}":`, err.message);
+              console.warn(
+                `[Preview] Failed to fetch wholly-owned companies for "${queryName}":`,
+                err.message,
+              );
             }
           })
         );
-
-        // Also fetch companies where this person is sole shareholder (100% owner)
-        let whollyOwned = [];
-        try {
-          const ownedRes = await spanishCompaniesService.getCompaniesOwnedByShareholder(
-            name,
-            { limit: 100 },
-          );
-          whollyOwned = (ownedRes.companies || []).filter(
-            c => c.shareholder_type === 'individual',
-          );
-        } catch (err) {
-          console.warn('[Preview] Failed to fetch wholly-owned companies:', err.message);
-        }
 
         if (allOfficers.length > 0 || whollyOwned.length > 0) {
           setPreviewData({
@@ -11120,7 +11162,7 @@ const SpanishCompanyNetworkGraph = ({
                   onClick={() =>
                     cargoToggleNode.unified
                       ? undoCargoUnifyForNode(cargoToggleNode.id)
-                      : unifyCargosForNode(cargoToggleNode.id, cargoToggleNode.name)
+                      : unifyCargosForNode(cargoToggleNode.id, cargoToggleNode.name, cargoToggleNode.nameVariants || [])
                   }
                   // Mirrors the on-node badge: teal "unified" vs amber "has cargo".
                   sx={
@@ -12925,7 +12967,7 @@ const SpanishCompanyNetworkGraph = ({
                   onClick={() => {
                     runContextAction('unify_cargos', () => {
                       closeNodeContextMenu();
-                      unifyCargosForNode(contextNode.id, contextNode.name);
+                      unifyCargosForNode(contextNode.id, contextNode.name, contextNode.nameVariants || []);
                     });
                   }}
                 >
