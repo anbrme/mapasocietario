@@ -7,7 +7,10 @@ import { listedEntityForName } from './ibex35Match.js';
 // Trailing legal-form spellings → dotless canonical code, longest first.
 // JS port of borme_v3_enricher/normalize.py::_LEGAL_FORM_DOTLESS (the
 // canonicalizer applied to STORED v3 officer/company names) — keep the two
-// lists in sync. Needed client-side because autocomplete returns raw BORME
+// lists in sync. The LIST matches; the boundary does not: the backend still
+// requires whitespace before the form, so a stored "GIVASA,SA" is canonical
+// only on this side until that regex is widened and the affected names
+// re-enriched (that shifts their stored name, hence their slug). Needed client-side because autocomplete returns raw BORME
 // spellings ("... SOCIEDAD LIMITADA") while v3 stores the code ("... SL"),
 // and the graph's exact-name filter must treat them as the same entity.
 const LEGAL_FORM_DOTLESS = [
@@ -37,7 +40,11 @@ const LEGAL_FORM_DOTLESS = [
   ['S\\.?\\s?L', 'SL'],
   ['S\\.?\\s?A', 'SA'],
   ['S\\.?\\s?C', 'SC'],
-].map(([pat, code]) => [new RegExp(`\\s+${pat}\\.?\\s*$`, 'i'), ` ${code}`]);
+// The boundary before the form is whitespace OR a comma: BORME glues the two
+// together in ~80 live spellings ("GIVASA,SA"). A PERIOD is deliberately not a
+// boundary — it lives inside dotted acronyms, and accepting it would carve
+// "R.O.B.L.I.S.A" into "R.O.B.L.I SA".
+].map(([pat, code]) => [new RegExp(`[\\s,]+${pat}\\.?\\s*$`, 'i'), ` ${code}`]);
 
 /**
  * The canonical dotless legal-form codes canonLegalForm can emit. A name whose

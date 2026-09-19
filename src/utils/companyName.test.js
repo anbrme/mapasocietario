@@ -175,6 +175,23 @@ describe('canonLegalForm', () => {
     expect(canonLegalForm('ACME SOCIEDAD LIMITADA UNIPERSONAL')).toBe('ACME SLU');
   });
 
+  it('accepts a comma as the boundary before the legal form', () => {
+    // BORME glues the form to the name with no space in ~80 live spellings:
+    // "GIVASA,SA", "MORISON ACPM CONSULTORES,SL".
+    expect(canonLegalForm('GIVASA,SA')).toBe('GIVASA SA');
+    expect(canonLegalForm('MORISON ACPM CONSULTORES,SL')).toBe('MORISON ACPM CONSULTORES SL');
+    expect(canonLegalForm('CAFE-BAR LA MANCHA,SOCIEDAD LIMITADA')).toBe('CAFE-BAR LA MANCHA SL');
+  });
+
+  it('never treats a period as that boundary', () => {
+    // A period lives INSIDE dotted acronyms, so accepting it would slice a
+    // legal form out of the name itself. Both are real corpus names.
+    expect(canonLegalForm('R.O.B.L.I.S.A')).toBe('R.O.B.L.I.S.A');
+    expect(canonLegalForm('AHORRO CORPORACION FINANCIERA S.V.S.A')).toBe(
+      'AHORRO CORPORACION FINANCIERA S.V.S.A'
+    );
+  });
+
   it('leaves personal names untouched', () => {
     expect(canonLegalForm('GARCIA LOPEZ MARIA')).toBe('GARCIA LOPEZ MARIA');
   });

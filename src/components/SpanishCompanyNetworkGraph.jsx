@@ -3758,10 +3758,12 @@ const SpanishCompanyNetworkGraph = ({
           if (entityKind === 'person' && c.shareholder_type && c.shareholder_type !== 'individual') return;
 
           const cId = companyNameToId(cName);
-          let existing = findCompanyNode(newNodes, cName, cId);
+          const ownedGroupKey = ownedGroupKeys[idx] || null;
+          // The key, not the name, decides: a name freed by an extinction and
+          // taken by a later company must not bind to the earlier node.
+          let existing = findCompanyNode(newNodes, cName, cId, ownedGroupKey);
           const resolvedId = existing ? existing.id : cId;
           if (resolvedId === entityId) return;
-          const ownedGroupKey = ownedGroupKeys[idx] || null;
 
           if (!existing) {
             const baseX = Number.isFinite(entityNode.x) ? entityNode.x : 0;
@@ -3906,7 +3908,7 @@ const SpanishCompanyNetworkGraph = ({
           let existingNode = null;
           if (isCompanyShareholder) {
             shId = companyNameToId(shName);
-            existingNode = findCompanyNode(newNodes, shName, shId) || null;
+            existingNode = findCompanyNode(newNodes, shName, shId, sh.groupKey || null) || null;
             if (existingNode) shId = existingNode.id;
           } else {
             shId = officerIdFor(shName);
@@ -5159,7 +5161,9 @@ const SpanishCompanyNetworkGraph = ({
       const nodeName = resolveCompanyGroupName(
         baseEntries[0]?.name || company.company_name || companyName, entries, aliasMap
       );
-      const existing = findCompanyNode(graphDataRef.current.nodes, nodeName, companyNameToId(nodeName));
+      const existing = findCompanyNode(
+        graphDataRef.current.nodes, nodeName, companyNameToId(nodeName), groupKey || null
+      );
       return {
         loaded: true,
         isDissolved: !!v3.company.is_dissolved,

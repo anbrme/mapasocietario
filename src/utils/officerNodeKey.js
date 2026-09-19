@@ -5,17 +5,28 @@
 //     dotless form ("... SL");
 //   - filing order: BORME prints the same person both ways — FERNANDO ESPAÑA
 //     Y SENIOR GRANADA SL lists "JOSE GABINO SANCHEZ DELGADO", VITALSERVIT SL
-//     lists "SANCHEZ DELGADO JOSE GABINO".
+//     lists "SANCHEZ DELGADO JOSE GABINO";
+//   - punctuation: a socio-unico declaration prints "MUNOZ GALLARDO, EVA."
+//     where the appointment on the same entry prints "MUNOZ GALLARDO EVA".
 // Extracted from SpanishCompanyNetworkGraph.jsx so the identity rule is
 // testable and shared.
 import { canonLegalForm, isSameUnifiableEntity, LEGAL_FORM_CODES } from './companyName';
 
 const OFFICER_NODE_TYPE = 'officer';
 
+// Everything that is not a letter or a digit is a separator, never identity:
+// BORME prints one person as "MUÑOZ GALLARDO, EVA." in a socio-único
+// declaration and "MUÑOZ GALLARDO EVA" in the appointment on the same entry,
+// and a canonical company name keeps the comma ("BANCO SANTANDER, SA") that
+// officer spellings drop. Accents are NOT folded: unaccented ids stay byte-for-
+// byte what they were, so a saved map's node ids still match.
+const PUNCTUATION_RUN = /[^\p{L}\p{N}]+/gu;
+
 export const officerNodeKey = name =>
   canonLegalForm((name || '').trim())
     .toLowerCase()
-    .replace(/[\s-]+/g, '-');
+    .replace(PUNCTUATION_RUN, '-')
+    .replace(/^-+|-+$/g, '');
 
 export const officerIdFor = name => `officer-${officerNodeKey(name)}`;
 

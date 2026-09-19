@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { officerNodeKey, officerIdFor } from './officerNodeKey';
+import { officerNodeKey, officerIdFor, findOfficerNode } from './officerNodeKey';
 
 describe('officerNodeKey', () => {
   it('produces the same key for every legal-form spelling of one entity', () => {
@@ -24,9 +24,45 @@ describe('officerNodeKey', () => {
     );
   });
 
+  it('folds the punctuation BORME prints in a socio unico declaration', () => {
+    // GRANJA AVICOLA ALTERNATIVA VARAS SL (18.09.26) printed the same woman as
+    // "Socio unico: MUNOZ GALLARDO, EVA." and "Adm. Unico: MUNOZ GALLARDO EVA".
+    // A comma is never what separates two people.
+    expect(officerNodeKey('MU\u00d1OZ GALLARDO, EVA.')).toBe(
+      officerNodeKey('MU\u00d1OZ GALLARDO EVA')
+    );
+  });
+
+  it('folds the comma a canonical company name keeps', () => {
+    expect(officerNodeKey('BANCO SANTANDER, SA')).toBe(officerNodeKey('BANCO SANTANDER SA'));
+  });
+
+  it('folds an ampersand spelled with or without spaces', () => {
+    // A corporate officer reaches the graph both ways in the live corpus:
+    // "AUDIT & LAUDIT SL" and "AUDIT&LAUDIT SL" are one audit firm.
+    expect(officerNodeKey('AUDIT & LAUDIT SL')).toBe(officerNodeKey('AUDIT&LAUDIT SL'));
+  });
+
+  it('treats punctuation as a separator, never as a deletion', () => {
+    // "A & B SL" must not collapse onto a different company called "AB SL".
+    expect(officerNodeKey('A & B SL')).not.toBe(officerNodeKey('AB SL'));
+  });
+
   it('is null-safe', () => {
     expect(officerNodeKey('')).toBe('');
     expect(officerNodeKey(null)).toBe('');
+  });
+});
+
+describe('findOfficerNode', () => {
+  it('returns the officer node for the punctuated sole-shareholder spelling', () => {
+    const nodes = [
+      { id: 'officer-mu\u00f1oz-gallardo-eva', name: 'MU\u00d1OZ GALLARDO EVA', type: 'officer' },
+    ];
+
+    expect(findOfficerNode(nodes, 'MU\u00d1OZ GALLARDO, EVA')?.id).toBe(
+      'officer-mu\u00f1oz-gallardo-eva'
+    );
   });
 });
 
