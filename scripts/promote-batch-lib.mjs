@@ -119,6 +119,38 @@ ON CONFLICT(group_key) DO UPDATE SET
  *     no-op because the slug was taken.
  * A row that no longer verifies at all (`slug` null) is simply demoted.
  */
+/**
+ * What should the resync do with one promoted row?
+ *
+ * `/empresa` resolves a company BY NAME, not by the stored group_key, so a
+ * group_key that 404s is NOT evidence the page is dead. Two promoted rows prove
+ * it: `compania-trasmediterranea-sa` (H:M-45359) and `map-beach-gestion-sl`
+ * (H:IB-10174) 404 on their stored key yet serve HTTP 200 `index, follow`.
+ * Demoting on that signal pulls a healthy indexed page out of the sitemap and
+ * marks it `candidate` — caught by hand on 2026-09-07 and again on 2026-09-19,
+ * which is twice too often for a sweep meant to run with `--yes`.
+ *
+ * So a bare `not_found` now needs a second opinion: does a company still
+ * resolve under this row's stored name, and does that name slugify back to this
+ * row's slug? That is the same round-trip the organic demand gate applies. Only
+ * a definite "no" demotes. An inconclusive check leaves the row alone, on the
+ * same principle that already stops a throttle from demoting anything.
+ *
+ * Other rejection reasons (`key_mismatch`, `no_name`, `gate_failed_live`) are
+ * positive evidence ABOUT the entity rather than a failure to find it, so they
+ * still demote.
+ *
+ * @param {string|null|undefined} reason rejection reason from liveProfile, falsy when healthy
+ * @param {'yes'|'no'|'unknown'|undefined} nameResolves second opinion; only consulted for not_found
+ * @returns {'keep'|'demote'|'drift'} keep = untouched, drift = untouched but reported
+ */
+export function resyncVerdict(reason, nameResolves) {
+  if (!reason) return 'keep';
+  if (reason === 'api_error') return 'keep';
+  if (reason === 'not_found') return nameResolves === 'no' ? 'demote' : 'drift';
+  return 'demote';
+}
+
 export function resyncSql(row) {
   const groupKey = sqlString(row.group_key);
   const demote = `UPDATE company_index_candidates
