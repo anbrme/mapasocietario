@@ -48,6 +48,7 @@ import {
   rankAndDedupe,
   promotionSqlChunks,
   resyncSqlChunks,
+  resyncVerdict,
   MIN_PUBLICATIONS,
   RECENT_ACTIVITY_CUTOFF,
 } from './promote-batch-lib.mjs';
@@ -228,9 +229,36 @@ async function verifyCandidate(candidate) {
 async function promotedRowsFromD1() {
   const { stdout } = await execFileAsync('npx', [
     'wrangler', 'd1', 'execute', D1_NAME, '--remote', '--json',
-    '--command', "SELECT group_key, slug FROM company_index_candidates WHERE status = 'promoted'",
+    '--command', "SELECT group_key, slug, canonical_name FROM company_index_candidates WHERE status = 'promoted'",
   ], { maxBuffer: 64 * 1024 * 1024 });
   return JSON.parse(stdout)?.[0]?.results || [];
+}
+
+/**
+ * Second opinion on a bare `not_found`: does a company still resolve under this
+ * row's stored name, and does that name slugify back to this row's slug?
+ *
+ * This is the same round-trip the organic demand gate uses, and it is the check
+ * that distinguishes group-key drift from a company that has actually gone. A
+ * failure to ASK is not evidence, so anything other than a clean answer is
+ * reported as 'unknown' and leaves the row alone.
+ *
+ * @returns {Promise<'yes'|'no'|'unknown'>}
+ */
+async function nameStillResolves(row) {
+  if (!row.canonical_name) return 'unknown';
+  const url = `${API_BASE}/bormes/companies/directory/autocomplete`
+    + `?q=${encodeURIComponent(row.canonical_name)}&limit=5`;
+  const response = await fetch(url, { headers: INTERNAL_HEADER }).catch(() => null);
+  if (!response?.ok) return 'unknown';
+  const data = await response.json().catch(() => null);
+  if (!data) return 'unknown';
+  const hits = data.suggestions || data.companies || data.results || [];
+  if (!Array.isArray(hits)) return 'unknown';
+  const roundTrips = hits.some(
+    (hit) => nameToSlug(hit?.company_name || hit?.name || '') === row.slug,
+  );
+  return roundTrips ? 'yes' : 'no';
 }
 
 // Promoted rows come from TWO paths — this batch tool and organic demand
@@ -242,6 +270,7 @@ async function stageResync() {
   const promoted = await promotedRowsFromD1();
   console.log(`Re-verifying ${promoted.length} promoted rows against ${API_BASE}…`);
   const stale = [];
+  const drift = [];   // alive by name, stale group_key — reported, never demoted
   const counts = { unchanged: 0, repoint: 0, demote: {} };
   let cursor = 0;
   async function worker() {
@@ -249,9 +278,21 @@ async function stageResync() {
       const row = promoted[cursor++];
       const result = await liveProfile(row.group_key);
       await new Promise((resolve) => setTimeout(resolve, PACE_MS));   // pace the live API
-      if (!result.ok && result.reason === 'api_error') {
+      // A bare group_key miss is not evidence the page is dead — /empresa
+      // resolves by NAME — so ask by name before demoting anything.
+      const nameVerdict = (!result.ok && result.reason === 'not_found')
+        ? await nameStillResolves(row)
+        : undefined;
+      const verdict = resyncVerdict(result.ok ? null : result.reason, nameVerdict);
+      if (verdict === 'keep' && !result.ok) {
         counts.api_error = (counts.api_error || 0) + 1;            // leave the row alone
-      } else if (!result.ok) {
+      } else if (verdict === 'drift') {
+        // Alive under its name, only the stored group_key is stale. Reported,
+        // never demoted: doing so cost two healthy indexed pages twice before.
+        counts.group_key_drift = (counts.group_key_drift || 0) + 1;
+        drift.push({ group_key: row.group_key, slug: row.slug,
+                     name: row.canonical_name, name_check: nameVerdict });
+      } else if (verdict === 'demote') {
         counts.demote[result.reason] = (counts.demote[result.reason] || 0) + 1;
         stale.push({ group_key: row.group_key, slug: null, name: null, was: row.slug, reason: result.reason });
       } else if (nameToSlug(result.canonicalName) === row.slug) {
@@ -267,6 +308,12 @@ async function stageResync() {
   await Promise.all(Array.from({ length: VERIFY_CONCURRENCY }, worker));
 
   await writeFile(join(OUT_DIR, 'stale.json'), JSON.stringify(stale, null, 1));
+  await writeFile(join(OUT_DIR, 'group-key-drift.json'), JSON.stringify(drift, null, 1));
+  if (drift.length) {
+    console.log(`\n${drift.length} row(s) alive by name but with a stale group_key `
+      + `(NOT demoted — see ${OUT_DIR}/group-key-drift.json):`);
+    for (const row of drift) console.log(`  ${row.slug}  (${row.group_key})`);
+  }
   const chunks = resyncSqlChunks(stale);
   for (const [index, chunk] of chunks.entries()) {
     const file = join(OUT_DIR, `resync-${String(index + 1).padStart(3, '0')}.sql`);
